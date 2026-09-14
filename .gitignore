@@ -13,3 +13,17 @@ Thumbs.db
 .env.*
 !.env.example
 node_modules/
+
+# Build
+dist/
+.turbo/
+.wrangler/
+*.tsbuildinfo
+
+# Dữ liệu local (PGlite)
+.data/
+
+# Test
+e2e/test-results/
+e2e/playwright-report/
+coverage/
