@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 1500px; display: flex; background: #F7F3EC; overflow: hidden;">
+  <!-- Sidebar -->
+  <aside style="width: 264px; height: 1500px; background: #25201B; color: #CFC6B8; display: flex; flex-direction: column; padding: 16px 12px; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom: 1px solid rgba(255,253,249,0.08);">
+      <div style="width: 40px; height: 40px; border-radius: 12px; background: #D4593A; display: flex; align-items: center; justify-content: center; color: #FFFDF9; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 18px;">KD</div>
+      <div style="flex-grow: 1; min-width: 0;">
+        <div style="color: #FFFDF9; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kinh Doanh Online Cùng AI</div>
+        <div style="font-size: 12px; color: #8C8478;">234 thành viên · 12 đang online</div>
+      </div>
+      <span style="color: #8C8478;" data-go="ws-home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
+    </div>
+
+    <div class="nav-group">Cộng đồng</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="feed" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg><span style="flex-grow: 1;">Bảng tin</span></div>
+      <div class="nav-item" data-go="members" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg><span style="flex-grow: 1;">Thành viên</span></div>
+      <div class="nav-item" data-go="events" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /></svg><span style="flex-grow: 1;">Sự kiện</span><span style="font-size: 11px; font-weight: 600; background: #D4593A; color: #FFFDF9; border-radius: 999px; padding: 1px 7px;">2</span></div>
+      <div class="nav-item" data-go="affiliate" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2" /><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2" /><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3" /><path d="M4 22h16" /><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" /><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3" /></svg><span style="flex-grow: 1;">Xếp hạng cộng sự</span></div>
+    </div>
+
+    <div class="nav-group">Học tập</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item on" data-go="courses" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16" /><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" /></svg><span style="flex-grow: 1;">Khóa học</span><span style="font-size: 12px; color: #0E8E96; font-weight: 600;">27%</span></div>
+      <div class="nav-item" data-go="resources" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg><span style="flex-grow: 1;">Tài nguyên</span><span style="color: #8C8478;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span></div>
+    </div>
+
+    <div class="nav-group">Mua sắm</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="store" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5" /><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244" /><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05" /></svg><span style="flex-grow: 1;">Cửa hàng</span></div>
+    </div>
+
+    <div class="nav-group">Quản trị</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="settings" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg><span style="flex-grow: 1;">Cài đặt</span></div>
+      <div class="nav-item" data-go="revenue" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg><span style="flex-grow: 1;">Doanh thu</span></div>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+    <div class="btn btn-primary" style="width: 100%;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>Mời thành viên</div>
+  </aside>
+
+  <!-- Main -->
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+    <header style="height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 32px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+      <div style="display: flex; align-items: center; gap: 8px; color: #1F1B17; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px;">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>
+        Hội Mình
+      </div>
+      <div class="input" style="width: 420px; margin-left: 24px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg><span>Tìm bài viết, khóa học, thành viên…</span></div>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C554D; border: 1px solid #E3DCD0; background: #FFFDF9;" data-go="messages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></div>
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C554D; border: 1px solid #E3DCD0; background: #FFFDF9;" data-go="notifications"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></div>
+        <span data-go="account"><div class="avatar" style="width: 40px; height: 40px; background: #1F1B17; font-size: 14px;">MQ</div></span>
+      </div>
+    </header>
+    <div style="flex-grow: 1; overflow: hidden; padding: 28px 32px;">
+      
+<div style="display: flex; gap: 32px;">
+  <div style="width: 740px; display: flex; flex-direction: column; gap: 20px;">
+    <span data-go="courses" style="display: inline-flex; align-items: center; gap: 6px; color: #8C8478; font-size: 13px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>Khóa học</span>
+    <div class="card" style="overflow: hidden;">
+      <div style="height: 220px; background: #D4593A; display: flex; align-items: flex-end; padding: 24px; position: relative;">
+        <span class="tag" style="position: absolute; top: 20px; left: 24px; background: rgba(255,253,249,0.2); color: #FFFDF9; height: 26px; padding: 0 10px;">Khóa học · Premium</span>
+        <div style="color: #FFFDF9;"><div class="serif" style="font-size: 34px; font-weight: 800; line-height: 1.1;">Funnel Money Model 2026</div><div style="font-size: 14px; opacity: 0.85; margin-top: 6px;">4 module · 31 bài · 6 giờ 36 phút · Minh Quý</div></div>
+      </div>
+      <div style="padding: 20px 24px; display: flex; align-items: center; gap: 20px;">
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="font-weight: 600;">Tiến độ 27%</span><span class="muted">· 8/31 bài · còn khoảng 4 giờ 50 phút</span></div>
+          <div class="prog" style="height: 8px;"><div style="width: 27%;"></div></div>
+          <div class="muted" style="font-size: 12px;">Đang ở bài <strong style="color: #1F1B17;">2.3 Viết offer bằng công thức giá trị</strong> · học lần cuối hôm qua</div>
+        </div>
+        <span class="btn btn-primary" data-go="classroom" style="height: 48px; padding: 0 24px; font-size: 15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" /></svg>Tiếp tục học</span>
+        <span style="color: #8C8478;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></svg></span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 20px; border-bottom: 1px solid #E8E1D6;"><span style="padding: 10px 2px; border-bottom: 2px solid #1F1B17; font-weight: 700; color: #1F1B17; font-size: 14px;">Nội dung</span><span style="padding: 10px 2px; border-bottom: 2px solid transparent; font-weight: 500; color: #5C554D; font-size: 14px;">Tài liệu · 5</span><span style="padding: 10px 2px; border-bottom: 2px solid transparent; font-weight: 500; color: #5C554D; font-size: 14px;">Thảo luận · 42</span><span style="padding: 10px 2px; border-bottom: 2px solid transparent; font-weight: 500; color: #5C554D; font-size: 14px;">Về khóa học</span></div>
+
+    <div class="card" style="overflow: hidden;">
+      <div style="display: flex; align-items: center; padding: 14px 20px;"><span style="font-weight: 600;">Nội dung khóa học</span><span style="flex-grow: 1;"></span><span style="font-size: 13px; font-weight: 600; color: #0E8E96;">Mở tất cả</span></div>
+      
+<div style="border-top: 1px solid #E8E1D6;">
+  <div style="display: flex; align-items: center; gap: 14px; padding: 14px 20px;">
+    <span style="width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; background: #DDF1F1; color: #0B6F75;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>
+    <div style="flex-grow: 1;"><div style="font-weight: 600;">Tư duy mô hình tiền</div><div class="muted" style="font-size: 12px;">5 bài · 42 phút</div></div>
+    <div style="display: flex; align-items: center; gap: 10px; width: 160px;"><div class="prog" style="flex-grow: 1;"><div style="width: 100%;"></div></div><span class="muted" style="font-size: 12px; width: 32px; text-align: right;">5/5</span></div>
+    <span style="color: #8C8478;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></span>
+  </div>
+  
+</div>
+      
+<div style="border-top: 1px solid #E8E1D6;">
+  <div style="display: flex; align-items: center; gap: 14px; padding: 14px 20px;">
+    <span style="width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; background: #FBE9E2; color: #9C3A21;">2</span>
+    <div style="flex-grow: 1;"><div style="font-weight: 600;">Thiết kế Offer</div><div class="muted" style="font-size: 12px;">6 bài · 1 giờ 2 phút</div></div>
+    <div style="display: flex; align-items: center; gap: 10px; width: 160px;"><div class="prog" style="flex-grow: 1;"><div style="width: 33%;"></div></div><span class="muted" style="font-size: 12px; width: 32px; text-align: right;">2/6</span></div>
+    <span style="color: #8C8478;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
+  </div>
+  <div style="padding: 0 20px 12px 68px; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #0E8E96; color: #fff; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="flex-grow: 1; font-size: 14px;">2.1 Khách hàng thực sự mua gì</span><span class="muted" style="font-size: 12px;">09:12</span></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #0E8E96; color: #fff; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="flex-grow: 1; font-size: 14px;">2.2 Ba lớp giá trị của một offer</span><span class="muted" style="font-size: 12px;">11:04</span></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #FBE9E2;"><span style="width: 22px; height: 22px; border-radius: 999px; border: 2px solid #D4593A; display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></span><span style="flex-grow: 1; font-size: 14px; font-weight: 600;">2.3 Viết offer bằng công thức giá trị</span><span class="muted" style="font-size: 12px;">12:41</span></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;"><span style="width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid #E3DCD0; display: inline-block;"></span><span style="flex-grow: 1; font-size: 14px;">2.4 Định giá theo kết quả</span><span class="muted" style="font-size: 12px;">08:55</span></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;"><span style="width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid #E3DCD0; display: inline-block;"></span><span style="flex-grow: 1; font-size: 14px;">2.5 Bảo hành và đảo ngược rủi ro</span><span class="muted" style="font-size: 12px;">07:30</span></div><div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;"><span style="width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid #E3DCD0; display: inline-block;"></span><span style="flex-grow: 1; font-size: 14px;">2.6 Bài tập: Offer Canvas của bạn</span><span class="muted" style="font-size: 12px;">Bài tập</span></div></div>
+</div>
+      
+<div style="border-top: 1px solid #E8E1D6;">
+  <div style="display: flex; align-items: center; gap: 14px; padding: 14px 20px;">
+    <span style="width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; background: #F7F3EC; color: #8C8478;">3</span>
+    <div style="flex-grow: 1;"><div style="font-weight: 600;">Lead magnet và Tripwire</div><div class="muted" style="font-size: 12px;">7 bài · 1 giờ 48 phút</div></div>
+    <div style="display: flex; align-items: center; gap: 10px; width: 160px;"><div class="prog" style="flex-grow: 1;"><div style="width: 0%;"></div></div><span class="muted" style="font-size: 12px; width: 32px; text-align: right;">0/7</span></div>
+    <span style="color: #8C8478;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></span>
+  </div>
+  
+</div>
+      
+<div style="border-top: 1px solid #E8E1D6;">
+  <div style="display: flex; align-items: center; gap: 14px; padding: 14px 20px;">
+    <span style="width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; background: #F7F3EC; color: #8C8478;">4</span>
+    <div style="flex-grow: 1;"><div style="font-weight: 600;">Scale bằng cộng sự affiliate</div><div class="muted" style="font-size: 12px;">8 bài · 2 giờ 4 phút</div></div>
+    <div style="display: flex; align-items: center; gap: 10px; width: 160px;"><div class="prog" style="flex-grow: 1;"><div style="width: 0%;"></div></div><span class="muted" style="font-size: 12px; width: 32px; text-align: right;">0/8</span></div>
+    <span style="color: #8C8478;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></span>
+  </div>
+  
+</div>
+    </div>
+
+    <div class="card" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center;"><span style="font-weight: 700; font-size: 16px;">Thảo luận gần đây trong khóa</span><span style="flex-grow: 1;"></span><span style="font-size: 13px; font-weight: 600; color: #0E8E96;">Xem tất cả 42</span></div>
+      <div style="display: flex; gap: 12px; align-items: flex-start; padding-top: 12px; border-top: 1px solid #E8E1D6;"><div class="avatar" style="width: 32px; height: 32px; background: #7A5C3E; font-size: 12px;">HK</div><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="font-weight: 600;">Hồng Kim</span><span class="tag" style="background: #F7F3EC; color: #5C554D; height: 18px; padding: 0 6px; font-size: 11px;">Bài 2.3</span><span class="muted">· 5 giờ trước</span></div><div style="font-size: 14px; margin-top: 2px;">Vế “thời gian” nên tính theo ngày hay theo số buổi học ạ?</div></div><span class="muted" style="font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg>3</span></div><div style="display: flex; gap: 12px; align-items: flex-start; padding-top: 12px; border-top: 1px solid #E8E1D6;"><div class="avatar" style="width: 32px; height: 32px; background: #5C7A3E; font-size: 12px;">KB</div><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="font-weight: 600;">Kiên Bùi</span><span class="tag" style="background: #F7F3EC; color: #5C554D; height: 18px; padding: 0 6px; font-size: 11px;">Bài 1.5</span><span class="muted">· Hôm qua</span></div><div style="font-size: 14px; margin-top: 2px;">Mình vẽ dòng tiền của shop rồi, ai xem giúp mình với</div></div><span class="muted" style="font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg>6</span></div>
+    </div>
+  </div>
+
+  <aside style="width: 312px; display: flex; flex-direction: column; gap: 16px; ">
+    <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="position: relative; width: 72px; height: 72px; border-radius: 999px; background: conic-gradient(#0E8E96 27%, #E8E1D6 0); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><div style="width: 56px; height: 56px; border-radius: 999px; background: #FFFDF9; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">27%</div></div>
+        <div style="display: flex; flex-direction: column; gap: 2px; font-size: 13px;"><span><strong>8</strong> <span class="muted">bài đã học</span></span><span><strong>1 giờ 46 phút</strong> <span class="muted">đã xem</span></span><span><strong>4 ngày</strong> <span class="muted">học liên tiếp</span></span></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #F8EFD9; font-size: 12px; color: #5C4A16;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path d="m16 9-5.5 5.5L8 12" /></svg><span>Hoàn thành 100% để nhận <strong>chứng nhận</strong> có tên bạn và link kiểm tra.</span></div>
+    </div>
+    <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-weight: 600; font-size: 13px;">Tài liệu khóa học</div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg></span><span style="flex-grow: 1;">Offer Canvas.pdf</span><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg></span></div><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg></span><span style="flex-grow: 1;">Prompt AI viết offer.txt</span><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg></span></div><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg></span><span style="flex-grow: 1;">Bảng theo dõi dòng tiền.xlsx</span><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg></span></div><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg></span><span style="flex-grow: 1;">Kịch bản tin nhắn chào.pdf</span><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg></span></div><div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg></span><span style="flex-grow: 1;">Checklist lead magnet.pdf</span><span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg></span></div>
+    </div>
+    <div class="card" style="padding: 16px; display: flex; align-items: center; gap: 12px;">
+      <div class="avatar" style="width: 44px; height: 44px; background: #1F1B17; font-size: 15px;">MQ</div>
+      <div style="flex-grow: 1;"><div style="font-weight: 600;">Minh Quý</div><div class="muted" style="font-size: 12px;">Giảng viên · trả lời trong 24 giờ</div></div>
+      <span class="btn btn-ghost btn-sm" data-go="messages"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg></span>
+    </div>
+    <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center;"><span style="font-weight: 600; font-size: 13px;">Đang học cùng bạn</span><span class="muted" style="font-size: 12px; margin-left: auto;">96 người</span></div>
+      <div style="display: flex;"><span style="margin-left: 0; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #D4593A; font-size: 11px;">HV</div></span><span style="margin-left: -8px; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #7A5C3E; font-size: 11px;">HK</div></span><span style="margin-left: -8px; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #0E8E96; font-size: 11px;">ĐN</div></span><span style="margin-left: -8px; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #5C7A3E; font-size: 11px;">KB</div></span><span style="margin-left: -8px; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #7A5C3E; font-size: 11px;">CT</div></span><span style="margin-left: -8px; border: 2px solid #FFFDF9; border-radius: 999px; display: inline-flex;"><div class="avatar" style="width: 32px; height: 32px; background: #3E5C7A; font-size: 11px;">DN</div></span><span style="margin-left: -8px; width: 32px; height: 32px; border-radius: 999px; background: #F7F3EC; border: 2px solid #FFFDF9; color: #5C554D; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">+90</span></div>
+      <div class="muted" style="font-size: 12px;">23 người đã hoàn thành · Hoàng Vũ nhanh nhất, 9 ngày</div>
+    </div>
+  </aside>
+</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; background: #F4F6F9; color: #1B2733; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; display: flex; overflow: hidden;">
+  <aside style="width: 264px; background: #FFFFFF; border-right: 1px solid #DDE3EA; padding: 20px 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 36px; height: 36px; border-radius: 10px; background: #2F6FED;"></div><div style="font-weight: 600;">Kinh Doanh Online Cùng AI</div></div>
+    <div style="height: 1px; background: #DDE3EA; margin: 8px 0;"></div>
+    <div style="padding: 10px 12px; border-radius: 8px; background: #E8F0FE; color: #2F6FED; font-weight: 600;">Bảng tin</div>
+    <div style="padding: 10px 12px; color: #4B5B6B;">Thành viên</div>
+    <div style="padding: 10px 12px; color: #4B5B6B;">Sự kiện</div>
+    <div style="padding: 10px 12px; color: #4B5B6B;">Khóa học</div>
+    <div style="padding: 10px 12px; color: #4B5B6B;">Cửa hàng</div>
+    <div style="flex-grow: 1;"></div>
+    <div style="height: 40px; border-radius: 8px; background: #2F6FED;"></div>
+  </aside>
+  <div style="flex-grow: 1; display: flex; flex-direction: column;">
+    <div style="height: 64px; background: #FFFFFF; border-bottom: 1px solid #DDE3EA; display: flex; align-items: center; padding: 0 32px; gap: 16px;"><div style="font-weight: 700; font-size: 18px; color: #2F6FED;">Hội Mình</div><div style="width: 420px; height: 38px; background: #E5E9EF; border-radius: 8px;"></div><div style="flex-grow: 1;"></div><div style="width: 36px; height: 36px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div></div>
+    <div style="padding: 28px 32px; display: flex; gap: 28px;">
+      <div style="width: 760px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 26px; font-weight: 700;">Bảng tin</div>
+        <div style="display: flex; gap: 8px;"><div style="width: 80px; height: 30px; background: #E5E9EF; border-radius: 8px; border-radius: 999px; background: #1B2733;"></div><div style="width: 100px; height: 30px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div><div style="width: 90px; height: 30px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div><div style="width: 90px; height: 30px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 12px; padding: 16px; display: flex; gap: 12px; align-items: center;"><div style="width: 40px; height: 40px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div><div style="width: 520px; height: 18px; background: #E5E9EF; border-radius: 8px;"></div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px;"><div style="display: flex; gap: 10px; align-items: center;"><div style="width: 40px; height: 40px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div><div style="width: 160px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div></div><div style="width: 480px; height: 22px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 640px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 560px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px;"><div style="display: flex; gap: 10px; align-items: center;"><div style="width: 40px; height: 40px; background: #E5E9EF; border-radius: 8px; border-radius: 999px;"></div><div style="width: 140px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div></div><div style="width: 420px; height: 22px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 600px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div></div>
+      </div>
+      <div style="width: 320px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 12px; overflow: hidden;"><div style="width: 100%; height: 120px; background: #E5E9EF; border-radius: 8px; border-radius: 0; background: #2F6FED;"></div><div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="width: 200px; height: 16px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 260px; height: 12px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 220px; height: 12px; background: #E5E9EF; border-radius: 8px;"></div></div></div>
+        <div style="background: #FFFFFF; border: 1px solid #DDE3EA; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="width: 140px; height: 14px; background: #E5E9EF; border-radius: 8px;"></div><div style="width: 100%; height: 40px; background: #E5E9EF; border-radius: 8px; background: #2F6FED;"></div></div>
+      </div>
+    </div>
+    <div style="margin: auto 32px 24px; padding: 12px 16px; border-radius: 10px; background: #FFF8E1; color: #6B5A1E; font-size: 13px; max-width: 700px;">Hướng B (phác thảo): nền sáng lạnh, sidebar trắng, một màu xanh dương làm nhấn, chỉ dùng sans-serif. Gọn và quen mắt hơn nhưng ít cá tính hơn Hướng A.</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

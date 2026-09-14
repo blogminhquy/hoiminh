@@ -1,0 +1,15 @@
+# Canvas đã đóng gói (chứa mã trình soạn thảo bên thứ ba, sinh lại được)
+design/hoi-minh-app.html
+
+# Tệp tạm
+design/*.part
+design/patch*.cjs
+*.log
+.DS_Store
+Thumbs.db
+
+# Môi trường
+.env
+.env.*
+!.env.example
+node_modules/

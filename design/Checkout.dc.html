@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; overflow: hidden; background: #F7F3EC; display: flex; flex-direction: column;" data-checkout>
+  <header style="height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 64px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+    <div style="display: flex; align-items: center; gap: 8px; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px;"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>Hội Mình</div>
+    <span style="flex-grow: 1;"></span>
+    <span class="muted" style="font-size: 13px; display: inline-flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg>Thanh toán được bảo vệ · hủy bất cứ lúc nào</span>
+  </header>
+  <div style="flex-grow: 1; display: flex; justify-content: center; gap: 32px; padding: 40px 64px;">
+    <div style="width: 520px; display: flex; flex-direction: column; gap: 16px;">
+      <span data-go="feed" style="display: inline-flex; align-items: center; gap: 6px; color: #8C8478; font-size: 13px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>Quay lại cộng đồng</span>
+      <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; gap: 14px; align-items: center;"><div style="width: 56px; height: 56px; border-radius: 14px; background: #D4593A; color: #FFFDF9; display: flex; align-items: center; justify-content: center; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px;">KD</div><div><div class="muted" style="font-size: 12px;">Nâng cấp tại Kinh Doanh Online Cùng AI</div><div class="serif" style="font-size: 22px; font-weight: 800;">Gói Premium</div></div></div>
+        <div style="display: flex; gap: 10px;">
+          <div style="flex: 1 1 0; padding: 14px; border-radius: 12px; border: 1.5px solid #E3DCD0;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="font-weight: 600;">Theo tháng</span></div><div style="padding-left: 26px; font-size: 13px; color: #5C554D;">249.000đ / tháng</div></div>
+          <div style="flex: 1 1 0; padding: 14px; border-radius: 12px; border: 1.5px solid #D4593A; background: #FBE9E2; position: relative;"><span class="tag" style="position: absolute; top: -10px; right: 12px; background: #1F1B17; color: #FFFDF9;">Tiết kiệm 17%</span><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #D4593A; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></span><span style="font-weight: 600;">Theo năm</span></div><div style="padding-left: 26px; font-size: 13px; color: #5C554D;">2.490.000đ / năm · 207.500đ mỗi tháng</div></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #5C554D; padding-top: 4px;">
+          <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #0E8E96;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Mở khóa toàn bộ khóa học và tài nguyên</div><div style="display: flex; align-items: center; gap: 8px;"><span style="color: #0E8E96;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Trở thành cộng sự, hoa hồng 50%</div><div style="display: flex; align-items: center; gap: 8px;"><span style="color: #0E8E96;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Q&amp;A trực tiếp hằng tuần</div><div style="display: flex; align-items: center; gap: 8px;"><span style="color: #0E8E96;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Hủy bất cứ lúc nào, giữ quyền đến hết kỳ</div>
+        </div>
+        <div style="display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #E8E1D6;"><div class="input" style="flex-grow: 1; height: 40px;"><span>Mã giảm giá</span></div><span class="btn btn-ghost">Áp dụng</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; padding-top: 8px; border-top: 1px solid #E8E1D6;">
+          <div style="display: flex;"><span style="flex-grow: 1; color: #5C554D;">Premium · 12 tháng</span><span>2.490.000đ</span></div>
+          <div style="display: flex;"><span style="flex-grow: 1; color: #5C554D;">Giảm giá</span><span>0đ</span></div>
+          <div style="display: flex; align-items: baseline; padding-top: 6px;"><span style="flex-grow: 1; font-weight: 700;">Tổng thanh toán</span><span class="serif" style="font-size: 24px; font-weight: 800;">2.490.000đ</span></div>
+        </div>
+        <div class="muted" style="font-size: 12px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg>Bạn được giới thiệu bởi Hoàng Vũ</div>
+      </div>
+    </div>
+    <div style="width: 520px; display: flex; flex-direction: column; gap: 12px; padding-top: 36px;">
+      <span style="font-weight: 600;">Chọn cách thanh toán</span>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #D4593A; background: #FBE9E2;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #D4593A; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></span><span style="width: 36px; height: 26px; border-radius: 6px; background: #1F1B17; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">QR</span><div style="flex-grow: 1;"><div style="font-weight: 600; font-size: 14px;">Chuyển khoản QR</div><div class="muted" style="font-size: 12px;">Quét bằng app ngân hàng, kích hoạt tự động dưới 1 phút</div></div></div>
+      <div class="card" style="padding: 20px; display: flex; gap: 20px; align-items: center;">
+        <div style="width: 160px; height: 160px; border-radius: 12px; background: #FFFDF9; border: 1px solid #E3DCD0; display: flex; align-items: center; justify-content: center; color: #1F1B17;"><svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="5" height="5" x="3" y="3" rx="1" /><rect width="5" height="5" x="16" y="3" rx="1" /><rect width="5" height="5" x="3" y="16" rx="1" /><path d="M21 16h-3a2 2 0 0 0-2 2v3" /><path d="M21 21v.01" /><path d="M12 7v3a2 2 0 0 1-2 2H7" /><path d="M3 12h.01" /><path d="M12 3h.01" /><path d="M12 16v.01" /><path d="M16 12h1" /><path d="M21 12v.01" /><path d="M12 21v-1" /></svg></div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+          <div><div class="muted" style="font-size: 12px;">Ngân hàng</div><div style="font-weight: 600;">Vietcombank · Hội Mình JSC</div></div>
+          <div><div class="muted" style="font-size: 12px;">Số tài khoản</div><div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">0071 000 123 456 <span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg></span></div></div>
+          <div><div class="muted" style="font-size: 12px;">Nội dung chuyển khoản</div><div style="font-weight: 700; color: #D4593A; display: flex; align-items: center; gap: 6px;">HM 8K2QX <span style="color: #8C8478;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg></span></div></div>
+          <div class="muted" style="font-size: 12px;">Giữ đúng nội dung để hệ thống nhận diện</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="width: 36px; height: 26px; border-radius: 6px; background: #A50064; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">MoMo</span><div style="flex-grow: 1;"><div style="font-weight: 600; font-size: 14px;">MoMo</div><div class="muted" style="font-size: 12px;">Xác nhận ngay trong ví, có thể bật tự gia hạn</div></div></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="width: 36px; height: 26px; border-radius: 6px; background: #0A5EB0; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">VNPAY</span><div style="flex-grow: 1;"><div style="font-weight: 600; font-size: 14px;">VNPAY</div><div class="muted" style="font-size: 12px;">Thẻ nội địa hoặc QR ngân hàng</div></div></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="width: 36px; height: 26px; border-radius: 6px; background: #003087; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">PayPal</span><div style="flex-grow: 1;"><div style="font-weight: 600; font-size: 14px;">PayPal</div><div class="muted" style="font-size: 12px;">Thanh toán bằng USD cho khách quốc tế</div></div></div>
+      <span class="btn btn-primary" style="height: 48px; font-size: 15px; margin-top: 6px;">Tôi đã chuyển khoản</span>
+      <div class="muted" style="font-size: 12px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>Đang chờ tiền về… trang sẽ tự chuyển khi nhận được</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

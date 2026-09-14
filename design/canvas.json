@@ -1,0 +1,431 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Bảng tin",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1560
+    },
+    {
+      "file": "Composer.dc.html",
+      "title": "Tạo bài viết (nền cho status ngắn)",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 1560
+    },
+    {
+      "file": "PostDetail.dc.html",
+      "title": "Chi tiết bài viết và bình luận",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 2500
+    },
+    {
+      "file": "Courses.dc.html",
+      "title": "Thư viện khóa học",
+      "x": 0,
+      "y": 2640,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "CourseOverview.dc.html",
+      "title": "Chi tiết khóa học",
+      "x": 1540,
+      "y": 2640,
+      "w": 1440,
+      "h": 1500
+    },
+    {
+      "file": "Classroom.dc.html",
+      "title": "Bài học (đã trả phí)",
+      "x": 3080,
+      "y": 2640,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "ClassroomFree.dc.html",
+      "title": "Bài học (thành viên miễn phí)",
+      "x": 0,
+      "y": 4280,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Store.dc.html",
+      "title": "Cửa hàng",
+      "x": 0,
+      "y": 5380,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "ProductDetail.dc.html",
+      "title": "Chi tiết sản phẩm",
+      "x": 1540,
+      "y": 5380,
+      "w": 1440,
+      "h": 2100
+    },
+    {
+      "file": "Events.dc.html",
+      "title": "Sự kiện",
+      "x": 3080,
+      "y": 5380,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "EventDetail.dc.html",
+      "title": "Chi tiết sự kiện",
+      "x": 0,
+      "y": 7620,
+      "w": 1440,
+      "h": 1500
+    },
+    {
+      "file": "Affiliate.dc.html",
+      "title": "Xếp hạng cộng sự",
+      "x": 1540,
+      "y": 7620,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Messages.dc.html",
+      "title": "Tin nhắn",
+      "x": 0,
+      "y": 9260,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Notifications.dc.html",
+      "title": "Thông báo",
+      "x": 1540,
+      "y": 9260,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AccountBilling.dc.html",
+      "title": "Tài khoản · Gói và thanh toán",
+      "x": 3080,
+      "y": 9260,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Profile.dc.html",
+      "title": "Hồ sơ thành viên",
+      "x": 0,
+      "y": 10360,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "ProfileEdit.dc.html",
+      "title": "Tài khoản · Hồ sơ (chỉnh sửa)",
+      "x": 1540,
+      "y": 10360,
+      "w": 1440,
+      "h": 1150
+    },
+    {
+      "file": "Checkout.dc.html",
+      "title": "Thanh toán gói Premium",
+      "x": 3080,
+      "y": 10360,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AffiliateWallet.dc.html",
+      "title": "Tài khoản · Cộng sự (ví và rút tiền)",
+      "x": 0,
+      "y": 11650,
+      "w": 1440,
+      "h": 1250
+    },
+    {
+      "file": "SignupLanding.dc.html",
+      "title": "Tạo hội của bạn (đăng ký)",
+      "x": 1540,
+      "y": 11650,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "SignupPlan.dc.html",
+      "title": "Chọn gói tháng hoặc năm",
+      "x": 0,
+      "y": 13040,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "WorkspaceHome.dc.html",
+      "title": "Hội của tôi",
+      "x": 1540,
+      "y": 13040,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "WorkspaceCreate.dc.html",
+      "title": "Tạo hội của bạn",
+      "x": 3080,
+      "y": 13040,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "CourseCreate.dc.html",
+      "title": "Tạo khóa học",
+      "x": 0,
+      "y": 14280,
+      "w": 1440,
+      "h": 1500
+    },
+    {
+      "file": "CourseBuilder.dc.html",
+      "title": "Soạn nội dung khóa học",
+      "x": 1540,
+      "y": 14280,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "EventCreate.dc.html",
+      "title": "Tạo sự kiện",
+      "x": 3080,
+      "y": 14280,
+      "w": 1440,
+      "h": 1700
+    },
+    {
+      "file": "Members.dc.html",
+      "title": "Quản trị thành viên",
+      "x": 0,
+      "y": 16120,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "SettingsOverview.dc.html",
+      "title": "Cài đặt · Tổng quan",
+      "x": 0,
+      "y": 17220,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "SettingsGeneral.dc.html",
+      "title": "Cài đặt · Chung",
+      "x": 1540,
+      "y": 17220,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "Pricing.dc.html",
+      "title": "Cài đặt · Giá và gói",
+      "x": 0,
+      "y": 18460,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "SettingsAffiliate.dc.html",
+      "title": "Cài đặt · Cộng sự",
+      "x": 1540,
+      "y": 18460,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "SettingsAffiliatePayouts.dc.html",
+      "title": "Cài đặt · Cộng sự · Yêu cầu rút",
+      "x": 3080,
+      "y": 18460,
+      "w": 1440,
+      "h": 1250
+    },
+    {
+      "file": "SettingsPlugins.dc.html",
+      "title": "Cài đặt · Tiện ích",
+      "x": 0,
+      "y": 19850,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "SettingsFeed.dc.html",
+      "title": "Cài đặt · Bảng tin",
+      "x": 0,
+      "y": 21090,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "SettingsPayout.dc.html",
+      "title": "Cài đặt · Thanh toán",
+      "x": 1540,
+      "y": 21090,
+      "w": 1440,
+      "h": 1150
+    },
+    {
+      "file": "Revenue.dc.html",
+      "title": "Doanh thu",
+      "x": 3080,
+      "y": 21090,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AdminOverview.dc.html",
+      "title": "Hệ thống · Tổng quan",
+      "x": 0,
+      "y": 22380,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AdminCommunities.dc.html",
+      "title": "Hệ thống · Hội",
+      "x": 1540,
+      "y": 22380,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AdminPayments.dc.html",
+      "title": "Hệ thống · Thanh toán và đối soát",
+      "x": 3080,
+      "y": 22380,
+      "w": 1440,
+      "h": 1050
+    },
+    {
+      "file": "AdminPlans.dc.html",
+      "title": "Hệ thống · Gói nền tảng",
+      "x": 0,
+      "y": 23570,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "AdminAffiliate.dc.html",
+      "title": "Hệ thống · Cộng sự nền tảng",
+      "x": 1540,
+      "y": 23570,
+      "w": 1440,
+      "h": 1100
+    },
+    {
+      "file": "CommunityAbout.dc.html",
+      "title": "Trang giới thiệu hội (đích của link hội)",
+      "x": 0,
+      "y": 24810,
+      "w": 1440,
+      "h": 1400
+    },
+    {
+      "file": "Login.dc.html",
+      "title": "Đăng nhập",
+      "x": 0,
+      "y": 26350,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Register.dc.html",
+      "title": "Đăng ký tài khoản",
+      "x": 1540,
+      "y": 26350,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "VerifyEmail.dc.html",
+      "title": "Xác minh email",
+      "x": 3080,
+      "y": 26350,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "ForgotPassword.dc.html",
+      "title": "Quên mật khẩu",
+      "x": 0,
+      "y": 27450,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "ForgotSent.dc.html",
+      "title": "Đã gửi link đặt lại",
+      "x": 1540,
+      "y": 27450,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "ResetPassword.dc.html",
+      "title": "Đặt mật khẩu mới",
+      "x": 3080,
+      "y": 27450,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Discovery.dc.html",
+      "title": "Khám phá (công khai)",
+      "x": 0,
+      "y": 28550,
+      "w": 1440,
+      "h": 960
+    },
+    {
+      "file": "Mobile.dc.html",
+      "title": "Bảng tin · điện thoại",
+      "x": 1540,
+      "y": 28550,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "DirectionB.dc.html",
+      "title": "Hướng B · phác thảo",
+      "x": 2030,
+      "y": 28550,
+      "w": 1440,
+      "h": 960
+    }
+  ],
+  "annotations": [
+    {
+      "id": "huong-a",
+      "x": 0,
+      "y": -170,
+      "w": 560,
+      "text": "Hướng A (đề xuất): giấy ấm, sidebar nâu tối, tiêu đề Montserrat, chữ Open Sans, nhấn cam đất và xanh ngọc, icon Lucide. Ba vai trò: Thành viên (hàng 1–4, gồm góc nhìn miễn phí và trang thanh toán), Chủ hội (hàng 4–7: Hội của tôi, Tạo hội, quản trị và cài đặt), Quản trị hệ thống (hàng 8–9). Hàng cuối: trang công khai, di động, hướng thay thế."
+    },
+    {
+      "id": "so-lieu-mau",
+      "x": 1540,
+      "y": -120,
+      "w": 380,
+      "text": "Số liệu, tên và giá trong các màn hình là dữ liệu mẫu để nhìn bố cục."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

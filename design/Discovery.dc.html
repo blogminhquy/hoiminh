@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; overflow: hidden; background: #F7F3EC; display: flex; flex-direction: column;">
+  <header style="height: 72px; display: flex; align-items: center; gap: 28px; padding: 0 64px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+    <div style="display: flex; align-items: center; gap: 8px; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 22px;">
+      <svg width="28" height="28" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>
+      Hội Mình
+    </div>
+    <nav style="display: flex; gap: 24px; font-weight: 500; color: #5C554D;"><span style="color: #1F1B17;">Khám phá</span><span data-go="signup-plan">Bảng giá</span><span data-go="signup">Dành cho chủ hội</span><span data-go="login">Đăng nhập</span></nav>
+    <span style="flex-grow: 1;"></span>
+    <span class="btn btn-primary" data-go="signup">Tạo hội của bạn</span>
+    <div class="avatar" style="width: 40px; height: 40px; background: #1F1B17; font-size: 14px;">MQ</div>
+  </header>
+
+  <section style="padding: 72px 64px 40px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center;">
+    <h1 class="serif" style="margin: 0; font-size: 52px; line-height: 1.1; font-weight: 700; max-width: 760px; text-wrap: pretty;">Học cùng những người đi trước, trong hội của mình.</h1>
+    <p style="margin: 0; font-size: 17px; color: #5C554D; max-width: 560px;">Cộng đồng có người dẫn dắt rõ mặt, khóa học theo lộ trình, thanh toán bằng chuyển khoản hay ví Việt Nam.</p>
+    <div class="input" style="width: 640px; height: 56px; border-radius: 14px; margin-top: 8px; padding: 0 8px 0 18px; font-size: 16px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg><span style="flex-grow: 1;">Tìm cộng đồng, chuyên gia, chủ đề…</span><span class="btn btn-dark">Tìm kiếm</span></div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px;">
+      <span class="chip on">Nổi bật</span><span class="chip">Kinh doanh</span><span class="chip">Công nghệ và AI</span><span class="chip">Sáng tạo nội dung</span><span class="chip">Sức khỏe</span><span class="chip">Phát triển bản thân</span><span class="chip">Học tập</span><span class="chip">Ngoại ngữ</span>
+    </div>
+  </section>
+
+  <section style="padding: 0 64px 64px; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between;"><div><div class="serif" style="font-size: 26px; font-weight: 700;">Cộng đồng nổi bật</div><div class="muted">Được chọn vì hoạt động thật và người dẫn dắt rõ ràng.</div></div><a href="#">Xem tất cả</a></div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px;">
+      
+<div class="card" style="overflow: hidden; display: flex; flex-direction: column;" data-go="about">
+  <div style="height: 150px; background: #0E8E96;"></div>
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 36px; height: 36px; border-radius: 10px; background: #1F1B17; color: #FFFDF9; display: flex; align-items: center; justify-content: center; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800;">KD</div><span style="font-weight: 600; font-size: 16px;">Kinh Doanh Online Cùng AI</span></div>
+    <div style="font-size: 13px; color: #5C554D;">Ứng dụng AI xây dựng doanh nghiệp một người.</div>
+    <div class="muted" style="font-size: 13px; padding-top: 4px;">234 thành viên · Miễn phí</div>
+  </div>
+</div>
+      
+<div class="card" style="overflow: hidden; display: flex; flex-direction: column;" data-go="about">
+  <div style="height: 150px; background: #D4593A;"></div>
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 36px; height: 36px; border-radius: 10px; background: #1F1B17; color: #FFFDF9; display: flex; align-items: center; justify-content: center; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800;">YT</div><span style="font-weight: 600; font-size: 16px;">Faceless YouTube Foundation</span></div>
+    <div style="font-size: 13px; color: #5C554D;">Xây kênh không lộ mặt từ ý tưởng đến kiếm tiền.</div>
+    <div class="muted" style="font-size: 13px; padding-top: 4px;">1,2k thành viên · 199.000đ/tháng</div>
+  </div>
+</div>
+      
+<div class="card" style="overflow: hidden; display: flex; flex-direction: column;" data-go="about">
+  <div style="height: 150px; background: #7A5C3E;"></div>
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 36px; height: 36px; border-radius: 10px; background: #1F1B17; color: #FFFDF9; display: flex; align-items: center; justify-content: center; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800;">QT</div><span style="font-weight: 600; font-size: 16px;">Quản trị cảm xúc</span></div>
+    <div style="font-size: 13px; color: #5C554D;">Làm chủ cảm xúc để làm chủ cuộc đời, 23 bài theo lộ trình.</div>
+    <div class="muted" style="font-size: 13px; padding-top: 4px;">176 thành viên · 990.000đ/năm</div>
+  </div>
+</div>
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

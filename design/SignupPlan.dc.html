@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; overflow: hidden; background: #25201B; color: #FFFDF9; display: flex; flex-direction: column;">
+  <header style="height: 64px; display: flex; align-items: center; padding: 0 64px; gap: 8px;"><svg width="28" height="28" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg><span style="font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 22px; color: #FFFDF9;">Hội Mình</span><span style="flex-grow: 1;"></span><span data-go="discovery" style="color: #CFC6B8; font-size: 14px; font-weight: 500;">Khám phá</span><span data-go="login" style="color: #CFC6B8; font-size: 14px; font-weight: 500; margin-left: 24px;">Đăng nhập</span></header>
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 64px;">
+    <h1 class="serif" style="margin: 0; font-size: 40px; font-weight: 800;">Chọn cách thanh toán</h1>
+    <div style="position: relative; display: flex; padding: 4px; border-radius: 999px; background: rgba(255,253,249,0.1);">
+      <span style="padding: 10px 36px; border-radius: 999px; font-weight: 600; color: #CFC6B8;">Theo tháng</span>
+      <span style="padding: 10px 36px; border-radius: 999px; font-weight: 700; background: #FFFDF9; color: #1F1B17;">Theo năm</span>
+      <span class="tag" style="position: absolute; top: -14px; right: -8px; background: #1E8A5A; color: #FFFDF9; height: 26px; padding: 0 10px;">2 tháng miễn phí</span>
+    </div>
+    <div style="width: 560px; border-radius: 20px; background: #2E2823; border: 1px solid rgba(255,253,249,0.08); padding: 32px 36px; display: flex; flex-direction: column; gap: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 12px; justify-content: center;"><span class="serif" style="font-size: 34px; font-weight: 800;">Hội Mình</span><span style="font-size: 22px; font-weight: 600;">4.990.000đ/năm</span></div>
+      <div style="text-align: center; font-size: 13px; color: #CFC6B8; margin-top: -14px;">tương đương 416.000đ/tháng · gói tháng 499.000đ</div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><strong>Không giới hạn</strong> hội, thành viên, khóa học, video, sự kiện</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><strong>Không thu phí giao dịch</strong>, bạn nhận đủ tiền thành viên trả</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Nhận tiền qua <strong>chuyển khoản QR, MoMo, VNPAY</strong>, PayPal cho khách quốc tế</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Cộng sự và bảng xếp hạng cộng sự</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Cửa hàng bán khóa học, combo, tài liệu</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Tên miền riêng</div><div style="display: flex; align-items: center; gap: 10px; font-size: 15px;"><span style="width: 22px; height: 22px; border-radius: 999px; background: #1E8A5A; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Tin nhắn chào tự động, tiện ích, API và webhook</div>
+      </div>
+      <span class="btn btn-primary" data-go="register" style="height: 54px; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 12px;">Dùng thử 14 ngày miễn phí</span>
+      <div style="text-align: center; font-size: 13px; color: #8C8478;">Không cần thẻ. Hết dùng thử, thanh toán bằng chuyển khoản hoặc MoMo, hủy bất cứ lúc nào.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

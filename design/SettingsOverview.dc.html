@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; display: flex; background: #F7F3EC; overflow: hidden;">
+  <!-- Sidebar -->
+  <aside style="width: 264px; height: 960px; background: #25201B; color: #CFC6B8; display: flex; flex-direction: column; padding: 16px 12px; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom: 1px solid rgba(255,253,249,0.08);">
+      <div style="width: 40px; height: 40px; border-radius: 12px; background: #D4593A; display: flex; align-items: center; justify-content: center; color: #FFFDF9; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 18px;">KD</div>
+      <div style="flex-grow: 1; min-width: 0;">
+        <div style="color: #FFFDF9; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kinh Doanh Online Cùng AI</div>
+        <div style="font-size: 12px; color: #8C8478;">234 thành viên · 12 đang online</div>
+      </div>
+      <span style="color: #8C8478;" data-go="ws-home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
+    </div>
+
+    <div class="nav-group">Cộng đồng</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="feed" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg><span style="flex-grow: 1;">Bảng tin</span></div>
+      <div class="nav-item" data-go="members" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg><span style="flex-grow: 1;">Thành viên</span></div>
+      <div class="nav-item" data-go="events" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /></svg><span style="flex-grow: 1;">Sự kiện</span><span style="font-size: 11px; font-weight: 600; background: #D4593A; color: #FFFDF9; border-radius: 999px; padding: 1px 7px;">2</span></div>
+      <div class="nav-item" data-go="affiliate" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2" /><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2" /><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3" /><path d="M4 22h16" /><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" /><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3" /></svg><span style="flex-grow: 1;">Xếp hạng cộng sự</span></div>
+    </div>
+
+    <div class="nav-group">Học tập</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="courses" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16" /><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" /></svg><span style="flex-grow: 1;">Khóa học</span><span style="font-size: 12px; color: #0E8E96; font-weight: 600;">27%</span></div>
+      <div class="nav-item" data-go="resources" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg><span style="flex-grow: 1;">Tài nguyên</span><span style="color: #8C8478;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span></div>
+    </div>
+
+    <div class="nav-group">Mua sắm</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="store" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5" /><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244" /><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05" /></svg><span style="flex-grow: 1;">Cửa hàng</span></div>
+    </div>
+
+    <div class="nav-group">Quản trị</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item on" data-go="settings" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg><span style="flex-grow: 1;">Cài đặt</span></div>
+      <div class="nav-item" data-go="revenue" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg><span style="flex-grow: 1;">Doanh thu</span></div>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+    <div class="btn btn-primary" style="width: 100%;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>Mời thành viên</div>
+  </aside>
+
+  <!-- Main -->
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+    <header style="height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 32px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+      <div style="display: flex; align-items: center; gap: 8px; color: #1F1B17; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px;">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>
+        Hội Mình
+      </div>
+      <div class="input" style="width: 420px; margin-left: 24px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg><span>Tìm bài viết, khóa học, thành viên…</span></div>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C554D; border: 1px solid #E3DCD0; background: #FFFDF9;" data-go="messages"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></div>
+        <div style="position: relative; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C554D; border: 1px solid #E3DCD0; background: #FFFDF9;" data-go="notifications"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></div>
+        <span data-go="account"><div class="avatar" style="width: 40px; height: 40px; background: #1F1B17; font-size: 14px;">MQ</div></span>
+      </div>
+    </header>
+    <div style="flex-grow: 1; overflow: hidden; padding: 28px 32px;">
+      <div style="display: flex; gap: 32px; height: 100%;"><div style="width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;"><div data-go="s-overview" style="padding: 10px 14px; border-radius: 10px; background: #F8EFD9; font-weight: 600;">Tổng quan</div><div data-go="" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Khám phá</div><div data-go="" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Mời thành viên</div><div data-go="s-general" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Chung</div><div data-go="settings" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Giá và gói</div><div data-go="s-affiliate" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Cộng sự (Affiliate)</div><div data-go="s-plugins" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Tiện ích</div><div data-go="s-feed" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Bảng tin</div><div data-go="" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Thông báo</div><div data-go="s-payout" style="padding: 10px 14px; border-radius: 10px; color: #5C554D;">Thanh toán</div></div><div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; max-width: 880px;">
+  <div style="display: flex; align-items: center; gap: 12px;"><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Tổng quan</h1><span style="flex-grow: 1;"></span><div style="display: flex; gap: 8px;"><span class="chip">7 ngày</span><span class="chip on">30 ngày</span><span class="chip">Quý</span></div></div>
+  <div style="display: flex; gap: 12px;">
+    <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Thành viên mới</span><span class="serif" style="font-size: 24px; font-weight: 800;">41</span><span style="font-size: 12px; color: #0E8E96;">+12% so với kỳ trước</span></div>
+    <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Doanh thu</span><span class="serif" style="font-size: 24px; font-weight: 800;">18.675.000đ</span><span style="font-size: 12px; color: #0E8E96;">+8% so với kỳ trước</span></div>
+    <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Đang trả phí</span><span class="serif" style="font-size: 24px; font-weight: 800;">75</span><span style="font-size: 12px; color: #8C8478;">Premium 73 · VIP 2</span></div>
+    <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Tỷ lệ hủy</span><span class="serif" style="font-size: 24px; font-weight: 800;">2,6%</span><span style="font-size: 12px; color: #9C3A21;">2 người hủy trong kỳ</span></div>
+  </div>
+  <div class="card" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center;"><span style="font-weight: 600;">Doanh thu theo ngày</span><span style="flex-grow: 1;"></span><span class="muted" style="font-size: 12px;">15/08 – 14/09</span></div>
+    <div style="display: flex; align-items: flex-end; gap: 6px; height: 120px;"><div style="flex: 1 1 0; height: 42%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 55%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 38%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 60%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 71%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 48%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 52%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 66%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 80%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 58%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 63%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 90%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 74%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 69%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 85%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 77%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 95%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 62%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 70%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 88%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 100%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 82%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 76%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 91%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 68%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 84%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 97%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 73%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 79%; border-radius: 4px 4px 0 0; background: #0E8E96; opacity: 0.55;"></div><div style="flex: 1 1 0; height: 86%; border-radius: 4px 4px 0 0; background: #D4593A; opacity: 1;"></div></div>
+    <div style="display: flex; justify-content: space-between;" class="muted"><span style="font-size: 11px;">15/08</span><span style="font-size: 11px;">30/08</span><span style="font-size: 11px;">14/09</span></div>
+  </div>
+  <div style="display: flex; gap: 16px;">
+    <div class="card" style="flex: 1 1 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center;"><span style="font-weight: 600;">Hoàn thiện cộng đồng</span><span style="flex-grow: 1;"></span><span class="muted" style="font-size: 12px;">4/6</span></div>
+      <div class="prog"><div style="width: 67%;"></div></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8C8478;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #0E8E96; color: #fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="text-decoration: line-through;">Thêm logo và mô tả</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8C8478;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #0E8E96; color: #fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="text-decoration: line-through;">Tạo bài viết đầu tiên</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8C8478;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #0E8E96; color: #fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="text-decoration: line-through;">Tạo khóa học đầu tiên</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8C8478;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #0E8E96; color: #fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span><span style="text-decoration: line-through;">Kết nối nhận tiền</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1F1B17;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid #E3DCD0;"></span><span style="">Mời 5 thành viên</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1F1B17;"><span style="width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid #E3DCD0;"></span><span style="">Bật tin nhắn chào tự động</span></div>
+    </div>
+    <div class="card" style="flex: 1 1 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-weight: 600;">Hoạt động gần đây</span>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><div class="avatar" style="width: 28px; height: 28px; background: #0E8E96; font-size: 11px;">ĐN</div><span style="flex-grow: 1;"><strong>Điền Phạm Ngọc</strong> nâng cấp Premium</span><span class="muted" style="font-size: 12px;">09:03</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><div class="avatar" style="width: 28px; height: 28px; background: #7A5C3E; font-size: 11px;">CT</div><span style="flex-grow: 1;"><strong>Công Trần</strong> đặt câu hỏi trong Hỏi đáp</span><span class="muted" style="font-size: 12px;">3 giờ trước</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><div class="avatar" style="width: 28px; height: 28px; background: #D4593A; font-size: 11px;">HV</div><span style="flex-grow: 1;"><strong>Hoàng Vũ</strong> giới thiệu 2 thành viên mới</span><span class="muted" style="font-size: 12px;">Hôm qua</span></div><div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><div class="avatar" style="width: 28px; height: 28px; background: #1F1B17; font-size: 11px;">MQ</div><span style="flex-grow: 1;">Bạn đã tạo sự kiện <strong>Q&amp;A tuần</strong></span><span class="muted" style="font-size: 12px;">Hôm qua</span></div>
+    </div>
+  </div></div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

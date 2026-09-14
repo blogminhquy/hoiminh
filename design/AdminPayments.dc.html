@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; display: flex; background: #F7F3EC; overflow: hidden;">
+  <aside style="width: 264px; height: 960px; background: #14110E; color: #CFC6B8; display: flex; flex-direction: column; padding: 16px 12px; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom: 1px solid rgba(255,253,249,0.08);">
+      <svg width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>
+      <div style="flex-grow: 1;"><div style="color: #FFFDF9; font-weight: 700; font-size: 14px; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">Hội Mình</div><div style="font-size: 11px; color: #C89B3C; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">Quản trị hệ thống</div></div>
+    </div>
+    <div class="nav-group">Vận hành</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="sa-overview" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg><span style="flex-grow: 1;">Tổng quan</span></div>
+      <div class="nav-item" data-go="sa-communities" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg><span style="flex-grow: 1;">Hội</span></div>
+      <div class="nav-item" data-go="sa-users" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg><span style="flex-grow: 1;">Người dùng</span></div>
+      <div class="nav-item on" data-go="sa-payments" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg><span style="flex-grow: 1;">Thanh toán</span><span style="font-size: 11px; font-weight: 600; background: #D4593A; color: #FFFDF9; border-radius: 999px; padding: 1px 7px;">3</span></div>
+    </div>
+    <div class="nav-group">Cấu hình</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="sa-plans" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path d="m16 9-5.5 5.5L8 12" /></svg><span style="flex-grow: 1;">Gói nền tảng</span></div>
+      <div class="nav-item" data-go="sa-affiliate" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2" /><path d="M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2" /><path d="M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3" /><path d="M4 22h16" /><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" /><path d="M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3" /></svg><span style="flex-grow: 1;">Cộng sự nền tảng</span></div>
+      <div class="nav-item" data-go="sa-flags" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></svg><span style="flex-grow: 1;">Tính năng và giới hạn</span></div>
+    </div>
+    <div class="nav-group">Giám sát</div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div class="nav-item" data-go="sa-logs" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg><span style="flex-grow: 1;">Nhật ký và webhook</span></div>
+      <div class="nav-item" data-go="sa-support" style="display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg><span style="flex-grow: 1;">Hỗ trợ và khiếu nại</span></div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="padding: 12px; border-radius: 10px; background: rgba(255,253,249,0.06); font-size: 12px; color: #CFC6B8; display: flex; align-items: center; gap: 8px;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #0E8E96;"></span>Hệ thống ổn định · 99,98% tháng này</div>
+  </aside>
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+    <header style="height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 32px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+      <div class="input" style="width: 420px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg><span>Tìm hội, người dùng, giao dịch, email…</span></div>
+      <span style="flex-grow: 1;"></span>
+      <span class="tag" style="background: #FBE9E2; color: #9C3A21;">Môi trường: Production</span>
+      <span data-go="ws-home" class="btn btn-ghost btn-sm">Về Hội của tôi</span>
+      <div class="avatar" style="width: 40px; height: 40px; background: #1F1B17; font-size: 14px;">MQ</div>
+    </header>
+    <div style="flex-grow: 1; overflow: hidden; padding: 28px 32px;">
+<div style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
+  <div style="display: flex; align-items: center; gap: 12px;"><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Thanh toán</h1><div style="display: flex; gap: 8px; margin-left: 12px;"><span class="chip on">Cổng và đối soát</span><span class="chip">Giao dịch</span><span class="chip">Hoàn tiền</span><span class="chip">Rút tiền của chủ hội</span></div><span style="flex-grow: 1;"></span><span class="btn btn-ghost btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /></svg>Báo cáo tháng</span></div>
+  <div style="display: flex; gap: 16px;">
+    <div class="card" style="flex: 1.2 1 0; padding: 18px 20px; display: flex; flex-direction: column;">
+      <div style="padding-bottom: 6px;"><span style="font-weight: 600;">Cổng thanh toán</span><div class="muted" style="font-size: 13px;">Bật tắt toàn hệ thống, cấu hình khóa và webhook. Bí mật không hiện lại sau khi lưu.</div></div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #E8E1D6;"><span style="width: 44px; height: 30px; border-radius: 6px; background: #1F1B17; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">SePay</span><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">SePay</span><span class="tag" style="background: #DDF1F1; color: #0B6F75;">Production</span></div><div class="muted" style="font-size: 12px;">Webhook nhận 2.310 giao dịch tháng này · lỗi 0</div></div><span style="font-size: 12px; font-weight: 600; color: #0E8E96; white-space: nowrap;">OK · 1.2s</span><span class="btn btn-ghost btn-sm">Cấu hình</span><span style="width: 40px; height: 22px; border-radius: 999px; background: #0E8E96; position: relative; display: inline-block; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span></div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #E8E1D6;"><span style="width: 44px; height: 30px; border-radius: 6px; background: #A50064; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">MoMo</span><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">MoMo</span><span class="tag" style="background: #DDF1F1; color: #0B6F75;">Production</span></div><div class="muted" style="font-size: 12px;">Webhook thất bại lúc 09:41 và 09:43 · đang retry</div></div><span style="font-size: 12px; font-weight: 600; color: #9C3A21; white-space: nowrap;">Lỗi · 2 lần</span><span class="btn btn-ghost btn-sm">Cấu hình</span><span style="width: 40px; height: 22px; border-radius: 999px; background: #0E8E96; position: relative; display: inline-block; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span></div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #E8E1D6;"><span style="width: 44px; height: 30px; border-radius: 6px; background: #0A5EB0; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">VNPAY</span><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">VNPAY</span><span class="tag" style="background: #DDF1F1; color: #0B6F75;">Production</span></div><div class="muted" style="font-size: 12px;">IPN ổn định · chữ ký hợp lệ 100%</div></div><span style="font-size: 12px; font-weight: 600; color: #0E8E96; white-space: nowrap;">OK · 0.8s</span><span class="btn btn-ghost btn-sm">Cấu hình</span><span style="width: 40px; height: 22px; border-radius: 999px; background: #0E8E96; position: relative; display: inline-block; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span></div>
+      <div style="display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid #E8E1D6;"><span style="width: 44px; height: 30px; border-radius: 6px; background: #003087; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">PayPa</span><div style="flex-grow: 1;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">PayPal</span><span class="tag" style="background: #F8EFD9; color: #8A6A1E;">Sandbox</span></div><div class="muted" style="font-size: 12px;">Đang thử nghiệm · chưa nhận tiền thật</div></div><span style="font-size: 12px; font-weight: 600; color: #9C3A21; white-space: nowrap;">Chưa bật</span><span class="btn btn-ghost btn-sm">Cấu hình</span><span style="width: 40px; height: 22px; border-radius: 999px; background: #E3DCD0; position: relative; display: inline-block; flex-shrink: 0;"><span style="position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span></div>
+    </div>
+    <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
+      <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Đối soát hôm nay</span><span class="serif" style="font-size: 24px; font-weight: 800;">2.084 / 2.087</span><span style="font-size: 12px; color: #9C3A21;">3 giao dịch chưa khớp</span></div>
+      <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Đang giữ cho chủ hội</span><span class="serif" style="font-size: 24px; font-weight: 800;">486 triệu đ</span><span style="font-size: 12px; color: #8C8478;">giải phóng theo hold 14 ngày</span></div>
+      <div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Yêu cầu rút tiền chờ duyệt</span><span class="serif" style="font-size: 24px; font-weight: 800;">11</span><span style="font-size: 12px; color: #8A6A1E;">tổng 128 triệu đ · xử lý trong 1 ngày</span></div>
+    </div>
+  </div>
+  <div class="card" style="overflow: hidden;">
+    <div style="display: flex; align-items: center; padding: 14px 20px;"><span style="font-weight: 600;">Đối soát chuyển khoản</span><div style="display: flex; gap: 6px; margin-left: 12px;"><span class="chip" style="height: 26px; font-size: 12px;">Khớp · 2.084</span><span class="chip on" style="height: 26px; font-size: 12px;">Chưa khớp · 3</span><span class="chip" style="height: 26px; font-size: 12px;">Trùng · 0</span></div><span style="flex-grow: 1;"></span><span class="muted" style="font-size: 12px;">Nguồn: sao kê SePay, cập nhật 2 phút trước</span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.1fr 1.6fr 1fr 1fr 1.2fr 1fr; gap: 12px; padding: 0 20px 8px;"><span class="th">Giờ</span><span class="th">Mã tham chiếu</span><span class="th">Nội dung ngân hàng</span><span class="th">Nhận được</span><span class="th">Kỳ vọng</span><span class="th">Trạng thái</span><span></span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.1fr 1.6fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 12px 20px; border-top: 1px solid #E8E1D6; font-size: 13px;"><span class="muted">09:12</span><span style="font-weight: 700; color: #D4593A;">HM 8K2QX</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">NGUYEN VAN A ck HM8K2Q</span><span style="font-weight: 600;">249.000đ</span><span class="muted">249.000đ</span><span style="font-weight: 600; color: #8A6A1E;">Sai nội dung</span><span class="btn btn-ghost btn-sm" style="width: fit-content;">Ghép thủ công</span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.1fr 1.6fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 12px 20px; border-top: 1px solid #E8E1D6; font-size: 13px;"><span class="muted">08:55</span><span style="font-weight: 700; color: #D4593A;">HM 7ZP3M</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">TRAN THI B chuyen tien</span><span style="font-weight: 600;">2.490.000đ</span><span class="muted">2.490.000đ</span><span style="font-weight: 600; color: #8A6A1E;">Thiếu mã</span><span class="btn btn-ghost btn-sm" style="width: fit-content;">Ghép thủ công</span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.1fr 1.6fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 12px 20px; border-top: 1px solid #E8E1D6; font-size: 13px;"><span class="muted">08:31</span><span style="font-weight: 700; color: #D4593A;">HM 5QW1D</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">LE C HM 5QW1D</span><span style="font-weight: 600;">200.000đ</span><span class="muted">249.000đ</span><span style="font-weight: 600; color: #9C3A21;">Lệch số tiền</span><span class="btn btn-ghost btn-sm" style="width: fit-content;">Liên hệ khách</span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.1fr 1.6fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 12px 20px; border-top: 1px solid #E8E1D6; font-size: 13px;"><span class="muted">08:20</span><span style="font-weight: 700; color: #D4593A;">HM 4TT9A</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">PHAM D HM 4TT9A</span><span style="font-weight: 600;">249.000đ</span><span class="muted">249.000đ</span><span style="font-weight: 600; color: #0E8E96;">Đã khớp</span><span class="btn btn-ghost btn-sm" style="width: fit-content;">Chi tiết</span></div>
+  </div>
+</div></div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

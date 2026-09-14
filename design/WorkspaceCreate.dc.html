@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&amp;family=Open+Sans:wght@400;500;600;700&amp;display=swap">
+  <style>
+    body { margin: 0; background: #F7F3EC; color: #1F1B17; font-family: 'Open Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #0E8E96; text-decoration: none; } a:hover { color: #0B6F75; }
+    * { box-sizing: border-box; }
+    .serif { letter-spacing: -0.01em; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .btn-primary { background: #D4593A; color: #FFFDF9; }
+    .btn-ghost { background: #FFFDF9; border-color: #E3DCD0; color: #1F1B17; }
+    .btn-dark { background: #1F1B17; color: #FFFDF9; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #E3DCD0; background: #FFFDF9; font-size: 13px; font-weight: 500; color: #5C554D; white-space: nowrap; }
+    .chip.on { background: #1F1B17; color: #FFFDF9; border-color: #1F1B17; }
+    .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .card { background: #FFFDF9; border: 1px solid #E8E1D6; border-radius: 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: #CFC6B8; font-weight: 500; font-size: 14px; }
+    .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
+    .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8C8478; font-weight: 600; padding: 18px 12px 6px; }
+    .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; }
+    .muted { color: #8C8478; }
+    .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid #E3DCD0; border-radius: 10px; background: #FFFDF9; color: #8C8478; font-size: 14px; }
+    .th { font-size: 12px; font-weight: 600; color: #8C8478; text-transform: uppercase; letter-spacing: 0.06em; }
+    .row { display: flex; align-items: center; }
+    .stack { display: flex; flex-direction: column; }
+    .prog { height: 6px; border-radius: 999px; background: #E8E1D6; overflow: hidden; }
+    .prog > div { height: 100%; border-radius: 999px; background: #0E8E96; }
+    .md { font-size: 16px; line-height: 1.75; color: #1F1B17; }
+    .md p { margin: 0 0 16px; }
+    .md h2 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 24px; line-height: 1.3; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .md h3 { font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 19px; line-height: 1.35; margin: 24px 0 10px; }
+    .md strong { font-weight: 700; color: #1F1B17; }
+    .md em { font-style: italic; }
+    .md ul, .md ol { margin: 0 0 16px; padding-left: 24px; }
+    .md li { margin: 4px 0; }
+    .md li::marker { color: #D4593A; font-weight: 700; }
+    .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid #D4593A; background: #FBE9E2; border-radius: 0 12px 12px 0; color: #5C554D; font-style: italic; }
+    .md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: #F7F3EC; padding: 2px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid #E8E1D6; margin: 28px 0; }
+    .md figure { margin: 20px 0; }
+    .md figcaption { font-size: 13px; color: #8C8478; text-align: center; padding-top: 8px; }
+    .md a { font-weight: 600; text-decoration: underline; text-decoration-color: #DDF1F1; text-underline-offset: 3px; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 960px; overflow: hidden; background: #F7F3EC; display: flex; flex-direction: column;">
+  <header style="height: 64px; display: flex; align-items: center; gap: 20px; padding: 0 64px; border-bottom: 1px solid #E8E1D6; background: #FFFDF9;">
+    <div style="display: flex; align-items: center; gap: 8px; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px;"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill="#D4593A"></circle><circle cx="17" cy="13" r="7" fill="#0E8E96" fill-opacity="0.85"></circle></svg>Hội Mình</div>
+    <nav style="display: flex; gap: 4px; margin-left: 12px;"><span data-go="ws-home" style="padding: 8px 12px; border-radius: 8px; font-weight: 500; background: #F7F3EC; color: #1F1B17;">Hội của tôi</span><span data-go="discovery" style="padding: 8px 12px; border-radius: 8px; font-weight: 500; color: #5C554D;">Khám phá</span><span data-go="account" style="padding: 8px 12px; border-radius: 8px; font-weight: 500; color: #5C554D;">Tài khoản</span></nav>
+    <span style="flex-grow: 1;"></span>
+    <div style="position: relative; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #5C554D; border: 1px solid #E3DCD0; background: #FFFDF9;" data-go="notifications"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></div>
+    <span data-go="account"><div class="avatar" style="width: 40px; height: 40px; background: #1F1B17; font-size: 14px;">MQ</div></span>
+  </header>
+  <div style="flex-grow: 1; padding: 40px 64px; display: flex; justify-content: center;"><div style="width: 1120px; display: flex; flex-direction: column; gap: 24px;">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+    <div style="text-align: center; display: flex; flex-direction: column; gap: 6px;"><h1 class="serif" style="margin: 0; font-size: 32px; font-weight: 800;">Tạo hội của bạn</h1><div class="muted">Sáu bước, xong trong 2 phút. Mọi thứ đổi được sau.</div></div>
+    <div style="display: flex; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #1F1B17;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #1F1B17; color: #FFFDF9;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Tên</span><span style="width: 24px; height: 1px; background: #E3DCD0; align-self: center;"></span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #1F1B17;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #1F1B17; color: #FFFDF9;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>Đường dẫn</span><span style="width: 24px; height: 1px; background: #E3DCD0; align-self: center;"></span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #1F1B17;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #1F1B17; color: #FFFDF9;">3</span>Mô tả</span><span style="width: 24px; height: 1px; background: #E3DCD0; align-self: center;"></span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #8C8478;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid #E3DCD0;">4</span>Kiểu thu phí</span><span style="width: 24px; height: 1px; background: #E3DCD0; align-self: center;"></span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #8C8478;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid #E3DCD0;">5</span>Mẫu</span><span style="width: 24px; height: 1px; background: #E3DCD0; align-self: center;"></span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #8C8478;"><span style="width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid #E3DCD0;">6</span>Xong</span></div>
+    <div class="card" style="width: 720px; padding: 32px; display: flex; flex-direction: column; gap: 20px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">Tên hội</span><div class="input" style="color: #1F1B17;"><span style="flex-grow: 1;">AI Agent cho chủ shop</span></div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">Đường dẫn</span><div class="input" style="color: #1F1B17;"><span class="muted">hoiminh.vn/</span><span style="flex-grow: 1;">ai-agent-shop</span><span style="color: #0E8E96;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span></div><span class="muted" style="font-size: 12px;">Có thể trỏ tên miền riêng sau trong Cài đặt</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">Hội này dành cho ai, giúp họ đạt gì?</span><div class="input" style="height: 88px; align-items: flex-start; padding-top: 10px; color: #1F1B17;"><span>Chủ shop nhỏ muốn dựng trợ lý AI trả lời khách, chốt đơn và chăm sóc sau bán mà không cần thuê thêm người.</span></div><span class="muted" style="font-size: 12px;">Hiện trên trang Khám phá và trang giới thiệu hội</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">Kiểu thu phí</span><div style="display: flex; gap: 10px;"><div style="flex: 1 1 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="font-weight: 600; font-size: 13px;">Miễn phí</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">Ai cũng vào</span></div><div style="flex: 1 1 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #D4593A; background: #FBE9E2; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #D4593A; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><span style="width: 8px; height: 8px; border-radius: 999px; background: #D4593A;"></span></span><span style="font-weight: 600; font-size: 13px;">Freemium</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">Vào miễn phí, có gói nâng cấp</span></div><div style="flex: 1 1 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="font-weight: 600; font-size: 13px;">Thu phí</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">Trả mới vào được</span></div><div style="flex: 1 1 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #E3DCD0; background: #FFFDF9; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid #E3DCD0; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"></span><span style="font-weight: 600; font-size: 13px;">Trả một lần</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">Trọn đời</span></div></div><span class="muted" style="font-size: 12px;">Chọn Freemium nếu chưa chắc, đổi được bất cứ lúc nào</span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding-top: 8px; border-top: 1px solid #E8E1D6;"><span class="btn btn-ghost"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>Quay lại</span><span style="flex-grow: 1;"></span><span class="muted" style="font-size: 13px;">Gói Hội Mình: không giới hạn số hội</span><span class="btn btn-primary" data-go="ws-home">Tiếp tục <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></span></div>
+    </div>
+  </div></div></div>
+</div>
+</x-dc>
+</body>
+</html>
