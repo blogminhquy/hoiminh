@@ -59,8 +59,8 @@ export class InMemoryQueue implements JobQueue {
 
 /** Hàng đợi Cloudflare: gửi message vào Queue binding. */
 export class CloudflareQueue implements JobQueue {
-  constructor(private readonly binding: { send(body: unknown): Promise<void> }) {}
+  constructor(private readonly binding: { send(body: Job, options?: unknown): Promise<void> }) {}
   async enqueue<K extends JobName>(name: K, payload: JobMap[K]): Promise<void> {
-    await this.binding.send({ name, payload, attempt: 0 });
+    await this.binding.send({ name, payload, attempt: 0 } as Job);
   }
 }

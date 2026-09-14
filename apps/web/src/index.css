@@ -1,0 +1,10 @@
+@import '@hoiminh/ui/styles.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind preflight không được ghi đè kiểu nút/chữ của bộ thiết kế. */
+@layer base {
+  body { font-family: var(--font-sans); background: var(--bg); color: var(--ink); }
+  h1, h2, h3 { font-weight: inherit; font-size: inherit; }
+}

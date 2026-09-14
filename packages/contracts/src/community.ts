@@ -90,7 +90,7 @@ export const memberFilterSchema = z.object({
 });
 
 export const updateMemberSchema = z.object({
-  role: memberRoleSchema.optional(),
+  role: z.enum(['admin', 'moderator', 'member']).optional(),
   tierKey: z.enum(['standard', 'premium', 'vip']).optional(),
 });
 

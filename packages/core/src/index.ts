@@ -37,5 +37,6 @@ export * as apiKeys from './services/api-keys';
 export * as webhooksOut from './services/webhooks-out';
 export * as filesService from './services/files';
 export * as featureFlags from './services/feature-flags';
+export * as shell from './services/shell';
 export { audit } from './services/audit';
-export { createApp } from './app';
+export { createApp, type App, type CreateAppOptions } from './app';

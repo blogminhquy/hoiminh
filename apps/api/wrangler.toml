@@ -1,0 +1,42 @@
+# Cloudflare Worker cho API Hội Mình. Secrets đặt bằng `wrangler secret put <TÊN>`.
+name = "hoiminh-api"
+main = "src/worker.ts"
+compatibility_date = "2024-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+APP_ENV = "production"
+APP_URL = "https://hoiminh.vn"
+API_URL = "https://api.hoiminh.vn"
+AUTH_PROVIDER = "supabase"
+SEPAY_MODE = "production"
+MOMO_MODE = "production"
+VNPAY_MODE = "sandbox"
+PAYPAL_MODE = "sandbox"
+R2_BUCKET = "hoiminh-files"
+LOG_LEVEL = "info"
+
+[[queues.producers]]
+queue = "hoiminh-jobs"
+binding = "JOBS"
+
+[[queues.consumers]]
+queue = "hoiminh-jobs"
+max_batch_size = 10
+max_retries = 5
+dead_letter_queue = "hoiminh-jobs-dlq"
+
+[triggers]
+# mỗi phút: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook
+# 10 phút: snapshot xếp hạng cộng sự
+# 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng
+crons = ["* * * * *", "*/10 * * * *", "0 18 * * *"]
+
+[observability]
+enabled = true
+
+# Secrets cần đặt:
+#   DATABASE_URL, DATABASE_DIRECT_URL, AUTH_JWT_SECRET, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+#   SUPABASE_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+#   R2_PUBLIC_BASE_URL, SEPAY_API_KEY, SEPAY_BANK_ACCOUNT, MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY,
+#   VNPAY_TMN_CODE, VNPAY_HASH_SECRET, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID
