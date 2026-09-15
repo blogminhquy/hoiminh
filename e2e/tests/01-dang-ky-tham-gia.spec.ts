@@ -18,8 +18,8 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   await expect(page).toHaveURL(/xac-minh-email/);
   await page.getByLabel('Số thứ 1').click();
   await page.keyboard.type('482913');
-  const verify = page.getByRole('button', { name: 'Xác minh' });
-  if (await verify.isEnabled().catch(() => false)) await verify.click();
+  // Trang tự gửi khi đủ 6 số (useEffect trong VerifyEmail). Đừng bấm nút "Xác minh": nếu bấm trúng
+  // lúc đang gửi thì nút đang disabled, rồi điều hướng gỡ luôn phần tử khỏi DOM và click treo hết giờ.
   await expect(page).not.toHaveURL(/xac-minh-email/, { timeout: 20_000 });
 
   await page.goto('/minhquy');
