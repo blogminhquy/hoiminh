@@ -102,7 +102,7 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 
 ## Việc kế tiếp
 1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) rồi `gh variable set DEPLOY_API --body true` để workflow Deploy tự đẩy cả web lẫn API.
-2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm).
+2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so` mục Đổi mật khẩu.
 3. R2: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video sẽ hỏng vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
 4. Email: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
 5. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.

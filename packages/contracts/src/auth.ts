@@ -29,6 +29,16 @@ export const resetPasswordSchema = z.object({
   logoutOthers: z.boolean().optional().default(true),
 });
 
+/** Đổi mật khẩu khi đang đăng nhập: phải nhập đúng mật khẩu hiện tại. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Nhập mật khẩu hiện tại'),
+    newPassword: z.string().min(8, 'Mật khẩu mới tối thiểu 8 ký tự').max(128),
+    logoutOthers: z.boolean().optional().default(true),
+  })
+  .refine((v) => v.currentPassword !== v.newPassword, { message: 'Mật khẩu mới phải khác mật khẩu hiện tại', path: ['newPassword'] });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 export const authUserSchema = z.object({
   id: idSchema,
   email: z.string(),

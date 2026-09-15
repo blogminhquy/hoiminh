@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { AccountCard, AvatarCoverBlock, LinksCard, PrivacyCard, type Privacy, type ProfileLink } from './ProfileEditParts';
+import { AccountCard, AvatarCoverBlock, LinksCard, PasswordCard, PrivacyCard, type Privacy, type ProfileLink } from './ProfileEditParts';
 
 interface Form {
   name: string; handle: string; bio: string; location: string; occupation: string;
@@ -83,6 +83,7 @@ export default function Page() {
 
       <LinksCard links={form.links} onChange={(links) => set({ links })} />
       <PrivacyCard privacy={form.privacy} onChange={(privacy) => set({ privacy })} />
+      <PasswordCard />
       <AccountCard email={user.email} verifiedAt={user.emailVerifiedAt ?? null} onLogout={() => void logout()} />
     </>
   );
