@@ -1,8 +1,9 @@
 // Playwright: reset PGlite riêng cho e2e, khởi động API (8787, APP_ENV=test) và web (5173), chạy tuần tự 7 luồng.
 import { defineConfig, devices } from '@playwright/test';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = resolve(__dirname, '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const E2E_DB = `pglite://${resolve(root, '.data', 'e2e').replace(/\\/g, '/')}`;
 export const E2E_ENV = {
   APP_ENV: 'test',

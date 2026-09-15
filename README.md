@@ -1,42 +1,88 @@
 # Hội Mình
 
-Nền tảng cộng đồng, khóa học và thanh toán cho người dạy và người bán tại Việt Nam, kiểu Skool nhưng thu tiền bằng chuyển khoản QR, MoMo, VNPAY và không thu phí giao dịch.
+Nền tảng cộng đồng, khóa học và thanh toán cho người Việt: một chủ hội, nhiều hội, bảng tin, khóa học video, sự kiện, cửa hàng, cộng sự (affiliate) và thanh toán qua chuyển khoản QR, MoMo, VNPAY, PayPal. Không thu phí giao dịch; chủ hội trả một gói nền tảng theo tháng hoặc năm.
 
-Kho này hiện chứa **tài liệu kiến trúc, bộ thiết kế giao diện và prompt triển khai**. Mã nguồn sản phẩm sẽ được xây từ chính các tài liệu này. Mọi người đều có thể góp ý và đóng góp.
+Tài liệu kiến trúc: `PLATFORM_ARCHITECTURE_V1_5_SIMPLE_SALES_UX.md`. Thiết kế 50 màn hình: `design/hoi-minh-demo.html`. Quyết định triển khai: `DECISIONS.md`. Tiến trình: `docs/PROGRESS.md`.
 
-## Có gì trong kho
+## Chạy local (máy sạch, không cần Postgres)
 
-| Đường dẫn | Nội dung |
+Yêu cầu: Node 20.11+, pnpm 9 (`corepack enable` hoặc `npm i -g pnpm`).
+
+```bash
+pnpm install
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
+
+Mở http://localhost:5173 → Bảng tin của hội mẫu "Kinh Doanh Online Cùng AI" (`/minhquy/bang-tin`). API chạy tại http://localhost:8787 (`/health`). Cơ sở dữ liệu là PGlite nhúng trong `.data/hoiminh`; `pnpm db:reset` xóa và nạp lại dữ liệu mẫu.
+
+Tài khoản mẫu (mật khẩu chung `hoiminh123`):
+
+| Vai trò | Email | Vào đâu |
+|---|---|---|
+| Chủ hội | minhquy@gmail.com | `/admin`, `/minhquy/cai-dat` |
+| Super admin | admin@hoiminh.vn | `/he-thong` |
+| Cộng sự | hoangvu@gmail.com | `/tai-khoan/cong-su`, `/minhquy/xep-hang` |
+| Thành viên Tiêu chuẩn | congtran@gmail.com | `/minhquy/bang-tin` |
+| Chủ hội đang dùng thử | vy.english@gmail.com | `/admin` |
+
+Không cần điền `.env` để chạy local. Muốn đổi cấu hình, sao chép `.env.example` thành `.env`.
+
+Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền về; giả lập bằng cách gửi webhook (xem `e2e/helpers/index.ts`). MoMo/VNPAY/PayPal chưa có credential thì chuyển tới trang mô phỏng `/pay/simulator` của API, trang này gửi IPN ký đúng về API nên toàn bộ luồng xử lý là thật.
+
+## Lệnh
+
+| Lệnh | Việc |
 |---|---|
-| `PLATFORM_ARCHITECTURE_V1_5_SIMPLE_SALES_UX.md` | Kiến trúc và nghiệp vụ, 202 mục: multi-tenant, thanh toán qua adapter, entitlement, affiliate chi trả thủ công, pricing mode, plugin, cửa hàng, xếp hạng cộng sự, gói nền tảng. Mục có số lớn hơn thắng khi mâu thuẫn. |
-| `design/hoi-minh-demo.html` | Demo giao diện 50 màn hình, mở thẳng bằng trình duyệt, bấm chuyển màn hình được. Chia theo ba vai trò: quản trị hệ thống, chủ hội, thành viên. |
-| `design/build.mjs` | Nguồn của bộ thiết kế: token màu, font, icon, markup từng màn hình. Chạy `node design/build.mjs` để dựng lại demo. |
-| `design/*.dc.html` | Từng màn hình dưới dạng artboard. |
-| `design/icons/` | Icon Lucide (giấy phép ISC) được nhúng vào thiết kế. |
-| `PROMPT_BUILD_HOIMINH.md` | Prompt chi tiết để AI hoặc đội kỹ sư triển khai toàn bộ mã nguồn theo đúng kiến trúc và thiết kế. |
+| `pnpm dev` | API (Node, tsx watch) + web (Vite) |
+| `pnpm typecheck` · `pnpm lint` · `pnpm test` | kiểm tra kiểu, ESLint, Vitest (db, core, payments, email, media, api, mcp) |
+| `pnpm test:e2e` | Playwright 7 luồng nghiệp vụ (tự khởi động API + web với DB riêng `.data/e2e`) |
+| `pnpm check` | typecheck + lint + test |
+| `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` · `pnpm db:generate` | migration, seed, reset PGlite, sinh migration từ schema |
+| `pnpm build` | build tất cả (web → `apps/web/dist`) |
+| `pnpm deploy` | migrate Supabase → deploy Worker API → deploy Pages (xem dưới) |
 
-## Xem demo
+## Cấu trúc
 
-Tải `design/hoi-minh-demo.html` và mở bằng trình duyệt. Cần mạng để tải font Google. Chuyển màn hình bằng menu ở thanh trên, phím mũi tên, hoặc bấm vào thanh bên, biểu tượng tin nhắn, thông báo, avatar và các nút trong màn hình.
+```
+apps/api        Hono REST /v1, webhook thanh toán, /r/:code, /files, /pay/simulator, cron; chạy Node (dev) hoặc Cloudflare Worker
+apps/web        React 18 + Vite + Tailwind, 50 màn hình, route /:slug/*, /admin, /he-thong, /tai-khoan
+apps/mcp        MCP server (stdio) gọi REST bằng API key hm_live_/hm_test_
+packages/core   Service layer dùng chung (web, REST, webhook, MCP): auth, hội, thành viên, bài viết, khóa học, sự kiện, cửa hàng, checkout, entitlement, affiliate, rút tiền, tin nhắn, thông báo, gói nền tảng, admin
+packages/db     Schema Drizzle, migration SQL (+ RLS), seed
+packages/payments  Adapter SePay, MoMo, VNPAY, PayPal (verify chữ ký, chuẩn hóa sự kiện, hoàn tiền)
+packages/contracts Zod schema + kiểu dùng chung
+packages/config  Env schema, hằng số nghiệp vụ, crypto
+packages/email   Resend (hoặc log khi không có key)
+packages/media   R2 (hoặc lưu local .data/files)
+packages/ui      Token, CSS, component theo thiết kế
+e2e             Playwright
+infra           deploy.mjs, wrangler.pages.toml
+```
 
-## Ba vai trò
+## Deploy Cloudflare + Supabase
 
-- **Quản trị hệ thống**: quản lý hội, người dùng, cổng thanh toán, đối soát, gói nền tảng, cộng sự nền tảng.
-- **Chủ hội**: tạo nhiều hội, cài đặt giá và gói, khóa học, sự kiện, thành viên, nhận tiền, doanh thu, duyệt rút tiền cho cộng sự.
-- **Thành viên**: miễn phí hoặc trả phí, học, đăng bài, sự kiện, mua trong cửa hàng, làm cộng sự.
+1. **Supabase**: tạo project, bật Auth (Email + Google). Lấy `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`. Chuỗi kết nối pooler (cổng 6543) làm `DATABASE_URL`, kết nối trực tiếp (cổng 5432) làm `DATABASE_DIRECT_URL`. Đặt `AUTH_PROVIDER=supabase`.
+2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
+3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs` và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api deploy`.
+4. **Pages web**: `pnpm --filter @hoiminh/web build` rồi `wrangler pages deploy apps/web/dist --project-name hoiminh-web` (tệp `apps/web/public/_redirects` xử lý SPA). Biến build: `VITE_API_URL`, `VITE_APP_URL`.
+5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
+6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
 
-## Quyết định lớn đã chốt
+## Cấu hình cổng thanh toán
 
-- PostgreSQL trên Supabase, Cloudflare Pages và Workers, R2 cho tệp, video chỉ nhúng ngoài, Resend cho email hệ thống.
-- Không thu phí giao dịch. Một gói nền tảng duy nhất cho chủ hội, trả theo tháng hoặc năm, dùng thử 14 ngày.
-- Affiliate ở cả hai tầng chi trả thủ công: người chi trả chuyển khoản ngoài hệ thống rồi ghi mã tham chiếu, hệ thống giữ sổ cái bất biến.
-- Bảng xếp hạng cộng sự thay cho bảng xếp hạng hoạt động.
-- Không xây landing page builder; trang bán theo trường cố định.
+| Cổng | Biến | Webhook/IPN cần khai báo với cổng |
+|---|---|---|
+| SePay (chuyển khoản QR) | `SEPAY_API_KEY`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_HOLDER` | `POST https://api.<domain>/webhooks/sepay`, header `Authorization: Apikey <SEPAY_API_KEY>` |
+| MoMo | `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY`, `MOMO_ENDPOINT` | IPN `POST /webhooks/momo` (HMAC-SHA256) |
+| VNPAY | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENDPOINT` | IPN `GET /webhooks/vnpay` (HMAC-SHA512) |
+| PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_USD_RATE` | `POST /webhooks/paypal` (verify-webhook-signature) |
 
-## Đóng góp
+Super admin có thể bật/tắt từng cổng và nhập credential trong `/he-thong/thanh-toan` (lưu mã hóa bằng `ENCRYPTION_KEY`). Nội dung chuyển khoản dạng `HM XXXXX`; giao dịch sai nội dung/thiếu mã/lệch tiền hiện ở bảng đối soát để ghép thủ công.
 
-Xem `CONTRIBUTING.md`. Góp ý về kiến trúc, thiết kế hoặc nghiệp vụ đều mở issue hoặc pull request. Dữ liệu, tên, số liệu trong demo là dữ liệu mẫu.
+## API, webhook gửi đi, MCP
 
-## Giấy phép
-
-MIT. Icon Lucide theo giấy phép ISC của dự án Lucide.
+- REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` hoặc API key `hm_live_…`/`hm_test_…` (tạo ở Hội của tôi · Tài khoản · API). Lỗi trả `{ code, message }`.
+- Webhook gửi đi: đăng ký URL + scope ở `/v1/workspaces/:id/webhooks`; sự kiện ký HMAC-SHA256 header `X-HoiMinh-Signature`, thử lại theo backoff.
+- MCP: `pnpm --filter @hoiminh/mcp start` với `HOIMINH_API_URL` và `HOIMINH_API_KEY`; 10 tool (danh sách hội, thành viên, đăng bài, tạo khóa học, sự kiện, doanh thu…).
