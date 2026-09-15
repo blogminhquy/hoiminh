@@ -1,18 +1,50 @@
-// Mảnh màn Tin nhắn: dòng hội thoại (convo), bong bóng (bubble), panel thành viên bên phải.
+// Mảnh màn Tin nhắn: dòng hội thoại (convo), bong bóng (bubble), chấm online, chỉ báo đang gõ, panel thành viên bên phải.
 import { Avatar, T, money } from '@hoiminh/ui';
 import { Archive, BookOpen, Calendar, CheckCheck, Settings, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fmtDate, fmtTime, timeAgo } from '@/lib/format';
 
-export interface Person { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }
+export interface Person { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; online?: boolean }
 export interface Conversation { id: string; other: Person; community: { id: string; name: string; slug: string } | null; preview: string | null; lastMessageAt: string | null; automated: boolean; unreadCount: number }
-export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; automated: boolean; readAt: string | null; createdAt: string }
+export interface Message { id: string; conversationId?: string; senderUserId: string; body: string; imageUrl: string | null; automated: boolean; readAt: string | null; createdAt: string }
 export interface Panel { memberId: string; role: string; status: string; tier: { key: string; name: string; monthlyMinor: number | null } | null; joinedAt: string; learning: { title: string; percent: number } | null; referrer: string | null }
+
+/** Avatar kèm chấm xanh khi người đó đang mở Hội Mình. */
+export function PresenceAvatar({ person, size }: { person: Person; size: number }) {
+  const dot = Math.max(9, Math.round(size * 0.28));
+  return (
+    <span className="relative inline-flex flex-shrink-0" style={{ width: size, height: size }}>
+      <Avatar name={person.name} src={person.avatarUrl} color={person.coverColor ?? T.ink} size={size} />
+      {person.online && (
+        <span
+          aria-label="Đang hoạt động"
+          title="Đang hoạt động"
+          className="absolute rounded-full"
+          style={{ width: dot, height: dot, right: 0, bottom: 0, background: T.tealText ?? T.teal, border: `2px solid ${T.surface}` }}
+        />
+      )}
+    </span>
+  );
+}
+
+/** Ba chấm "đang gõ" ở cuối luồng tin. */
+export function TypingBubble({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-2 self-start" aria-live="polite">
+      <span className="px-4 py-3 rounded-2xl inline-flex gap-1 items-center" style={{ background: T.surface, border: `1px solid ${T.line}`, borderBottomLeftRadius: 4 }}>
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="rounded-full typing-dot" style={{ width: 6, height: 6, background: T.ink3, animationDelay: `${i * 0.16}s` }} />
+        ))}
+      </span>
+      <span className="muted text-[12px]">{name} đang gõ…</span>
+    </div>
+  );
+}
 
 export function ConvoRow({ c, on, onClick }: { c: Conversation; on: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="flex gap-3 items-start px-3.5 py-3 rounded-xl text-left w-full" style={{ background: on ? T.goldSoft : 'transparent' }}>
-      <Avatar name={c.other.name} src={c.other.avatarUrl} color={c.other.coverColor ?? T.ink} size={40} />
+      <PresenceAvatar person={c.other} size={40} />
       <span className="flex-grow min-w-0 flex flex-col gap-0.5">
         <span className="flex items-center gap-2"><span className="font-semibold flex-grow truncate">{c.other.name}</span><span className="muted text-[12px] flex-shrink-0">{c.lastMessageAt ? timeAgo(c.lastMessageAt, true) : ''}</span></span>
         {c.community && <span className="muted text-[12px] truncate">{c.community.name}</span>}
@@ -44,9 +76,9 @@ export function MemberPanel({ other, panel, community, onArchive }: { other: Per
   return (
     <aside className="card w-full md:w-[280px] p-5 flex flex-col gap-3.5 flex-shrink-0">
       <div className="flex flex-col items-center gap-2 text-center">
-        <Avatar name={other.name} src={other.avatarUrl} color={other.coverColor ?? T.ink} size={64} />
+        <PresenceAvatar person={other} size={64} />
         <div className="font-bold text-[16px]">{other.name}</div>
-        <div className="muted text-[13px]">@{other.handle}</div>
+        <div className="muted text-[13px]">@{other.handle}{other.online ? ' · đang hoạt động' : ''}</div>
         {panel?.tier && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{panel.tier.name}{panel.tier.monthlyMinor ? ` · ${money(panel.tier.monthlyMinor)}/tháng` : ''}</span>}
       </div>
       {panel && (

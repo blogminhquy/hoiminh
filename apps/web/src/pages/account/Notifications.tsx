@@ -1,13 +1,14 @@
-// Thông báo (notificationsMain): chip lọc, danh sách nhóm theo ngày với icon loại, đánh dấu đã đọc; rail cài đặt nhanh + theo cộng đồng.
+// Thông báo (notificationsMain): chip lọc, danh sách nhóm theo ngày với icon loại, đánh dấu đã đọc, nhận đẩy thời gian thực; rail cài đặt nhanh + theo cộng đồng.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Chip, CommunityMark, Select, T, Toggle } from '@hoiminh/ui';
 import { AtSign, Bell, BellOff, Calendar, CheckCheck, CircleDollarSign, Heart, Mail, Megaphone, MessageCircle, UserPlus } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fmtDate, timeAgo } from '@/lib/format';
+import { useRealtimeEvent } from '@/lib/realtime';
 
 interface Notif { id: string; kind: string; category: string; title: string; body: string | null; link: string | null; actionLabel: string | null; readAt: string | null; createdAt: string; actor: { name: string; avatarUrl: string | null; coverColor: string | null } | null; community: { name: string; slug: string } | null }
 interface List { items: Notif[]; nextCursor: string | null; unreadCount: number }
@@ -46,6 +47,8 @@ export default function Page() {
   const prefs = useQuery({ queryKey: ['notification-prefs'], queryFn: () => api.get<Prefs>('/v1/me/notifications/prefs') });
   const invalidate = () => { void qc.invalidateQueries({ queryKey: ['notifications'] }); void qc.invalidateQueries({ queryKey: ['badges'] }); };
   const read = useMutation({ mutationFn: (id?: string) => api.post('/v1/me/notifications/read', id ? { id } : {}), onSuccess: invalidate });
+  // Thông báo mới đẩy về thì làm mới danh sách ngay, không chờ lần tải sau.
+  useRealtimeEvent(useCallback((e) => { if (e.type === 'notification.new') void qc.invalidateQueries({ queryKey: ['notifications'] }); }, [qc]));
   const savePrefs = useMutation({ mutationFn: (p: Partial<Prefs>) => api.put<Prefs>('/v1/me/notifications/prefs', p), onSuccess: (d) => qc.setQueryData(['notification-prefs'], d) });
   const p = prefs.data;
   return (

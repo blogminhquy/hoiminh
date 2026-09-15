@@ -17,6 +17,7 @@ import { meRoutes } from './routes/me';
 import { memberRoutes } from './routes/members';
 import { payerRoutes, refRoutes } from './routes/payer';
 import { localFilesRoutes, platformRoutes } from './routes/platform';
+import { streamRoutes } from './routes/stream';
 import { simulatorRoutes, webhookRoutes } from './routes/webhooks';
 
 /** Tạo Hono app từ App (core). Dùng chung cho Node và Cloudflare Worker. */
@@ -35,11 +36,12 @@ export function createHonoApp(app: App): Hono<Env> {
     } catch {
       db = 'error';
     }
-    return c.json({ status: db === 'ok' ? 'ok' : 'degraded', db, latencyMs: Date.now() - started, env: app.ctx.env.APP_ENV, version: '1.0.0', time: new Date().toISOString() }, db === 'ok' ? 200 : 503);
+    return c.json({ status: db === 'ok' ? 'ok' : 'degraded', db, realtimeConnections: app.ctx.realtime.connectionCount(), latencyMs: Date.now() - started, env: app.ctx.env.APP_ENV, version: '1.0.0', time: new Date().toISOString() }, db === 'ok' ? 200 : 503);
   });
 
   h.route('/v1/auth', authRoutes);
   h.route('/v1/me', meRoutes);
+  h.route('/v1/me', streamRoutes);
   h.route('/v1/communities', communityRoutes);
   h.route('/v1/communities', memberRoutes);
   h.route('/v1', contentRoutes);

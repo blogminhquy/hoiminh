@@ -2,7 +2,7 @@
 import { formatMoney } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
-import { communities, communityMembers, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
+import { communities, communityMembers, messages, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
@@ -195,6 +195,18 @@ export function registerHandlers(app: AppContext): void {
   bus.on('message.sent', async (p) => {
     const c = ctx();
     const sender = await userOf(c, p.senderUserId);
+    // Thời gian thực: đẩy tin ngay cho người nhận đang mở luồng, và cho chính người gửi ở tab/thiết bị khác.
+    const msg = await c.db.query.messages.findFirst({ where: eq(messages.id, p.messageId) });
+    if (msg) {
+      c.realtime.publish([...p.recipientUserIds, p.senderUserId], {
+        type: 'message.new',
+        conversationId: p.conversationId,
+        message: { id: msg.id, conversationId: msg.conversationId, senderUserId: msg.senderUserId, body: msg.body, imageUrl: msg.imageUrl, automated: msg.automated, readAt: msg.readAt?.toISOString() ?? null, createdAt: msg.createdAt.toISOString() },
+        senderName: sender?.name ?? 'Ai đó',
+        preview: msg.body.slice(0, 120),
+      });
+      c.realtime.publish(p.recipientUserIds, { type: 'badges.changed' });
+    }
     for (const rid of p.recipientUserIds) {
       const r = await userOf(c, rid);
       if (!r) continue;

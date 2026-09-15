@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 1.1.0 — 2026-09-15
+
+Việc V2 đầu tiên: tin nhắn chuyển từ polling sang thời gian thực.
+
+### Tin nhắn thời gian thực
+- `packages/core/src/realtime/hub.ts`: hub trong tiến trình (`ctx.realtime`) đẩy sự kiện theo `userId` và theo dõi ai đang mở phiên.
+- `GET /v1/me/stream` (SSE): `message.new`, `message.read`, `conversation.typing`, `notification.new`, `badges.changed`, `presence.changed`; nhịp giữ kết nối 25 giây.
+- `POST /v1/me/conversations/:id/typing` và `.../read`; `POST /v1/me/presence` trả danh sách người đang online.
+- Web: `apps/web/src/lib/realtime.tsx` đọc luồng bằng `fetch` + `ReadableStream` (gắn được Bearer token), tự nối lại với backoff tới 30 giây.
+- Màn Tin nhắn: tin mới hiện ngay, biên nhận "Đã xem", chỉ báo "đang gõ", chấm xanh online; badge tin nhắn và thông báo cập nhật theo sự kiện.
+- Polling giữ nguyên làm dự phòng, giãn từ 15 giây lên 120 giây khi luồng đang mở.
+- `GET /health` trả thêm `realtimeConnections`.
+
+### Kiểm thử và công cụ
+- 8 test hub và dịch vụ tin nhắn (`packages/core/src/test/realtime.test.ts`), 2 test SSE trong `apps/api/src/api.test.ts`, luồng e2e 08 với hai trình duyệt cùng lúc.
+- `playwright.config.ts` nhận `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` để chạy trên máy đã có sẵn Chromium bản khác (khai báo `passThroughEnv` trong `turbo.json`).
+- Sửa lỗi đua trong e2e 01: trang Xác minh email tự gửi khi đủ 6 số, nên không bấm nút nữa mà chỉ chờ chuyển trang.
+
 ## 1.0.0 — 2026-09-14
 
 Bản triển khai đầu tiên của toàn bộ mã nguồn Hội Mình từ tài liệu kiến trúc V1.5 và bộ thiết kế 50 màn hình.

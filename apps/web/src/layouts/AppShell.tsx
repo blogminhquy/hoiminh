@@ -7,7 +7,8 @@ import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { errorMessage } from '@/lib/api';
-import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
+import { preferredCommunitySlug, rememberCommunitySlug, useAuth } from '@/lib/auth';
+import { useLiveBadges } from '@/lib/realtime';
 import { ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
 
@@ -74,7 +75,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
 
 function Header({ shell }: { shell: Shell }) {
   const { user } = useAuth();
-  const badges = useBadges();
+  const badges = useLiveBadges();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);

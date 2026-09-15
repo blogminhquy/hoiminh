@@ -4,6 +4,7 @@ export * from './errors';
 export * from './permissions';
 export * from './events/bus';
 export * from './events/handlers';
+export * from './realtime/hub';
 export * from './jobs/queue';
 export * from './jobs/handlers';
 export * from './jobs/cron';

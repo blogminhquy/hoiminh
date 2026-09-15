@@ -4,6 +4,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Máy chạy thử (sandbox, CI nội bộ) có sẵn Chromium bản khác với bản Playwright tải về:
+// đặt PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH trỏ tới binary đó để chạy mà không cần tải lại.
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const launchOptions = chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined;
 export const E2E_DB = `pglite://${resolve(root, '.data', 'e2e').replace(/\\/g, '/')}`;
 export const E2E_ENV = {
   APP_ENV: 'test',
@@ -27,7 +31,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'] },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], launchOptions } }],
   webServer: [
     { command: 'pnpm --filter @hoiminh/db reset && pnpm --filter @hoiminh/api dev', url: 'http://localhost:8787/health', cwd: root, env: E2E_ENV, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },
     { command: 'pnpm --filter @hoiminh/web dev', url: 'http://localhost:5173', cwd: root, env: { VITE_API_URL: 'http://localhost:8787', VITE_APP_URL: 'http://localhost:5173' }, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },

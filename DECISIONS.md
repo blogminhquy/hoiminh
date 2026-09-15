@@ -30,9 +30,18 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 15. **Khóa học có cả `workspace_id` và `community_id`** (mục 139 + yêu cầu mỗi bảng có tenant). `access_mode` đúng 4 lựa chọn của màn Tạo khóa học; bán lẻ tự tạo `products` + `product_pages` khi đăng.
 16. Người ngoài hội mua lẻ sản phẩm của hội Freemium được thêm làm thành viên Tiêu chuẩn để có dashboard học (mục 153 để dashboard riêng cho V2).
 17. **Xếp hạng cộng sự** tính lại mỗi 10 phút (cron) và ngay sau khi seed; tháng, quý và từ đầu.
-18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers; tin nhắn polling 15 giây.
+18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers.
 19. **RLS:** một policy `tenant_isolation` sinh tự động cho mọi bảng theo cột `workspace_id`/`community_id`/`user_id` + `app.bypass`; API production chạy dưới role `hoiminh_app`. PGlite là superuser nên RLS không chặn ở local (đã có test xác nhận RLS được bật).
 20. **CSRF:** API dùng Bearer token trong header, không dùng cookie phiên, nên không cần CSRF token; cookie `hm_ref/hm_vid` chỉ là attribution.
 21. **Rate limit** ở edge do Cloudflare (WAF rules) là chính; API có cửa sổ trượt trong bộ nhớ cho đăng nhập/đăng ký/webhook/đăng bài.
 22. **Doanh thu chủ hội "Có thể rút"**: V1 không có API rút tiền chủ hội tự động (tiền về tài khoản Hội Mình rồi chuyển theo yêu cầu); màn Thanh toán hiển thị số dư/đang giữ 14 ngày và hướng dẫn liên hệ.
 23. **Tin nhắn "Tài nguyên"** trong sidebar là tab ẩn mặc định (mục 191 cho phép hiện/ẩn), dẫn tới thư viện khóa học.
+
+## Tin nhắn thời gian thực (V2)
+
+24. **SSE chứ không WebSocket.** Chiều máy chủ → trình duyệt là chiều duy nhất cần đẩy; gửi tin vẫn là `POST /v1/me/messages`. SSE đi qua đúng middleware xác thực Bearer sẵn có, không cần cổng riêng, và tự nối lại. Trình duyệt đọc luồng bằng `fetch` + `ReadableStream` chứ không dùng `EventSource` vì `EventSource` không đặt được header `Authorization` (token nằm ở localStorage, không phải cookie) và đưa token lên query string sẽ lọt vào access log.
+25. **Hub trong tiến trình.** `ctx.realtime` giữ danh sách listener theo `userId` trong bộ nhớ của tiến trình API. Đúng cho một node (và cho `pnpm dev`, test, e2e). Nhiều node hoặc Cloudflare Workers cần một lớp phân tán, thay `createRealtimeHub()` bằng bản chạy trên Durable Object hoặc Redis pub/sub, phần còn lại của mã không phải đổi vì mọi nơi chỉ gọi `subscribe`/`publish`.
+26. **Polling không bị bỏ, chỉ giãn ra.** Khi luồng đang mở, nhịp làm mới của Tin nhắn và badge giãn từ 15 giây lên 120 giây; khi luồng đứt, nhịp trở lại 15 giây. Nhờ vậy mất SSE (proxy chặn, mạng công ty) chỉ làm chậm chứ không làm hỏng màn hình.
+27. **"Đang gõ" không lưu DB.** Chỉ đẩy qua hub, hết hạn sau 6 giây; client gửi lại tối đa 3 giây một lần. Mất gói thì chỉ báo tự tắt, không để lại rác.
+28. **Biên nhận "Đã xem" phát khi thực sự có tin được đánh dấu.** `markConversationRead` trả về `markedCount`; bằng 0 thì không phát sự kiện, nên mở lại hội thoại cũ không dội biên nhận trùng cho người gửi.
+29. **Trạng thái online là "đang mở luồng"**, không phải `users.last_seen_at`. Khi một người mở hoặc đóng phiên cuối cùng, hub báo `presence.changed` cho mọi phiên đang mở — chấp nhận được ở quy mô hiện tại, nhưng khi số phiên lớn cần thu hẹp theo danh sách hội thoại của từng người.

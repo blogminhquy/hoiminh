@@ -1,4 +1,4 @@
-// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
+// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key, luồng SSE thời gian thực.
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
@@ -107,6 +107,48 @@ describe('API', () => {
     expect(r.headers.get('location')).toContain('/minhquy?ref=hv8k2');
     expect(r.headers.get('set-cookie')).toContain('hm_ref=hv8k2');
   });
+  it('SSE /v1/me/stream: cần đăng nhập, mở luồng rồi đẩy tin nhắn mới về đúng người', async () => {
+    const anon = await hono.request('/v1/me/stream');
+    expect(anon.status).toBe(401);
+
+    // Hoàng Vũ mở luồng; Minh Quý gửi tin cho Vũ; Vũ phải đọc được sự kiện ngay trên luồng đó.
+    const vuLogin = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'hoangvu@gmail.com', password: 'hoiminh123' }) });
+    const vuToken = (await vuLogin.json()).accessToken;
+    const vuId = (await (await json('/v1/me/id', { auth: vuToken })).json()).userId;
+
+    const abort = new AbortController();
+    const res = await hono.request('/v1/me/stream', { headers: { Authorization: `Bearer ${vuToken}` }, signal: abort.signal });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
+
+    // Mỗi lần ghi là một chunk riêng nên phải gom cho tới khi thấy sự kiện cần tìm.
+    expect(await readUntil(reader, 'ready', 3000)).toContain('retry: 3000');
+    expect((await (await json('/health')).json()).realtimeConnections).toBeGreaterThan(0);
+
+    const sent = await json('/v1/me/messages', { method: 'POST', auth: token, body: JSON.stringify({ recipientUserId: vuId, body: 'Tin thời gian thực' }) });
+    expect(sent.status).toBe(201);
+
+    const frames = await readUntil(reader, 'message.new', 3000);
+    expect(frames).toContain('Tin thời gian thực');
+    abort.abort();
+    await reader.cancel().catch(() => null);
+  });
+  it('đang gõ và đánh dấu đã đọc: chỉ người trong hội thoại gọi được', async () => {
+    const vuLogin = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'hoangvu@gmail.com', password: 'hoiminh123' }) });
+    const vuToken = (await vuLogin.json()).accessToken;
+    const convos = await json('/v1/me/conversations', { auth: vuToken });
+    const convoId = (await convos.json()).items[0].id;
+
+    expect((await json(`/v1/me/conversations/${convoId}/typing`, { method: 'POST', auth: vuToken })).status).toBe(200);
+    const read = await json(`/v1/me/conversations/${convoId}/read`, { method: 'POST', auth: vuToken });
+    expect(read.status).toBe(200);
+    expect((await read.json()).readAt).toBeTruthy();
+
+    const outsider = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) });
+    const outsiderToken = (await outsider.json()).accessToken;
+    expect((await json(`/v1/me/conversations/${convoId}/typing`, { method: 'POST', auth: outsiderToken })).status).toBe(403);
+  });
   it('super admin: tổng quan và đối soát; thành viên thường bị chặn', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;
@@ -118,3 +160,19 @@ describe('API', () => {
     expect((await recon.json()).items.length).toBeGreaterThan(0);
   });
 });
+
+/** Đọc luồng SSE cho tới khi thấy loại sự kiện cần tìm, hoặc hết thời gian chờ. */
+async function readUntil(reader: ReadableStreamDefaultReader<string>, eventType: string, timeoutMs: number): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let buffer = '';
+  while (Date.now() < deadline) {
+    const { value, done } = await Promise.race([
+      reader.read(),
+      new Promise<{ value: undefined; done: boolean }>((resolve) => setTimeout(() => resolve({ value: undefined, done: true }), deadline - Date.now())),
+    ]);
+    if (done) break;
+    buffer += value ?? '';
+    if (buffer.includes(`event: ${eventType}`)) return buffer;
+  }
+  throw new Error(`Không nhận được sự kiện ${eventType} trong ${timeoutMs}ms. Đã nhận: ${buffer}`);
+}

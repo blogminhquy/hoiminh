@@ -1,4 +1,4 @@
-// Ngữ cảnh chạy: phụ thuộc dùng chung (db, env, email, media, payments, queue, clock) + người thực hiện (actor).
+// Ngữ cảnh chạy: phụ thuộc dùng chung (db, env, email, media, payments, realtime, queue, clock) + người thực hiện (actor).
 import type { Env } from '@hoiminh/config';
 import type { Database } from '@hoiminh/db';
 import type { EmailSender } from '@hoiminh/email';
@@ -6,6 +6,7 @@ import type { MediaProvider } from '@hoiminh/media';
 import type { PaymentRouter } from '@hoiminh/payments';
 import type { EventBus } from './events/bus';
 import type { JobQueue } from './jobs/queue';
+import type { RealtimeHub } from './realtime/hub';
 
 export interface Logger {
   debug(msg: string, meta?: Record<string, unknown>): void;
@@ -22,6 +23,7 @@ export interface AppContext {
   media: MediaProvider;
   payments: PaymentRouter;
   events: EventBus;
+  realtime: RealtimeHub;
   queue: JobQueue;
   log: Logger;
   now: () => Date;

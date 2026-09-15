@@ -11,16 +11,17 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | Scaffold monorepo, config, contracts | ✅ xong | typecheck xanh |
 | `packages/db` schema + migration + RLS + seed | ✅ xong | 5 test xanh |
 | `packages/core` service layer (auth, hội, thành viên, bài viết, khóa học, sự kiện, cửa hàng, checkout, thanh toán, entitlement, affiliate, rút tiền, tin nhắn, thông báo, gói nền tảng, admin, doanh thu, API key, webhook) | ✅ xong | 21 test flows xanh (đủ 7 luồng mục 6) |
+| **V2** Tin nhắn thời gian thực (hub SSE, tin mới, đã xem, đang gõ, online, badge sống) | ✅ xong | 8 test core + 2 test api + e2e 08 |
 | `packages/payments` SePay/MoMo/VNPAY/PayPal | ✅ xong | 9 test xanh |
 | `packages/email`, `packages/media` | ✅ xong | 2 + 3 test xanh |
-| `apps/api` Hono REST + webhook + cron + worker | ✅ xong | 9 test tích hợp xanh |
+| `apps/api` Hono REST + webhook + cron + worker + SSE `/v1/me/stream` | ✅ xong | 11 test tích hợp xanh |
 | `apps/mcp` 10 tool | ✅ xong | 2 test xanh |
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
-| `e2e` Playwright 7 luồng (8 test) | ✅ xanh (`pnpm test:e2e`, ~1,5 phút) | 8 passed |
+| `e2e` Playwright 8 luồng (9 test) | ✅ xanh (`pnpm test:e2e`, ~2,5 phút) | 9 passed |
 | README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
-| `pnpm check` toàn repo | ✅ typecheck + lint + 51 test Vitest xanh | — |
+| `pnpm check` toàn repo | ✅ typecheck + lint + 61 test Vitest xanh | — |
 
 ## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
@@ -40,7 +41,7 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 10 | Sự kiện (events) | `/:slug/su-kien` | community/Events.tsx, EventParts.tsx | core L5 |
 | 11 | Chi tiết sự kiện (event) | `/:slug/su-kien/:eventId` | community/EventDetail.tsx | e2e 05 |
 | 12 | Xếp hạng cộng sự (affiliate) | `/:slug/xep-hang` | community/Leaderboard.tsx | e2e 04, core L4 |
-| 13 | Tin nhắn (messages) | `/tin-nhan` | account/Messages.tsx (+Parts) | core L1 (welcome DM) |
+| 13 | Tin nhắn (messages) | `/tin-nhan` | account/Messages.tsx (+Parts) | core L1 (welcome DM), realtime, e2e 08 |
 | 14 | Thông báo (notifications) | `/thong-bao` | account/Notifications.tsx | core |
 | 15 | Hồ sơ thành viên (profile) | `/u/:handle` | account/Profile.tsx | api |
 | 16 | Tài khoản · Hồ sơ (profile-edit) | `/tai-khoan/ho-so` | account/ProfileEdit.tsx (+Parts), AccountLayout.tsx | — |
@@ -92,18 +93,22 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 | 5. Chủ hội tạo hội → khóa học → sự kiện lặp | ✅ | 05-chu-hoi-tao-hoi-khoa-hoc-su-kien |
 | 6. Gói nền tảng dùng thử → trả → hết hạn khóa | ✅ | 06-goi-nen-tang |
 | 7. Quản trị hệ thống: đối soát, tắt cổng, khóa hội | ✅ | 07-quan-tri-he-thong |
+| 8 (V2). Tin nhắn thời gian thực: tin mới, đang gõ, đã xem giữa hai phiên | ✅ `realtime.test.ts` | 08-tin-nhan-thoi-gian-thuc |
 
 ## Đã kiểm chứng
 - Clone sạch từ GitHub (2026-09-15): `pnpm install --frozen-lockfile && pnpm db:migrate && pnpm db:seed` chạy được, mở http://localhost:5173 thấy Bảng tin hội mẫu sau khi đăng nhập.
-- `pnpm test:e2e` 8 passed; `pnpm test` 51 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+- `pnpm test:e2e` 9 passed; `pnpm test` 61 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+- Máy chạy thử có Chromium bản khác bản Playwright tải về: đặt `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (đã khai báo `passThroughEnv` trong turbo.json) rồi chạy `pnpm test:e2e` bình thường.
 
 ## Việc kế tiếp
 1. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy); chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`.
 2. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-3. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+3. Việc V2 còn lại theo kiến trúc: phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+4. Trước khi chạy nhiều node API hoặc chuyển API sang Cloudflare Workers: thay hub thời gian thực trong bộ nhớ bằng Durable Object hoặc Redis pub/sub (chỉ đổi `createRealtimeHub()` trong `packages/core/src/app.ts`, xem DECISIONS.md mục 25).
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.
 - Tài khoản seed: mật khẩu chung `hoiminh123`; `minhquy@gmail.com` (chủ hội `minhquy`), `admin@hoiminh.vn` (super admin), `hoangvu@gmail.com` (cộng sự, mã `hv8k2`), `congtran@gmail.com` (thành viên thường).
 - OTP xác minh email ở `APP_ENV=test` luôn là `482913`.
+- Tin nhắn thời gian thực: hub ở `packages/core/src/realtime/hub.ts` (`ctx.realtime`), SSE ở `apps/api/src/routes/stream.ts`, client ở `apps/web/src/lib/realtime.tsx`. Kiểm nhanh: `curl -N -H "Authorization: Bearer <token>" http://localhost:8787/v1/me/stream` phải thấy `event: ready`, và `GET /health` trả `realtimeConnections` tăng lên.
 - Webhook SePay test: `POST /webhooks/sepay` header `Authorization: Apikey <SEPAY_API_KEY>`; nội dung chứa `HM XXXXX`.

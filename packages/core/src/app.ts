@@ -1,4 +1,4 @@
-// Lắp ráp AppContext từ env: db, email, media, payments, bus, queue, logger, handlers.
+// Lắp ráp AppContext từ env: db, email, media, payments, bus, realtime, queue, logger, handlers.
 import type { Env } from '@hoiminh/config';
 import { connect, runMigrations, type Database } from '@hoiminh/db';
 import { createEmailSender, type EmailMessage } from '@hoiminh/email';
@@ -11,6 +11,7 @@ import { createEventBus } from './events/bus';
 import { registerHandlers } from './events/handlers';
 import { createJobHandler } from './jobs/handlers';
 import { InMemoryQueue, type JobQueue } from './jobs/queue';
+import { createRealtimeHub } from './realtime/hub';
 
 export interface CreateAppOptions {
   env: Env;
@@ -51,7 +52,8 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
   const payments = createPaymentRouter(env, `${env.API_URL}/pay/simulator`);
   const events = createEventBus((name, err) => log.error('event.handler_failed', { name, err: String(err) }));
   const queue = opts.queue ?? new InMemoryQueue();
-  const ctx: AppContext = { db, env, email, media, payments, events, queue, log, now: () => new Date() };
+  const realtime = createRealtimeHub((err) => log.error('realtime.listener_failed', { err: String(err) }));
+  const ctx: AppContext = { db, env, email, media, payments, events, realtime, queue, log, now: () => new Date() };
   if (queue instanceof InMemoryQueue) queue.setHandler(createJobHandler(ctx));
   registerHandlers(ctx);
   const auth: AuthProvider = env.AUTH_PROVIDER === 'supabase' && env.SUPABASE_URL
