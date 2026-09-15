@@ -5,7 +5,9 @@
 Đưa web lên Cloudflare Pages, tự động deploy khi đẩy code lên GitHub, và thêm nhãn phiên bản kèm nút cập nhật ngay trên giao diện.
 
 ### Triển khai
-- Project Cloudflare Pages `hoiminh-web` (nhánh production `main`) tại https://hoiminh-web.pages.dev.
+- Project Cloudflare Pages `hoiminh-web` (nhánh production `main`) tại https://hoiminh-web.pages.dev, tên miền `hoiminh.com` và `www.hoiminh.com`; Worker API gắn `api.hoiminh.com`.
+- `pnpm db:admin <email> <mật khẩu> [tên]`: tạo hoặc nâng một tài khoản thành quản trị hệ thống, dùng cho database mới chưa có ai.
+- `AUTH_PROVIDER` của Worker đổi sang `local` (mật khẩu PBKDF2 trong DB) vì chưa bật Supabase Auth.
 - `.github/workflows/deploy.yml`: push lên `main` → typecheck · lint · test → build web → `wrangler pages deploy`; chạy tay được ở tab Actions. Deploy Worker API bật bằng biến `DEPLOY_API=true`.
 - `apps/web/public/_headers`: `version.json` và `index.html` không cache, tài nguyên có vân tay cache một năm.
 

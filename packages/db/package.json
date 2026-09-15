@@ -16,6 +16,7 @@
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/cli/migrate.ts",
     "seed": "tsx src/cli/seed.ts",
+    "admin": "tsx src/cli/admin.ts",
     "reset": "tsx src/cli/reset.ts"
   },
   "dependencies": {

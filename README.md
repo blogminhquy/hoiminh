@@ -40,6 +40,7 @@ Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền v�
 | `pnpm test:e2e` | Playwright 7 luồng nghiệp vụ (tự khởi động API + web với DB riêng `.data/e2e`) |
 | `pnpm check` | typecheck + lint + test |
 | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` · `pnpm db:generate` | migration, seed, reset PGlite, sinh migration từ schema |
+| `pnpm db:admin <email> <mật khẩu> [tên]` | tạo (hoặc nâng) một tài khoản thành quản trị hệ thống — dùng khi database mới chưa có ai |
 | `pnpm build` | build tất cả (web → `apps/web/dist`) |
 | `pnpm deploy` | migrate Supabase → deploy Worker API → deploy Pages (xem dưới) |
 
@@ -71,7 +72,17 @@ infra           deploy.mjs, wrangler.pages.toml
 5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
 
-Đã dựng sẵn: project Pages **hoiminh-web** → https://hoiminh-web.pages.dev (nhánh production `main`).
+Đã dựng sẵn: project Pages **hoiminh-web** → https://hoiminh-web.pages.dev, tên miền `hoiminh.com` + `www.hoiminh.com` (nhánh production `main`), Worker `hoiminh-api` gắn `api.hoiminh.com`, hàng đợi `hoiminh-jobs` và `hoiminh-jobs-dlq`.
+
+### Tài khoản quản trị đầu tiên
+
+Database mới chưa có ai, mà nâng quyền quản trị thì phải có sẵn một quản trị. Sau khi `pnpm db:migrate`:
+
+```bash
+DATABASE_URL="<chuỗi kết nối Supabase>" pnpm db:admin "email@cua-ban.com" "mat-khau-manh" "Tên hiển thị"
+```
+
+Lệnh này tạo tài khoản mới (hoặc nâng tài khoản đã có), đặt mật khẩu, đánh dấu đã xác minh email và bật `is_super_admin`. Đăng nhập ở `/dang-nhap` rồi vào `/he-thong`; từ đó nâng quyền cho người khác bằng giao diện. Mật khẩu là PBKDF2 nên chỉ dùng được khi `AUTH_PROVIDER=local` — muốn đăng nhập Google thì đổi sang `supabase` và người dùng phải đăng ký lại.
 
 ## Tự động deploy khi đẩy lên GitHub
 
