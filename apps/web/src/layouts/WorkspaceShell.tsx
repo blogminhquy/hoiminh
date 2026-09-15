@@ -1,4 +1,4 @@
-// Khung chủ hội (wsShell trong build.mjs): header với Hội của tôi / Khám phá / Tài khoản, nội dung 1120px giữa.
+// Khung chủ hội (wsShell trong build.mjs): header với Hội của tôi / Nhà phát triển / Khám phá / Tài khoản, nội dung 1120px giữa.
 import { Bell } from 'lucide-react';
 import { Avatar, Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -20,6 +20,7 @@ export function WorkspaceShell() {
         <Link to="/admin"><Logo size={26} /></Link>
         <nav className="flex gap-1 ml-1 md:ml-3">
           {item('/admin', 'Hội của tôi')}
+          {item('/admin/nha-phat-trien', 'Nhà phát triển')}
           {item('/kham-pha', 'Khám phá')}
           {item('/tai-khoan/goi', 'Tài khoản')}
         </nav>

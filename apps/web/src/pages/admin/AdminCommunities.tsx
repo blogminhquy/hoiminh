@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Chip, CommunityMark, T, money } from '@hoiminh/ui';
 import { Download, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { saveBlob, toCsvBlob } from '@/lib/download';
@@ -28,7 +28,9 @@ function stateOf(r: Row): [string, string] {
 export default function Page() {
   const qc = useQueryClient();
   const [status, setStatus] = useState<Status>('active');
-  const [q, setQ] = useState('');
+  // Nhận từ khóa từ ô tìm nhanh trên header quản trị (?q=...).
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') ?? '');
   const list = useQuery({ queryKey: ['admin', 'communities', status, q], queryFn: () => api.get<List>(`/v1/admin/communities?status=${status}${q ? `&q=${encodeURIComponent(q)}` : ''}`) });
   const act = useMutation({ mutationFn: (p: { id: string; action: 'lock' | 'unlock' | 'archive'; reason: string }) => api.post(`/v1/admin/communities/${p.id}/action`, { action: p.action, reason: p.reason }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin'] }) });
   const doAct = (r: Row, action: 'lock' | 'unlock' | 'archive') => { const reason = action === 'unlock' ? '' : window.prompt(action === 'lock' ? 'Lý do khóa hội:' : 'Lý do lưu trữ:') ?? ''; if (action !== 'unlock' && !reason) return; act.mutate({ id: r.id, action, reason }); };

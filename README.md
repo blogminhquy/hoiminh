@@ -141,6 +141,6 @@ Super admin có thể bật/tắt từng cổng và nhập credential trong `/he
 
 ## API, webhook gửi đi, MCP
 
-- REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` hoặc API key `hm_live_…`/`hm_test_…` (tạo ở Hội của tôi · Tài khoản · API). Lỗi trả `{ code, message }`.
-- Webhook gửi đi: đăng ký URL + scope ở `/v1/workspaces/:id/webhooks`; sự kiện ký HMAC-SHA256 header `X-HoiMinh-Signature`, thử lại theo backoff.
+- REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` hoặc API key `hm_live_…`/`hm_test_…` (tạo ở **Hội của tôi · Nhà phát triển**, `/admin/nha-phat-trien`). Lỗi trả `{ code, message }`.
+- Webhook gửi đi: đăng ký URL + sự kiện ở **Hội của tôi · Nhà phát triển**; Hội Mình ký HMAC-SHA256 ở header `X-HoiMinh-Signature`, thử lại theo backoff, lịch sử 10 lần gửi gần nhất hiện ngay trong màn đó.
 - MCP: `pnpm --filter @hoiminh/mcp start` với `HOIMINH_API_URL` và `HOIMINH_API_KEY`; 10 tool (danh sách hội, thành viên, đăng bài, tạo khóa học, sự kiện, doanh thu…).

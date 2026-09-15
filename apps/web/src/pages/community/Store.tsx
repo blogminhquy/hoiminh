@@ -38,7 +38,7 @@ function ProductCard({ p, slug }: { p: ProductItem; slug: string }) {
         <div className="flex-grow" />
         <div className="flex items-center gap-2.5 pt-2">
           {p.owned ? (
-            <><span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Đã sở hữu</span><span className="flex-grow" /><Link to={learnTo} className="btn btn-ghost btn-sm">{p.kind === 'digital' ? 'Tải về' : 'Vào học'}</Link></>
+            <><span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Đã sở hữu</span><span className="flex-grow" /><Link to={p.kind === 'digital' ? to : learnTo} className="btn btn-ghost btn-sm">{p.kind === 'digital' ? 'Tải về' : 'Vào học'}</Link></>
           ) : (
             <><span className="font-bold text-[18px]">{money(p.priceMinor)}</span>{p.compareAtMinor ? <span className="muted line-through text-[13px]">{money(p.compareAtMinor)}</span> : null}<span className="flex-grow" /><Link to={`/${slug}/thanh-toan?product=${p.id}`} className="btn btn-primary btn-sm">Mua</Link></>
           )}
@@ -66,7 +66,7 @@ export default function Page() {
           {(['course', 'bundle', 'digital'] as const).map((k) => <Chip key={k} on={kind === k} onClick={() => setKind(k)}>{KIND_LABEL[k]} · {counts[k] ?? 0}</Chip>)}
         </div>
         <div className="input" style={{ width: 200 }}><Search size={18} style={{ color: T.ink3 }} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm sản phẩm…" className="flex-grow min-w-0" /></div>
-        {query.data?.canManage && <Link to={`/${slug}/khoa-hoc/moi`} className="btn btn-primary btn-sm" style={{ height: 36 }}><Plus size={16} /> Tạo khóa học bán</Link>}
+        {query.data?.canManage && <><Link to={`/${slug}/khoa-hoc/moi`} className="btn btn-ghost btn-sm" style={{ height: 36 }}><Plus size={16} /> Khóa học</Link><Link to={`/${slug}/cua-hang/moi`} className="btn btn-primary btn-sm" style={{ height: 36 }}><Plus size={16} /> Sản phẩm số / combo</Link></>}
       </div>
       <QueryState q={query} rows={3} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có sản phẩm', hint: 'Chủ hội đăng khóa học ở chế độ bán lẻ thì sản phẩm sẽ hiện ở đây' }}>
         {(d) => <div className="grid-3">{d.items.map((p) => <ProductCard key={p.id} p={p} slug={slug} />)}</div>}

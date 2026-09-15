@@ -1,4 +1,4 @@
-// Cài đặt · Chung (generalMain): logo, tên, đường dẫn, mô tả ngắn, danh mục, quy tắc, tên miền riêng, lưu trữ hội.
+// Cài đặt · Chung (generalMain): logo, tên, đường dẫn, mô tả ngắn, danh mục, quy tắc, câu hỏi khi tham gia, tên miền riêng, lưu trữ hội.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { COMMUNITY_CATEGORY_LABELS, toSlug } from '@hoiminh/contracts';
 import { Button, CommunityMark, Field, Input, SaveBar, Select, T, Textarea } from '@hoiminh/ui';
@@ -8,8 +8,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
+import { JoinQuestionsCard } from './SettingsJoinQuestions';
 
-interface About { community: { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoUrl: string | null; logoMark: string; logoColor: string; customDomain: string | null; customDomainVerifiedAt: string | null; discoverable: boolean } }
+interface About { community: { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoUrl: string | null; logoMark: string; logoColor: string; customDomain: string | null; customDomainVerifiedAt: string | null; discoverable: boolean }; joinQuestions: Array<{ id: string; question: string; required: boolean; sortOrder: number }> }
 interface Form { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoFileId: string | null | undefined; logoUrl: string | null; customDomain: string; discoverable: boolean }
 
 export default function Page() {
@@ -41,7 +42,7 @@ export default function Page() {
         </div>
         <Field label="Tên cộng đồng"><Input value={f.name} maxLength={80} onChange={(e) => patch({ name: e.target.value })} /></Field>
         <Field label="Đường dẫn" hint="Người lạ mở link này sẽ thấy trang giới thiệu hội trước, đổi đường dẫn sẽ làm link cũ ngừng hoạt động">
-          <div className="flex gap-2 items-center flex-wrap"><div className="input flex-grow" style={{ color: T.ink }}><span className="muted">hoiminh.vn/</span><input value={f.slug} onChange={(e) => patch({ slug: toSlug(e.target.value) })} className="flex-grow min-w-0" />{f.slug === shell.community.slug && <span style={{ color: T.teal }}><Check size={16} /></span>}</div><Link to={`/${shell.community.slug}`} className="btn btn-ghost"><Globe size={16} />Xem trang giới thiệu</Link></div>
+          <div className="flex gap-2 items-center flex-wrap"><div className="input flex-grow" style={{ color: T.ink }}><span className="muted">hoiminh.com/</span><input value={f.slug} onChange={(e) => patch({ slug: toSlug(e.target.value) })} className="flex-grow min-w-0" />{f.slug === shell.community.slug && <span style={{ color: T.teal }}><Check size={16} /></span>}</div><Link to={`/${shell.community.slug}`} className="btn btn-ghost"><Globe size={16} />Xem trang giới thiệu</Link></div>
         </Field>
         <Field label="Mô tả ngắn" hint="160 ký tự, hiện trên trang Khám phá và thẻ chia sẻ"><Input value={f.shortDescription} maxLength={160} onChange={(e) => patch({ shortDescription: e.target.value })} /></Field>
         <Field label="Giới thiệu đầy đủ" hint="Hiện trên trang giới thiệu hội, hỗ trợ Markdown"><Textarea rows={5} value={f.description} maxLength={5000} onChange={(e) => patch({ description: e.target.value })} /></Field>
@@ -52,9 +53,10 @@ export default function Page() {
         <div className="flex items-center"><span className="font-semibold">Quy tắc cộng đồng</span><span className="flex-grow" /><Button size="sm" disabled={f.rules.length >= 10} onClick={() => patch({ rules: [...f.rules, ''] })}><Plus size={14} />Thêm quy tắc</Button></div>
         {f.rules.map((r, i) => <div key={i} className="flex items-center gap-3 px-3.5 py-2 rounded-[10px]" style={{ background: T.bg }}><span className="font-bold" style={{ color: T.ink3 }}>{i + 1}</span><input value={r} maxLength={200} onChange={(e) => patch({ rules: f.rules.map((x, j) => (j === i ? e.target.value : x)) })} className="flex-grow text-[14px] bg-transparent min-w-0" placeholder="Nội dung quy tắc" /><button type="button" aria-label="Xóa" onClick={() => patch({ rules: f.rules.filter((_, j) => j !== i) })} style={{ color: T.ink3 }}><X size={16} /></button></div>)}
       </div>
+      <JoinQuestionsCard communityId={shell.community.id} slug={shell.community.slug} initial={q.data?.joinQuestions ?? []} />
       <div className="card flex flex-col gap-3.5" style={{ padding: '20px 24px' }}>
         <span className="font-semibold">Nâng cao</span>
-        <Field label="Tên miền riêng" hint="Trỏ bản ghi CNAME về app.hoiminh.vn, SSL cấp tự động"><div className="flex gap-2 items-center flex-wrap"><Input value={f.customDomain} onChange={(e) => patch({ customDomain: e.target.value })} placeholder="hoc.tenmien.vn" style={{ width: 320, maxWidth: '100%' }} />{q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : f.customDomain ? <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Chờ DNS</span> : null}</div></Field>
+        <Field label="Tên miền riêng" hint="Trỏ bản ghi CNAME về hoiminh.com, SSL cấp tự động"><div className="flex gap-2 items-center flex-wrap"><Input value={f.customDomain} onChange={(e) => patch({ customDomain: e.target.value })} placeholder="hoc.tenmien.vn" style={{ width: 320, maxWidth: '100%' }} />{q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : f.customDomain ? <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Chờ DNS</span> : null}</div></Field>
       </div>
       <div className="flex items-center gap-3 px-5 py-4 rounded-xl" style={{ border: `1px dashed ${T.line2}` }}><div className="flex-grow"><div className="font-semibold" style={{ color: T.accentText }}>Lưu trữ cộng đồng</div><div className="muted text-[12px]">Ẩn khỏi mọi người, giữ toàn bộ dữ liệu, có thể mở lại</div></div><Button size="sm" style={{ color: T.accentText }} loading={archive.isPending} onClick={() => { if (window.confirm('Lưu trữ hội này? Thành viên sẽ không vào được cho tới khi mở lại.')) archive.mutate(); }}>Lưu trữ</Button></div>
     </>

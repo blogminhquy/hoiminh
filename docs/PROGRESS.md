@@ -100,6 +100,24 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 - Nhãn phiên bản: thử đổi `dist/version.json` sang buildId khác → nhãn chuyển sang "Có bản mới" màu cam, bảng chi tiết hiện phiên bản máy chủ và nút **Cập nhật ngay**; tab "Máy này" ghi đúng các bản đã dùng.
 - Production (2026-09-15): https://hoiminh.com và https://www.hoiminh.com phục vụ bằng Worker static assets, https://api.hoiminh.com bằng Worker + Hyperdrive → Supabase (84 bảng, 89 policy). `/health` trả `db: ok`; 12/12 lần đăng nhập liên tiếp trả 200 sau khi bỏ cache App giữa các request. Đăng nhập trên trình duyệt bằng `minhquy1711@gmail.com` vào được `/he-thong` với quyền super admin.
 
+## Rà soát 2026-09-15 (lệnh `/ra-soat`)
+
+Tìm theo bốn tầng: có tài liệu mà không có code · có code mà không nối · có nối mà không chạy thật · có chạy mà không có test.
+
+| Phát hiện | Tầng | Xử lý |
+|---|---|---|
+| Không có màn tạo sản phẩm số / combo (chỉ tạo được khóa học) | code có, không nối | ✅ thêm `/:slug/cua-hang/moi` + `/sua` |
+| Mua sản phẩm số xong không tải được tệp | nối hỏng | ✅ khối tải tệp ở trang sản phẩm |
+| API key + webhook gửi đi không có màn nào (kiến trúc mục 13) | tài liệu có, code không | ✅ `/admin/nha-phat-trien` |
+| Chủ hội không đặt được câu hỏi khi xin vào hội | code có, không nối | ✅ trong Cài đặt · Chung |
+| `pnpm dev` hỏng vì gói mcp thoát ngay | có chạy, không ai kiểm | ✅ lọc mcp khỏi `dev` |
+| Ô tìm kiếm header quản trị là ô chết | code có, không nối | ✅ Enter → Hội / Người dùng kèm `?q=` |
+| `feature-flags.isEnabled` không ai gọi — super admin bật/tắt cờ không có tác dụng gì | code có, không nối | ⏳ chưa làm |
+| `POST /orders/:id/admin-refund` không có nút nào gọi | code có, không nối | ⏳ chưa làm |
+| Xác thực hai lớp, giao diện tối ghi "sắp có" | tài liệu có, code không | ⏳ chưa làm |
+| R2 chưa cấu hình nên tải ảnh/video hỏng trên Worker | nối, không chạy thật | ⏳ cần credential |
+| RLS có 89 policy nhưng service không đặt biến phiên | nối, không chạy thật | ⏳ cần quyết định |
+
 ## Việc kế tiếp
 1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) rồi `gh variable set DEPLOY_API --body true` để workflow Deploy tự đẩy cả web lẫn API.
 2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so` mục Đổi mật khẩu.

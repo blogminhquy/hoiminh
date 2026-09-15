@@ -9,7 +9,7 @@ import { TOOLS, runTool } from './tools';
 const apiUrl = process.env.HOIMINH_API_URL ?? 'http://localhost:8787';
 const apiKey = process.env.HOIMINH_API_KEY ?? '';
 if (!apiKey) {
-  console.error('Thiếu HOIMINH_API_KEY (tạo trong Cài đặt → Tiện ích → Webhook/API).');
+  console.error('Thiếu HOIMINH_API_KEY (tạo ở Hội của tôi → Nhà phát triển → API key).');
   process.exit(1);
 }
 const client = createClient(apiUrl, apiKey);
