@@ -8,7 +8,6 @@ import { CommentThread } from '@/components/CommentThread';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { isPremium, useShell } from '@/lib/community';
-import { fmtDuration } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { LessonRow, ModuleHead, lessonState, moduleMeta, type LessonLite, type ModuleLite } from './LessonParts';
 

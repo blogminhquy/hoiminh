@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/.wrangler/**',
       '**/.data/**',
+      '**/.gitnexus/**',
       'design/**',
       'e2e/playwright-report/**',
       'e2e/test-results/**',

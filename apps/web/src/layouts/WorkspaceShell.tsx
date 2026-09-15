@@ -12,7 +12,7 @@ export function WorkspaceShell() {
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   const item = (to: string, label: string) => (
-    <NavLink to={to} end className={({ isActive }) => 'px-3 py-2 rounded-lg font-medium text-[14px]'} style={({ isActive }) => ({ background: isActive ? T.bg : 'transparent', color: isActive ? T.ink : T.ink2 })}>{label}</NavLink>
+    <NavLink to={to} end className="px-3 py-2 rounded-lg font-medium text-[14px]" style={({ isActive }) => ({ background: isActive ? T.bg : 'transparent', color: isActive ? T.ink : T.ink2 })}>{label}</NavLink>
   );
   return (
     <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>

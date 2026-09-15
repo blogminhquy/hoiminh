@@ -35,7 +35,7 @@ function Trend({ d }: { d: number }) {
 
 export default function Page() {
   const shell = useShell();
-  const slug = shell.community.slug;
+
   const [period, setPeriod] = useState<Period>('month');
   const [copied, setCopied] = useState(false);
   const q = useQuery({ queryKey: ['leaderboard', shell.community.id, period], queryFn: () => api.get<Board>(`/v1/communities/${shell.community.id}/leaderboard?period=${period}`), retry: false });
