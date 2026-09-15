@@ -40,6 +40,10 @@ export async function connect(url: string): Promise<DbHandle> {
 
 async function openPglite(target: string): Promise<DbHandle> {
   const { PGlite } = await import('@electric-sql/pglite');
+  if (target !== 'memory') {
+    const { mkdirSync } = await import('node:fs');
+    mkdirSync(target, { recursive: true });
+  }
   const client = target === 'memory' ? new PGlite() : new PGlite(target);
   await client.waitReady;
   const db = drizzlePglite(client, { schema });

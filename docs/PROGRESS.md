@@ -17,44 +17,86 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | `apps/mcp` 10 tool | ✅ xong | 2 test xanh |
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
-| `apps/web` trang | 🟡 **đang làm** (xem bảng dưới) | chưa typecheck toàn bộ |
-| `e2e` Playwright 7 luồng | ⬜ chưa | — |
-| README.md | ⬜ chưa (DECISIONS.md, CHANGELOG.md đã có) | — |
-| `pnpm check` toàn repo (typecheck + lint + test) | ⬜ chưa chạy sau khi có web | — |
+| `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
+| `e2e` Playwright 7 luồng | 🟡 đã viết, đang chạy lần đầu để sửa selector | — |
+| README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
+| `pnpm check` toàn repo | 🟡 typecheck + lint xanh; `pnpm test` đang chạy lại | — |
 
-## Trang web (`apps/web/src/pages`)
+## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
-Ký hiệu: ✅ có file và đã typecheck · 🟡 có file, chưa typecheck · ⬜ chưa có (router đã trỏ tới tên file này).
+Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright trong `e2e/tests` đi qua màn này; "api" = test tích hợp `apps/api/src/api.test.ts`; "core" = `packages/core/src/test/flows.test.ts`.
 
-| Nhóm | Trang (route) | File | Trạng thái |
-|---|---|---|---|
-| public | Khám phá `/kham-pha` | public/Discovery.tsx | 🟡 |
-| public | Đăng nhập / Đăng ký / Quên MK / Đã gửi / Đặt lại / Xác minh / Callback | public/Login, Register, ForgotPassword, ForgotSent, ResetPassword, VerifyEmail, AuthCallback (+AuthParts) | 🟡 |
-| public | Tạo hội landing `/tao-hoi`, chọn gói `/tao-hoi/goi` | public/SignupLanding, SignupPlan (+SignupParts) | 🟡 |
-| public | Trang giới thiệu hội `/:slug` | public/CommunityAbout (+Parts, +Rail) | 🟡 |
-| owner | Hội của tôi `/admin`, `/admin/goi` | owner/WorkspaceHome.tsx | ⬜ (đã có WorkspaceHomeParts, WorkspacePlanCard) |
-| owner | Tạo hội `/admin/tao-hoi` | owner/WorkspaceCreate.tsx | ⬜ |
-| community | Bảng tin, soạn bài `/:slug/bang-tin[/moi]` | community/Feed, Composer (+Parts) | 🟡 |
-| community | Bài viết `/:slug/bai-viet/:postId` | community/PostDetail (+Parts) | 🟡 |
-| community | Khóa học, tạo/sửa | community/Courses, CourseCreate (+Parts), CourseOverview (+Parts) | 🟡 |
-| community | Soạn khóa học `/khoa-hoc/:id/soan` | community/CourseBuilder.tsx | ⬜ (đã có CourseBuilderParts) |
-| community | Lớp học `/bai/:lessonId` | community/Classroom.tsx | ⬜ (đã có LessonParts) |
-| community | Cửa hàng, chi tiết sản phẩm | community/Store, ProductDetail | ⬜ |
-| community | Sự kiện, tạo/sửa, chi tiết | community/Events, EventCreate, EventDetail | ⬜ |
-| community | Xếp hạng cộng sự | community/Leaderboard | ⬜ |
-| community | Thành viên | community/Members (+Parts, +Extra, MessageModal) | 🟡 |
-| community | Doanh thu | community/Revenue | ⬜ |
-| community | Checkout `/:slug/thanh-toan`, `/thanh-toan/:orderId` | community/Checkout | ⬜ |
-| settings | Layout + Tổng quan/Chung/Giá/Cộng sự/Rút tiền/Tiện ích/Bảng tin/Thanh toán | settings/SettingsLayout, SettingsOverview, SettingsGeneral, SettingsPricing, SettingsAffiliate, SettingsAffiliatePayouts, SettingsPlugins, SettingsFeed, SettingsPayout | ⬜ (đã có components/PayoutQueue, PayoutReviewPanel, EditorBits) |
-| account | Tin nhắn, Thông báo, Hồ sơ công khai | account/Messages, Notifications, Profile | ⬜ |
-| account | Sửa hồ sơ, Gói của tôi, Ví cộng sự | account/AccountLayout, ProfileEdit (+Parts) ✅ · AccountBilling ⬜ (có Parts) · AffiliateWallet ⬜ | 🟡/⬜ |
-| admin | Tổng quan, Hội, Người dùng, Thanh toán, Gói/Tính năng, Cộng sự, Nhật ký | admin/AdminOverview, AdminCommunities, AdminUsers, AdminPayments, AdminPlans, AdminAffiliate, AdminLogs | ⬜ |
+| # | Màn hình (build.mjs) | Route | File | Kiểm thử |
+|---|---|---|---|---|
+| 1 | Bảng tin (feed) | `/:slug/bang-tin` | community/Feed.tsx | e2e 01, api |
+| 2 | Tạo bài viết (compose) | `/:slug/bang-tin/moi` | community/Composer.tsx (+Parts) | core L5 |
+| 3 | Chi tiết bài viết (post) | `/:slug/bai-viet/:postId` | community/PostDetail.tsx (+Parts), components/CommentThread | core |
+| 4 | Thư viện khóa học (courses) | `/:slug/khoa-hoc` | community/Courses.tsx | e2e 02 |
+| 5 | Chi tiết khóa học (course) | `/:slug/khoa-hoc/:courseId` | community/CourseOverview.tsx (+Parts, LessonParts) | core L5 |
+| 6 | Bài học đã trả phí (classroom) | `/:slug/bai/:lessonId` | community/Classroom.tsx | core L2 |
+| 7 | Bài học miễn phí bị khóa (classroom-free) | `/:slug/bai/:lessonId` | community/Classroom.tsx (LockedPlayer) | core L2 |
+| 8 | Cửa hàng (store) | `/:slug/cua-hang` | community/Store.tsx | e2e 03 |
+| 9 | Chi tiết sản phẩm (product) | `/:slug/cua-hang/:productSlug` | community/ProductDetail.tsx (+Parts) | core L3 |
+| 10 | Sự kiện (events) | `/:slug/su-kien` | community/Events.tsx, EventParts.tsx | core L5 |
+| 11 | Chi tiết sự kiện (event) | `/:slug/su-kien/:eventId` | community/EventDetail.tsx | e2e 05 |
+| 12 | Xếp hạng cộng sự (affiliate) | `/:slug/xep-hang` | community/Leaderboard.tsx | e2e 04, core L4 |
+| 13 | Tin nhắn (messages) | `/tin-nhan` | account/Messages.tsx (+Parts) | core L1 (welcome DM) |
+| 14 | Thông báo (notifications) | `/thong-bao` | account/Notifications.tsx | core |
+| 15 | Hồ sơ thành viên (profile) | `/u/:handle` | account/Profile.tsx | api |
+| 16 | Tài khoản · Hồ sơ (profile-edit) | `/tai-khoan/ho-so` | account/ProfileEdit.tsx (+Parts), AccountLayout.tsx | — |
+| 17 | Tài khoản · Cộng sự (my-affiliate) | `/tai-khoan/cong-su[/:programId]` | account/AffiliateWallet.tsx (+Parts) | e2e 04 |
+| 18 | Tài khoản · Gói và thanh toán (account) | `/tai-khoan/goi` | account/AccountBilling.tsx (+Parts) | e2e 03 |
+| 19 | Thanh toán (checkout) | `/:slug/thanh-toan`, `/thanh-toan/:orderId` | community/Checkout.tsx, CheckoutConfigure.tsx, CheckoutParts.tsx | e2e 02, 03, 06 |
+| 20 | Tạo hội của bạn · đăng ký (signup) | `/tao-hoi` | public/SignupLanding.tsx (+SignupParts) | — |
+| 21 | Chọn gói tháng/năm (signup-plan) | `/tao-hoi/goi` | public/SignupPlan.tsx | — |
+| 22 | Hội của tôi (ws-home) | `/admin`, `/admin/goi` | owner/WorkspaceHome.tsx (+Parts, PlanCard) | e2e 05, 06 |
+| 23 | Tạo hội (ws-create) | `/admin/tao-hoi` | owner/WorkspaceCreate.tsx (+Parts) | e2e 05 |
+| 24 | Tạo sự kiện (event-create) | `/:slug/su-kien/moi`, `/:eventId/sua` | community/EventCreate.tsx (+Parts) | e2e 05 |
+| 25 | Tạo khóa học (course-create) | `/:slug/khoa-hoc/moi`, `/:courseId/sua` | community/CourseCreate.tsx (+Parts) | e2e 05 |
+| 26 | Soạn nội dung khóa học (course-builder) | `/:slug/khoa-hoc/:courseId/soan` | community/CourseBuilder.tsx, CourseBuilderOutline.tsx (+Parts) | e2e 05 |
+| 27 | Quản trị thành viên (members) | `/:slug/thanh-vien` | community/Members.tsx (+Parts, +Extra) | api, core |
+| 28 | Cài đặt · Tổng quan (s-overview) | `/:slug/cai-dat` | settings/SettingsOverview.tsx, SettingsLayout.tsx | — |
+| 29 | Cài đặt · Chung (s-general) | `/:slug/cai-dat/chung` | settings/SettingsGeneral.tsx | — |
+| 30 | Cài đặt · Giá và gói (settings) | `/:slug/cai-dat/gia` | settings/SettingsPricing.tsx (+Parts) | core L5 |
+| 31 | Cài đặt · Cộng sự (s-affiliate) | `/:slug/cai-dat/cong-su` | settings/SettingsAffiliate.tsx, AffiliateTabs.tsx | core L4 |
+| 32 | Cài đặt · Yêu cầu rút (s-affiliate-payouts) | `/:slug/cai-dat/cong-su/rut-tien` | settings/SettingsAffiliatePayouts.tsx, components/PayoutQueue, PayoutReviewPanel | e2e 04 |
+| 33 | Cài đặt · Tiện ích (s-plugins) | `/:slug/cai-dat/tien-ich` | settings/SettingsPlugins.tsx | core L1 |
+| 34 | Cài đặt · Bảng tin (s-feed) | `/:slug/cai-dat/bang-tin` | settings/SettingsFeed.tsx | — |
+| 35 | Cài đặt · Thanh toán (s-payout) | `/:slug/cai-dat/thanh-toan` | settings/SettingsPayout.tsx | core L7 |
+| 36 | Doanh thu (revenue) | `/:slug/doanh-thu` | community/Revenue.tsx | — |
+| 37 | Hệ thống · Tổng quan (sa-overview) | `/he-thong` | admin/AdminOverview.tsx | e2e 07, api |
+| 38 | Hệ thống · Hội (sa-communities) | `/he-thong/hoi`, `/he-thong/ho-tro` | admin/AdminCommunities.tsx | e2e 07 |
+| 39 | Hệ thống · Thanh toán và đối soát (sa-payments) | `/he-thong/thanh-toan` | admin/AdminPayments.tsx (+Parts) | e2e 07, core L7 |
+| 40 | Hệ thống · Cộng sự nền tảng (sa-affiliate) | `/he-thong/cong-su` | admin/AdminAffiliate.tsx | — |
+| 41 | Hệ thống · Gói nền tảng (sa-plans) | `/he-thong/goi`, `/he-thong/tinh-nang` | admin/AdminPlans.tsx | — |
+| 42 | Bảng tin trên điện thoại (mobile) | `/:slug/bang-tin` @390px | layouts/AppShell.tsx (mobile tabs) + Feed | — |
+| 43 | Trang giới thiệu hội (about) | `/:slug` | public/CommunityAbout.tsx (+Parts, +Rail) | e2e 01, api |
+| 44 | Đăng nhập (login) | `/dang-nhap` | public/Login.tsx | e2e 01–07 |
+| 45 | Đăng ký (register) | `/dang-ky` | public/Register.tsx | e2e 01 |
+| 46 | Quên mật khẩu (forgot) | `/quen-mat-khau` | public/ForgotPassword.tsx | core L1 |
+| 47 | Đã gửi link (forgot-sent) | `/quen-mat-khau/da-gui` | public/ForgotSent.tsx | — |
+| 48 | Đặt mật khẩu mới (reset-password) | `/dat-lai-mat-khau` | public/ResetPassword.tsx | core L1 |
+| 49 | Xác minh email (verify-email) | `/xac-minh-email` | public/VerifyEmail.tsx | e2e 01 |
+| 50 | Khám phá (discovery) | `/kham-pha` | public/Discovery.tsx | — |
 
-## Việc kế tiếp (theo thứ tự)
-1. Viết các trang ⬜ ở trên (đọc markup tương ứng trong `design/build.mjs`, brief API trong `docs/PAGES_BRIEF.md`).
-2. `pnpm --filter @hoiminh/web typecheck` + `pnpm lint` → sửa.
-3. e2e Playwright (`e2e/`): config webServer api 8787 (pglite memory, APP_ENV=test) + web 5173; 7 luồng.
-4. README.md; chạy `pnpm check`, `pnpm test:e2e`; kiểm tra clean install; bảng ánh xạ màn hình/luồng → file → test.
+Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/AdminUsers.tsx), Nhật ký và webhook `/he-thong/nhat-ky` (admin/AdminLogs.tsx), Google callback `/auth/callback`.
+
+## Bảng ánh xạ 7 luồng (mục 6)
+
+| Luồng | Core (`flows.test.ts`) | E2E (`e2e/tests`) |
+|---|---|---|
+| 1. Đăng ký → xác minh → tham gia miễn phí → tin nhắn chào | ✅ | 01-dang-ky-tham-gia |
+| 2. Nâng cấp Premium qua SePay, idempotent, mở khóa | ✅ | 02-premium-sepay |
+| 3. Mua lẻ qua MoMo và hoàn tiền 7 ngày | ✅ | 03-cua-hang-momo-hoan-tien |
+| 4. Cộng sự: hold → available → rút → xem xét → trả/từ chối | ✅ | 04-cong-su-rut-tien |
+| 5. Chủ hội tạo hội → khóa học → sự kiện lặp | ✅ | 05-chu-hoi-tao-hoi-khoa-hoc-su-kien |
+| 6. Gói nền tảng dùng thử → trả → hết hạn khóa | ✅ | 06-goi-nen-tang |
+| 7. Quản trị hệ thống: đối soát, tắt cổng, khóa hội | ✅ | 07-quan-tri-he-thong |
+
+## Việc kế tiếp
+1. Chạy `pnpm test:e2e` tới khi xanh (sửa selector nếu lệch).
+2. Kiểm tra clean install: xóa `node_modules`, `.data` → `pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev` → mở http://localhost:5173.
+3. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy).
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.

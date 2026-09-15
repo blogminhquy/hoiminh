@@ -1,4 +1,4 @@
-// Playwright: reset PGlite riêng cho e2e, khởi động API (8787, APP_ENV=test) và web (5173), chạy tuần tự 7 luồng.
+// Playwright: server API tự reset PGlite riêng (.data/e2e: migrate + seed) rồi chạy (8787, APP_ENV=test), web ở 5173; 7 luồng chạy tuần tự.
 import { defineConfig, devices } from '@playwright/test';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,6 @@ export const E2E_ENV = {
 
 export default defineConfig({
   testDir: './tests',
-  globalSetup: './global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -34,7 +33,7 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'] },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
-    { command: 'pnpm --filter @hoiminh/api dev', url: 'http://localhost:8787/health', cwd: root, env: E2E_ENV, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },
+    { command: 'pnpm --filter @hoiminh/db reset && pnpm --filter @hoiminh/api dev', url: 'http://localhost:8787/health', cwd: root, env: E2E_ENV, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },
     { command: 'pnpm --filter @hoiminh/web dev', url: 'http://localhost:5173', cwd: root, env: { VITE_API_URL: 'http://localhost:8787', VITE_APP_URL: 'http://localhost:5173' }, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },
   ],
 });
