@@ -8,6 +8,7 @@ import { CommentThread } from '@/components/CommentThread';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useShell } from '@/lib/community';
+import { saveBlob, toCsvBlob } from '@/lib/download';
 import { fmtDate, fmtDuration, fmtLongDate } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { placeLabel, timeRange, useRegister, type EventItem, type Host } from './EventParts';
@@ -102,7 +103,7 @@ export default function Page() {
                 <div className="card p-4 flex flex-col gap-2">
                   <div className="font-semibold text-[13px]">Dành cho người tổ chức</div>
                   <Link to={`/${slug}/su-kien/${e.id}/sua`} className="btn btn-ghost btn-sm justify-start"><Settings size={14} />Sửa sự kiện</Link>
-                  <a href={`${api.url}/v1/events/${e.id}/attendees`} className="btn btn-ghost btn-sm justify-start" target="_blank" rel="noreferrer"><Download size={14} />Xuất danh sách</a>
+                  <button type="button" className="btn btn-ghost btn-sm justify-start" onClick={() => void api.get<Array<{ name: string; email: string; handle: string }>>(`/v1/events/${e.id}/attendees`).then((rows) => saveBlob(toCsvBlob([['Tên', 'Email', 'Handle'], ...rows.map((r) => [r.name, r.email, r.handle])]), `nguoi-dang-ky-${e.id.slice(0, 8)}.csv`))}><Download size={14} />Xuất danh sách</button>
                 </div>
               )}
             </aside>
