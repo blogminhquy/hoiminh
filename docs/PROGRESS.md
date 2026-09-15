@@ -98,13 +98,16 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 - `pnpm test:e2e` 8 passed; `pnpm test` 51 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
 - Deploy Cloudflare Pages (2026-09-15): project `hoiminh-web`, https://hoiminh-web.pages.dev mở được trang đăng nhập, `/version.json` trả `Cache-Control: no-store` đúng như `_headers`, nhãn phiên bản hiện `v1.0.0 · 53033d0` ở góc dưới bên trái.
 - Nhãn phiên bản: thử đổi `dist/version.json` sang buildId khác → nhãn chuyển sang "Có bản mới" màu cam, bảng chi tiết hiện phiên bản máy chủ và nút **Cập nhật ngay**; tab "Máy này" ghi đúng các bản đã dùng.
+- Production (2026-09-15): https://hoiminh.com và https://www.hoiminh.com phục vụ bằng Worker static assets, https://api.hoiminh.com bằng Worker + Hyperdrive → Supabase (84 bảng, 89 policy). `/health` trả `db: ok`; 12/12 lần đăng nhập liên tiếp trả 200 sau khi bỏ cache App giữa các request. Đăng nhập trên trình duyệt bằng `minhquy1711@gmail.com` vào được `/he-thong` với quyền super admin.
 
 ## Việc kế tiếp
-1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) để workflow Deploy chạy được; xem README mục "Tự động deploy khi đẩy lên GitHub".
-2. Supabase + Worker API: tạo project, chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`, `wrangler secret put` đủ biến, rồi bật `gh variable set DEPLOY_API --body true`. Chừng nào chưa có API thì web trên Pages mới chỉ hiện được các màn hình tĩnh.
-3. Trỏ tên miền `hoiminh.vn` vào Pages và `api.hoiminh.vn` vào Worker (đang dùng https://hoiminh-web.pages.dev).
-4. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-5. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) rồi `gh variable set DEPLOY_API --body true` để workflow Deploy tự đẩy cả web lẫn API.
+2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm).
+3. R2: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video sẽ hỏng vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
+4. Email: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
+5. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
+6. RLS chưa có tác dụng: service layer không đặt `app.user_id` / `app.workspace_ids` / `app.community_ids` nên policy trong `0001_rls.sql` không chạy (API dùng chính role sở hữu bảng). Muốn bật thật phải set biến phiên trong từng transaction.
+7. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.

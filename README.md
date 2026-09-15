@@ -65,9 +65,21 @@ infra           deploy.mjs
 
 ## Deploy Cloudflare + Supabase
 
-1. **Supabase**: tạo project, bật Auth (Email + Google). Lấy `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`. Chuỗi kết nối pooler (cổng 6543) làm `DATABASE_URL`, kết nối trực tiếp (cổng 5432) làm `DATABASE_DIRECT_URL`. Đặt `AUTH_PROVIDER=supabase`.
+1. **Supabase**: tạo project. Chuỗi kết nối pooler (cổng 6543) làm `DATABASE_URL`, kết nối trực tiếp (cổng 5432) làm `DATABASE_DIRECT_URL`. Nên tạo một role riêng cho ứng dụng thay vì dùng `postgres`:
+
+   ```sql
+   create role hoiminh_app with login password '<mật khẩu mạnh>';
+   grant create, connect on database postgres to hoiminh_app;
+   grant all on schema public to hoiminh_app;
+   ```
+
+   Chạy migration **bằng role đó** để nó sở hữu các bảng — chủ sở hữu không bị RLS chặn, giống môi trường local. Với pooler, username có dạng `hoiminh_app.<project-ref>`.
+
+   Muốn đăng nhập Google thì bật Supabase Auth, điền `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` và đặt `AUTH_PROVIDER=supabase`; khi đó tài khoản tạo bằng `db:admin` hay `db:seed` không đăng nhập được nữa.
 2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
-3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs` và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
+3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs`, Hyperdrive và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
+
+   **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request — làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `worker.ts` dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]`.
 4. **Worker web**: `pnpm --filter @hoiminh/web build` rồi `pnpm --filter @hoiminh/web run deploy`. `apps/web/wrangler.toml` phục vụ `dist` bằng Worker static assets (`not_found_handling = "single-page-application"` lo route SPA, `public/_headers` lo cache) và tự tạo bản ghi DNS cho `hoiminh.com`, `www.hoiminh.com`. Biến build: `VITE_API_URL`, `VITE_APP_URL`.
 5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
@@ -82,7 +94,9 @@ Database mới chưa có ai, mà nâng quyền quản trị thì phải có sẵ
 DATABASE_URL="<chuỗi kết nối Supabase>" pnpm db:admin "email@cua-ban.com" "mat-khau-manh" "Tên hiển thị"
 ```
 
-Lệnh này tạo tài khoản mới (hoặc nâng tài khoản đã có), đặt mật khẩu, đánh dấu đã xác minh email và bật `is_super_admin`. Đăng nhập ở `/dang-nhap` rồi vào `/he-thong`; từ đó nâng quyền cho người khác bằng giao diện. Mật khẩu là PBKDF2 nên chỉ dùng được khi `AUTH_PROVIDER=local` — muốn đăng nhập Google thì đổi sang `supabase` và người dùng phải đăng ký lại.
+Lệnh này tạo tài khoản mới (hoặc nâng tài khoản đã có), đặt mật khẩu, đánh dấu đã xác minh email và bật `is_super_admin`. Đăng nhập ở `/dang-nhap` rồi vào `/he-thong`; từ đó nâng quyền cho người khác bằng giao diện. Mật khẩu là PBKDF2 nên chỉ dùng được khi `AUTH_PROVIDER=local`.
+
+> **RLS chưa thực sự có tác dụng.** `0001_rls.sql` bật Row Level Security và tạo policy theo `app.user_id` / `app.workspace_ids` / `app.community_ids`, nhưng service layer không hề gọi `set_config` để đặt các biến phiên đó. Nếu chạy API dưới một role *không* sở hữu bảng thì mọi truy vấn sẽ bị lọc sạch. Hiện API chạy bằng chính role sở hữu bảng nên RLS không chặn — an toàn nhưng cũng đồng nghĩa lớp phòng thủ này chưa hoạt động. Muốn bật thật thì phải đặt biến phiên trong từng transaction.
 
 ## Tự động deploy khi đẩy lên GitHub
 

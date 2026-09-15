@@ -21,6 +21,11 @@ LOG_LEVEL = "info"
 pattern = "api.hoiminh.com"
 custom_domain = true
 
+# Hyperdrive: gộp kết nối Postgres phía Cloudflare (Workers không cho dùng lại socket giữa các request).
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "f4c98cf06b33403caab8d1a68e89ab0a"
+
 [[queues.producers]]
 queue = "hoiminh-jobs"
 binding = "JOBS"
