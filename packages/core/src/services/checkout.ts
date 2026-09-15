@@ -1,8 +1,8 @@
 // Checkout: tier hội (tháng/năm/một lần), sản phẩm cửa hàng, gói nền tảng. Gọi PaymentService qua adapter, không chạm cổng trực tiếp.
 import type { CheckoutSession, CreateCheckoutInput } from '@hoiminh/contracts';
 import { formatMoney } from '@hoiminh/contracts';
-import { and, eq, isNull, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, plans, products, providerAccounts, users, workspaces } from '@hoiminh/db';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, plans, products, providerAccounts, users, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { AppError, conflict, invalid, notFound } from '../errors';
@@ -110,7 +110,15 @@ export async function orderStatus(ctx: Ctx, orderId: string) {
   if (!o) throw notFound('Đơn không tồn tại');
   const p = await ctx.db.query.payments.findFirst({ where: eq(payments.orderId, orderId), orderBy: (t, { desc }) => desc(t.createdAt) });
   const meta = o.metadata as { communitySlug?: string; productSlug?: string; cycle?: string; title?: string; kind?: string };
-  const nextUrl = o.targetType === 'platform' ? '/admin' : o.targetType === 'product' ? `/${meta.communitySlug}/cua-hang/${meta.productSlug ?? ''}` : `/${meta.communitySlug}/khoa-hoc`;
+  // Người mua lẻ không phải thành viên: đưa về Khu học tập, vì khung hội sẽ chặn họ ở cửa (mục 153).
+  const isMember = o.communityId
+    ? Boolean(await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, o.communityId), eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling'])) }))
+    : false;
+  const nextUrl = o.targetType === 'platform'
+    ? '/admin'
+    : o.targetType === 'product'
+      ? (isMember ? `/${meta.communitySlug}/cua-hang/${meta.productSlug ?? ''}` : '/hoc')
+      : `/${meta.communitySlug}/khoa-hoc`;
   return { orderId: o.id, status: o.status, paidAt: o.paidAt, reference: o.reference, amountMinor: o.totalMinor, currency: o.currency, provider: p?.provider ?? null, paymentStatus: p?.status ?? null, instruction: p?.instruction ?? null, title: meta.title ?? '', nextUrl, expiresAt: o.expiresAt };
 }
 

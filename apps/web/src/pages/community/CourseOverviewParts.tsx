@@ -1,15 +1,31 @@
 // Rail của trang khóa học: vòng tiến độ, chứng nhận, tài liệu, giảng viên, người đang học.
+import { useQuery } from '@tanstack/react-query';
 import { Avatar, Button, T } from '@hoiminh/ui';
 import { BadgeCheck, Download, FileText, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
+import { api } from '@/lib/api';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { MessageModal } from './MessageModal';
 
 export interface Resource { id: string; name: string; url: string; lessonId: string; sizeBytes: number | null }
 export interface Owner extends UserLite { id: string; bio: string | null }
 
-export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccessedAt, certificate }: { percent: number; doneLessons: number; watchedSeconds: number; lastAccessedAt: string | null; certificate: boolean }) {
+interface CertificateDto { code: string }
+
+/** Học xong rồi thì thay lời hứa bằng đường dẫn tới tờ chứng nhận thật. */
+function CertificateLink({ courseId }: { courseId: string }) {
+  const q = useQuery({ queryKey: ['certificate-of', courseId], queryFn: () => api.get<CertificateDto>(`/v1/courses/${courseId}/certificate`), retry: false });
+  if (!q.data) return null;
+  return (
+    <Link to={`/chung-nhan/${q.data.code}`} className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px] font-semibold" style={{ background: T.goldSoft, color: T.goldDark }}>
+      <BadgeCheck size={16} /><span>Xem chứng nhận <strong>{q.data.code}</strong></span>
+    </Link>
+  );
+}
+
+export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccessedAt, certificate, courseId }: { percent: number; doneLessons: number; watchedSeconds: number; lastAccessedAt: string | null; certificate: boolean; courseId: string }) {
   return (
     <div className="card p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-3.5">
@@ -22,11 +38,11 @@ export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccesse
           <span><strong>{lastAccessedAt ? timeAgo(lastAccessedAt) : 'Chưa bắt đầu'}</strong> <span className="muted">{lastAccessedAt ? 'học lần cuối' : ''}</span></span>
         </div>
       </div>
-      {certificate && (
+      {certificate && (percent >= 100 ? <CertificateLink courseId={courseId} /> : (
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px]" style={{ background: T.goldSoft, color: T.goldDark }}>
           <BadgeCheck size={16} /><span>Hoàn thành 100% để nhận <strong>chứng nhận</strong> có tên bạn và link kiểm tra.</span>
         </div>
-      )}
+      ))}
     </div>
   );
 }

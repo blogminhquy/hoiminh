@@ -28,10 +28,14 @@ export async function notify(ctx: Ctx, input: NotifyInput): Promise<void> {
     if (level === 'mentions' && input.category !== 'mention' && input.category !== 'payment' && input.category !== 'affiliate') return;
     if (input.category === 'like' && prefs && !prefs.likes) return;
   }
-  await ctx.db.insert(notifications).values({
+  const [row] = await ctx.db.insert(notifications).values({
     userId: input.userId, communityId: input.communityId ?? null, kind: input.kind, category: input.category ?? 'all', title: input.title, body: input.body ?? '',
     actorUserId: input.actorUserId ?? null, link: input.link ?? null, actionLabel: input.actionLabel ?? null, data: input.data ?? {},
-  });
+  }).returning({ id: notifications.id });
+  if (row) {
+    ctx.realtime.publish([input.userId], { type: 'notification.new', notificationId: row.id, title: input.title, body: input.body ?? '', link: input.link ?? null });
+    ctx.realtime.publish([input.userId], { type: 'badges.changed' });
+  }
 }
 
 /** Danh sách thông báo của tôi, lọc theo nhóm, phân trang cursor. */

@@ -1,4 +1,5 @@
-// Tin nhắn không realtime (polling 15 giây): hội thoại 1-1, gửi, đọc, lưu trữ, tin nhắn chào tự động.
+// Tin nhắn thời gian thực (V2): hội thoại 1-1, gửi, đọc, đang gõ, trạng thái online, lưu trữ, tin nhắn chào tự động.
+// Đẩy qua ctx.realtime (SSE /v1/me/stream); polling vẫn giữ làm phương án dự phòng khi trình duyệt không giữ được luồng.
 import { and, asc, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
 import { communities, communityMembers, communityPlugins, communityTiers, conversationParticipants, conversations, courseProgress, courses, messages, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -64,7 +65,7 @@ export async function listConversations(ctx: Ctx, q: { filter?: 'all' | 'unread'
     .where(and(inArray(conversations.id, mine), sql`${conversationParticipants.archivedAt} is null`, q.filter === 'unread' ? gt(conversationParticipants.unreadCount, 0) : q.filter === 'automated' ? eq(conversations.lastMessageAutomated, true) : sql`true`, q.q ? or(ilike(users.name, `%${q.q}%`), ilike(users.handle, `%${q.q}%`))! : sql`true`))
     .orderBy(desc(conversations.lastMessageAt));
   const [unread] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(conversationParticipants).where(and(eq(conversationParticipants.userId, userId), gt(conversationParticipants.unreadCount, 0)));
-  return { items: rows.map((r) => ({ id: r.c.id, other: r.other, community: r.community, preview: r.c.lastMessagePreview, lastMessageAt: r.c.lastMessageAt, automated: r.c.lastMessageAutomated, unreadCount: r.me.unreadCount })), unreadConversations: unread?.c ?? 0 };
+  return { items: rows.map((r) => ({ id: r.c.id, other: { ...r.other, online: ctx.realtime.isOnline(r.other.id) }, community: r.community, preview: r.c.lastMessagePreview, lastMessageAt: r.c.lastMessageAt, automated: r.c.lastMessageAutomated, unreadCount: r.me.unreadCount })), unreadConversations: unread?.c ?? 0 };
 }
 
 /** Tin nhắn trong hội thoại (polling với `after` = thời điểm tin cuối đã có). Tự đánh dấu đã đọc. */
@@ -75,12 +76,11 @@ export async function listMessages(ctx: Ctx, conversationId: string, q: { after?
   const conds = [eq(messages.conversationId, conversationId)];
   if (q.after) conds.push(gt(messages.createdAt, new Date(q.after)));
   const rows = await ctx.db.query.messages.findMany({ where: and(...conds), orderBy: asc(messages.createdAt), limit: q.limit ?? 200 });
-  await ctx.db.update(conversationParticipants).set({ unreadCount: 0, lastReadAt: ctx.now() }).where(eq(conversationParticipants.id, part.id));
-  await ctx.db.update(messages).set({ readAt: ctx.now() }).where(and(eq(messages.conversationId, conversationId), sql`${messages.senderUserId} <> ${userId}`, sql`${messages.readAt} is null`));
+  await markConversationRead(ctx, conversationId, userId);
   const convo = await ctx.db.query.conversations.findFirst({ where: eq(conversations.id, conversationId) });
   const other = await ctx.db.select({ u: userCols }).from(conversationParticipants).innerJoin(users, eq(users.id, conversationParticipants.userId)).where(and(eq(conversationParticipants.conversationId, conversationId), sql`${conversationParticipants.userId} <> ${userId}`)).then((r) => r[0]?.u ?? null);
   const panel = other && convo?.communityId ? await memberPanel(ctx, convo.communityId, other.id) : null;
-  return { items: rows, other, community: convo?.communityId ? await ctx.db.query.communities.findFirst({ where: eq(communities.id, convo.communityId), columns: { id: true, name: true, slug: true } }) : null, panel };
+  return { items: rows, other: other ? { ...other, online: ctx.realtime.isOnline(other.id) } : null, community: convo?.communityId ? await ctx.db.query.communities.findFirst({ where: eq(communities.id, convo.communityId), columns: { id: true, name: true, slug: true } }) : null, panel };
 }
 
 /** Panel bên phải màn Tin nhắn: gói, ngày tham gia, đang học, giới thiệu bởi. */
@@ -90,6 +90,37 @@ async function memberPanel(ctx: Ctx, communityId: string, otherUserId: string) {
   const learning = await ctx.db.select({ title: courses.title, percent: courseProgress.percent }).from(courseProgress).innerJoin(courses, eq(courses.id, courseProgress.courseId)).where(and(eq(courseProgress.userId, otherUserId), eq(courses.communityId, communityId))).orderBy(desc(courseProgress.lastAccessedAt)).limit(1).then((r) => r[0] ?? null);
   const referrer = m.m.referredByAffiliateId ? await raw(ctx.db, sql`select u.name from affiliate_accounts a join users u on u.id = a.user_id where a.id = ${m.m.referredByAffiliateId}`).then((r) => (r[0] as { name: string } | undefined)?.name ?? null) : null;
   return { memberId: m.m.id, role: m.m.role, status: m.m.status, tier: m.tier, joinedAt: m.m.joinedAt, learning, referrer };
+}
+
+/** Đánh dấu đã đọc: xóa số chưa đọc, đóng dấu readAt và báo biên nhận cho người kia. */
+export async function markConversationRead(ctx: Ctx, conversationId: string, forUserId?: string) {
+  const userId = forUserId ?? requireUser(ctx);
+  const part = await ctx.db.query.conversationParticipants.findFirst({ where: and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.userId, userId)) });
+  if (!part) throw forbidden();
+  const readAt = ctx.now();
+  await ctx.db.update(conversationParticipants).set({ unreadCount: 0, lastReadAt: readAt }).where(eq(conversationParticipants.id, part.id));
+  const updated = await ctx.db.update(messages).set({ readAt }).where(and(eq(messages.conversationId, conversationId), sql`${messages.senderUserId} <> ${userId}`, sql`${messages.readAt} is null`)).returning({ id: messages.id });
+  if (updated.length) ctx.realtime.publish(await otherParticipantIds(ctx, conversationId, userId), { type: 'message.read', conversationId, byUserId: userId, readAt: readAt.toISOString() });
+  return { readAt, markedCount: updated.length };
+}
+
+/** Thời gian một lượt "đang gõ" còn hiệu lực (giây). Client gửi lại trước khi hết hạn. */
+export const TYPING_TTL_SECONDS = 6;
+
+/** Báo "đang gõ" cho người kia. Không lưu DB: chỉ đẩy qua hub. */
+export async function setTyping(ctx: Ctx, conversationId: string) {
+  const userId = requireUser(ctx);
+  const part = await ctx.db.query.conversationParticipants.findFirst({ where: and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.userId, userId)) });
+  if (!part) throw forbidden();
+  const expiresAt = new Date(ctx.now().getTime() + TYPING_TTL_SECONDS * 1000);
+  ctx.realtime.publish(await otherParticipantIds(ctx, conversationId, userId), { type: 'conversation.typing', conversationId, byUserId: userId, expiresAt: expiresAt.toISOString() });
+  return { expiresAt };
+}
+
+/** Id những người còn lại trong hội thoại. */
+export async function otherParticipantIds(ctx: Ctx, conversationId: string, exceptUserId: string): Promise<string[]> {
+  const rows = await ctx.db.query.conversationParticipants.findMany({ where: and(eq(conversationParticipants.conversationId, conversationId), sql`${conversationParticipants.userId} <> ${exceptUserId}`), columns: { userId: true } });
+  return rows.map((r) => r.userId);
 }
 
 /** Lưu trữ hội thoại (chỉ phía mình). */

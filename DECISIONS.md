@@ -28,11 +28,44 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 
 14. **Route web:** `/:slug` = trang giới thiệu hội (đích của link), `/:slug/bang-tin|khoa-hoc|...` = app thành viên, `/:slug/cai-dat/*` = cài đặt chủ hội, `/admin` = Hội của tôi (workspace), `/he-thong/*` = quản trị hệ thống, `/tai-khoan/*`, `/tin-nhan`, `/thong-bao`, `/u/:handle`. Slug hội bị cấm trùng route hệ thống (`RESERVED_SLUGS`).
 15. **Khóa học có cả `workspace_id` và `community_id`** (mục 139 + yêu cầu mỗi bảng có tenant). `access_mode` đúng 4 lựa chọn của màn Tạo khóa học; bán lẻ tự tạo `products` + `product_pages` khi đăng.
-16. Người ngoài hội mua lẻ sản phẩm của hội Freemium được thêm làm thành viên Tiêu chuẩn để có dashboard học (mục 153 để dashboard riêng cho V2).
+16. ~~Người ngoài hội mua lẻ được thêm làm thành viên Tiêu chuẩn để có dashboard học.~~ **Đổi ở V2** (xem mục 30): mua lẻ không còn tự thêm vào hội; Khu học tập `/hoc` là chỗ học của họ.
 17. **Xếp hạng cộng sự** tính lại mỗi 10 phút (cron) và ngay sau khi seed; tháng, quý và từ đầu.
-18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers; tin nhắn polling 15 giây.
+18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers.
 19. **RLS:** một policy `tenant_isolation` sinh tự động cho mọi bảng theo cột `workspace_id`/`community_id`/`user_id` + `app.bypass`; API production chạy dưới role `hoiminh_app`. PGlite là superuser nên RLS không chặn ở local (đã có test xác nhận RLS được bật).
 20. **CSRF:** API dùng Bearer token trong header, không dùng cookie phiên, nên không cần CSRF token; cookie `hm_ref/hm_vid` chỉ là attribution.
 21. **Rate limit** ở edge do Cloudflare (WAF rules) là chính; API có cửa sổ trượt trong bộ nhớ cho đăng nhập/đăng ký/webhook/đăng bài.
 22. **Doanh thu chủ hội "Có thể rút"**: V1 không có API rút tiền chủ hội tự động (tiền về tài khoản Hội Mình rồi chuyển theo yêu cầu); màn Thanh toán hiển thị số dư/đang giữ 14 ngày và hướng dẫn liên hệ.
 23. **Tin nhắn "Tài nguyên"** trong sidebar là tab ẩn mặc định (mục 191 cho phép hiện/ẩn), dẫn tới thư viện khóa học.
+
+## Tin nhắn thời gian thực (V2)
+
+24. **SSE chứ không WebSocket.** Chiều máy chủ → trình duyệt là chiều duy nhất cần đẩy; gửi tin vẫn là `POST /v1/me/messages`. SSE đi qua đúng middleware xác thực Bearer sẵn có, không cần cổng riêng, và tự nối lại. Trình duyệt đọc luồng bằng `fetch` + `ReadableStream` chứ không dùng `EventSource` vì `EventSource` không đặt được header `Authorization` (token nằm ở localStorage, không phải cookie) và đưa token lên query string sẽ lọt vào access log.
+25. **Hub trong tiến trình.** `ctx.realtime` giữ danh sách listener theo `userId` trong bộ nhớ của tiến trình API. Đúng cho một node (và cho `pnpm dev`, test, e2e). Nhiều node hoặc Cloudflare Workers cần một lớp phân tán, thay `createRealtimeHub()` bằng bản chạy trên Durable Object hoặc Redis pub/sub, phần còn lại của mã không phải đổi vì mọi nơi chỉ gọi `subscribe`/`publish`.
+26. **Polling không bị bỏ, chỉ giãn ra.** Khi luồng đang mở, nhịp làm mới của Tin nhắn và badge giãn từ 15 giây lên 120 giây; khi luồng đứt, nhịp trở lại 15 giây. Nhờ vậy mất SSE (proxy chặn, mạng công ty) chỉ làm chậm chứ không làm hỏng màn hình.
+27. **"Đang gõ" không lưu DB.** Chỉ đẩy qua hub, hết hạn sau 6 giây; client gửi lại tối đa 3 giây một lần. Mất gói thì chỉ báo tự tắt, không để lại rác.
+28. **Biên nhận "Đã xem" phát khi thực sự có tin được đánh dấu.** `markConversationRead` trả về `markedCount`; bằng 0 thì không phát sự kiện, nên mở lại hội thoại cũ không dội biên nhận trùng cho người gửi.
+29. **Trạng thái online là "đang mở luồng"**, không phải `users.last_seen_at`. Khi một người mở hoặc đóng phiên cuối cùng, hub báo `presence.changed` cho mọi phiên đang mở: chấp nhận được ở quy mô hiện tại, nhưng khi số phiên lớn cần thu hẹp theo danh sách hội thoại của từng người.
+
+## Khu học tập của người mua lẻ (V2, mục 153)
+
+30. **Mua lẻ không còn tự thêm vào hội.** V1 ép người mua vào hội làm thành viên Tiêu chuẩn chỉ để họ có một cái dashboard. Đó là tác dụng phụ của việc mua, không phải điều họ chọn, và làm số thành viên của hội sai lệch. V2 bỏ hẳn: quyền học vốn nằm ở entitlement chứ không ở tư cách thành viên, nên chỉ cần một chỗ đứng ngoài khung hội là đủ. Muốn vào hội thì tự bấm ở lời mời trên Khu học tập.
+31. **Thư viện dựng từ entitlement, không từ `community_members`.** Nhờ vậy `/hoc` chạy đúng với người có 0 hội. Khóa học mở nhờ tier (thành viên Premium/VIP) **không** nằm trong thư viện: đó là quyền lợi của hội và thuộc về khung hội `/:slug/khoa-hoc`. Ranh giới này giữ cho Khu học tập đúng nghĩa "những gì tôi đã sở hữu", không thành bản sao mờ của thư viện hội.
+32. **Combo mở khóa theo hai đường.** Khi mua combo, handler đã ghi entitlement cho từng sản phẩm con; thư viện vẫn duyệt lại `bundle_items` để bắt các sản phẩm con được thêm vào combo *sau* lúc mua. Không có đường thứ hai này thì người mua combo "và các khóa ra mắt trong 12 tháng tới" sẽ không thấy khóa mới.
+33. **`LearnerShell` là khung riêng, không phải `AppShell` rút gọn.** Người ở đây không có bảng tin, sự kiện hay cửa hàng để vào, nên thanh bên hội chỉ là những cái cửa khóa. Trang Bài học dùng chung cho cả hai khung: nó lấy khung qua `useOptionalShell()` và dựng link qua `useLearningLinks()`, nên `/hoc/bai/:id` và `/:slug/bai/:id` là cùng một trang.
+34. **`AccountShell` chọn khung theo số hội.** Trước đây `/tai-khoan/*`, `/tin-nhan`, `/thong-bao` nằm trong `AppShell`, mà `AppShell` không có hội nào thì đá về `/kham-pha`: người mua lẻ không xem được hóa đơn của chính mình. Giờ có hội thì dùng khung hội, không có thì dùng khung Khu học tập.
+35. **Sau khi trả tiền, người không phải thành viên được đưa về `/hoc`.** `orderStatus.nextUrl`, email và thông báo đều theo quy tắc này; trước đây chúng trỏ vào khung hội và người mua lẻ bị chặn ngay ở cửa.
+
+## Link phòng họp của sự kiện (V2)
+
+36. **Không tự làm phát trực tiếp.** Sự kiện chỉ giữ một `meeting_url` do chủ hội dán vào: Zoom, Google Meet, YouTube, Facebook hay bất kỳ link phòng họp nào. `meeting_provider` được nhận diện từ URL để hiện đúng nhãn; link lạ nhận nhãn chung `link` ("Phòng họp riêng"). Hạ tầng phát trực tiếp là thứ đắt và dễ kéo dự án chậm, trong khi mọi chủ hội đều đã có sẵn phòng Zoom hoặc Meet.
+37. **Đăng ký xong là thấy link, bỏ cửa 15 phút.** Bản trước giấu link tới 15 phút trước giờ bắt đầu ở trang chi tiết, nhưng danh sách sự kiện thì lại trả link ngay khi đăng ký, nên cái cửa đó chưa bao giờ chặn được gì, chỉ làm người đăng ký sớm tưởng hệ thống hỏng. Giờ cả hai nơi cùng một quy tắc: đã đăng ký (hoặc là chủ hội) thì thấy link, để người ta lưu vào lịch trước.
+38. **Hủy đăng ký thì mất link.** Danh sách sự kiện trước đây kiểm tra "có bản ghi đăng ký" mà không lọc `status <> 'cancelled'`, nên người đã hủy vẫn đọc được link. Nay cả danh sách lẫn chi tiết đều lọc như nhau.
+
+## Chứng nhận hoàn thành khóa học (V1.5)
+
+39. **Chụp lại tên lúc cấp, không đọc lại về sau.** Bảng `certificates` lưu sẵn tên người nhận, tên khóa và tên hội tại thời điểm cấp. Chứng nhận là bản ghi của một thời điểm: học viên đổi tên tài khoản hay chủ hội đổi tên khóa thì tờ đã cấp phải giữ nguyên, nếu không người cầm tờ giấy in ra sẽ thấy nó khác với bản tra cứu online.
+40. **Cấp một lần, khóa bằng ràng buộc ở tầng dữ liệu.** Unique index trên `(course_id, user_id)` cộng `onConflictDoNothing`; hai lần hoàn thành chạy song song thì bên thua đọc lại tờ của bên thắng chứ không tạo tờ thứ hai.
+41. **Cấp trước rồi mới báo.** Handler `course.completed` gọi cấp chứng nhận xong mới gửi thông báo, và thông báo dẫn thẳng tới `/chung-nhan/{mã}`. Trước đây hệ thống báo "chứng nhận đã sẵn sàng" trong khi không có gì được cấp; đó là hứa suông với người học.
+42. **Tra cứu công khai, không cần tài khoản.** `GET /v1/certificates/:code` và trang `/chung-nhan/:code` mở cho mọi người, vì mục đích của mã in trên tờ giấy là để người thứ ba đối chiếu. Route này chạy dưới ngữ cảnh hệ thống vì RLS của bảng chỉ cho chủ sở hữu đọc. Chứng nhận chỉ lộ tên người nhận, tên khóa, tên hội và ngày cấp, không lộ email hay tiến độ.
+43. **Một mẫu cố định, in bằng trình duyệt.** Chưa sinh PDF phía máy chủ: trang chứng nhận có CSS `@media print` khổ A4 ngang, người dùng bấm "In hoặc lưu PDF" là ra tệp. Đủ dùng và không phải nuôi thêm một dịch vụ render.
+44. **Có cột `revoked_at` nhưng chưa có màn thu hồi.** Trang tra cứu đã hiện cảnh báo khi tờ bị thu hồi; nút thu hồi cho chủ hội để sau, khi có nhu cầu thật.

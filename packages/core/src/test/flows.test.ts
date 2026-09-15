@@ -248,7 +248,8 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
     await events.registerEvent(duy, r.event.id, true);
     const detail = await events.getEvent(duy, r.event.id);
     expect(detail.registered).toBe(true);
-    expect(detail.meetingUrl).toBeNull(); // chưa tới 15 phút trước giờ
+    expect(detail.meetingUrl).toBe('https://zoom.us/j/123'); // đăng ký xong là thấy link ngay
+    expect(detail.meetingProvider).toBe('zoom');
     await runCron(app.ctx, 'every_minute');
     const { sql } = await import('drizzle-orm');
     await app.ctx.db.execute(sql`update scheduled_jobs set run_at = now() - interval '1 minute' where kind = 'event.remind'`);

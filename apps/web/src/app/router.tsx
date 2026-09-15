@@ -1,9 +1,10 @@
-// Bảng route của toàn bộ 50 màn hình: công khai, chủ hội (/admin), hội (/:slug/...), tài khoản, quản trị hệ thống (/he-thong).
+// Bảng route: công khai, chủ hội (/admin), hội (/:slug/...), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
+import { AccountShell, LearnerShell } from '@/layouts/LearnerShell';
 import { WorkspaceShell } from '@/layouts/WorkspaceShell';
 
 const page = (loader: () => Promise<{ default: ComponentType }>) => {
@@ -28,6 +29,8 @@ const publicRoutes: RouteObject[] = [
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
   { path: '/thanh-toan/:orderId', element: page(() => import('@/pages/community/Checkout')) },
+  // Tra cứu chứng nhận: công khai, ai cầm mã cũng xem được, không cần đăng nhập.
+  { path: '/chung-nhan/:code', element: page(() => import('@/pages/learner/Certificate')) },
 ];
 
 const ownerRoutes: RouteObject = {
@@ -39,8 +42,17 @@ const ownerRoutes: RouteObject = {
   ],
 };
 
+// Khu học tập của người mua lẻ (V2, mục 153): chạy ngoài khung hội, dùng được khi người dùng không thuộc hội nào.
+const learnerRoutes: RouteObject = {
+  element: <LearnerShell />,
+  children: [
+    { path: '/hoc', element: page(() => import('@/pages/learner/Library')) },
+    { path: '/hoc/bai/:lessonId', element: page(() => import('@/pages/community/Classroom')) },
+  ],
+};
+
 const accountRoutes: RouteObject = {
-  element: <AppShell requireMember={false} />,
+  element: <AccountShell />,
   children: [
     { path: '/tin-nhan', element: page(() => import('@/pages/account/Messages')) },
     { path: '/thong-bao', element: page(() => import('@/pages/account/Notifications')) },
@@ -120,5 +132,5 @@ const adminRoutes: RouteObject = {
 };
 
 export const router = createBrowserRouter([
-  { element: <Outlet />, children: [...publicRoutes, ownerRoutes, accountRoutes, adminRoutes, communityRoutes] },
+  { element: <Outlet />, children: [...publicRoutes, ownerRoutes, learnerRoutes, accountRoutes, adminRoutes, communityRoutes] },
 ]);

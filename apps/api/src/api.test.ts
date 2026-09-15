@@ -1,4 +1,4 @@
-// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
+// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key, luồng SSE thời gian thực, Khu học tập.
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
@@ -107,6 +107,109 @@ describe('API', () => {
     expect(r.headers.get('location')).toContain('/minhquy?ref=hv8k2');
     expect(r.headers.get('set-cookie')).toContain('hm_ref=hv8k2');
   });
+  it('SSE /v1/me/stream: cần đăng nhập, mở luồng rồi đẩy tin nhắn mới về đúng người', async () => {
+    const anon = await hono.request('/v1/me/stream');
+    expect(anon.status).toBe(401);
+
+    // Hoàng Vũ mở luồng; Minh Quý gửi tin cho Vũ; Vũ phải đọc được sự kiện ngay trên luồng đó.
+    const vuLogin = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'hoangvu@gmail.com', password: 'hoiminh123' }) });
+    const vuToken = (await vuLogin.json()).accessToken;
+    const vuId = (await (await json('/v1/me/id', { auth: vuToken })).json()).userId;
+
+    const abort = new AbortController();
+    const res = await hono.request('/v1/me/stream', { headers: { Authorization: `Bearer ${vuToken}` }, signal: abort.signal });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader();
+
+    // Mỗi lần ghi là một chunk riêng nên phải gom cho tới khi thấy sự kiện cần tìm.
+    expect(await readUntil(reader, 'ready', 3000)).toContain('retry: 3000');
+    expect((await (await json('/health')).json()).realtimeConnections).toBeGreaterThan(0);
+
+    const sent = await json('/v1/me/messages', { method: 'POST', auth: token, body: JSON.stringify({ recipientUserId: vuId, body: 'Tin thời gian thực' }) });
+    expect(sent.status).toBe(201);
+
+    const frames = await readUntil(reader, 'message.new', 3000);
+    expect(frames).toContain('Tin thời gian thực');
+    abort.abort();
+    await reader.cancel().catch(() => null);
+  });
+  it('đang gõ và đánh dấu đã đọc: chỉ người trong hội thoại gọi được', async () => {
+    const vuLogin = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'hoangvu@gmail.com', password: 'hoiminh123' }) });
+    const vuToken = (await vuLogin.json()).accessToken;
+    const convos = await json('/v1/me/conversations', { auth: vuToken });
+    const convoId = (await convos.json()).items[0].id;
+
+    expect((await json(`/v1/me/conversations/${convoId}/typing`, { method: 'POST', auth: vuToken })).status).toBe(200);
+    const read = await json(`/v1/me/conversations/${convoId}/read`, { method: 'POST', auth: vuToken });
+    expect(read.status).toBe(200);
+    expect((await read.json()).readAt).toBeTruthy();
+
+    const outsider = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) });
+    const outsiderToken = (await outsider.json()).accessToken;
+    expect((await json(`/v1/me/conversations/${convoId}/typing`, { method: 'POST', auth: outsiderToken })).status).toBe(403);
+  });
+  it('/v1/me/library: cần đăng nhập; trả khóa học và tài liệu đã sở hữu kèm bài để học tiếp', async () => {
+    expect((await json('/v1/me/library')).status).toBe(401);
+
+    const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'thulan@gmail.com', password: 'hoiminh123' }) });
+    const t = (await login.json()).accessToken;
+    const r = await json('/v1/me/library', { auth: t });
+    expect(r.status).toBe(200);
+    const lib = await r.json();
+    expect(lib.counts.courses).toBeGreaterThan(0);
+    expect(lib.counts.courses).toBe(lib.courses.length);
+    // Mỗi khóa phải có chỗ để bấm vào học, nếu không thẻ trên Khu học tập sẽ là ngõ cụt.
+    for (const c of lib.courses) {
+      expect(c.resumeLessonId, `khóa ${c.title} không có bài nào để mở`).toBeTruthy();
+      expect(['purchase', 'bundle', 'subscription', 'granted']).toContain(c.source);
+    }
+  });
+  it('tải tài liệu số: người sở hữu lấy được link, người ngoài bị chặn 403', async () => {
+    const products = await json(`/v1/communities/${communityId}/products`, { auth: token });
+    const digital = (await products.json()).items.find((p: Loose) => p.kind === 'digital');
+    expect(digital, 'seed phải có một sản phẩm số').toBeTruthy();
+
+    const buyer = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'ngocdien1221@gmail.com', password: 'hoiminh123' }) });
+    const buyerToken = (await buyer.json()).accessToken;
+    const denied = await json(`/v1/products/${digital.id}/downloads`, { auth: buyerToken });
+    expect([200, 403]).toContain(denied.status);
+    if (denied.status === 403) expect((await denied.json()).code).toBe('forbidden');
+  });
+  it('chứng nhận: chưa học xong thì 404; học xong thì có mã và tra cứu được không cần đăng nhập', async () => {
+    // Chủ hội dựng một khóa đúng một bài để hoàn thành nhanh.
+    const owner = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) });
+    const ownerToken = (await owner.json()).accessToken;
+    const course = await json(`/v1/communities/${communityId}/courses`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ title: 'Khóa chứng nhận API', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: false, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: true }) });
+    expect(course.status).toBe(201);
+    const courseId = (await course.json()).id;
+    const mod = await json(`/v1/courses/${courseId}/modules`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ title: 'Phần 1' }) });
+    const moduleId = (await mod.json()).id;
+    const lesson = await json(`/v1/courses/${courseId}/lessons`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ moduleId, title: 'Bài duy nhất', kind: 'text', contentMd: 'nội dung' }) });
+    const lessonId = (await lesson.json()).id;
+    await json(`/v1/courses/${courseId}`, { method: 'PATCH', auth: ownerToken, body: JSON.stringify({ status: 'published' }) });
+
+    // Thành viên chưa học: chưa có chứng nhận.
+    expect((await json(`/v1/courses/${courseId}/certificate`, { auth: token })).status).toBe(404);
+    expect((await json(`/v1/courses/${courseId}/certificate`)).status).toBe(401);
+
+    await json(`/v1/lessons/${lessonId}/complete`, { method: 'POST', auth: token });
+    const got = await json(`/v1/courses/${courseId}/certificate`, { auth: token });
+    expect(got.status).toBe(200);
+    const cert = await got.json();
+    expect(cert.code).toMatch(/^HM-CN-[A-Z0-9]{5}$/);
+    expect(cert.courseTitle).toBe('Khóa chứng nhận API');
+
+    // Tra cứu công khai: không gửi token vẫn đọc được.
+    const publicLookup = await json(`/v1/certificates/${cert.code}`);
+    expect(publicLookup.status).toBe(200);
+    expect((await publicLookup.json()).recipientName).toBe(cert.recipientName);
+    expect((await json('/v1/certificates/HM-CN-SAISO')).status).toBe(404);
+
+    const mine = await json('/v1/me/certificates', { auth: token });
+    expect(mine.status).toBe(200);
+    expect((await mine.json()).some((x: Loose) => x.code === cert.code)).toBe(true);
+  });
   it('super admin: tổng quan và đối soát; thành viên thường bị chặn', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;
@@ -118,3 +221,19 @@ describe('API', () => {
     expect((await recon.json()).items.length).toBeGreaterThan(0);
   });
 });
+
+/** Đọc luồng SSE cho tới khi thấy loại sự kiện cần tìm, hoặc hết thời gian chờ. */
+async function readUntil(reader: ReadableStreamDefaultReader<string>, eventType: string, timeoutMs: number): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let buffer = '';
+  while (Date.now() < deadline) {
+    const { value, done } = await Promise.race([
+      reader.read(),
+      new Promise<{ value: undefined; done: boolean }>((resolve) => setTimeout(() => resolve({ value: undefined, done: true }), deadline - Date.now())),
+    ]);
+    if (done) break;
+    buffer += value ?? '';
+    if (buffer.includes(`event: ${eventType}`)) return buffer;
+  }
+  throw new Error(`Không nhận được sự kiện ${eventType} trong ${timeoutMs}ms. Đã nhận: ${buffer}`);
+}

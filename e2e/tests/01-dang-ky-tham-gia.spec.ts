@@ -18,8 +18,7 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   await expect(page).toHaveURL(/xac-minh-email/);
   await page.getByLabel('Số thứ 1').click();
   await page.keyboard.type('482913');
-  const verify = page.getByRole('button', { name: 'Xác minh' });
-  if (await verify.isEnabled().catch(() => false)) await verify.click();
+  // Trang tự gọi xác minh ngay khi đủ 6 số, nên chỉ chờ chuyển trang; bấm nút ở đây sẽ đua với lần tự gọi đó.
   await expect(page).not.toHaveURL(/xac-minh-email/, { timeout: 20_000 });
 
   await page.goto('/minhquy');

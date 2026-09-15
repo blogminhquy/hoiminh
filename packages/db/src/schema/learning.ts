@@ -138,3 +138,30 @@ export const courseEnrollments = pgTable(
   },
   (t) => [uniqueIndex('course_enrollments_uq').on(t.courseId, t.userId)],
 );
+
+/**
+ * Chứng nhận hoàn thành khóa học.
+ *
+ * Tên người nhận, tên khóa và tên hội được **chụp lại lúc cấp**: chứng nhận là bản ghi của một thời điểm,
+ * đổi tên tài khoản hay đổi tên khóa về sau không được làm thay đổi tờ đã cấp.
+ */
+export const certificates = pgTable(
+  'certificates',
+  {
+    id: id(),
+    /** Mã tra cứu công khai in trên chứng nhận, ví dụ HM-CN-A3F9K. */
+    code: text('code').notNull(),
+    courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    communityId: uuid('community_id'),
+    workspaceId: uuid('workspace_id'),
+    recipientName: text('recipient_name').notNull(),
+    courseTitle: text('course_title').notNull(),
+    issuerName: text('issuer_name').notNull(),
+    lessonCount: integer('lesson_count').notNull().default(0),
+    issuedAt: ts('issued_at').notNull().defaultNow(),
+    revokedAt: ts('revoked_at'),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('certificates_code_uq').on(t.code), uniqueIndex('certificates_course_user_uq').on(t.courseId, t.userId), index('certificates_user_idx').on(t.userId)],
+);

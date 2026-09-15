@@ -27,6 +27,7 @@ export default function Page() {
   const isAccount = pathname === '/tai-khoan/ho-so' && hash === '#tai-khoan';
   const items: Array<{ label: string; to: string; on: boolean }> = [
     { label: 'Cộng đồng của tôi', to: '/admin', on: false },
+    { label: 'Khu học tập', to: '/hoc', on: false },
     { label: 'Hồ sơ', to: '/tai-khoan/ho-so', on: pathname === '/tai-khoan/ho-so' && !isAccount },
     { label: 'Cộng sự', to: '/tai-khoan/cong-su', on: pathname.startsWith('/tai-khoan/cong-su') },
     { label: 'Tài khoản', to: '/tai-khoan/ho-so#tai-khoan', on: isAccount },

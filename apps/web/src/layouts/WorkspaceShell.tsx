@@ -3,11 +3,12 @@ import { Bell } from 'lucide-react';
 import { Avatar, Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
-import { useAuth, useBadges } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
+import { useLiveBadges } from '@/lib/realtime';
 
 export function WorkspaceShell() {
   const { user, loading } = useAuth();
-  const badges = useBadges();
+  const badges = useLiveBadges();
   const location = useLocation();
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;

@@ -51,10 +51,10 @@ export function useAuth(): AuthContextValue {
   return v;
 }
 
-/** Badge tin nhắn/thông báo, làm mới mỗi 15 giây (polling). */
-export function useBadges() {
+/** Badge tin nhắn/thông báo. Nhịp polling mặc định 15 giây; dùng useLiveBadges để giãn nhịp khi có luồng thời gian thực. */
+export function useBadges(refetchInterval = 15_000) {
   const { user } = useAuth();
-  return useQuery({ queryKey: ['badges'], queryFn: () => api.get<{ unreadNotifications: number; unreadMessages: number }>('/v1/me/badges'), enabled: Boolean(user), refetchInterval: 15_000, staleTime: 10_000 });
+  return useQuery({ queryKey: ['badges'], queryFn: () => api.get<{ unreadNotifications: number; unreadMessages: number }>('/v1/me/badges'), enabled: Boolean(user), refetchInterval, staleTime: 10_000 });
 }
 
 /** Hội "hiện tại" để render tin nhắn/thông báo/tài khoản trong khung hội. */

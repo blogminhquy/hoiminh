@@ -2,7 +2,7 @@
 import { formatMoney } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
-import { communities, communityMembers, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
+import { communities, communityMembers, messages, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
@@ -69,19 +69,22 @@ export function registerHandlers(app: AppContext): void {
         const items = await raw(c.db, sql`select item_product_id from bundle_items where bundle_product_id = ${product.id}`);
         for (const r of items as Array<{ item_product_id: string }>) await grant(c, { userId: p.userId, workspaceId: p.workspaceId, communityId: p.communityId, resourceType: 'product', resourceId: r.item_product_id, sourceType: 'community_bundle', sourceId: order.id });
       }
-      const m = await c.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, p.communityId), eq(communityMembers.userId, p.userId)) });
-      if (!m) {
-        // Người ngoài hội mua lẻ: tạo thành viên Tiêu chuẩn để vào học (mục 153 cho phép học không cần hội; V1 gắn vào hội để có dashboard).
-        const { joinCommunity } = await import('../services/members');
-        const community = await communityOf(c, p.communityId);
-        if (community && (community.pricingMode === 'free' || community.pricingMode === 'freemium')) await joinCommunity({ ...c, actor: { type: 'user', userId: p.userId, isSuperAdmin: false, email: user.email } }, community.slug, {}).catch(() => null);
-      }
+      // V2 (mục 153): người ngoài hội mua lẻ KHÔNG bị tự thêm vào hội nữa. Quyền học đã nằm ở entitlement,
+      // và Khu học tập /hoc phục vụ được người có 0 hội. Muốn vào hội thì tự bấm ở lời mời trên Khu học tập.
     } else if (p.targetType === 'platform' && p.workspaceId) {
       await activatePlatformPurchase(c, { workspaceId: p.workspaceId, orderId: order.id, cycle: (meta.cycle as 'monthly' | 'yearly') ?? 'monthly', paidAt, provider: p.provider, userId: p.userId });
     }
     await createCommissionForPayment(c, { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, communityId: p.communityId, workspaceId: p.workspaceId, amountMinor: p.amountMinor, targetType: p.targetType, affiliateAccountId: p.affiliateAccountId });
     const community = await communityOf(c, p.communityId);
-    const link = p.targetType === 'platform' ? `${c.env.APP_URL}/admin` : p.targetType === 'product' ? `${c.env.APP_URL}/${community?.slug}/cua-hang/${meta.productSlug ?? ''}` : `${c.env.APP_URL}/${community?.slug}/khoa-hoc`;
+    // Người mua lẻ không phải thành viên: gửi về Khu học tập, vì khung hội sẽ chặn họ ở cửa.
+    const isMember = p.communityId
+      ? Boolean(await c.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, p.communityId), eq(communityMembers.userId, p.userId)) }))
+      : false;
+    const link = p.targetType === 'platform'
+      ? `${c.env.APP_URL}/admin`
+      : p.targetType === 'product'
+        ? (isMember ? `${c.env.APP_URL}/${community?.slug}/cua-hang/${meta.productSlug ?? ''}` : `${c.env.APP_URL}/hoc`)
+        : `${c.env.APP_URL}/${community?.slug}/khoa-hoc`;
     await c.email.send(templates.paymentSucceeded(user.email, user.name, meta.title ?? 'đơn hàng', formatMoney(p.amountMinor, p.currency as 'VND'), link));
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.succeeded', category: 'payment', title: `Thanh toán ${formatMoney(p.amountMinor, p.currency as 'VND')} thành công · ${meta.title ?? ''}`, body: 'Quyền truy cập đã được mở', link: link.replace(c.env.APP_URL, ''), actionLabel: 'Vào học' });
     if (community) {
@@ -113,8 +116,13 @@ export function registerHandlers(app: AppContext): void {
   bus.on('course.completed', async (p) => {
     const c = ctx();
     const community = await communityOf(c, p.communityId);
-    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: 'Chứng nhận có tên bạn đã sẵn sàng', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
-    await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId });
+    // Cấp chứng nhận trước rồi mới báo, để thông báo dẫn tới tờ có thật chứ không hứa suông.
+    const { issueCertificate } = await import('../services/certificates');
+    const cert = await issueCertificate(c, p.courseId, p.userId);
+    await notify(c, cert
+      ? { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: `Chứng nhận ${cert.code} có tên bạn đã sẵn sàng`, link: `/chung-nhan/${cert.code}`, actionLabel: 'Xem chứng nhận' }
+      : { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: '', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
+    await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId, certificateCode: cert?.code ?? null });
   });
 
   bus.on('post.created', async (p) => {
@@ -195,6 +203,18 @@ export function registerHandlers(app: AppContext): void {
   bus.on('message.sent', async (p) => {
     const c = ctx();
     const sender = await userOf(c, p.senderUserId);
+    // Thời gian thực: đẩy tin ngay cho người nhận đang mở luồng, và cho chính người gửi ở tab/thiết bị khác.
+    const msg = await c.db.query.messages.findFirst({ where: eq(messages.id, p.messageId) });
+    if (msg) {
+      c.realtime.publish([...p.recipientUserIds, p.senderUserId], {
+        type: 'message.new',
+        conversationId: p.conversationId,
+        message: { id: msg.id, conversationId: msg.conversationId, senderUserId: msg.senderUserId, body: msg.body, imageUrl: msg.imageUrl, automated: msg.automated, readAt: msg.readAt?.toISOString() ?? null, createdAt: msg.createdAt.toISOString() },
+        senderName: sender?.name ?? 'Ai đó',
+        preview: msg.body.slice(0, 120),
+      });
+      c.realtime.publish(p.recipientUserIds, { type: 'badges.changed' });
+    }
     for (const rid of p.recipientUserIds) {
       const r = await userOf(c, rid);
       if (!r) continue;
