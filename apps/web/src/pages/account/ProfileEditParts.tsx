@@ -1,8 +1,10 @@
-// Khối con của trang Hồ sơ: ảnh đại diện + ảnh bìa, Liên kết, Quyền riêng tư, mục Tài khoản.
-import { AVATAR_COLORS, Avatar, Button, Input, Select, T, Tag, Toggle } from '@hoiminh/ui';
-import { ExternalLink, Globe, Image, MessageCircle, Plus, Video, X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+// Khối con của trang Hồ sơ: ảnh đại diện + ảnh bìa, Liên kết, Quyền riêng tư, Đổi mật khẩu, mục Tài khoản.
+import { useMutation } from '@tanstack/react-query';
+import { AVATAR_COLORS, Avatar, Button, Field, Input, Select, T, Tag, Toggle } from '@hoiminh/ui';
+import { ExternalLink, Eye, EyeOff, Globe, Image, MessageCircle, Plus, Video, X } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { api, errorMessage } from '@/lib/api';
 
 export interface ProfileLink { kind: string; label: string; url: string }
 export interface Privacy { publicProfile: boolean; showProgress: boolean; showCommunities: boolean; allowMessages: boolean }
@@ -88,6 +90,57 @@ export function PrivacyCard({ privacy, onChange }: { privacy: Privacy; onChange:
   );
 }
 
+/** Đổi mật khẩu: nhập mật khẩu hiện tại, mật khẩu mới và xác nhận. Mặc định đẩy các thiết bị khác ra. */
+export function PasswordCard() {
+  const [f, setF] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [logoutOthers, setLogoutOthers] = useState(true);
+  const [show, setShow] = useState(false);
+  const [done, setDone] = useState(false);
+  const m = useMutation({
+    mutationFn: () => api.post('/v1/me/password', { currentPassword: f.currentPassword, newPassword: f.newPassword, logoutOthers }),
+    onSuccess: () => {
+      setF({ currentPassword: '', newPassword: '', confirm: '' });
+      setDone(true);
+      setTimeout(() => setDone(false), 4000);
+    },
+  });
+  const tooShort = f.newPassword.length > 0 && f.newPassword.length < 8;
+  const mismatch = f.confirm.length > 0 && f.confirm !== f.newPassword;
+  const same = f.newPassword.length > 0 && f.newPassword === f.currentPassword;
+  const ok = f.currentPassword.length > 0 && f.newPassword.length >= 8 && f.confirm === f.newPassword && !same;
+  const eye = (
+    <button type="button" aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShow((v) => !v)} style={{ color: T.ink3 }}>
+      {show ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+  );
+  return (
+    <div id="mat-khau" className="card px-6 py-5 flex flex-col gap-3.5" style={{ scrollMarginTop: 80 }}>
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">Đổi mật khẩu</span>
+        {done && <span className="text-[13px] font-semibold" style={{ color: T.teal }}>Đã đổi mật khẩu</span>}
+      </div>
+      <div className="grid-2">
+        <Field label="Mật khẩu hiện tại">
+          <Input type={show ? 'text' : 'password'} autoComplete="current-password" value={f.currentPassword} onChange={(e) => setF({ ...f, currentPassword: e.target.value })} right={eye} />
+        </Field>
+        <span className="hide-mobile" />
+        <Field label="Mật khẩu mới" hint={tooShort ? 'Tối thiểu 8 ký tự' : same ? 'Phải khác mật khẩu hiện tại' : 'Tối thiểu 8 ký tự'}>
+          <Input type={show ? 'text' : 'password'} autoComplete="new-password" value={f.newPassword} onChange={(e) => setF({ ...f, newPassword: e.target.value })} />
+        </Field>
+        <Field label="Nhập lại mật khẩu mới" hint={mismatch ? 'Hai ô chưa khớp' : undefined}>
+          <Input type={show ? 'text' : 'password'} autoComplete="new-password" value={f.confirm} onChange={(e) => setF({ ...f, confirm: e.target.value })} />
+        </Field>
+      </div>
+      {m.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
+      <div className="flex items-center gap-3 flex-wrap pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
+        <Toggle on={logoutOthers} onChange={setLogoutOthers} label="Đăng xuất khỏi các thiết bị khác" />
+        <span className="flex-grow" />
+        <Button size="sm" variant="dark" loading={m.isPending} disabled={!ok} onClick={() => m.mutate()}>Đổi mật khẩu</Button>
+      </div>
+    </div>
+  );
+}
+
 export function AccountCard({ email, verifiedAt, onLogout }: { email: string; verifiedAt: string | null; onLogout: () => void }) {
   return (
     <div id="tai-khoan" className="card px-6 py-5 flex flex-col gap-3.5" style={{ scrollMarginTop: 80 }}>
@@ -96,6 +149,10 @@ export function AccountCard({ email, verifiedAt, onLogout }: { email: string; ve
         <span className="muted" style={{ width: 130 }}>Email đăng nhập</span>
         <span className="font-medium">{email}</span>
         {verifiedAt ? <Tag tone="teal">Đã xác minh</Tag> : <Link to="/xac-minh-email" className="text-[13px] font-semibold">Chưa xác minh · xác minh ngay</Link>}
+      </div>
+      <div className="flex items-center gap-3 text-[14px] flex-wrap">
+        <span className="muted" style={{ width: 130 }}>Mật khẩu</span>
+        <a href="#mat-khau" className="text-[13px] font-semibold">Đổi mật khẩu</a>
       </div>
       <div className="flex items-center gap-3 text-[14px] flex-wrap">
         <span className="muted" style={{ width: 130 }}>Xác thực hai lớp</span>

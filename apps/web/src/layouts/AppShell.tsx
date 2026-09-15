@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
+import { PublicHeader } from './PublicHeader';
 
 function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
   return (
@@ -123,7 +124,19 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   useEffect(() => { if (communityId && user) void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}/v1/communities/${communityId}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [user, communityId]);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
-  if (!slug) return <Navigate to="/kham-pha" replace />;
+  if (!slug) {
+    // Trang trong hội thì phải có hội. Còn Tài khoản, Tin nhắn, Thông báo, hồ sơ người khác là của
+    // riêng người dùng — người chưa vào hội nào (vừa đăng ký, hoặc quản trị hệ thống) vẫn phải mở được.
+    if (requireMember) return <Navigate to="/kham-pha" replace />;
+    return (
+      <div className="flex flex-col min-h-screen" style={{ background: T.bg }}>
+        <PublicHeader />
+        <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
   if (shell.isLoading) return <div className="p-8"><LoadingBlock /></div>;
   if (shell.isError) return <div className="p-8"><ErrorBox message={errorMessage(shell.error)} onRetry={() => void shell.refetch()} /></div>;
   const data = shell.data!;

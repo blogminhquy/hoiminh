@@ -81,3 +81,10 @@ export function fmtShortMoney(amountMinor: number): string {
 export function pct(a: number, b: number): number {
   return b ? Math.round((a / b) * 100) : 0;
 }
+/** 1,4 MB · 820 KB */
+export function fmtBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes < 0) return '';
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1).replace('.0', '').replace('.', ',')} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}

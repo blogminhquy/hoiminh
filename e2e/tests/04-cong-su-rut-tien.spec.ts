@@ -23,7 +23,8 @@ test('cộng sự rút tiền và chủ hội chi trả thủ công', async ({ p
   await expect(page.getByRole('heading', { name: 'Yêu cầu rút của cộng sự' })).toBeVisible();
   const row = page.locator('div', { hasText: 'hoangvu@gmail.com' }).filter({ has: page.getByRole('button', { name: 'Xem xét' }) }).last();
   await row.getByRole('button', { name: 'Xem xét' }).click();
-  await expect(page.getByText('Chủ tài khoản')).toBeVisible();
+  // exact: bảng "Đã xử lý gần đây" có dòng từ chối "Sai tên chủ tài khoản…" cũng chứa chuỗi này.
+  await expect(page.getByText('Chủ tài khoản', { exact: true })).toBeVisible();
   await expect(page.locator('img[alt*="QR"], img[src*="qr"]').first()).toBeVisible();
   await page.getByPlaceholder(/FT|tham chiếu/i).first().fill(`FT${Date.now()}`);
   await page.getByRole('button', { name: 'Đã chuyển khoản' }).click();

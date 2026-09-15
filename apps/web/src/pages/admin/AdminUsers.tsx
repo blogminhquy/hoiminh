@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Chip, T, money } from '@hoiminh/ui';
 import { Search, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -17,7 +17,9 @@ export default function Page() {
   const qc = useQueryClient();
   const { user: me } = useAuth();
   const [status, setStatus] = useState<'all' | 'active' | 'suspended'>('all');
-  const [q, setQ] = useState('');
+  // Nhận từ khóa từ ô tìm nhanh trên header quản trị (?q=...).
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') ?? '');
   const list = useQuery({ queryKey: ['admin', 'users', status, q], queryFn: () => api.get<List>(`/v1/admin/users?${new URLSearchParams({ ...(status === 'all' ? {} : { status }), ...(q ? { q } : {}) })}`) });
   const act = useMutation({ mutationFn: (p: { id: string; action: Action; reason: string }) => api.post(`/v1/admin/users/${p.id}/action`, { action: p.action, reason: p.reason }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'users'] }) });
   const run = (r: Row, action: Action) => { const reason = action === 'suspend' ? window.prompt('Lý do tạm khóa:') ?? '' : ''; if (action === 'suspend' && !reason) return; if (action.includes('super_admin') && !window.confirm('Xác nhận đổi quyền super admin?')) return; act.mutate({ id: r.id, action, reason }); };

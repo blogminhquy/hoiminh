@@ -1,22 +1,23 @@
 {
   "name": "hoiminh",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Hội Mình · nền tảng cộng đồng, khóa học và thanh toán cho Việt Nam",
   "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=20.11"
   },
   "scripts": {
-    "dev": "turbo run dev --parallel",
+    "dev": "turbo run dev --parallel --filter=!@hoiminh/mcp",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "eslint . --max-warnings=0",
-    "test": "turbo run test",
+    "test": "turbo run test --filter=!@hoiminh/e2e",
     "test:e2e": "pnpm --filter @hoiminh/e2e test",
     "db:generate": "pnpm --filter @hoiminh/db generate",
     "db:migrate": "pnpm --filter @hoiminh/db migrate",
     "db:seed": "pnpm --filter @hoiminh/db seed",
+    "db:admin": "pnpm --filter @hoiminh/db admin",
     "db:reset": "pnpm --filter @hoiminh/db reset",
     "deploy": "node infra/deploy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test"

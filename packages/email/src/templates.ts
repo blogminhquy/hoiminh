@@ -29,6 +29,8 @@ const make = (template: string, to: string, subject: string, title: string, body
 export const templates = {
   verifyCode: (to: string, name: string, code: string) =>
     make('verify_code', to, `${code} là mã xác minh Hội Mình của bạn`, 'Xác minh email', `<p>Chào ${name}, nhập mã dưới đây để xác minh email. Mã hết hạn sau 15 phút.</p><p style="font-size:32px;font-weight:800;letter-spacing:0.2em;">${code}</p>`),
+  passwordChanged: (to: string, name: string) =>
+    make('password_changed', to, 'Mật khẩu Hội Mình của bạn vừa được đổi', 'Mật khẩu đã đổi', `<p>Chào ${name}, mật khẩu tài khoản của bạn vừa được đổi. Nếu không phải bạn làm việc này, hãy đặt lại mật khẩu ngay và kiểm tra email đăng nhập.</p>`),
   resetPassword: (to: string, name: string, url: string) =>
     make('reset_password', to, 'Đặt lại mật khẩu Hội Mình', 'Đặt lại mật khẩu cho tài khoản của bạn', `<p>Chào ${name}, bấm nút dưới đây để đặt mật khẩu mới. Link hết hạn sau 30 phút.</p>`, { label: 'Đặt mật khẩu mới', url }),
   welcomeMember: (to: string, name: string, community: string, url: string) =>

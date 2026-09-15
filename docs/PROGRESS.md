@@ -96,11 +96,44 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 ## Đã kiểm chứng
 - Clone sạch từ GitHub (2026-09-15): `pnpm install --frozen-lockfile && pnpm db:migrate && pnpm db:seed` chạy được, mở http://localhost:5173 thấy Bảng tin hội mẫu sau khi đăng nhập.
 - `pnpm test:e2e` 8 passed; `pnpm test` 51 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+- Deploy Cloudflare Pages (2026-09-15): project `hoiminh-web`, https://hoiminh-web.pages.dev mở được trang đăng nhập, `/version.json` trả `Cache-Control: no-store` đúng như `_headers`, nhãn phiên bản hiện `v1.0.0 · 53033d0` ở góc dưới bên trái.
+- Nhãn phiên bản: thử đổi `dist/version.json` sang buildId khác → nhãn chuyển sang "Có bản mới" màu cam, bảng chi tiết hiện phiên bản máy chủ và nút **Cập nhật ngay**; tab "Máy này" ghi đúng các bản đã dùng.
+- Production (2026-09-15): https://hoiminh.com và https://www.hoiminh.com phục vụ bằng Worker static assets, https://api.hoiminh.com bằng Worker + Hyperdrive → Supabase (84 bảng, 89 policy). `/health` trả `db: ok`; 12/12 lần đăng nhập liên tiếp trả 200 sau khi bỏ cache App giữa các request. Đăng nhập trên trình duyệt bằng `minhquy1711@gmail.com` vào được `/he-thong` với quyền super admin.
+
+## Rà soát 2026-09-15 (lệnh `/ra-soat`)
+
+Tìm theo bốn tầng: có tài liệu mà không có code · có code mà không nối · có nối mà không chạy thật · có chạy mà không có test.
+
+| Phát hiện | Tầng | Xử lý |
+|---|---|---|
+| Không có màn tạo sản phẩm số / combo (chỉ tạo được khóa học) | code có, không nối | ✅ thêm `/:slug/cua-hang/moi` + `/sua` |
+| Mua sản phẩm số xong không tải được tệp | nối hỏng | ✅ khối tải tệp ở trang sản phẩm |
+| API key + webhook gửi đi không có màn nào (kiến trúc mục 13) | tài liệu có, code không | ✅ `/admin/nha-phat-trien` |
+| Chủ hội không đặt được câu hỏi khi xin vào hội | code có, không nối | ✅ trong Cài đặt · Chung |
+| `pnpm dev` hỏng vì gói mcp thoát ngay | có chạy, không ai kiểm | ✅ lọc mcp khỏi `dev` |
+| Ô tìm kiếm header quản trị là ô chết | code có, không nối | ✅ Enter → Hội / Người dùng kèm `?q=` |
+| `feature-flags.isEnabled` không ai gọi — super admin bật/tắt cờ không có tác dụng gì | code có, không nối | ⏳ chưa làm |
+| `POST /orders/:id/admin-refund` không có nút nào gọi | code có, không nối | ⏳ chưa làm |
+| Xác thực hai lớp, giao diện tối ghi "sắp có" | tài liệu có, code không | ⏳ chưa làm |
+| R2 chưa cấu hình nên tải ảnh/video hỏng trên Worker | nối, không chạy thật | ⏳ cần credential |
+| RLS có 89 policy nhưng service không đặt biến phiên | nối, không chạy thật | ⏳ cần quyết định |
 
 ## Việc kế tiếp
-1. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy); chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`.
-2. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-3. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) rồi `gh variable set DEPLOY_API --body true` để workflow Deploy tự đẩy cả web lẫn API.
+2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so` mục Đổi mật khẩu.
+3. R2: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video sẽ hỏng vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
+4. Email: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
+5. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
+6. RLS chưa có tác dụng: service layer không đặt `app.user_id` / `app.workspace_ids` / `app.community_ids` nên policy trong `0001_rls.sql` không chạy (API dùng chính role sở hữu bảng). Muốn bật thật phải set biến phiên trong từng transaction.
+7. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+
+## Bẫy đã gặp khi viết e2e
+
+Hai lần CI đỏ mà máy local xanh, cùng một kiểu: test đua với chính giao diện.
+
+- **Selector khớp-chứa.** `getByText('Chủ tài khoản')` trúng luôn dòng từ chối "Sai tên chủ tài khoản…" ở bảng lịch sử. Chỉ lộ khi bảng kịp render đúng lúc assert. Dùng `{ exact: true }` cho nhãn ngắn.
+- **Bấm nút trên form tự gửi.** `VerifyEmail` tự gọi API khi đủ 6 số; bấm thêm nút "Xác minh" thì gặp nút disabled rồi phần tử bị gỡ khỏi DOM, click treo tới hết 90 giây. Guard `isEnabled()` không cứu được vì trạng thái đổi ngay sau khi kiểm. Với form tự gửi thì chỉ nhập rồi chờ kết quả.
+- Nhớ là **retry của Playwright dùng lại database cũ** (`webServer` chỉ reset một lần mỗi lần chạy). Test nào tiêu tài nguyên có hạn — ví dụ rút hết tiền trong ví — thì lần chạy lại chắc chắn hỏng.
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.

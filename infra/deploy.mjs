@@ -1,4 +1,4 @@
-// Script deploy: migration lên Supabase → build web → deploy Worker API → deploy Pages.
+// Script deploy: migration lên Supabase → deploy Worker API → build web → deploy Worker web.
 // Dùng: node infra/deploy.mjs [--skip-migrate] [--skip-web] [--skip-api]
 import { execSync } from 'node:child_process';
 
@@ -15,9 +15,9 @@ if (!args.has('--skip-migrate')) {
   }
   run('pnpm --filter @hoiminh/db migrate');
 }
-if (!args.has('--skip-api')) run('pnpm --filter @hoiminh/api deploy');
+if (!args.has('--skip-api')) run('pnpm --filter @hoiminh/api run deploy');
 if (!args.has('--skip-web')) {
   run('pnpm --filter @hoiminh/web build');
-  run('npx wrangler pages deploy apps/web/dist --project-name hoiminh-web');
+  run('pnpm --filter @hoiminh/web run deploy');
 }
 console.log('\n✔ Deploy xong.');

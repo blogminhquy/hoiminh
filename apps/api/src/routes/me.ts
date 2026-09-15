@@ -1,11 +1,12 @@
 // /v1/me: tài khoản, hồ sơ, badge, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
-import { notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
+import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
 import { affiliate, auth, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
+import { rateLimit } from '../middleware/common';
 
 export const meRoutes = router();
 meRoutes.use('*', requireAuth);
@@ -24,6 +25,12 @@ meRoutes.patch('/', async (c) => {
   }
   return c.json(await users.updateProfile(ctx, { ...input, avatarUrl }));
 });
+meRoutes.post('/password', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+  const input = await parse(changePasswordSchema, await body(c));
+  await auth.changePassword(c.get('ctx'), c.get('app').auth, input, c.get('sessionId'));
+  return c.json({ ok: true });
+});
+
 meRoutes.get('/badges', async (c) => c.json(await notifications.badges(c.get('ctx'))));
 meRoutes.get('/communities', async (c) => c.json(await shell.myCommunities(c.get('ctx'))));
 meRoutes.get('/workspace', async (c) => c.json(await workspaces.myWorkspaceHome(c.get('ctx'))));

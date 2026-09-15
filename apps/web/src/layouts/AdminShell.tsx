@@ -2,11 +2,29 @@
 import { BadgeCheck, FileText, House, MessageCircle, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
 import { Avatar, Logo, T, Tag } from '@hoiminh/ui';
 import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+
+/** Ô tìm nhanh: Enter đưa tới danh sách Hội hoặc Người dùng kèm từ khóa (đoán theo có dấu @ hay không). */
+function AdminSearch() {
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  const go = () => {
+    const term = q.trim();
+    if (!term) return;
+    const to = term.includes('@') ? '/he-thong/nguoi-dung' : '/he-thong/hoi';
+    navigate(`${to}?q=${encodeURIComponent(term)}`);
+  };
+  return (
+    <form className="input search hide-mobile" style={{ width: 420 }} onSubmit={(e) => { e.preventDefault(); go(); }}>
+      <Search size={18} style={{ color: T.ink3 }} />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm hội, người dùng, giao dịch, email…" className="flex-grow min-w-0" />
+    </form>
+  );
+}
 
 function Item({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
   return (
@@ -57,7 +75,7 @@ export function AdminShell() {
       <div className="flex-grow flex flex-col min-w-0">
         <header className="flex items-center gap-4 px-4 md:px-8" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
           <span className="only-mobile"><Logo size={22} /></span>
-          <div className="input search hide-mobile" style={{ width: 420 }}><Search size={18} style={{ color: T.ink3 }} /><input placeholder="Tìm hội, người dùng, giao dịch, email…" /></div>
+          <AdminSearch />
           <span className="flex-grow" />
           <Tag tone={health.data?.env === 'production' ? 'accent' : 'teal'}>Môi trường: {health.data?.env === 'production' ? 'Production' : (health.data?.env ?? '…')}</Tag>
           <Link to="/admin" className="btn btn-ghost btn-sm">Về Hội của tôi</Link>

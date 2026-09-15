@@ -107,6 +107,28 @@ describe('API', () => {
     expect(r.headers.get('location')).toContain('/minhquy?ref=hv8k2');
     expect(r.headers.get('set-cookie')).toContain('hm_ref=hv8k2');
   });
+  it('đổi mật khẩu: sai mật khẩu hiện tại bị chặn, đúng thì mật khẩu cũ hết hiệu lực và phiên khác bị thu hồi', async () => {
+    const login = async (password: string) => json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password }) });
+    const first = await login('hoiminh123');
+    const mine = (await first.json()).accessToken;
+    // Một phiên thứ hai trên "thiết bị khác" — phải bị đẩy ra sau khi đổi mật khẩu.
+    const other = (await (await login('hoiminh123')).json()).accessToken;
+
+    const wrong = await json('/v1/me/password', { method: 'POST', auth: mine, body: JSON.stringify({ currentPassword: 'sai-roi', newPassword: 'mat-khau-moi-123' }) });
+    expect(wrong.status).toBe(422);
+
+    const same = await json('/v1/me/password', { method: 'POST', auth: mine, body: JSON.stringify({ currentPassword: 'hoiminh123', newPassword: 'hoiminh123' }) });
+    expect(same.status).toBe(422);
+
+    const ok = await json('/v1/me/password', { method: 'POST', auth: mine, body: JSON.stringify({ currentPassword: 'hoiminh123', newPassword: 'mat-khau-moi-123' }) });
+    expect(ok.status).toBe(200);
+
+    expect((await login('hoiminh123')).status).toBe(401);
+    expect((await login('mat-khau-moi-123')).status).toBe(200);
+    // Phiên đang dùng để đổi vẫn sống, phiên còn lại đã bị thu hồi.
+    expect((await json('/v1/me', { auth: mine })).status).toBe(200);
+    expect((await json('/v1/me', { auth: other })).status).toBe(401);
+  });
   it('super admin: tổng quan và đối soát; thành viên thường bị chặn', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;

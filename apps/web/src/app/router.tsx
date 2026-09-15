@@ -36,6 +36,7 @@ const ownerRoutes: RouteObject = {
     { path: '/admin', element: page(() => import('@/pages/owner/WorkspaceHome')) },
     { path: '/admin/tao-hoi', element: page(() => import('@/pages/owner/WorkspaceCreate')) },
     { path: '/admin/goi', element: page(() => import('@/pages/owner/WorkspaceHome')) },
+    { path: '/admin/nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
   ],
 };
 
@@ -76,6 +77,8 @@ const communityRoutes: RouteObject = {
         { path: 'khoa-hoc/:courseId/soan', element: page(() => import('@/pages/community/CourseBuilder')) },
         { path: 'bai/:lessonId', element: page(() => import('@/pages/community/Classroom')) },
         { path: 'cua-hang', element: page(() => import('@/pages/community/Store')) },
+        { path: 'cua-hang/moi', element: page(() => import('@/pages/community/ProductCreate')) },
+        { path: 'cua-hang/:productSlug/sua', element: page(() => import('@/pages/community/ProductCreate')) },
         { path: 'cua-hang/:productSlug', element: page(() => import('@/pages/community/ProductDetail')) },
         { path: 'su-kien', element: page(() => import('@/pages/community/Events')) },
         { path: 'su-kien/moi', element: page(() => import('@/pages/community/EventCreate')) },

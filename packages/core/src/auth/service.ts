@@ -1,8 +1,8 @@
-// Dịch vụ xác thực: đăng ký (ghi nhận người giới thiệu), đăng nhập, xác minh email, quên/đặt lại mật khẩu, phiên.
+// Dịch vụ xác thực: đăng ký (ghi nhận người giới thiệu), đăng nhập, xác minh email, quên/đặt lại/đổi mật khẩu, phiên.
 import { BUSINESS, randomCode, sha256Hex, timingSafeEqual } from '@hoiminh/config';
 import { toSlug, type AuthSession, type AuthUser, type LoginInput, type RegisterInput } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, ne } from 'drizzle-orm';
 import { authSessions, emailVerifications, passwordResets, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, conflict, invalid, notFound, unauthorized } from '../errors';
@@ -150,6 +150,32 @@ export async function resetPassword(ctx: Ctx, provider: AuthProvider, token: str
   await ctx.db.update(passwordResets).set({ consumedAt: ctx.now() }).where(eq(passwordResets.id, row.id));
   if (logoutOthers) await ctx.db.update(authSessions).set({ revokedAt: ctx.now() }).where(and(eq(authSessions.userId, user.id), isNull(authSessions.revokedAt)));
   return issueSession(ctx, provider, user, true);
+}
+
+/**
+ * Đổi mật khẩu khi đang đăng nhập. Phải nhập đúng mật khẩu hiện tại; mặc định thu hồi mọi phiên khác
+ * (phiên hiện tại giữ nguyên) để người lạ đang đăng nhập trên máy khác bị đẩy ra.
+ */
+export async function changePassword(
+  ctx: Ctx,
+  provider: AuthProvider,
+  input: { currentPassword: string; newPassword: string; logoutOthers?: boolean },
+  keepSessionId?: string,
+): Promise<void> {
+  const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
+  if (!userId) throw unauthorized();
+  const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!user) throw notFound();
+  const identity = await provider.signIn(user.email, input.currentPassword, user.id);
+  if (!identity) throw invalid('Mật khẩu hiện tại không đúng');
+  await provider.setPassword(user.authProviderId ?? user.id, input.newPassword);
+  if (input.logoutOthers ?? true) {
+    const where = keepSessionId
+      ? and(eq(authSessions.userId, user.id), isNull(authSessions.revokedAt), ne(authSessions.id, keepSessionId))
+      : and(eq(authSessions.userId, user.id), isNull(authSessions.revokedAt));
+    await ctx.db.update(authSessions).set({ revokedAt: ctx.now() }).where(where);
+  }
+  await ctx.email.send(templates.passwordChanged(user.email, user.name));
 }
 
 export const TRIAL_DAYS = BUSINESS.platformTrialDays;

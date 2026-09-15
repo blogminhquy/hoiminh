@@ -6,15 +6,25 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 APP_ENV = "production"
-APP_URL = "https://hoiminh.vn"
-API_URL = "https://api.hoiminh.vn"
-AUTH_PROVIDER = "supabase"
+APP_URL = "https://hoiminh.com"
+API_URL = "https://api.hoiminh.com"
+AUTH_PROVIDER = "local"
 SEPAY_MODE = "production"
 MOMO_MODE = "production"
 VNPAY_MODE = "sandbox"
 PAYPAL_MODE = "sandbox"
 R2_BUCKET = "hoiminh-files"
 LOG_LEVEL = "info"
+
+# Tên miền riêng: Cloudflare tự tạo bản ghi DNS api.hoiminh.com khi deploy.
+[[routes]]
+pattern = "api.hoiminh.com"
+custom_domain = true
+
+# Hyperdrive: gộp kết nối Postgres phía Cloudflare (Workers không cho dùng lại socket giữa các request).
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "f4c98cf06b33403caab8d1a68e89ab0a"
 
 [[queues.producers]]
 queue = "hoiminh-jobs"

@@ -1,9 +1,11 @@
-// Mảnh trang bán (productDetailMain): rail giá + CTA, thẻ Premium, combo chứa, link cộng sự; khối lợi ích, giáo trình, FAQ.
+// Mảnh trang bán (productDetailMain): rail giá + CTA, tải tệp sản phẩm số đã mua, thẻ Premium, combo chứa, link cộng sự; khối lợi ích, giáo trình, FAQ.
+import { useQuery } from '@tanstack/react-query';
 import { Avatar, T, money } from '@hoiminh/ui';
-import { BadgeCheck, Check, ChevronDown, ChevronRight, Clock, Copy, FileText, Link as LinkIcon, Lock, MessageCircle, Play, QrCode, ShieldCheck, Sparkles, Video } from 'lucide-react';
+import { BadgeCheck, Check, ChevronDown, ChevronRight, Clock, Copy, Download, FileText, Link as LinkIcon, Lock, MessageCircle, Play, QrCode, ShieldCheck, Sparkles, Video } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { fmtDuration } from '@/lib/format';
+import { api, errorMessage } from '@/lib/api';
+import { fmtBytes, fmtDuration } from '@/lib/format';
 
 export interface CurriculumModule { id: string; title: string; lessons: Array<{ id: string; title: string; durationSeconds: number | null; isPreview: boolean; kind: string }> }
 export interface Product {
@@ -75,6 +77,34 @@ function Row({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return <div className="flex items-center gap-2.5"><span style={{ color: T.ink3 }}>{icon}</span>{children}</div>;
 }
 
+interface DigitalFile { id: string; name: string; sizeBytes: number | null; url: string }
+
+/** Danh sách tệp của sản phẩm số đã mua. Link là signed URL sống 15 phút nên lấy khi mở trang. */
+export function DigitalDownloads({ productId }: { productId: string }) {
+  const q = useQuery({
+    queryKey: ['downloads', productId],
+    queryFn: () => api.get<DigitalFile[]>(`/v1/products/${productId}/downloads`),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+  if (q.isLoading) return <span className="muted text-[13px]">Đang lấy link tải…</span>;
+  if (q.isError) return <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(q.error)}</span>;
+  const files = q.data ?? [];
+  if (files.length === 0) return <span className="muted text-[13px]">Chủ hội chưa đính kèm tệp nào. Nhắn cho họ để được gửi.</span>;
+  return (
+    <div className="flex flex-col gap-2">
+      {files.map((f) => (
+        <a key={f.id} href={f.url} download={f.name} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[10px] text-[13px]" style={{ background: T.bg, color: T.ink }}>
+          <FileText size={16} style={{ color: T.ink3 }} />
+          <span className="flex-grow truncate font-medium">{f.name}</span>
+          {f.sizeBytes ? <span className="muted text-[12px] flex-shrink-0">{fmtBytes(f.sizeBytes)}</span> : null}
+          <Download size={15} style={{ color: T.teal }} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function PriceRail({ p, slug, premium }: { p: Product; slug: string; premium: { monthlyMinor: number | null } | null }) {
   const [copied, setCopied] = useState(false);
   const external = p.page?.salesMode === 'external_landing' && p.page.externalLandingUrl;
@@ -85,7 +115,7 @@ export function PriceRail({ p, slug, premium }: { p: Product; slug: string; prem
     <aside className="rail flex flex-col gap-3.5">
       <div className="card p-5 flex flex-col gap-3.5">
         {p.owned ? (
-          <><div className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Bạn đã sở hữu</div>{p.course && <Link to={`/${slug}/khoa-hoc/${p.course.id}`} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>Vào học</Link>}</>
+          <><div className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Bạn đã sở hữu</div>{p.course && <Link to={`/${slug}/khoa-hoc/${p.course.id}`} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>Vào học</Link>}{p.kind === 'digital' && <DigitalDownloads productId={p.id} />}</>
         ) : (
           <>
             <div className="flex items-baseline gap-2.5 flex-wrap"><span className="serif text-[30px] font-extrabold">{money(p.priceMinor)}</span>{p.compareAtMinor ? <span className="muted line-through text-[14px]">{money(p.compareAtMinor)}</span> : null}{p.discountPercent > 0 && <span className="tag" style={{ background: T.ink, color: T.surface }}>-{p.discountPercent}%</span>}</div>

@@ -1,7 +1,0 @@
-# Cloudflare Pages cho apps/web (SPA). Build: `pnpm --filter @hoiminh/web build`, thư mục xuất: apps/web/dist.
-name = "hoiminh-web"
-pages_build_output_dir = "../apps/web/dist"
-
-[vars]
-VITE_API_URL = "https://api.hoiminh.vn"
-VITE_APP_URL = "https://hoiminh.vn"

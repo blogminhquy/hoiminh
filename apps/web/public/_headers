@@ -1,0 +1,14 @@
+# Cloudflare Pages: HTML và version.json không được cache, còn tài nguyên có vân tay thì cache lâu.
+# Nhờ vậy nhãn phiên bản phát hiện bản mới ngay sau khi deploy.
+/version.json
+  Cache-Control: no-store, must-revalidate
+  Content-Type: application/json; charset=utf-8
+
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/
+  Cache-Control: no-cache, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
