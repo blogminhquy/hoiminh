@@ -21,6 +21,7 @@ export * as members from './services/members';
 export * as posts from './services/posts';
 export * as comments from './services/comments';
 export * as courses from './services/courses';
+export * as certificates from './services/certificates';
 export * as learner from './services/learner';
 export * as events from './services/events';
 export * as store from './services/store';

@@ -129,7 +129,7 @@ export default function Page() {
       </div>
       {c && (
         <aside className="rail">
-          <ProgressRing percent={c.progress?.percent ?? 0} doneLessons={c.progress?.completedLessons ?? 0} watchedSeconds={watched} lastAccessedAt={c.progress?.lastAccessedAt ?? null} certificate={c.certificateEnabled} />
+          <ProgressRing percent={c.progress?.percent ?? 0} doneLessons={c.progress?.completedLessons ?? 0} watchedSeconds={watched} lastAccessedAt={c.progress?.lastAccessedAt ?? null} certificate={c.certificateEnabled} courseId={c.id} />
           <ResourceList resources={c.resources} />
           <InstructorCard owner={c.owner} communityId={shell.community.id} />
           <Learners total={c.learners.total} completed={c.learners.completed} sample={c.discussions.map((d) => d.author).filter((u, i, a) => a.findIndex((x) => x.handle === u.handle) === i).slice(0, 6)} />

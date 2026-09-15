@@ -29,6 +29,8 @@ const publicRoutes: RouteObject[] = [
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
   { path: '/thanh-toan/:orderId', element: page(() => import('@/pages/community/Checkout')) },
+  // Tra cứu chứng nhận: công khai, ai cầm mã cũng xem được, không cần đăng nhập.
+  { path: '/chung-nhan/:code', element: page(() => import('@/pages/learner/Certificate')) },
 ];
 
 const ownerRoutes: RouteObject = {

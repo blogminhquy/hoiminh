@@ -176,6 +176,40 @@ describe('API', () => {
     expect([200, 403]).toContain(denied.status);
     if (denied.status === 403) expect((await denied.json()).code).toBe('forbidden');
   });
+  it('chứng nhận: chưa học xong thì 404; học xong thì có mã và tra cứu được không cần đăng nhập', async () => {
+    // Chủ hội dựng một khóa đúng một bài để hoàn thành nhanh.
+    const owner = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) });
+    const ownerToken = (await owner.json()).accessToken;
+    const course = await json(`/v1/communities/${communityId}/courses`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ title: 'Khóa chứng nhận API', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: false, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: true }) });
+    expect(course.status).toBe(201);
+    const courseId = (await course.json()).id;
+    const mod = await json(`/v1/courses/${courseId}/modules`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ title: 'Phần 1' }) });
+    const moduleId = (await mod.json()).id;
+    const lesson = await json(`/v1/courses/${courseId}/lessons`, { method: 'POST', auth: ownerToken, body: JSON.stringify({ moduleId, title: 'Bài duy nhất', kind: 'text', contentMd: 'nội dung' }) });
+    const lessonId = (await lesson.json()).id;
+    await json(`/v1/courses/${courseId}`, { method: 'PATCH', auth: ownerToken, body: JSON.stringify({ status: 'published' }) });
+
+    // Thành viên chưa học: chưa có chứng nhận.
+    expect((await json(`/v1/courses/${courseId}/certificate`, { auth: token })).status).toBe(404);
+    expect((await json(`/v1/courses/${courseId}/certificate`)).status).toBe(401);
+
+    await json(`/v1/lessons/${lessonId}/complete`, { method: 'POST', auth: token });
+    const got = await json(`/v1/courses/${courseId}/certificate`, { auth: token });
+    expect(got.status).toBe(200);
+    const cert = await got.json();
+    expect(cert.code).toMatch(/^HM-CN-[A-Z0-9]{5}$/);
+    expect(cert.courseTitle).toBe('Khóa chứng nhận API');
+
+    // Tra cứu công khai: không gửi token vẫn đọc được.
+    const publicLookup = await json(`/v1/certificates/${cert.code}`);
+    expect(publicLookup.status).toBe(200);
+    expect((await publicLookup.json()).recipientName).toBe(cert.recipientName);
+    expect((await json('/v1/certificates/HM-CN-SAISO')).status).toBe(404);
+
+    const mine = await json('/v1/me/certificates', { auth: token });
+    expect(mine.status).toBe(200);
+    expect((await mine.json()).some((x: Loose) => x.code === cert.code)).toBe(true);
+  });
   it('super admin: tổng quan và đối soát; thành viên thường bị chặn', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;

@@ -116,8 +116,13 @@ export function registerHandlers(app: AppContext): void {
   bus.on('course.completed', async (p) => {
     const c = ctx();
     const community = await communityOf(c, p.communityId);
-    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: 'Chứng nhận có tên bạn đã sẵn sàng', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
-    await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId });
+    // Cấp chứng nhận trước rồi mới báo, để thông báo dẫn tới tờ có thật chứ không hứa suông.
+    const { issueCertificate } = await import('../services/certificates');
+    const cert = await issueCertificate(c, p.courseId, p.userId);
+    await notify(c, cert
+      ? { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: `Chứng nhận ${cert.code} có tên bạn đã sẵn sàng`, link: `/chung-nhan/${cert.code}`, actionLabel: 'Xem chứng nhận' }
+      : { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: '', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
+    await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId, certificateCode: cert?.code ?? null });
   });
 
   bus.on('post.created', async (p) => {

@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.4.0 (2026-09-15)
+
+Chứng nhận hoàn thành khóa học. Trước bản này hệ thống báo "Chứng nhận có tên bạn đã sẵn sàng" khi học viên hoàn thành khóa, nhưng không có gì được cấp: chỉ có một cờ bật/tắt trên bảng `courses`.
+
+- Bảng `certificates` (migration `0002_certificates.sql`) lưu mã tra cứu, tên người nhận, tên khóa, tên hội và ngày cấp, chụp lại tại thời điểm cấp.
+- `packages/core/src/services/certificates.ts`: cấp một lần khi tiến độ đạt 100% và khóa bật chứng nhận, tra cứu theo mã, danh sách chứng nhận của tôi.
+- Handler `course.completed` cấp chứng nhận rồi mới gửi thông báo, thông báo dẫn thẳng tới tờ chứng nhận.
+- API: `GET /v1/courses/:id/certificate`, `GET /v1/me/certificates`, và `GET /v1/certificates/:code` công khai không cần đăng nhập.
+- Web: trang `/chung-nhan/:code` với một mẫu cố định, in được ra A4 ngang bằng trình duyệt. Trang khóa học thay câu hứa bằng đường dẫn tới tờ thật khi đã học xong.
+- Kiểm thử: 9 test core, 1 test API, luồng e2e 10 đi từ học xong tới xem chứng nhận, kể cả khách chưa đăng nhập và trường hợp mã sai.
+
 ## 1.3.0 (2026-09-15)
 
 Sự kiện: link phòng họp thay cho phát trực tiếp.
