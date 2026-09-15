@@ -17,6 +17,7 @@ Việc V2 đầu tiên: tin nhắn chuyển từ polling sang thời gian thực
 - 8 test hub và dịch vụ tin nhắn (`packages/core/src/test/realtime.test.ts`), 2 test SSE trong `apps/api/src/api.test.ts`, luồng e2e 08 với hai trình duyệt cùng lúc.
 - `playwright.config.ts` nhận `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` để chạy trên máy đã có sẵn Chromium bản khác (khai báo `passThroughEnv` trong `turbo.json`).
 - Sửa lỗi đua trong e2e 01: trang Xác minh email tự gửi khi đủ 6 số, nên không bấm nút nữa mà chỉ chờ chuyển trang.
+- Sửa CI đỏ từ trước: job `check` chạy `pnpm test` kéo theo cả gói e2e nhưng không cài trình duyệt Playwright, nên mọi lần chạy đều hỏng. `pnpm test` giờ loại gói e2e (`--filter=!@hoiminh/e2e`), đúng như README mô tả; e2e vẫn chạy đủ ở job riêng đã cài trình duyệt.
 
 ## 1.0.0 — 2026-09-14
 
