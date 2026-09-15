@@ -15,10 +15,6 @@ export const E2E_ENV = {
   API_URL: 'http://localhost:8787',
   API_PORT: '8787',
   SEPAY_API_KEY: 'sepay-sandbox-key',
-  MOMO_ACCESS_KEY: 'momo-access',
-  MOMO_SECRET_KEY: 'momo-secret',
-  VNPAY_TMN_CODE: 'VNPTEST',
-  VNPAY_HASH_SECRET: 'vnpay-secret',
   LOG_LEVEL: 'warn',
 };
 
@@ -30,7 +26,7 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
-  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'] },
+  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'] },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     { command: 'pnpm --filter @hoiminh/db reset && pnpm --filter @hoiminh/api dev', url: 'http://localhost:8787/health', cwd: root, env: E2E_ENV, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },

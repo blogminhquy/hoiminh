@@ -1,6 +1,6 @@
 // Luồng 2: thành viên Tiêu chuẩn bị khóa khóa Premium → checkout QR → webhook SePay báo có → trang tự chuyển → khóa học mở.
 import { expect, test } from '@playwright/test';
-import { USERS, login, parseMoney, sepayWebhook } from '../helpers';
+import { USERS, login, readOrder, sepayWebhook } from '../helpers';
 
 test('nâng cấp Premium bằng chuyển khoản QR và mở khóa khóa học', async ({ page, request }) => {
   await login(page, USERS.member);
@@ -14,12 +14,8 @@ test('nâng cấp Premium bằng chuyển khoản QR và mở khóa khóa học'
   await page.getByRole('button', { name: /Lấy mã QR chuyển khoản/ }).click();
 
   await expect(page).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/);
-  const content = (await page.getByText(/^HM ?[A-Z0-9]{5,8}$/).first().textContent())?.trim() ?? '';
-  expect(content).toMatch(/^HM/);
-  const total = parseMoney((await page.locator('.serif', { hasText: 'đ' }).last().textContent()) ?? '0');
-  expect(total).toBeGreaterThan(0);
-
-  expect(await sepayWebhook(request, `CONG TRAN ck ${content}`, total)).toBe(200);
+  const { reference, amountMinor } = await readOrder(page);
+  expect(await sepayWebhook(request, `CONG TRAN ck ${reference}`, amountMinor)).toBe(200);
   await expect(page.getByText('Đã nhận thanh toán')).toBeVisible({ timeout: 20_000 });
 
   await page.goto('/minhquy/khoa-hoc');

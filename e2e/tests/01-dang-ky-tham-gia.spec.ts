@@ -16,7 +16,8 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   await page.getByRole('button', { name: 'Tạo tài khoản' }).click();
 
   await expect(page).toHaveURL(/xac-minh-email/);
-  await page.getByLabel('Số thứ 1').fill('482913');
+  await page.getByLabel('Số thứ 1').click();
+  await page.keyboard.type('482913');
   await page.getByRole('button', { name: 'Xác minh' }).click();
   await expect(page).not.toHaveURL(/xac-minh-email/);
 

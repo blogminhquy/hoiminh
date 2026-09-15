@@ -46,3 +46,13 @@ export function uniqueEmail(prefix = 'e2e'): string {
 export function parseMoney(text: string): number {
   return Number(text.replace(/[^\d]/g, ''));
 }
+
+/** Đọc mã tham chiếu "HM XXXXX" và tổng tiền từ trang đơn hàng. */
+export async function readOrder(page: Page): Promise<{ reference: string; amountMinor: number }> {
+  await expect(page.getByText('Tổng thanh toán')).toBeVisible();
+  const body = await page.locator('body').innerText();
+  const ref = body.match(/HM ?[A-Z0-9]{5,8}/)?.[0] ?? '';
+  expect(ref, 'mã tham chiếu trên trang đơn').toMatch(/^HM/);
+  const amount = body.match(/Tổng thanh toán\s*([\d.]+)đ/)?.[1] ?? '0';
+  return { reference: ref, amountMinor: parseMoney(amount) };
+}

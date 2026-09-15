@@ -119,10 +119,12 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const shell = useShellQuery(slug);
   const [invite, setInvite] = useState(false);
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
-  useEffect(() => { if (slug && user) void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}/v1/communities/${shell.data?.community.id}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [slug, user, shell.data?.community.id]);
+  const communityId = shell.data?.community.id;
+  useEffect(() => { if (communityId && user) void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}/v1/communities/${communityId}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [user, communityId]);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (!slug) return <Navigate to="/kham-pha" replace />;
-  if (shell.isLoading || loading) return <div className="p-8"><LoadingBlock /></div>;
+  if (shell.isLoading) return <div className="p-8"><LoadingBlock /></div>;
   if (shell.isError) return <div className="p-8"><ErrorBox message={errorMessage(shell.error)} onRetry={() => void shell.refetch()} /></div>;
   const data = shell.data!;
   if (requireMember && !data.viewer.isMember && params.slug) return <Navigate to={`/${slug}`} replace />;

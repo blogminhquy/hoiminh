@@ -23,7 +23,7 @@ test('tạo hội, khóa học và sự kiện', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/${slug}/bang-tin`));
 
   await page.goto(`/${slug}/khoa-hoc/moi`);
-  await page.getByLabel(/Tên khóa học/).or(page.locator('input').first()).first().fill('Khóa học E2E');
+  await page.getByLabel(/Tên khóa học/).fill('Khóa học E2E');
   await page.getByRole('button', { name: /Tiếp tục: soạn nội dung/ }).click();
   await expect(page).toHaveURL(/\/soan$/);
   await page.getByRole('button', { name: 'Module' }).click();
