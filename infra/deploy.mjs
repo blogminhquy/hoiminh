@@ -15,7 +15,7 @@ if (!args.has('--skip-migrate')) {
   }
   run('pnpm --filter @hoiminh/db migrate');
 }
-if (!args.has('--skip-api')) run('pnpm --filter @hoiminh/api deploy');
+if (!args.has('--skip-api')) run('pnpm --filter @hoiminh/api run deploy');
 if (!args.has('--skip-web')) {
   run('pnpm --filter @hoiminh/web build');
   run('npx wrangler pages deploy apps/web/dist --project-name hoiminh-web');

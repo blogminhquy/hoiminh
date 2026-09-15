@@ -67,7 +67,7 @@ infra           deploy.mjs, wrangler.pages.toml
 
 1. **Supabase**: tạo project, bật Auth (Email + Google). Lấy `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`. Chuỗi kết nối pooler (cổng 6543) làm `DATABASE_URL`, kết nối trực tiếp (cổng 5432) làm `DATABASE_DIRECT_URL`. Đặt `AUTH_PROVIDER=supabase`.
 2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
-3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs` và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api deploy`.
+3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs` và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
 4. **Pages web**: `pnpm --filter @hoiminh/web build` rồi `wrangler pages deploy apps/web/dist --project-name hoiminh-web` (tệp `apps/web/public/_redirects` xử lý SPA). Biến build: `VITE_API_URL`, `VITE_APP_URL`.
 5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
