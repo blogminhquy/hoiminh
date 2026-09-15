@@ -3,5 +3,5 @@ name = "hoiminh-web"
 pages_build_output_dir = "../apps/web/dist"
 
 [vars]
-VITE_API_URL = "https://api.hoiminh.vn"
-VITE_APP_URL = "https://hoiminh.vn"
+VITE_API_URL = "https://api.hoiminh.com"
+VITE_APP_URL = "https://hoiminh.com"

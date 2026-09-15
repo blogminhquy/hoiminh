@@ -59,8 +59,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build web
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.hoiminh.vn' }}
-          VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.vn' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.hoiminh.com' }}
+          VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.com' }}
         run: pnpm --filter @hoiminh/web build
       - name: Deploy Cloudflare Pages
         env:

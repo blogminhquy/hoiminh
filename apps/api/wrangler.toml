@@ -6,8 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 APP_ENV = "production"
-APP_URL = "https://hoiminh.vn"
-API_URL = "https://api.hoiminh.vn"
+APP_URL = "https://hoiminh.com"
+API_URL = "https://api.hoiminh.com"
 AUTH_PROVIDER = "supabase"
 SEPAY_MODE = "production"
 MOMO_MODE = "production"

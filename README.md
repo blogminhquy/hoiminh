@@ -107,7 +107,7 @@ Thông tin build do `apps/web/scripts/version-plugin.ts` sinh ra lúc đóng gó
 
 | Cổng | Biến | Webhook/IPN cần khai báo với cổng |
 |---|---|---|
-| SePay (chuyển khoản QR) | `SEPAY_API_KEY`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_HOLDER` | `POST https://api.<domain>/webhooks/sepay`, header `Authorization: Apikey <SEPAY_API_KEY>` |
+| SePay (chuyển khoản QR) | `SEPAY_API_KEY`, `SEPAY_BANK_CODE`, `SEPAY_BANK_ACCOUNT`, `SEPAY_ACCOUNT_HOLDER` | `POST https://api.hoiminh.com/webhooks/sepay`, header `Authorization: Apikey <SEPAY_API_KEY>` |
 | MoMo | `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY`, `MOMO_ENDPOINT` | IPN `POST /webhooks/momo` (HMAC-SHA256) |
 | VNPAY | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENDPOINT` | IPN `GET /webhooks/vnpay` (HMAC-SHA512) |
 | PayPal | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_USD_RATE` | `POST /webhooks/paypal` (verify-webhook-signature) |
