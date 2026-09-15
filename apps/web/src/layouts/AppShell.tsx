@@ -7,7 +7,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { errorMessage } from '@/lib/api';
-import { currentCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
+import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
 
@@ -115,7 +115,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const params = useParams();
   const { user, communities, loading } = useAuth();
   const location = useLocation();
-  const slug = params.slug ?? currentCommunitySlug(communities[0]?.slug ?? null);
+  const slug = params.slug ?? preferredCommunitySlug(communities);
   const shell = useShellQuery(slug);
   const [invite, setInvite] = useState(false);
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);

@@ -18,9 +18,9 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
-| `e2e` Playwright 7 luồng | 🟡 đã viết, đang chạy lần đầu để sửa selector | — |
+| `e2e` Playwright 7 luồng (8 test) | ✅ xanh (`pnpm test:e2e`, ~1,5 phút) | 8 passed |
 | README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
-| `pnpm check` toàn repo | 🟡 typecheck + lint xanh; `pnpm test` đang chạy lại | — |
+| `pnpm check` toàn repo | ✅ typecheck + lint + 51 test Vitest xanh | — |
 
 ## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
@@ -93,10 +93,14 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 | 6. Gói nền tảng dùng thử → trả → hết hạn khóa | ✅ | 06-goi-nen-tang |
 | 7. Quản trị hệ thống: đối soát, tắt cổng, khóa hội | ✅ | 07-quan-tri-he-thong |
 
+## Đã kiểm chứng
+- Clone sạch từ GitHub (2026-09-15): `pnpm install --frozen-lockfile && pnpm db:migrate && pnpm db:seed` chạy được, mở http://localhost:5173 thấy Bảng tin hội mẫu sau khi đăng nhập.
+- `pnpm test:e2e` 8 passed; `pnpm test` 51 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+
 ## Việc kế tiếp
-1. Chạy `pnpm test:e2e` tới khi xanh (sửa selector nếu lệch).
-2. Kiểm tra clean install: xóa `node_modules`, `.data` → `pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev` → mở http://localhost:5173.
-3. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy).
+1. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy); chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`.
+2. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
+3. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.

@@ -16,7 +16,7 @@ const page = (loader: () => Promise<{ default: ComponentType }>) => {
 };
 
 const publicRoutes: RouteObject[] = [
-  { path: '/', element: <Navigate to="/kham-pha" replace /> },
+  { path: '/', element: page(() => import('@/pages/public/Home')) },
   { path: '/kham-pha', element: page(() => import('@/pages/public/Discovery')) },
   { path: '/dang-nhap', element: page(() => import('@/pages/public/Login')) },
   { path: '/dang-ky', element: page(() => import('@/pages/public/Register')) },
