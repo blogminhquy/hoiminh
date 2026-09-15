@@ -127,6 +127,14 @@ Tìm theo bốn tầng: có tài liệu mà không có code · có code mà khô
 6. RLS chưa có tác dụng: service layer không đặt `app.user_id` / `app.workspace_ids` / `app.community_ids` nên policy trong `0001_rls.sql` không chạy (API dùng chính role sở hữu bảng). Muốn bật thật phải set biến phiên trong từng transaction.
 7. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
 
+## Bẫy đã gặp khi viết e2e
+
+Hai lần CI đỏ mà máy local xanh, cùng một kiểu: test đua với chính giao diện.
+
+- **Selector khớp-chứa.** `getByText('Chủ tài khoản')` trúng luôn dòng từ chối "Sai tên chủ tài khoản…" ở bảng lịch sử. Chỉ lộ khi bảng kịp render đúng lúc assert. Dùng `{ exact: true }` cho nhãn ngắn.
+- **Bấm nút trên form tự gửi.** `VerifyEmail` tự gọi API khi đủ 6 số; bấm thêm nút "Xác minh" thì gặp nút disabled rồi phần tử bị gỡ khỏi DOM, click treo tới hết 90 giây. Guard `isEnabled()` không cứu được vì trạng thái đổi ngay sau khi kiểm. Với form tự gửi thì chỉ nhập rồi chờ kết quả.
+- Nhớ là **retry của Playwright dùng lại database cũ** (`webServer` chỉ reset một lần mỗi lần chạy). Test nào tiêu tài nguyên có hạn — ví dụ rút hết tiền trong ví — thì lần chạy lại chắc chắn hỏng.
+
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.
 - Tài khoản seed: mật khẩu chung `hoiminh123`; `minhquy@gmail.com` (chủ hội `minhquy`), `admin@hoiminh.vn` (super admin), `hoangvu@gmail.com` (cộng sự, mã `hv8k2`), `congtran@gmail.com` (thành viên thường).
