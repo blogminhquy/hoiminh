@@ -7,7 +7,7 @@ test('cộng sự rút tiền và chủ hội chi trả thủ công', async ({ p
   await page.goto('/tai-khoan/cong-su');
   await expect(page.getByRole('heading', { name: 'Cộng sự' })).toBeVisible();
   await expect(page.getByText(/ref=hv8k2/).first()).toBeVisible();
-  await expect(page.getByText('Có thể rút')).toBeVisible();
+  await expect(page.getByText('Có thể rút').first()).toBeVisible();
 
   const amount = page.locator('input[inputmode="numeric"]').first();
   await amount.fill('500000');

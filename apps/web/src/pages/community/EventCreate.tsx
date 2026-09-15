@@ -42,8 +42,12 @@ export default function Page() {
   useEffect(() => { if (existing.data && !loaded) { setF(fromExisting(existing.data)); setLoaded(true); } }, [existing.data, loaded]);
   const patch = (p: Partial<EventForm>) => setF((prev) => ({ ...prev, ...p }));
   const save = useMutation({
-    mutationFn: () => (eventId ? api.patch<{ id: string }>(`/v1/events/${eventId}`, toPayload(f)) : api.post<{ id: string } | Array<{ id: string }>>(`/v1/communities/${shell.community.id}/events`, toPayload(f))),
-    onSuccess: (r) => { void qc.invalidateQueries({ queryKey: ['events'] }); void qc.invalidateQueries({ queryKey: ['event'] }); const id = Array.isArray(r) ? r[0]?.id : r.id; navigate(id ? `/${slug}/su-kien/${id}` : `/${slug}/su-kien`); },
+    mutationFn: async (): Promise<string | null> => {
+      if (eventId) { const r = await api.patch<{ id: string }>(`/v1/events/${eventId}`, toPayload(f)); return r.id; }
+      const r = await api.post<{ event: { id: string }; created: number }>(`/v1/communities/${shell.community.id}/events`, toPayload(f));
+      return r.event?.id ?? null;
+    },
+    onSuccess: (id) => { void qc.invalidateQueries({ queryKey: ['events'] }); void qc.invalidateQueries({ queryKey: ['event'] }); navigate(id ? `/${slug}/su-kien/${id}` : `/${slug}/su-kien`); },
   });
   if (!can('event.manage')) return <Navigate to={`/${slug}/su-kien`} replace />;
   if (eventId && existing.isLoading) return <LoadingBlock rows={5} />;

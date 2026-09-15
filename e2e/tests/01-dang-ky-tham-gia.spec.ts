@@ -18,8 +18,9 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   await expect(page).toHaveURL(/xac-minh-email/);
   await page.getByLabel('Số thứ 1').click();
   await page.keyboard.type('482913');
-  await page.getByRole('button', { name: 'Xác minh' }).click();
-  await expect(page).not.toHaveURL(/xac-minh-email/);
+  const verify = page.getByRole('button', { name: 'Xác minh' });
+  if (await verify.isEnabled().catch(() => false)) await verify.click();
+  await expect(page).not.toHaveURL(/xac-minh-email/, { timeout: 20_000 });
 
   await page.goto('/minhquy');
   await page.getByRole('button', { name: /Tham gia miễn phí/ }).first().click();

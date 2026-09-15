@@ -35,7 +35,7 @@ test('tạo hội, khóa học và sự kiện', async ({ page }) => {
 
   await page.goto(`/${slug}/su-kien/moi`);
   await page.getByPlaceholder(/Q&A tuần/).fill('Q&A tuần E2E');
-  await page.getByRole('button', { name: 'Hằng tuần' }).click();
+  await page.getByRole('button', { name: 'Hằng tuần', exact: true }).click();
   await page.locator('input[placeholder^="https://zoom"]').fill('https://zoom.us/j/1234567890');
   await page.getByRole('button', { name: /Đăng sự kiện/ }).click();
   await expect(page).toHaveURL(new RegExp(`/${slug}/su-kien/[0-9a-f-]{36}`));
