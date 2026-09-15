@@ -8,13 +8,18 @@ compatibility_flags = ["nodejs_compat"]
 APP_ENV = "production"
 APP_URL = "https://hoiminh.com"
 API_URL = "https://api.hoiminh.com"
-AUTH_PROVIDER = "supabase"
+AUTH_PROVIDER = "local"
 SEPAY_MODE = "production"
 MOMO_MODE = "production"
 VNPAY_MODE = "sandbox"
 PAYPAL_MODE = "sandbox"
 R2_BUCKET = "hoiminh-files"
 LOG_LEVEL = "info"
+
+# Tên miền riêng: Cloudflare tự tạo bản ghi DNS api.hoiminh.com khi deploy.
+[[routes]]
+pattern = "api.hoiminh.com"
+custom_domain = true
 
 [[queues.producers]]
 queue = "hoiminh-jobs"
