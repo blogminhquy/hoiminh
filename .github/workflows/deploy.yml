@@ -38,7 +38,7 @@ jobs:
       - run: pnpm test
 
   web:
-    name: Pages (web)
+    name: Worker (web)
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -62,15 +62,11 @@ jobs:
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api.hoiminh.com' }}
           VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.com' }}
         run: pnpm --filter @hoiminh/web build
-      - name: Deploy Cloudflare Pages
+      - name: Deploy Worker web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: >-
-          pnpm dlx wrangler@4 pages deploy apps/web/dist
-          --project-name=${{ vars.CF_PAGES_PROJECT || 'hoiminh-web' }}
-          --branch=main
-          --commit-hash=${{ github.sha }}
+        run: pnpm --filter @hoiminh/web exec wrangler deploy
 
   api:
     name: Worker (API)

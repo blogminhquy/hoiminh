@@ -5,7 +5,9 @@
 Đưa web lên Cloudflare Pages, tự động deploy khi đẩy code lên GitHub, và thêm nhãn phiên bản kèm nút cập nhật ngay trên giao diện.
 
 ### Triển khai
-- Project Cloudflare Pages `hoiminh-web` (nhánh production `main`) tại https://hoiminh-web.pages.dev, tên miền `hoiminh.com` và `www.hoiminh.com`; Worker API gắn `api.hoiminh.com`.
+- Web chạy bằng Worker static assets (`apps/web/wrangler.toml`) ở `hoiminh.com` + `www.hoiminh.com`; Worker API ở `api.hoiminh.com`. Không dùng Cloudflare Pages vì Worker tự tạo được bản ghi DNS cho tên miền riêng. Route SPA do `not_found_handling = "single-page-application"` lo, thay cho `public/_redirects` đã bỏ.
+- Sửa `packages/db/src/migrate.ts`: `fileURLToPath(import.meta.url)` ở cấp module làm Worker nổ ngay lúc khởi động (mã lỗi 10021) — trước đó API chưa từng deploy lên Workers được.
+- Sửa e2e luồng 4: `getByText('Chủ tài khoản')` khớp cả dòng từ chối "Sai tên chủ tài khoản…" trong bảng lịch sử.
 - `pnpm db:admin <email> <mật khẩu> [tên]`: tạo hoặc nâng một tài khoản thành quản trị hệ thống, dùng cho database mới chưa có ai.
 - `AUTH_PROVIDER` của Worker đổi sang `local` (mật khẩu PBKDF2 trong DB) vì chưa bật Supabase Auth.
 - `.github/workflows/deploy.yml`: push lên `main` → typecheck · lint · test → build web → `wrangler pages deploy`; chạy tay được ở tab Actions. Deploy Worker API bật bằng biến `DEPLOY_API=true`.

@@ -42,7 +42,7 @@ Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền v�
 | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` · `pnpm db:generate` | migration, seed, reset PGlite, sinh migration từ schema |
 | `pnpm db:admin <email> <mật khẩu> [tên]` | tạo (hoặc nâng) một tài khoản thành quản trị hệ thống — dùng khi database mới chưa có ai |
 | `pnpm build` | build tất cả (web → `apps/web/dist`) |
-| `pnpm deploy` | migrate Supabase → deploy Worker API → deploy Pages (xem dưới) |
+| `pnpm deploy` | migrate Supabase → deploy Worker API → deploy Worker web (xem dưới) |
 
 ## Cấu trúc
 
@@ -59,7 +59,7 @@ packages/email   Resend (hoặc log khi không có key)
 packages/media   R2 (hoặc lưu local .data/files)
 packages/ui      Token, CSS, component theo thiết kế
 e2e             Playwright
-infra           deploy.mjs, wrangler.pages.toml
+infra           deploy.mjs
 .github         CI (kiểm tra) và Deploy (tự động lên Cloudflare khi đẩy lên main)
 ```
 
@@ -68,11 +68,11 @@ infra           deploy.mjs, wrangler.pages.toml
 1. **Supabase**: tạo project, bật Auth (Email + Google). Lấy `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`. Chuỗi kết nối pooler (cổng 6543) làm `DATABASE_URL`, kết nối trực tiếp (cổng 5432) làm `DATABASE_DIRECT_URL`. Đặt `AUTH_PROVIDER=supabase`.
 2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
 3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs` và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
-4. **Pages web**: `pnpm --filter @hoiminh/web build` rồi `wrangler pages deploy apps/web/dist --project-name hoiminh-web` (tệp `apps/web/public/_redirects` xử lý SPA). Biến build: `VITE_API_URL`, `VITE_APP_URL`.
+4. **Worker web**: `pnpm --filter @hoiminh/web build` rồi `pnpm --filter @hoiminh/web run deploy`. `apps/web/wrangler.toml` phục vụ `dist` bằng Worker static assets (`not_found_handling = "single-page-application"` lo route SPA, `public/_headers` lo cache) và tự tạo bản ghi DNS cho `hoiminh.com`, `www.hoiminh.com`. Biến build: `VITE_API_URL`, `VITE_APP_URL`.
 5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
 
-Đã dựng sẵn: project Pages **hoiminh-web** → https://hoiminh-web.pages.dev, tên miền `hoiminh.com` + `www.hoiminh.com` (nhánh production `main`), Worker `hoiminh-api` gắn `api.hoiminh.com`, hàng đợi `hoiminh-jobs` và `hoiminh-jobs-dlq`.
+Đã dựng sẵn trên tài khoản Cloudflare: Worker **hoiminh-web** phục vụ web ở `hoiminh.com` + `www.hoiminh.com`, Worker **hoiminh-api** ở `api.hoiminh.com`, hàng đợi `hoiminh-jobs` và `hoiminh-jobs-dlq`. Không dùng Cloudflare Pages: Worker tự tạo được bản ghi DNS cho tên miền riêng còn Pages thì phải thêm DNS bằng tay.
 
 ### Tài khoản quản trị đầu tiên
 
@@ -86,24 +86,24 @@ Lệnh này tạo tài khoản mới (hoặc nâng tài khoản đã có), đặ
 
 ## Tự động deploy khi đẩy lên GitHub
 
-`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck · lint · test) → build web → `wrangler pages deploy`. Bấm **Actions → Deploy → Run workflow** để deploy lại bằng tay.
+`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck · lint · test) → build web → `wrangler deploy`. Bấm **Actions → Deploy → Run workflow** để deploy lại bằng tay.
 
 Cần đúng một secret do người dùng tự tạo (Claude/CLI không tạo được API token thay bạn):
 
-1. Cloudflare → **My Profile → API Tokens → Create Token → Edit Cloudflare Workers** (thêm quyền *Cloudflare Pages: Edit*), chọn account `Blogminhquy@gmail.com's Account`.
+1. Cloudflare → **My Profile → API Tokens → Create Token → Edit Cloudflare Workers**, chọn account `Blogminhquy@gmail.com's Account`.
 2. Lưu vào GitHub:
 
 ```bash
 gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 ```
 
-Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_API_URL`, `VITE_APP_URL`, `CF_PAGES_PROJECT`. Đặt thêm biến `DEPLOY_API=true` (`gh variable set DEPLOY_API --body true`) khi Worker API đã có đủ secret trên Cloudflare, lúc đó workflow deploy luôn cả API.
+Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_API_URL`, `VITE_APP_URL`. Đặt thêm biến `DEPLOY_API=true` (`gh variable set DEPLOY_API --body true`) khi Worker API đã có đủ secret trên Cloudflare, lúc đó workflow deploy luôn cả API.
 
-Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Builds → **Connect to Git**, chọn repo `blogminhquy/hoiminh`, build command `pnpm --filter @hoiminh/web build`, output `apps/web/dist`. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
+Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Build → **Connect to Git**. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
 
 ## Nhãn phiên bản và nút cập nhật
 
-Góc dưới bên trái mọi màn hình có nhãn `v1.0.0 · <commit>`. Bấm vào để mở bảng:
+Góc dưới bên trái mọi màn hình có nhãn `v1.1.0 · <commit>`. Bấm vào để mở bảng:
 
 - **Đang chạy** — phiên bản, nhánh, giờ build, commit message của bản trình duyệt đang mở.
 - **Máy chủ** — phiên bản đang phục vụ trên Cloudflare, đọc từ `/version.json` (hỏi lại mỗi 2 phút và mỗi lần quay lại tab).

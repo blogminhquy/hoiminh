@@ -1,0 +1,20 @@
+# Worker phục vụ bản build tĩnh của web (thay cho Cloudflare Pages).
+# Dùng Worker vì Worker tự tạo được bản ghi DNS cho tên miền riêng; `_headers` vẫn được tôn trọng.
+name = "hoiminh-web"
+compatibility_date = "2024-10-01"
+
+[assets]
+directory = "./dist"
+# Mọi đường dẫn không khớp tệp tĩnh đều trả index.html (ứng dụng một trang, react-router).
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "hoiminh.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.hoiminh.com"
+custom_domain = true
+
+[observability]
+enabled = true
