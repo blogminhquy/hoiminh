@@ -32,7 +32,7 @@ async function activeEntitlements(ctx: Ctx, userId: string, types: Array<'course
 
 /**
  * Thư viện của tôi: khóa học và sản phẩm số đã sở hữu, kèm tiến độ và bài học nên vào tiếp.
- * Khóa học mở nhờ tư cách thành viên (tier) không nằm ở đây — chúng thuộc khung hội, xem `/:slug/khoa-hoc`.
+ * Khóa học mở nhờ tư cách thành viên (tier) không nằm ở đây: chúng thuộc khung hội, xem `/:slug/khoa-hoc`.
  */
 export async function myLibrary(ctx: Ctx) {
   const userId = requireUser(ctx);

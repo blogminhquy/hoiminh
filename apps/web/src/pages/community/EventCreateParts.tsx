@@ -67,7 +67,7 @@ export function WhereBlock({ f, patch, communityId }: { f: EventForm; patch: Pat
   const members = useQuery({ queryKey: ['directory', communityId], queryFn: () => api.get<Member[]>(`/v1/communities/${communityId}/members/directory`), staleTime: 60_000 });
   const staff = (members.data ?? []).filter((m) => m.role !== 'member');
   const picked = (members.data ?? []).filter((m) => f.hostUserIds.includes(m.user.id));
-  const provider = /zoom\.us/.test(f.meetingUrl) ? 'Zoom' : /meet\.google/.test(f.meetingUrl) ? 'Google Meet' : /youtu/.test(f.meetingUrl) ? 'YouTube' : /facebook/.test(f.meetingUrl) ? 'Facebook' : null;
+  const provider = /zoom\.us/.test(f.meetingUrl) ? 'Zoom' : /meet\.google/.test(f.meetingUrl) ? 'Google Meet' : /youtu/.test(f.meetingUrl) ? 'YouTube' : /facebook/.test(f.meetingUrl) ? 'Facebook' : /^https?:\/\//.test(f.meetingUrl) ? 'Phòng họp riêng' : null;
   return (
     <div className="card p-6 flex flex-col gap-[18px]">
       <div className="font-bold text-[15px]">Ở đâu</div>
@@ -76,7 +76,7 @@ export function WhereBlock({ f, patch, communityId }: { f: EventForm; patch: Pat
         <OptionCard on={f.kind === 'offline'} onClick={() => patch({ kind: 'offline' })} icon={<Globe size={14} />} title="Trực tiếp" sub="Có địa chỉ, giới hạn chỗ" />
         <OptionCard on={f.kind === 'hybrid'} onClick={() => patch({ kind: 'hybrid' })} icon={<Users size={14} />} title="Kết hợp" sub="Vừa tại chỗ vừa phát online" />
       </div>
-      {f.kind !== 'offline' && <Field label="Link phòng" hint="Chỉ hiện cho người đã đăng ký, và chỉ từ 15 phút trước giờ bắt đầu"><Input value={f.meetingUrl} onChange={(e) => patch({ meetingUrl: e.target.value })} placeholder="https://zoom.us/j/…" left={<LinkIcon size={16} />} right={provider ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>{provider}</span> : undefined} /></Field>}
+      {f.kind !== 'offline' && <Field label="Link phòng" hint="Chỉ hiện cho người đã đăng ký. Zoom, Google Meet hay link phòng họp nào cũng được"><Input value={f.meetingUrl} onChange={(e) => patch({ meetingUrl: e.target.value })} placeholder="https://zoom.us/j/…" left={<LinkIcon size={16} />} right={provider ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>{provider}</span> : undefined} /></Field>}
       {f.kind !== 'online' && <Field label="Địa chỉ"><Input value={f.location} onChange={(e) => patch({ location: e.target.value })} placeholder="Số nhà, đường, quận, thành phố" /></Field>}
       <div className="grid-2">
         <Field label="Người dẫn dắt">

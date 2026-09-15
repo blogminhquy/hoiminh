@@ -11,7 +11,7 @@ interface LibraryCounts { counts: { courses: number; digital: number } }
 export default function Page() {
   const { user, communities, loading } = useAuth();
   const slug = user ? preferredCommunitySlug(communities) : null;
-  // Chỉ hỏi thư viện khi không có hội nào — người có hội đi thẳng vào bảng tin, không tốn thêm một lượt gọi.
+  // Chỉ hỏi thư viện khi không có hội nào: người có hội đi thẳng vào bảng tin, không tốn thêm một lượt gọi.
   const library = useQuery({ queryKey: ['library'], queryFn: () => api.get<LibraryCounts>('/v1/me/library'), enabled: Boolean(user) && !loading && !slug });
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (user && slug) return <Navigate to={`/${slug}/bang-tin`} replace />;

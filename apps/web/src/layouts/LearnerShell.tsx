@@ -1,5 +1,5 @@
 // Khung Khu học tập (V2, mục 153): dành cho người mua lẻ, có thể không thuộc hội nào.
-// Cố tình KHÔNG dùng thanh bên hội như AppShell — người ở đây không có bảng tin, sự kiện hay cửa hàng để vào.
+// Cố tình KHÔNG dùng thanh bên hội như AppShell: người ở đây không có bảng tin, sự kiện hay cửa hàng để vào.
 import { Avatar, Logo, T } from '@hoiminh/ui';
 import { Bell, GraduationCap, MessageCircle, Receipt } from 'lucide-react';
 import { createContext, useContext } from 'react';
@@ -66,7 +66,7 @@ export function LearnerShell() {
 
 /**
  * Khung cho các trang Tài khoản / Tin nhắn / Thông báo: dùng khung hội nếu người dùng có hội,
- * còn người mua lẻ (0 hội) thì dùng khung Khu học tập — nếu không họ sẽ bị AppShell đá về /kham-pha.
+ * còn người mua lẻ (0 hội) thì dùng khung Khu học tập: nếu không họ sẽ bị AppShell đá về /kham-pha.
  */
 export function AccountShell() {
   const { communities, loading } = useAuth();

@@ -5,13 +5,27 @@ export const API = 'http://localhost:8787';
 export const PASSWORD = 'hoiminh123';
 export const USERS = { owner: 'minhquy@gmail.com', admin: 'admin@hoiminh.vn', affiliate: 'hoangvu@gmail.com', member: 'congtran@gmail.com', member2: 'duynguyen@gmail.com', trialOwner: 'vy.english@gmail.com' } as const;
 
-/** Đăng nhập qua màn Đăng nhập rồi chờ rời khỏi /dang-nhap. */
+/**
+ * Đăng nhập qua màn Đăng nhập rồi chờ rời khỏi /dang-nhap.
+ *
+ * Thử lại một lần nếu vẫn còn ở trang đăng nhập mà không có thông báo lỗi nào: khi chạy cả bộ e2e,
+ * thỉnh thoảng một lượt gọi tới API dev bị rớt (đã loại trừ rate limit và rò kết nối SSE, chưa tìm ra
+ * nguyên nhân gốc). Một lần bấm lại rẻ hơn nhiều so với hỏng cả luồng, và nếu sai mật khẩu thật thì
+ * lỗi vẫn hiện nên lần thử lại không che được lỗi thật.
+ */
 export async function login(page: Page, email: string, password = PASSWORD): Promise<void> {
+  const fillAndSubmit = async () => {
+    await page.getByPlaceholder('ban@email.com').fill(email);
+    await page.locator('input[type="password"]').fill(password);
+    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  };
   await page.goto('/dang-nhap');
-  await page.getByPlaceholder('ban@email.com').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.getByRole('button', { name: 'Đăng nhập' }).click();
-  await expect(page).not.toHaveURL(/dang-nhap/);
+  await fillAndSubmit();
+  await page.waitForTimeout(1000);
+  if (/dang-nhap/.test(page.url()) && !(await page.getByText(/Email hoặc mật khẩu|quá nhanh/).isVisible().catch(() => false))) {
+    await fillAndSubmit();
+  }
+  await expect(page).not.toHaveURL(/dang-nhap/, { timeout: 20_000 });
 }
 
 /** Lấy access token qua API (không qua giao diện) cho các bước chuẩn bị dữ liệu. */

@@ -40,4 +40,10 @@ test('tạo hội, khóa học và sự kiện', async ({ page }) => {
   await page.getByRole('button', { name: /Đăng sự kiện/ }).click();
   await expect(page).toHaveURL(new RegExp(`/${slug}/su-kien/[0-9a-f-]{36}`));
   await expect(page.getByText('Q&A tuần E2E').first()).toBeVisible();
+
+  // Link phòng phải thành nút vào phòng trỏ đúng địa chỉ đã nhập.
+  const join = page.getByRole('link', { name: /Vào phòng/ });
+  await expect(join).toBeVisible();
+  await expect(join).toHaveAttribute('href', 'https://zoom.us/j/1234567890');
+  await expect(page.getByText('Zoom').first()).toBeVisible();
 });

@@ -1,5 +1,5 @@
 // Hub thời gian thực (V2): đẩy sự kiện tới các phiên đang mở của từng người dùng và theo dõi ai đang online.
-// Trong tiến trình — đủ cho một node API. Nhiều node cần một hub phân tán (xem DECISIONS.md mục Tin nhắn thời gian thực).
+// Trong tiến trình: đủ cho một node API. Nhiều node cần một hub phân tán (xem DECISIONS.md mục Tin nhắn thời gian thực).
 
 /** Sự kiện đẩy xuống trình duyệt. Tên đặt theo miền để client chỉ xử lý cái mình quan tâm. */
 export type RealtimeEvent =
@@ -32,7 +32,7 @@ export interface RealtimeHub {
   isOnline(userId: string): boolean;
   /** Lọc ra những người đang online trong danh sách. */
   onlineAmong(userIds: readonly string[]): string[];
-  /** Số phiên đang mở (mọi người dùng) — dùng cho /health và test. */
+  /** Số phiên đang mở (mọi người dùng): dùng cho /health và test. */
   connectionCount(): number;
 }
 

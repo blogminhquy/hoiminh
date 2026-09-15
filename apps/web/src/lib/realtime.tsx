@@ -28,7 +28,7 @@ export type RealtimeEvent =
 type Listener = (event: RealtimeEvent) => void;
 
 interface RealtimeApi {
-  /** Đăng ký nhận sự kiện. Trả về hàm hủy — gọi trong cleanup của useEffect. */
+  /** Đăng ký nhận sự kiện. Trả về hàm hủy: gọi trong cleanup của useEffect. */
   on: (listener: Listener) => () => void;
   /** Luồng đang mở. Màn hình dùng cờ này để giãn nhịp polling. */
   connected: boolean;
@@ -127,7 +127,7 @@ export function useRealtimeEvent(handler: Listener): void {
   useEffect(() => on((event) => ref.current(event)), [on]);
 }
 
-/** Luồng có đang mở không — dùng để giãn nhịp polling dự phòng. */
+/** Luồng có đang mở không: dùng để giãn nhịp polling dự phòng. */
 export function useRealtimeConnected(): boolean {
   return useContext(RealtimeContext).connected;
 }

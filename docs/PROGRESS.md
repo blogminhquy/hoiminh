@@ -22,7 +22,7 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
 | `e2e` Playwright 9 luồng (10 test) | ✅ xanh (`pnpm test:e2e`, ~2,5 phút) | 10 passed |
 | README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
-| `pnpm check` toàn repo | ✅ typecheck + lint + 72 test Vitest xanh | — |
+| `pnpm check` toàn repo | ✅ typecheck + lint + 77 test Vitest xanh | - |
 
 ## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
@@ -39,8 +39,8 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 7 | Bài học miễn phí bị khóa (classroom-free) | `/:slug/bai/:lessonId` | community/Classroom.tsx (LockedPlayer) | core L2 |
 | 8 | Cửa hàng (store) | `/:slug/cua-hang` | community/Store.tsx | e2e 03 |
 | 9 | Chi tiết sản phẩm (product) | `/:slug/cua-hang/:productSlug` | community/ProductDetail.tsx (+Parts) | core L3 |
-| 10 | Sự kiện (events) | `/:slug/su-kien` | community/Events.tsx, EventParts.tsx | core L5 |
-| 11 | Chi tiết sự kiện (event) | `/:slug/su-kien/:eventId` | community/EventDetail.tsx | e2e 05 |
+| 10 | Sự kiện (events) | `/:slug/su-kien` | community/Events.tsx, EventParts.tsx | core L5, event-link |
+| 11 | Chi tiết sự kiện (event) | `/:slug/su-kien/:eventId` | community/EventDetail.tsx | e2e 05, event-link |
 | 12 | Xếp hạng cộng sự (affiliate) | `/:slug/xep-hang` | community/Leaderboard.tsx | e2e 04, core L4 |
 | 13 | Tin nhắn (messages) | `/tin-nhan` | account/Messages.tsx (+Parts) | core L1 (welcome DM), realtime, e2e 08 |
 | 14 | Thông báo (notifications) | `/thong-bao` | account/Notifications.tsx | core |
@@ -81,7 +81,7 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 49 | Xác minh email (verify-email) | `/xac-minh-email` | public/VerifyEmail.tsx | e2e 01 |
 | 50 | Khám phá (discovery) | `/kham-pha` | public/Discovery.tsx | — |
 
-Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/AdminUsers.tsx), Nhật ký và webhook `/he-thong/nhat-ky` (admin/AdminLogs.tsx), Google callback `/auth/callback`, và **Khu học tập `/hoc`** (learner/Library.tsx + LibraryParts.tsx, khung layouts/LearnerShell.tsx) — màn V2 cho người mua lẻ, e2e 09.
+Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/AdminUsers.tsx), Nhật ký và webhook `/he-thong/nhat-ky` (admin/AdminLogs.tsx), Google callback `/auth/callback`, và **Khu học tập `/hoc`** (learner/Library.tsx + LibraryParts.tsx, khung layouts/LearnerShell.tsx): màn V2 cho người mua lẻ, e2e 09.
 
 ## Bảng ánh xạ 7 luồng (mục 6)
 
@@ -99,19 +99,20 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 
 ## Đã kiểm chứng
 - Clone sạch từ GitHub (2026-09-15): `pnpm install --frozen-lockfile && pnpm db:migrate && pnpm db:seed` chạy được, mở http://localhost:5173 thấy Bảng tin hội mẫu sau khi đăng nhập.
-- `pnpm test:e2e` 10 passed; `pnpm test` 72 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+- `pnpm test:e2e` 10 passed; `pnpm test` 77 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
 - Máy chạy thử có Chromium bản khác bản Playwright tải về: đặt `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (đã khai báo `passThroughEnv` trong turbo.json) rồi chạy `pnpm test:e2e` bình thường.
 
 ## Việc kế tiếp
 1. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy); chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`.
 2. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-3. Việc V2 còn lại theo kiến trúc: phát trực tiếp (livestream trong hội).
+3. Phát trực tiếp: **không làm** (quyết định của chủ dự án). Sự kiện dùng link phòng họp sẵn có: Zoom, Google Meet hoặc link tùy chọn (DECISIONS mục 36-38).
 4. Trước khi chạy nhiều node API hoặc chuyển API sang Cloudflare Workers: thay hub thời gian thực trong bộ nhớ bằng Durable Object hoặc Redis pub/sub (chỉ đổi `createRealtimeHub()` trong `packages/core/src/app.ts`, xem DECISIONS.md mục 25).
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.
 - Tài khoản seed: mật khẩu chung `hoiminh123`; `minhquy@gmail.com` (chủ hội `minhquy`), `admin@hoiminh.vn` (super admin), `hoangvu@gmail.com` (cộng sự, mã `hv8k2`), `congtran@gmail.com` (thành viên thường).
 - OTP xác minh email ở `APP_ENV=test` luôn là `482913`.
-- Khu học tập: dịch vụ `packages/core/src/services/learner.ts` (`myLibrary`), API `GET /v1/me/library`, web `apps/web/src/pages/learner/` + `layouts/LearnerShell.tsx`. Thư viện dựng từ **entitlement**, không từ `community_members` — khóa mở nhờ tier vẫn nằm ở khung hội. Người mua lẻ không còn bị tự thêm vào hội (DECISIONS mục 30).
+- Link phòng họp sự kiện: `meeting_url` + `meeting_provider` trong bảng `events`; nhận diện nhà cung cấp ở `packages/core/src/services/events.ts` (`meetingProvider`), nhãn hiển thị ở `apps/web/src/pages/community/EventParts.tsx` (`PROVIDER_LABEL`). Đăng ký xong là thấy link, hủy thì mất.
+- Khu học tập: dịch vụ `packages/core/src/services/learner.ts` (`myLibrary`), API `GET /v1/me/library`, web `apps/web/src/pages/learner/` + `layouts/LearnerShell.tsx`. Thư viện dựng từ **entitlement**, không từ `community_members`: khóa mở nhờ tier vẫn nằm ở khung hội. Người mua lẻ không còn bị tự thêm vào hội (DECISIONS mục 30).
 - Tin nhắn thời gian thực: hub ở `packages/core/src/realtime/hub.ts` (`ctx.realtime`), SSE ở `apps/api/src/routes/stream.ts`, client ở `apps/web/src/lib/realtime.tsx`. Kiểm nhanh: `curl -N -H "Authorization: Bearer <token>" http://localhost:8787/v1/me/stream` phải thấy `event: ready`, và `GET /health` trả `realtimeConnections` tăng lên.
 - Webhook SePay test: `POST /webhooks/sepay` header `Authorization: Apikey <SEPAY_API_KEY>`; nội dung chứa `HM XXXXX`.

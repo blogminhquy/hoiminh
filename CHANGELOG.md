@@ -1,8 +1,18 @@
 # CHANGELOG
 
-## 1.2.0 — 2026-09-15
+## 1.3.0 (2026-09-15)
 
-Việc V2 thứ hai: Khu học tập cho người mua lẻ (mục 153) — một người có thể chỉ mua khóa học mà không tham gia hội nào.
+Sự kiện: link phòng họp thay cho phát trực tiếp.
+
+- Không làm hạ tầng phát trực tiếp. Sự kiện nhận link phòng họp có sẵn của chủ hội: Zoom, Google Meet, YouTube, Facebook hoặc link tùy chọn bất kỳ. Phần này vốn đã có trong V1, bản này chỉnh lại cách lộ link và bổ sung kiểm thử.
+- **Đăng ký xong là thấy link ngay**, bỏ quy tắc giấu tới 15 phút trước giờ bắt đầu. Cửa 15 phút trước đây chỉ áp ở trang chi tiết, còn danh sách sự kiện vẫn trả link, nên nó không chặn được gì mà chỉ làm người đăng ký sớm tưởng hỏng.
+- **Sửa lỗi:** người đã hủy đăng ký vẫn đọc được link ở danh sách sự kiện, vì chỗ đó không lọc `status <> 'cancelled'` như trang chi tiết. Nay hai nơi cùng một quy tắc.
+- Link tùy chọn (không phải Zoom/Meet/YouTube/Facebook) hiện nhãn "Phòng họp riêng" thay vì "Trực tuyến"; ô nhập trên màn Tạo sự kiện cũng nhận ra và gắn nhãn.
+- 5 test mới `packages/core/src/test/event-link.test.ts` (ba loại link, thấy link sau khi đăng ký, hủy thì mất link, chủ hội luôn thấy, đổi link thì đổi nhà cung cấp); e2e 05 kiểm nút "Vào phòng" trỏ đúng địa chỉ đã nhập.
+
+## 1.2.0 (2026-09-15)
+
+Việc V2 thứ hai: Khu học tập cho người mua lẻ (mục 153): một người có thể chỉ mua khóa học mà không tham gia hội nào.
 
 ### Khu học tập `/hoc`
 - `packages/core/src/services/learner.ts`: `myLibrary` gom khóa học và tài liệu đã sở hữu từ **entitlement** (mua lẻ, combo, gói, được tặng), kèm tiến độ và bài học để học tiếp. Không đụng tới `community_members` nên chạy đúng với người có 0 hội.
@@ -14,14 +24,14 @@ Việc V2 thứ hai: Khu học tập cho người mua lẻ (mục 153) — một
 - Bỏ đoạn tự `joinCommunity` trong handler `payment.succeeded`. Quyền học vốn nằm ở entitlement; tư cách thành viên giờ là lựa chọn của người mua.
 - Sau khi trả tiền, người không phải thành viên được đưa về `/hoc` thay vì khung hội (`orderStatus.nextUrl`, email, thông báo trong app).
 - Trang gốc `/` đưa người mua lẻ (không hội, có đồ đã mua) vào `/hoc`.
-- `AccountShell`: `/tai-khoan/*`, `/tin-nhan`, `/thong-bao` dùng khung Khu học tập khi người dùng không có hội nào — trước đây `AppShell` đá họ về `/kham-pha`, nên người mua lẻ không xem được hóa đơn của chính mình.
+- `AccountShell`: `/tai-khoan/*`, `/tin-nhan`, `/thong-bao` dùng khung Khu học tập khi người dùng không có hội nào: trước đây `AppShell` đá họ về `/kham-pha`, nên người mua lẻ không xem được hóa đơn của chính mình.
 
 ### Kiểm thử
 - 9 test `packages/core/src/test/learner.test.ts`: thư viện rỗng, mua lẻ, combo mở khóa con, tài liệu số, thu hồi khi hoàn tiền, entitlement hết hạn, gợi ý vào hội, sắp xếp theo tiến độ, và luồng thanh toán không tự thêm vào hội.
 - 2 test API cho `/v1/me/library` và cổng tải tài liệu số.
 - Luồng e2e 09: đăng ký → mua lẻ qua chuyển khoản → về `/hoc` → khung hội vẫn chặn → học bài ở `/hoc/bai/:id`.
 
-## 1.1.0 — 2026-09-15
+## 1.1.0 (2026-09-15)
 
 Việc V2 đầu tiên: tin nhắn chuyển từ polling sang thời gian thực.
 

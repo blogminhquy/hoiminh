@@ -51,7 +51,7 @@ describe('thư viện Khu học tập', () => {
     expect(item.id).toBe(courseId);
     expect(item.source).toBe('purchase');
     expect(item.resumeLessonId).toBeTruthy();
-    // Vẫn không phải thành viên hội — đây chính là điểm của mục 153.
+    // Vẫn không phải thành viên hội: đây chính là điểm của mục 153.
     expect(lib.memberCommunityIds).toEqual([]);
   });
 

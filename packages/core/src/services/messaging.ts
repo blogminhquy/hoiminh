@@ -107,7 +107,7 @@ export async function markConversationRead(ctx: Ctx, conversationId: string, for
 /** Thời gian một lượt "đang gõ" còn hiệu lực (giây). Client gửi lại trước khi hết hạn. */
 export const TYPING_TTL_SECONDS = 6;
 
-/** Báo "đang gõ" cho người kia. Không lưu DB — chỉ đẩy qua hub. */
+/** Báo "đang gõ" cho người kia. Không lưu DB: chỉ đẩy qua hub. */
 export async function setTyping(ctx: Ctx, conversationId: string) {
   const userId = requireUser(ctx);
   const part = await ctx.db.query.conversationParticipants.findFirst({ where: and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.userId, userId)) });

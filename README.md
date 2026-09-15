@@ -92,7 +92,7 @@ Super admin có thể bật/tắt từng cổng và nhập credential trong `/he
 - `GET /v1/me/stream` là luồng SSE của người đang đăng nhập: `message.new`, `message.read`, `conversation.typing`, `notification.new`, `badges.changed`, `presence.changed`. Gửi tin vẫn dùng `POST /v1/me/messages`.
 - Web đọc luồng bằng `fetch` + `ReadableStream` (`apps/web/src/lib/realtime.tsx`) để gắn được `Authorization: Bearer`, tự nối lại với backoff tới 30 giây. Mất luồng thì màn Tin nhắn quay lại polling 15 giây, không hỏng.
 - Hai endpoint phụ: `POST /v1/me/conversations/:id/typing` (báo đang gõ, hết hạn 6 giây) và `POST /v1/me/conversations/:id/read` (đánh dấu đã đọc mà không tải lại cả luồng).
-- `GET /health` trả thêm `realtimeConnections` — số phiên SSE đang mở của tiến trình đó.
+- `GET /health` trả thêm `realtimeConnections`: số phiên SSE đang mở của tiến trình đó.
 - Hub nằm trong bộ nhớ tiến trình API, đúng cho một node. Chạy nhiều node hoặc trên Cloudflare Workers cần thay `createRealtimeHub()` bằng bản Durable Object / Redis pub/sub (DECISIONS.md mục 25); phần còn lại của mã không đổi.
 
 ## Khu học tập của người mua lẻ

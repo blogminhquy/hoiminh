@@ -39,7 +39,7 @@ export async function listEvents(ctx: Ctx, communityId: string, q: { filter?: 'u
   const monthEnd = new Date(y!, m!, 1);
   const monthDays = await ctx.db.select({ d: sql<string>`to_char(${events.startsAt} at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')` }).from(events).where(and(eq(events.communityId, communityId), gte(events.startsAt, monthStart), lt(events.startsAt, monthEnd)));
   return {
-    items: rows.map((r) => ({ ...r.e, live: r.e.startsAt <= now && r.e.endsAt >= now, registered: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled'), hosts: r.e.hostUserIds.map((id) => hosts.find((h) => h.id === id)).filter(Boolean), meetingUrl: regs.some((g) => g.eventId === r.e.id) || access.permissions.has('event.manage') ? r.e.meetingUrl : null })),
+    items: rows.map((r) => ({ ...r.e, live: r.e.startsAt <= now && r.e.endsAt >= now, registered: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled'), hosts: r.e.hostUserIds.map((id) => hosts.find((h) => h.id === id)).filter(Boolean), meetingUrl: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled') || access.permissions.has('event.manage') ? r.e.meetingUrl : null })),
     pastCount: pastCount?.c ?? 0, recordings, calendarDays: [...new Set(monthDays.map((d) => d.d))], canManage: access.permissions.has('event.manage'),
   };
 }
@@ -117,7 +117,8 @@ export async function getEvent(ctx: Ctx, eventId: string) {
   const tierKey = userId ? await memberTierKey(ctx, userId, e.communityId) : null;
   const premiumLocked = e.access === 'premium' && !manage && tierKey !== 'premium' && tierKey !== 'vip';
   const now = ctx.now();
-  const showLink = (registered || manage) && e.meetingUrl && (manage || e.startsAt.getTime() - now.getTime() < 15 * 60_000);
+  // Đăng ký xong là thấy link ngay, để người ta lưu vào lịch trước. Chủ hội luôn thấy.
+  const showLink = Boolean((registered || manage) && e.meetingUrl);
   return { ...e, meetingUrl: showLink ? e.meetingUrl : null, live: e.startsAt <= now && e.endsAt >= now, registered, premiumLocked, questions: questions.map((r) => ({ ...r.q, user: r.user, voted: myVotes.has(r.q.id) })), attendees: attendees.map((a) => a.user), attendeesVisible: manage || tierKey === 'premium' || tierKey === 'vip', series, recordings, hosts, canManage: manage };
 }
 

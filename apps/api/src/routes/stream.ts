@@ -67,13 +67,13 @@ streamRoutes.get('/stream', (c) => {
   });
 });
 
-/** Báo "đang gõ" — client gửi lại tối đa mỗi vài giây trong lúc người dùng gõ. */
+/** Báo "đang gõ": client gửi lại tối đa mỗi vài giây trong lúc người dùng gõ. */
 streamRoutes.post('/conversations/:id/typing', async (c) => c.json(await messaging.setTyping(c.get('ctx'), c.req.param('id'))));
 
 /** Đánh dấu đã đọc mà không cần tải lại cả luồng tin. */
 streamRoutes.post('/conversations/:id/read', async (c) => c.json(await messaging.markConversationRead(c.get('ctx'), c.req.param('id'))));
 
-/** Ai trong danh sách đang mở luồng — dùng cho chấm xanh khi tải trang lần đầu. */
+/** Ai trong danh sách đang mở luồng: dùng cho chấm xanh khi tải trang lần đầu. */
 streamRoutes.post('/presence', async (c) => {
   const input = await parse(z.object({ userIds: z.array(z.string().uuid()).max(200) }), await body(c));
   return c.json({ online: c.get('ctx').realtime.onlineAmong(input.userIds) });
