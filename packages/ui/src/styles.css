@@ -82,6 +82,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .settings-page > .settings-nav { width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .settings-page > .settings-main { flex-grow: 1; display: flex; flex-direction: column; gap: 20px; max-width: 880px; min-width: 0; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+/* Lưới Khu học tập: tự xuống hàng theo bề rộng, không cần media query riêng. */
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .table-scroll { overflow-x: auto; }
 .skeleton { background: linear-gradient(90deg, var(--line) 25%, #F1EBE1 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }

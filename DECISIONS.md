@@ -28,7 +28,7 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 
 14. **Route web:** `/:slug` = trang giới thiệu hội (đích của link), `/:slug/bang-tin|khoa-hoc|...` = app thành viên, `/:slug/cai-dat/*` = cài đặt chủ hội, `/admin` = Hội của tôi (workspace), `/he-thong/*` = quản trị hệ thống, `/tai-khoan/*`, `/tin-nhan`, `/thong-bao`, `/u/:handle`. Slug hội bị cấm trùng route hệ thống (`RESERVED_SLUGS`).
 15. **Khóa học có cả `workspace_id` và `community_id`** (mục 139 + yêu cầu mỗi bảng có tenant). `access_mode` đúng 4 lựa chọn của màn Tạo khóa học; bán lẻ tự tạo `products` + `product_pages` khi đăng.
-16. Người ngoài hội mua lẻ sản phẩm của hội Freemium được thêm làm thành viên Tiêu chuẩn để có dashboard học (mục 153 để dashboard riêng cho V2).
+16. ~~Người ngoài hội mua lẻ được thêm làm thành viên Tiêu chuẩn để có dashboard học.~~ **Đổi ở V2** (xem mục 30): mua lẻ không còn tự thêm vào hội; Khu học tập `/hoc` là chỗ học của họ.
 17. **Xếp hạng cộng sự** tính lại mỗi 10 phút (cron) và ngay sau khi seed; tháng, quý và từ đầu.
 18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers.
 19. **RLS:** một policy `tenant_isolation` sinh tự động cho mọi bảng theo cột `workspace_id`/`community_id`/`user_id` + `app.bypass`; API production chạy dưới role `hoiminh_app`. PGlite là superuser nên RLS không chặn ở local (đã có test xác nhận RLS được bật).
@@ -45,3 +45,12 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 27. **"Đang gõ" không lưu DB.** Chỉ đẩy qua hub, hết hạn sau 6 giây; client gửi lại tối đa 3 giây một lần. Mất gói thì chỉ báo tự tắt, không để lại rác.
 28. **Biên nhận "Đã xem" phát khi thực sự có tin được đánh dấu.** `markConversationRead` trả về `markedCount`; bằng 0 thì không phát sự kiện, nên mở lại hội thoại cũ không dội biên nhận trùng cho người gửi.
 29. **Trạng thái online là "đang mở luồng"**, không phải `users.last_seen_at`. Khi một người mở hoặc đóng phiên cuối cùng, hub báo `presence.changed` cho mọi phiên đang mở — chấp nhận được ở quy mô hiện tại, nhưng khi số phiên lớn cần thu hẹp theo danh sách hội thoại của từng người.
+
+## Khu học tập của người mua lẻ (V2, mục 153)
+
+30. **Mua lẻ không còn tự thêm vào hội.** V1 ép người mua vào hội làm thành viên Tiêu chuẩn chỉ để họ có một cái dashboard. Đó là tác dụng phụ của việc mua, không phải điều họ chọn, và làm số thành viên của hội sai lệch. V2 bỏ hẳn: quyền học vốn nằm ở entitlement chứ không ở tư cách thành viên, nên chỉ cần một chỗ đứng ngoài khung hội là đủ. Muốn vào hội thì tự bấm ở lời mời trên Khu học tập.
+31. **Thư viện dựng từ entitlement, không từ `community_members`.** Nhờ vậy `/hoc` chạy đúng với người có 0 hội. Khóa học mở nhờ tier (thành viên Premium/VIP) **không** nằm trong thư viện — đó là quyền lợi của hội và thuộc về khung hội `/:slug/khoa-hoc`. Ranh giới này giữ cho Khu học tập đúng nghĩa "những gì tôi đã sở hữu", không thành bản sao mờ của thư viện hội.
+32. **Combo mở khóa theo hai đường.** Khi mua combo, handler đã ghi entitlement cho từng sản phẩm con; thư viện vẫn duyệt lại `bundle_items` để bắt các sản phẩm con được thêm vào combo *sau* lúc mua. Không có đường thứ hai này thì người mua combo "và các khóa ra mắt trong 12 tháng tới" sẽ không thấy khóa mới.
+33. **`LearnerShell` là khung riêng, không phải `AppShell` rút gọn.** Người ở đây không có bảng tin, sự kiện hay cửa hàng để vào, nên thanh bên hội chỉ là những cái cửa khóa. Trang Bài học dùng chung cho cả hai khung: nó lấy khung qua `useOptionalShell()` và dựng link qua `useLearningLinks()`, nên `/hoc/bai/:id` và `/:slug/bai/:id` là cùng một trang.
+34. **`AccountShell` chọn khung theo số hội.** Trước đây `/tai-khoan/*`, `/tin-nhan`, `/thong-bao` nằm trong `AppShell`, mà `AppShell` không có hội nào thì đá về `/kham-pha` — người mua lẻ không xem được hóa đơn của chính mình. Giờ có hội thì dùng khung hội, không có thì dùng khung Khu học tập.
+35. **Sau khi trả tiền, người không phải thành viên được đưa về `/hoc`.** `orderStatus.nextUrl`, email và thông báo đều theo quy tắc này; trước đây chúng trỏ vào khung hội và người mua lẻ bị chặn ngay ở cửa.

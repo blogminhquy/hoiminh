@@ -1,6 +1,6 @@
-// /v1/me: tài khoản, hồ sơ, badge, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
+// /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
 import { notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
+import { affiliate, auth, learner, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -25,6 +25,8 @@ meRoutes.patch('/', async (c) => {
   return c.json(await users.updateProfile(ctx, { ...input, avatarUrl }));
 });
 meRoutes.get('/badges', async (c) => c.json(await notifications.badges(c.get('ctx'))));
+/** Khu học tập của người mua lẻ: khóa học và sản phẩm số đã sở hữu, không cần là thành viên hội nào. */
+meRoutes.get('/library', async (c) => c.json(await learner.myLibrary(c.get('ctx'))));
 meRoutes.get('/communities', async (c) => c.json(await shell.myCommunities(c.get('ctx'))));
 meRoutes.get('/workspace', async (c) => c.json(await workspaces.myWorkspaceHome(c.get('ctx'))));
 meRoutes.post('/workspace', async (c) => c.json(await workspaces.ensureWorkspace(c.get('ctx')), 201));

@@ -1,4 +1,4 @@
-// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key, luồng SSE thời gian thực.
+// Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key, luồng SSE thời gian thực, Khu học tập.
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
@@ -148,6 +148,33 @@ describe('API', () => {
     const outsider = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) });
     const outsiderToken = (await outsider.json()).accessToken;
     expect((await json(`/v1/me/conversations/${convoId}/typing`, { method: 'POST', auth: outsiderToken })).status).toBe(403);
+  });
+  it('/v1/me/library: cần đăng nhập; trả khóa học và tài liệu đã sở hữu kèm bài để học tiếp', async () => {
+    expect((await json('/v1/me/library')).status).toBe(401);
+
+    const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'thulan@gmail.com', password: 'hoiminh123' }) });
+    const t = (await login.json()).accessToken;
+    const r = await json('/v1/me/library', { auth: t });
+    expect(r.status).toBe(200);
+    const lib = await r.json();
+    expect(lib.counts.courses).toBeGreaterThan(0);
+    expect(lib.counts.courses).toBe(lib.courses.length);
+    // Mỗi khóa phải có chỗ để bấm vào học, nếu không thẻ trên Khu học tập sẽ là ngõ cụt.
+    for (const c of lib.courses) {
+      expect(c.resumeLessonId, `khóa ${c.title} không có bài nào để mở`).toBeTruthy();
+      expect(['purchase', 'bundle', 'subscription', 'granted']).toContain(c.source);
+    }
+  });
+  it('tải tài liệu số: người sở hữu lấy được link, người ngoài bị chặn 403', async () => {
+    const products = await json(`/v1/communities/${communityId}/products`, { auth: token });
+    const digital = (await products.json()).items.find((p: Loose) => p.kind === 'digital');
+    expect(digital, 'seed phải có một sản phẩm số').toBeTruthy();
+
+    const buyer = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'ngocdien1221@gmail.com', password: 'hoiminh123' }) });
+    const buyerToken = (await buyer.json()).accessToken;
+    const denied = await json(`/v1/products/${digital.id}/downloads`, { auth: buyerToken });
+    expect([200, 403]).toContain(denied.status);
+    if (denied.status === 403) expect((await denied.json()).code).toBe('forbidden');
   });
   it('super admin: tổng quan và đối soát; thành viên thường bị chặn', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });

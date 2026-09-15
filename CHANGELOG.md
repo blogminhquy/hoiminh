@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 1.2.0 — 2026-09-15
+
+Việc V2 thứ hai: Khu học tập cho người mua lẻ (mục 153) — một người có thể chỉ mua khóa học mà không tham gia hội nào.
+
+### Khu học tập `/hoc`
+- `packages/core/src/services/learner.ts`: `myLibrary` gom khóa học và tài liệu đã sở hữu từ **entitlement** (mua lẻ, combo, gói, được tặng), kèm tiến độ và bài học để học tiếp. Không đụng tới `community_members` nên chạy đúng với người có 0 hội.
+- `GET /v1/me/library`; `GET /health` giữ nguyên.
+- Web: khung riêng `layouts/LearnerShell.tsx` (không có thanh bên hội), trang `pages/learner/Library.tsx` với thẻ khóa học có tiến độ, lọc Đang học / Hoàn thành, tài liệu số tải về, và lời mời vào hội miễn phí.
+- Trang Bài học dùng chung cho hai khung: `/hoc/bai/:lessonId` và `/:slug/bai/:lessonId` là cùng một trang, chọn khung qua `useOptionalShell()` và dựng link qua `useLearningLinks()`.
+
+### Mua lẻ không còn bị tự thêm vào hội
+- Bỏ đoạn tự `joinCommunity` trong handler `payment.succeeded`. Quyền học vốn nằm ở entitlement; tư cách thành viên giờ là lựa chọn của người mua.
+- Sau khi trả tiền, người không phải thành viên được đưa về `/hoc` thay vì khung hội (`orderStatus.nextUrl`, email, thông báo trong app).
+- Trang gốc `/` đưa người mua lẻ (không hội, có đồ đã mua) vào `/hoc`.
+- `AccountShell`: `/tai-khoan/*`, `/tin-nhan`, `/thong-bao` dùng khung Khu học tập khi người dùng không có hội nào — trước đây `AppShell` đá họ về `/kham-pha`, nên người mua lẻ không xem được hóa đơn của chính mình.
+
+### Kiểm thử
+- 9 test `packages/core/src/test/learner.test.ts`: thư viện rỗng, mua lẻ, combo mở khóa con, tài liệu số, thu hồi khi hoàn tiền, entitlement hết hạn, gợi ý vào hội, sắp xếp theo tiến độ, và luồng thanh toán không tự thêm vào hội.
+- 2 test API cho `/v1/me/library` và cổng tải tài liệu số.
+- Luồng e2e 09: đăng ký → mua lẻ qua chuyển khoản → về `/hoc` → khung hội vẫn chặn → học bài ở `/hoc/bai/:id`.
+
 ## 1.1.0 — 2026-09-15
 
 Việc V2 đầu tiên: tin nhắn chuyển từ polling sang thời gian thực.

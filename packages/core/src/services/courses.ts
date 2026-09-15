@@ -1,7 +1,7 @@
 // Khóa học: thư viện, chi tiết, tạo/sửa/đăng, module và bài học, nhúng video, tài liệu.
 import { parseVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { comments, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
+import { comments, communities, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
@@ -48,12 +48,14 @@ export async function getCourse(ctx: Ctx, courseId: string) {
     ctx.db.select({ c: comments, author: { name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor }, lesson: { title: lessons.title, id: lessons.id } }).from(comments).innerJoin(users, eq(users.id, comments.authorUserId)).innerJoin(lessons, eq(lessons.id, comments.targetId)).where(and(eq(comments.targetType, 'lesson'), eq(lessons.courseId, courseId), isNull(comments.deletedAt))).orderBy(desc(comments.createdAt)).limit(5),
     ctx.db.query.products.findFirst({ where: and(eq(products.courseId, courseId), isNull(products.deletedAt), eq(products.status, 'published')) }),
   ]);
+  // Slug hội để Khu học tập (/hoc) dựng được link mua/xem hội mà không cần khung hội.
+  const communitySlug = c.communityId ? (await ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { slug: true } }))?.slug ?? null : null;
   const done = new Set(doneRows.map((d) => d.lessonId));
   const resources = lessonRows.length ? await ctx.db.query.lessonResources.findMany({ where: inArray(lessonResources.lessonId, lessonRows.map((l) => l.id)), orderBy: asc(lessonResources.sortOrder) }) : [];
   const firstModuleId = modules[0]?.id;
   const tree = modules.map((m) => ({ ...m, lessons: lessonRows.filter((l) => l.moduleId === m.id).map((l) => ({ id: l.id, title: l.title, kind: l.kind, durationSeconds: l.durationSeconds, isPreview: l.isPreview || (c.previewFirstModule && m.id === firstModuleId), done: done.has(l.id), locked: !(decision.allowed || l.isPreview || (c.previewFirstModule && m.id === firstModuleId)), current: progress?.lastLessonId === l.id })) }));
   const [learners] = await ctx.db.select({ c: sql<number>`count(*)::int`, done: sql<number>`count(*) filter (where percent = 100)::int` }).from(courseProgress).where(eq(courseProgress.courseId, courseId));
-  return { ...c, owner, modules: tree, progress: progress ?? null, access: decision, canManage: staff, resources: resources.map((r) => ({ id: r.id, fileId: r.fileId, name: r.name, url: r.url, lessonId: r.lessonId, sizeBytes: r.sizeBytes })), discussions: discussions.map((d) => ({ ...d.c, author: d.author, lesson: d.lesson })), learners: { total: learners?.c ?? 0, completed: learners?.done ?? 0 }, product: productRow ? { id: productRow.id, priceMinor: productRow.priceMinor, compareAtMinor: productRow.compareAtMinor, slug: productRow.slug } : null };
+  return { ...c, communitySlug, owner, modules: tree, progress: progress ?? null, access: decision, canManage: staff, resources: resources.map((r) => ({ id: r.id, fileId: r.fileId, name: r.name, url: r.url, lessonId: r.lessonId, sizeBytes: r.sizeBytes })), discussions: discussions.map((d) => ({ ...d.c, author: d.author, lesson: d.lesson })), learners: { total: learners?.c ?? 0, completed: learners?.done ?? 0 }, product: productRow ? { id: productRow.id, priceMinor: productRow.priceMinor, compareAtMinor: productRow.compareAtMinor, slug: productRow.slug } : null };
 }
 
 /** Bài học: video nhúng, nội dung, tài liệu (signed URL nếu riêng), bài trước/sau, khóa nếu chưa có quyền. */
@@ -73,7 +75,7 @@ export async function getLesson(ctx: Ctx, lessonId: string) {
   const embed = l.videoUrl ? parseVideoUrl(l.videoUrl) : null;
   const drip = course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
   const dripLocked = Boolean(drip && drip > ctx.now() && !course.canManage);
-  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
+  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
 }
 
 /** Đánh dấu hoàn thành bài, cập nhật course_progress, phát lesson.completed / course.completed. */

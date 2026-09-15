@@ -69,19 +69,22 @@ export function registerHandlers(app: AppContext): void {
         const items = await raw(c.db, sql`select item_product_id from bundle_items where bundle_product_id = ${product.id}`);
         for (const r of items as Array<{ item_product_id: string }>) await grant(c, { userId: p.userId, workspaceId: p.workspaceId, communityId: p.communityId, resourceType: 'product', resourceId: r.item_product_id, sourceType: 'community_bundle', sourceId: order.id });
       }
-      const m = await c.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, p.communityId), eq(communityMembers.userId, p.userId)) });
-      if (!m) {
-        // Người ngoài hội mua lẻ: tạo thành viên Tiêu chuẩn để vào học (mục 153 cho phép học không cần hội; V1 gắn vào hội để có dashboard).
-        const { joinCommunity } = await import('../services/members');
-        const community = await communityOf(c, p.communityId);
-        if (community && (community.pricingMode === 'free' || community.pricingMode === 'freemium')) await joinCommunity({ ...c, actor: { type: 'user', userId: p.userId, isSuperAdmin: false, email: user.email } }, community.slug, {}).catch(() => null);
-      }
+      // V2 (mục 153): người ngoài hội mua lẻ KHÔNG bị tự thêm vào hội nữa. Quyền học đã nằm ở entitlement,
+      // và Khu học tập /hoc phục vụ được người có 0 hội. Muốn vào hội thì tự bấm ở lời mời trên Khu học tập.
     } else if (p.targetType === 'platform' && p.workspaceId) {
       await activatePlatformPurchase(c, { workspaceId: p.workspaceId, orderId: order.id, cycle: (meta.cycle as 'monthly' | 'yearly') ?? 'monthly', paidAt, provider: p.provider, userId: p.userId });
     }
     await createCommissionForPayment(c, { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, communityId: p.communityId, workspaceId: p.workspaceId, amountMinor: p.amountMinor, targetType: p.targetType, affiliateAccountId: p.affiliateAccountId });
     const community = await communityOf(c, p.communityId);
-    const link = p.targetType === 'platform' ? `${c.env.APP_URL}/admin` : p.targetType === 'product' ? `${c.env.APP_URL}/${community?.slug}/cua-hang/${meta.productSlug ?? ''}` : `${c.env.APP_URL}/${community?.slug}/khoa-hoc`;
+    // Người mua lẻ không phải thành viên: gửi về Khu học tập, vì khung hội sẽ chặn họ ở cửa.
+    const isMember = p.communityId
+      ? Boolean(await c.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, p.communityId), eq(communityMembers.userId, p.userId)) }))
+      : false;
+    const link = p.targetType === 'platform'
+      ? `${c.env.APP_URL}/admin`
+      : p.targetType === 'product'
+        ? (isMember ? `${c.env.APP_URL}/${community?.slug}/cua-hang/${meta.productSlug ?? ''}` : `${c.env.APP_URL}/hoc`)
+        : `${c.env.APP_URL}/${community?.slug}/khoa-hoc`;
     await c.email.send(templates.paymentSucceeded(user.email, user.name, meta.title ?? 'đơn hàng', formatMoney(p.amountMinor, p.currency as 'VND'), link));
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.succeeded', category: 'payment', title: `Thanh toán ${formatMoney(p.amountMinor, p.currency as 'VND')} thành công · ${meta.title ?? ''}`, body: 'Quyền truy cập đã được mở', link: link.replace(c.env.APP_URL, ''), actionLabel: 'Vào học' });
     if (community) {
