@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.1.0 — 2026-09-15
+
+Đưa web lên Cloudflare Pages, tự động deploy khi đẩy code lên GitHub, và thêm nhãn phiên bản kèm nút cập nhật ngay trên giao diện.
+
+### Triển khai
+- Project Cloudflare Pages `hoiminh-web` (nhánh production `main`) tại https://hoiminh-web.pages.dev.
+- `.github/workflows/deploy.yml`: push lên `main` → typecheck · lint · test → build web → `wrangler pages deploy`; chạy tay được ở tab Actions. Deploy Worker API bật bằng biến `DEPLOY_API=true`.
+- `apps/web/public/_headers`: `version.json` và `index.html` không cache, tài nguyên có vân tay cache một năm.
+
+### Phiên bản trên giao diện
+- Nhãn `v<phiên bản> · <commit>` cố định ở góc dưới bên trái mọi màn hình.
+- Tự đối chiếu với `/version.json` mỗi 2 phút và mỗi lần quay lại tab; lệch nhau thì nhãn đổi màu "Có bản mới" kèm nút **Cập nhật ngay** (xóa cache trình duyệt rồi nạp lại).
+- Bảng chi tiết: phiên bản đang chạy, nhánh, giờ build, commit message, phiên bản trên máy chủ, lịch sử phiên bản đọc từ CHANGELOG, nhật ký các bản máy này đã dùng.
+- Super admin thấy thêm liên kết commit trên GitHub và trang chạy lại workflow deploy.
+- `apps/web/scripts/version-plugin.ts` sinh `__HM_BUILD__` và `dist/version.json` lúc đóng gói (đọc package.json, git, CHANGELOG; nhận biến của GitHub Actions và Cloudflare Pages).
+
 ## 1.0.0 — 2026-09-14
 
 Bản triển khai đầu tiên của toàn bộ mã nguồn Hội Mình từ tài liệu kiến trúc V1.5 và bộ thiết kế 50 màn hình.

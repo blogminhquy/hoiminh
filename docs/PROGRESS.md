@@ -96,11 +96,15 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 ## Đã kiểm chứng
 - Clone sạch từ GitHub (2026-09-15): `pnpm install --frozen-lockfile && pnpm db:migrate && pnpm db:seed` chạy được, mở http://localhost:5173 thấy Bảng tin hội mẫu sau khi đăng nhập.
 - `pnpm test:e2e` 8 passed; `pnpm test` 51 passed; `pnpm typecheck`, `pnpm lint` xanh; `pnpm --filter @hoiminh/web build` OK.
+- Deploy Cloudflare Pages (2026-09-15): project `hoiminh-web`, https://hoiminh-web.pages.dev mở được trang đăng nhập, `/version.json` trả `Cache-Control: no-store` đúng như `_headers`, nhãn phiên bản hiện `v1.0.0 · 53033d0` ở góc dưới bên trái.
+- Nhãn phiên bản: thử đổi `dist/version.json` sang buildId khác → nhãn chuyển sang "Có bản mới" màu cam, bảng chi tiết hiện phiên bản máy chủ và nút **Cập nhật ngay**; tab "Máy này" ghi đúng các bản đã dùng.
 
 ## Việc kế tiếp
-1. Deploy thật lên Cloudflare + Supabase khi có credential (README mục Deploy); chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`.
-2. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-3. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
+1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) để workflow Deploy chạy được; xem README mục "Tự động deploy khi đẩy lên GitHub".
+2. Supabase + Worker API: tạo project, chạy `pnpm db:migrate` với `DATABASE_DIRECT_URL`, `wrangler secret put` đủ biến, rồi bật `gh variable set DEPLOY_API --body true`. Chừng nào chưa có API thì web trên Pages mới chỉ hiện được các màn hình tĩnh.
+3. Trỏ tên miền `hoiminh.vn` vào Pages và `api.hoiminh.vn` vào Worker (đang dùng https://hoiminh-web.pages.dev).
+4. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
+5. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
 
 ## Ghi chú kỹ thuật cần nhớ
 - PATH trong PowerShell phải nạp lại: `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";$env:APPDATA\npm"`. Bash: `export PATH="$PATH:/c/Program Files/nodejs:/c/Users/Admin/AppData/Roaming/npm"`.

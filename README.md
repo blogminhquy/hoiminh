@@ -59,6 +59,7 @@ packages/media   R2 (hoặc lưu local .data/files)
 packages/ui      Token, CSS, component theo thiết kế
 e2e             Playwright
 infra           deploy.mjs, wrangler.pages.toml
+.github         CI (kiểm tra) và Deploy (tự động lên Cloudflare khi đẩy lên main)
 ```
 
 ## Deploy Cloudflare + Supabase
@@ -69,6 +70,38 @@ infra           deploy.mjs, wrangler.pages.toml
 4. **Pages web**: `pnpm --filter @hoiminh/web build` rồi `wrangler pages deploy apps/web/dist --project-name hoiminh-web` (tệp `apps/web/public/_redirects` xử lý SPA). Biến build: `VITE_API_URL`, `VITE_APP_URL`.
 5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
+
+Đã dựng sẵn: project Pages **hoiminh-web** → https://hoiminh-web.pages.dev (nhánh production `main`).
+
+## Tự động deploy khi đẩy lên GitHub
+
+`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck · lint · test) → build web → `wrangler pages deploy`. Bấm **Actions → Deploy → Run workflow** để deploy lại bằng tay.
+
+Cần đúng một secret do người dùng tự tạo (Claude/CLI không tạo được API token thay bạn):
+
+1. Cloudflare → **My Profile → API Tokens → Create Token → Edit Cloudflare Workers** (thêm quyền *Cloudflare Pages: Edit*), chọn account `Blogminhquy@gmail.com's Account`.
+2. Lưu vào GitHub:
+
+```bash
+gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
+```
+
+Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_API_URL`, `VITE_APP_URL`, `CF_PAGES_PROJECT`. Đặt thêm biến `DEPLOY_API=true` (`gh variable set DEPLOY_API --body true`) khi Worker API đã có đủ secret trên Cloudflare, lúc đó workflow deploy luôn cả API.
+
+Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Builds → **Connect to Git**, chọn repo `blogminhquy/hoiminh`, build command `pnpm --filter @hoiminh/web build`, output `apps/web/dist`. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
+
+## Nhãn phiên bản và nút cập nhật
+
+Góc dưới bên trái mọi màn hình có nhãn `v1.0.0 · <commit>`. Bấm vào để mở bảng:
+
+- **Đang chạy** — phiên bản, nhánh, giờ build, commit message của bản trình duyệt đang mở.
+- **Máy chủ** — phiên bản đang phục vụ trên Cloudflare, đọc từ `/version.json` (hỏi lại mỗi 2 phút và mỗi lần quay lại tab).
+- **Cập nhật ngay** — hiện khi hai bên lệch nhau; xóa cache trình duyệt rồi nạp lại để lấy bản mới. Khi có bản mới, nhãn đổi sang màu cam "Có bản mới".
+- **Lịch sử phiên bản** — đọc từ `CHANGELOG.md` lúc build, nên viết CHANGELOG là đủ, không cần sửa code.
+- **Máy này** — nhật ký các phiên bản trình duyệt này đã dùng (lưu ở localStorage, tối đa 20 dòng).
+- Super admin thấy thêm liên kết tới commit trên GitHub và trang chạy lại workflow deploy.
+
+Thông tin build do `apps/web/scripts/version-plugin.ts` sinh ra lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 
 ## Cấu hình cổng thanh toán
 
