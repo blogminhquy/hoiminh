@@ -1,7 +1,7 @@
 // Hệ thống · Tổng quan (saOverviewMain): chip kỳ, 5 thẻ số liệu, GMV theo ngày + tỷ trọng cổng, khối Cần xử lý, hội mới.
 import { useQuery } from '@tanstack/react-query';
 import { Bars, Chip, CommunityMark, StatCard, T, money } from '@hoiminh/ui';
-import { BadgeCheck, ExternalLink, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, ExternalLink, Users, Wallet } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { fmtCount, fmtDate, fmtShortMoney } from '@/lib/format';
 
 interface Overview {
+  config: Array<{ key: string; label: string; detail: string; severity: 'error' | 'warn' }>;
   totals: { users: number; usersNew: number; communities: number; communitiesNew: number; gmvMinor: number; platformRevenueMinor: number; failedPayments: number; totalPayments: number };
   todo: { unmatched: number; webhookFailures: number; reported: number; trialsEnding: number };
   daily: Array<{ date: string; amountMinor: number }>; byProvider: Array<{ provider: string; amountMinor: number }>;
@@ -37,6 +38,19 @@ export default function Page() {
           const failPct = d.totals.totalPayments ? Math.round((d.totals.failedPayments / d.totals.totalPayments) * 1000) / 10 : 0;
           return (
             <>
+              {d.config.length > 0 && (
+                <div className="card px-5 py-4 flex flex-col gap-2" style={{ borderColor: d.config.some((w) => w.severity === 'error') ? T.accent : T.gold }}>
+                  <span className="font-semibold text-[14px]">Hạ tầng chưa cấu hình xong</span>
+                  {d.config.map((w) => (
+                    <div key={w.key} className="flex items-start gap-2.5 text-[13px]">
+                      <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: w.severity === 'error' ? T.accentSoft : T.goldSoft, color: w.severity === 'error' ? T.accentText : T.goldText }}>
+                        <AlertTriangle size={14} />
+                      </span>
+                      <span className="flex-grow"><strong>{w.label}.</strong> {w.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <StatCard label="Người dùng" value={fmtCount(d.totals.users)} sub={`+${fmtCount(d.totals.usersNew)} trong kỳ`} subColor={T.teal} />
                 <StatCard label="Hội đang hoạt động" value={fmtCount(d.totals.communities)} sub={`+${d.totals.communitiesNew} hội mới`} subColor={T.teal} />

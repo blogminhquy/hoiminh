@@ -4,12 +4,17 @@ import { validateUpload } from '@hoiminh/media';
 import { and, eq } from 'drizzle-orm';
 import { files } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { invalid, notFound } from '../errors';
+import { AppError, invalid, notFound } from '../errors';
 import { requireUser } from '../permissions';
 
 /** Bước 1: xin presigned URL. Ảnh bài viết/avatar là public; tài liệu khóa học, tệp số là private. */
 export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'comment_image'; communityId?: string | null; workspaceId?: string | null }) {
   const userId = requireUser(ctx);
+  // Provider local ghi tệp bằng node:fs — Cloudflare Workers không có hệ tệp nên sẽ hỏng
+  // giữa chừng với lỗi khó hiểu. Chặn sớm và nói đúng nguyên nhân.
+  if (ctx.media.kind === 'local' && ctx.env.APP_ENV === 'production') {
+    throw new AppError('invalid_state', 'Chưa cấu hình R2 nên không tải tệp lên được. Tạo bucket rồi đặt R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET cho Worker.', 503);
+  }
   const v = validateUpload(input.mimeType, input.sizeBytes);
   if (!v.ok) throw invalid(v.reason);
   if (['post_image', 'avatar', 'cover', 'message_image', 'comment_image'].includes(input.purpose) && v.kind !== 'image') throw invalid('Mục này chỉ nhận ảnh');
