@@ -36,6 +36,31 @@ export async function verifyAccessToken(secret: string, token: string): Promise<
   }
 }
 
+/**
+ * Vé bước hai của đăng nhập: mật khẩu đã đúng nhưng chưa có phiên. Sống 5 phút,
+ * audience riêng nên không dùng thay access token được.
+ */
+export async function signTwoFactorTicket(secret: string, userId: string, ttlSeconds = 300): Promise<string> {
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(userId)
+    .setIssuer('hoiminh')
+    .setAudience('hoiminh-2fa')
+    .setIssuedAt()
+    .setExpirationTime(new Date(Date.now() + ttlSeconds * 1000))
+    .sign(enc.encode(secret));
+}
+
+/** Đọc vé bước hai; null nếu sai, hết hạn, hoặc là loại token khác. */
+export async function verifyTwoFactorTicket(secret: string, token: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(token, enc.encode(secret), { issuer: 'hoiminh', audience: 'hoiminh-2fa' });
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Tạo refresh token thô và bản băm để lưu. */
 export async function newRefreshToken(): Promise<{ raw: string; hash: string }> {
   const raw = randomToken(32);

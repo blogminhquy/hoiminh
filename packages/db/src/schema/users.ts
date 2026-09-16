@@ -53,6 +53,19 @@ export const userCredentials = pgTable('user_credentials', {
   ...timestamps(),
 });
 
+/**
+ * Xác thực hai lớp bằng ứng dụng (TOTP). Bí mật được mã hóa bằng ENCRYPTION_KEY;
+ * mã dự phòng chỉ lưu bản băm. `lastStep` chặn dùng lại đúng một mã trong cùng 30 giây.
+ */
+export const userTotp = pgTable('user_totp', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  secretEncrypted: text('secret_encrypted').notNull(),
+  confirmedAt: ts('confirmed_at'),
+  lastStep: integer('last_step').notNull().default(0),
+  backupCodeHashes: jsonb('backup_code_hashes').$type<string[]>().notNull().default([]),
+  ...timestamps(),
+});
+
 export const emailVerifications = pgTable(
   'email_verifications',
   {

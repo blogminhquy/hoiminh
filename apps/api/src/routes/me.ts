@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
 import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
+import { affiliate, auth, featureFlags, messaging, notifications, paymentsService, shell, subscriptions, totp, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -35,6 +35,18 @@ meRoutes.patch('/', async (c) => {
 meRoutes.post('/password', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
   const input = await parse(changePasswordSchema, await body(c));
   await auth.changePassword(c.get('ctx'), c.get('app').auth, input, c.get('sessionId'));
+  return c.json({ ok: true });
+});
+
+// Xác thực hai lớp của chính mình.
+const codeSchema = z.object({ code: z.string().min(6).max(20) });
+meRoutes.get('/2fa', async (c) => c.json(await totp.status(c.get('ctx'))));
+meRoutes.post('/2fa/start', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => c.json(await totp.startSetup(c.get('ctx'))));
+meRoutes.post('/2fa/confirm', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => c.json(await totp.confirmSetup(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
+meRoutes.post('/2fa/backup-codes', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => c.json(await totp.regenerateBackupCodes(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
+meRoutes.post('/2fa/disable', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => {
+  const input = await parse(z.object({ password: z.string().min(1) }), await body(c));
+  await totp.disable(c.get('ctx'), c.get('app').auth, input.password);
   return c.json({ ok: true });
 });
 

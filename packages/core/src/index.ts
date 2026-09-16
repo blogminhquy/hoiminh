@@ -13,6 +13,7 @@ export * from './lib/money';
 export * from './auth/providers';
 export * from './auth/tokens';
 export * as auth from './auth/service';
+export * as totp from './auth/totp';
 export * as users from './services/users';
 export * as workspaces from './services/workspaces';
 export * as communities from './services/communities';

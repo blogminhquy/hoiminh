@@ -6,8 +6,16 @@ import { and, eq, gt, isNull, ne } from 'drizzle-orm';
 import { authSessions, emailVerifications, passwordResets, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, conflict, invalid, notFound, unauthorized } from '../errors';
-import { hashToken, newRefreshToken, signAccessToken, verifyAccessToken } from './tokens';
+import { hashToken, newRefreshToken, signAccessToken, signTwoFactorTicket, verifyAccessToken, verifyTwoFactorTicket } from './tokens';
 import type { AuthProvider } from './providers';
+import * as totp from './totp';
+
+/** Mật khẩu đúng nhưng tài khoản bật hai lớp: cần thêm một bước nữa mới có phiên. */
+export interface TwoFactorChallenge {
+  twoFactorRequired: true;
+  ticket: string;
+  remember: boolean;
+}
 
 const ACCESS_TTL_REMEMBER = 7 * 86_400;
 const ACCESS_TTL_SHORT = 86_400;
@@ -52,13 +60,29 @@ export async function register(ctx: Ctx, provider: AuthProvider, input: Register
   return issueSession(ctx, provider, { ...user!, authProviderId: identity.providerUserId }, true, meta);
 }
 
-/** Đăng nhập email + mật khẩu. */
-export async function login(ctx: Ctx, provider: AuthProvider, input: LoginInput, meta?: { userAgent?: string }): Promise<AuthSession> {
+/**
+ * Đăng nhập email + mật khẩu. Tài khoản bật xác thực hai lớp thì chưa cấp phiên mà trả
+ * về vé bước hai; web gọi tiếp `verifyTwoFactor` với mã từ ứng dụng.
+ */
+export async function login(ctx: Ctx, provider: AuthProvider, input: LoginInput, meta?: { userAgent?: string }): Promise<AuthSession | TwoFactorChallenge> {
   const user = await ctx.db.query.users.findFirst({ where: eq(users.email, input.email) });
   const identity = await provider.signIn(input.email, input.password, user?.id ?? null);
   if (!user || !identity) throw unauthorized('Email hoặc mật khẩu không đúng');
   if (user.status === 'suspended') throw new AppError('forbidden', 'Tài khoản đã bị tạm khóa');
+  if (await totp.isEnabledFor(ctx, user.id)) {
+    return { twoFactorRequired: true, ticket: await signTwoFactorTicket(provider.jwtSecret, user.id), remember: input.remember ?? true };
+  }
   return issueSession(ctx, provider, user, input.remember ?? true, meta);
+}
+
+/** Bước hai: đổi vé + mã (từ ứng dụng hoặc mã dự phòng) lấy phiên đăng nhập. */
+export async function verifyTwoFactor(ctx: Ctx, provider: AuthProvider, ticket: string, code: string, remember = true, meta?: { userAgent?: string }): Promise<AuthSession> {
+  const userId = await verifyTwoFactorTicket(provider.jwtSecret, ticket);
+  if (!userId) throw unauthorized('Phiên xác thực đã hết hạn, đăng nhập lại');
+  const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
+  if (!user || user.status !== 'active') throw unauthorized();
+  await totp.verifyForLogin({ ...ctx, actor: { type: 'user', userId, isSuperAdmin: user.isSuperAdmin, email: user.email } }, userId, code);
+  return issueSession(ctx, provider, user, remember, meta);
 }
 
 /** Đăng nhập bằng danh tính Supabase (sau Google OAuth): tạo user nếu chưa có. */

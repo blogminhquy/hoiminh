@@ -28,20 +28,56 @@ export default function Page() {
   const [remember, setRemember] = useState(true);
   const next = params.get('next');
 
+  // Tài khoản bật xác thực hai lớp: API trả vé thay vì phiên, form đổi sang bước nhập mã.
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+
+  const finish = async (session: AuthSession) => {
+    setSession(session);
+    const me = await api.get<{ communities: MyCommunity[] }>('/v1/me');
+    return landingFor(next, me.communities);
+  };
+
   const m = useMutation({
     mutationFn: async () => {
-      const session = await api.post<AuthSession>('/v1/auth/login', { email, password, remember });
-      setSession(session);
-      const me = await api.get<{ communities: MyCommunity[] }>('/v1/me');
-      return landingFor(next, me.communities);
+      const r = await api.post<AuthSession | { twoFactorRequired: true; ticket: string }>('/v1/auth/login', { email, password, remember });
+      if ('twoFactorRequired' in r) {
+        setTicket(r.ticket);
+        return null;
+      }
+      return finish(r);
     },
+    onSuccess: (to) => { if (to) navigate(to, { replace: true }); },
+  });
+
+  const verify = useMutation({
+    mutationFn: async () => finish(await api.post<AuthSession>('/v1/auth/2fa', { ticket, code: code.trim(), remember })),
     onSuccess: (to) => navigate(to, { replace: true }),
   });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!m.isPending) m.mutate();
+    if (ticket) {
+      if (!verify.isPending) verify.mutate();
+    } else if (!m.isPending) m.mutate();
   };
+
+  if (ticket) {
+    return (
+      <AuthShell>
+        <form onSubmit={submit} className="flex flex-col gap-5">
+          <div>
+            <h2 className="serif m-0 mb-1.5 text-[30px] font-extrabold">Xác thực hai lớp</h2>
+            <div className="muted">Nhập mã 6 số trong ứng dụng xác thực của bạn, hoặc một mã dự phòng.</div>
+          </div>
+          <AuthInput label="Mã xác thực" inputMode="text" autoComplete="one-time-code" autoFocus required value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
+          <FormError error={verify.error} />
+          <Button type="submit" variant="primary" loading={verify.isPending} disabled={code.trim().length < 6} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>Xác nhận</Button>
+          <button type="button" className="muted text-[13px] font-semibold" onClick={() => { setTicket(null); setCode(''); }}>Quay lại đăng nhập</button>
+        </form>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>

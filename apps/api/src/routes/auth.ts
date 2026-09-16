@@ -21,6 +21,13 @@ authRoutes.post('/login', rateLimit({ windowMs: 60_000, max: 20 }), async (c) =>
   return c.json(session);
 });
 
+/** Bước hai của đăng nhập: vé + mã từ ứng dụng xác thực (hoặc mã dự phòng). */
+authRoutes.post('/2fa', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+  const input = await parse(z.object({ ticket: z.string().min(10), code: z.string().min(6).max(20), remember: z.boolean().optional() }), await body(c));
+  const session = await auth.verifyTwoFactor(c.get('ctx'), c.get('app').auth, input.ticket, input.code, input.remember ?? true, { userAgent: c.req.header('user-agent') });
+  return c.json(session);
+});
+
 authRoutes.post('/refresh', async (c) => {
   const { refreshToken } = await parse(z.object({ refreshToken: z.string().min(10) }), await body(c));
   return c.json(await auth.refresh(c.get('ctx'), c.get('app').auth, refreshToken));

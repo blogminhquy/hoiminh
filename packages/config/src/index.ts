@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 export * from './crypto';
+export * from './totp';
 
 const bool = z
   .union([z.boolean(), z.string()])

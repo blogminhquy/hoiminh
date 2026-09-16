@@ -4,7 +4,8 @@ import { MomoAdapter } from '@hoiminh/payments';
 import { and, eq } from 'drizzle-orm';
 import { affiliateCommissions, communityMembers, entitlements, orders, payments } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { register, login, verifyEmail, forgotPassword, resetPassword } from '../auth/service';
+import { register, login, verifyEmail, forgotPassword, resetPassword, verifyTwoFactor } from '../auth/service';
+import * as totp from '../auth/totp';
 import { runCron, runScheduledJobs } from '../jobs/cron';
 import { requireCommunityPermission } from '../permissions';
 import * as affiliate from '../services/affiliate';
@@ -32,6 +33,13 @@ afterAll(async () => {
   await app.close();
 });
 
+/** Đăng nhập và khẳng định tài khoản không bật hai lớp (đa số test dùng dạng này). */
+async function loginOk(...args: Parameters<typeof login>) {
+  const s = await login(...args);
+  if ('twoFactorRequired' in s) throw new Error('Không mong đợi bước xác thực hai lớp');
+  return s;
+}
+
 /** Giả lập SePay báo có cho một đơn: gửi webhook đã ký với đúng nội dung và số tiền. */
 async function sepayPaid(reference: string, amount: number, content = reference) {
   const body = { id: Math.floor(Math.random() * 1e9), gateway: 'Vietcombank', transactionDate: '2026-09-14 09:03:11', accountNumber: '0071000123456', code: null, content: `NGUYEN VAN A ck ${content}`, transferType: 'in', transferAmount: amount, accumulated: 0, subAccount: null, referenceCode: `MBVCB.${Date.now()}`, description: '' };
@@ -52,7 +60,7 @@ describe('Luồng 1: đăng ký → xác minh → tham gia hội miễn phí →
   });
   it('đăng nhập sai mật khẩu bị từ chối, đúng thì có phiên', async () => {
     await expect(login(app.anon(), app.auth, { email: 'nguoimoi@example.com', password: 'sai', remember: true })).rejects.toThrow();
-    const s = await login(app.anon(), app.auth, { email: 'nguoimoi@example.com', password: 'matkhau123', remember: true });
+    const s = await loginOk(app.anon(), app.auth, { email: 'nguoimoi@example.com', password: 'matkhau123', remember: true });
     expect(s.user.handle).toBe('nguoi-moi');
   });
   it('tham gia Freemium → thành viên Tiêu chuẩn, có tin nhắn chào sau khi cron chạy', async () => {
@@ -78,7 +86,7 @@ describe('Luồng 1: đăng ký → xác minh → tham gia hội miễn phí →
     const { token } = await forgotPassword(app.anon(), 'nguoimoi@example.com');
     expect(token).toBeTruthy();
     await resetPassword(app.anon(), app.auth, token!, 'matkhaumoi456', true);
-    const s = await login(app.anon(), app.auth, { email: 'nguoimoi@example.com', password: 'matkhaumoi456', remember: true });
+    const s = await loginOk(app.anon(), app.auth, { email: 'nguoimoi@example.com', password: 'matkhaumoi456', remember: true });
     expect(s.user.id).toBe(userId);
   });
 });
@@ -337,5 +345,76 @@ describe('Luồng 7: quản trị hệ thống', () => {
     expect(await entitlementSvc.revokeBySource(sys, 'manual_grant', 's1')).toBe(1);
     const row = await app.ctx.db.query.entitlements.findFirst({ where: eq(entitlements.id, e1.id) });
     expect(row?.status).toBe('revoked');
+  });
+});
+
+describe('Xác thực hai lớp (TOTP)', () => {
+  const email = 'hailop@example.com';
+  const password = 'matkhau2fa';
+  let userId = '';
+  let ctx: Awaited<ReturnType<typeof app.as>>;
+  let secret = '';
+  let backupCodes: string[] = [];
+
+  it('bật: quét mã, nhập sai bị từ chối, nhập đúng thì nhận mã dự phòng', async () => {
+    const s = await register(app.anon(), app.auth, { name: 'Hai Lớp', email, password, acceptTerms: true });
+    userId = s.user.id;
+    ctx = { ...app.anon(), actor: { type: 'user' as const, userId, isSuperAdmin: false, email } };
+    expect((await totp.status(ctx)).enabled).toBe(false);
+
+    const setup = await totp.startSetup(ctx);
+    secret = setup.secret;
+    expect(setup.uri).toContain('otpauth://totp/');
+    expect(setup.uri).toContain(`secret=${secret}`);
+
+    await expect(totp.confirmSetup(ctx, '000000')).rejects.toThrow(/Mã không đúng/);
+    const { totpCodeAt } = await import('@hoiminh/config');
+    const step = Math.floor(Date.now() / 1000 / 30);
+    const r = await totp.confirmSetup(ctx, await totpCodeAt(secret, step));
+    backupCodes = r.backupCodes;
+    expect(backupCodes).toHaveLength(10);
+    expect((await totp.status(ctx)).enabled).toBe(true);
+    expect(app.emails.some((e) => e.template === 'two_factor_changed' && e.to === email)).toBe(true);
+  });
+
+  it('đăng nhập: mật khẩu đúng chỉ ra vé, phải thêm mã mới có phiên', async () => {
+    const challenge = await login(app.anon(), app.auth, { email, password, remember: true });
+    if (!('twoFactorRequired' in challenge)) throw new Error('Phải yêu cầu bước hai');
+    expect(challenge.ticket).toBeTruthy();
+    await expect(verifyTwoFactor(app.anon(), app.auth, challenge.ticket, '000000')).rejects.toThrow();
+    const { totpCodeAt } = await import('@hoiminh/config');
+    // Bước kế tiếp: mã của bước vừa dùng lúc bật đã bị chặn dùng lại, và ±1 bước vẫn nằm trong cửa sổ chấp nhận.
+    const next = Math.floor(Date.now() / 1000 / 30) + 1;
+    const session = await verifyTwoFactor(app.anon(), app.auth, challenge.ticket, await totpCodeAt(secret, next));
+    expect(session.user.id).toBe(userId);
+  });
+
+  it('không dùng lại được mã vừa dùng', async () => {
+    const { totpCodeAt } = await import('@hoiminh/config');
+    const used = await totpCodeAt(secret, Math.floor(Date.now() / 1000 / 30) + 1);
+    const c = await login(app.anon(), app.auth, { email, password, remember: true });
+    if (!('twoFactorRequired' in c)) throw new Error('Phải yêu cầu bước hai');
+    await expect(verifyTwoFactor(app.anon(), app.auth, c.ticket, used)).rejects.toThrow();
+  });
+
+  it('mã dự phòng dùng được đúng một lần', async () => {
+    const c1 = await login(app.anon(), app.auth, { email, password, remember: true });
+    if (!('twoFactorRequired' in c1)) throw new Error('Phải yêu cầu bước hai');
+    const code = backupCodes[0]!;
+    const session = await verifyTwoFactor(app.anon(), app.auth, c1.ticket, code);
+    expect(session.user.id).toBe(userId);
+    expect((await totp.status(ctx)).backupCodesLeft).toBe(9);
+
+    const c2 = await login(app.anon(), app.auth, { email, password, remember: true });
+    if (!('twoFactorRequired' in c2)) throw new Error('Phải yêu cầu bước hai');
+    await expect(verifyTwoFactor(app.anon(), app.auth, c2.ticket, code)).rejects.toThrow();
+  });
+
+  it('tắt phải nhập đúng mật khẩu; tắt xong đăng nhập lại như thường', async () => {
+    await expect(totp.disable(ctx, app.auth, 'sai-mat-khau')).rejects.toThrow(/Mật khẩu không đúng/);
+    await totp.disable(ctx, app.auth, password);
+    expect((await totp.status(ctx)).enabled).toBe(false);
+    const s = await loginOk(app.anon(), app.auth, { email, password, remember: true });
+    expect(s.user.id).toBe(userId);
   });
 });

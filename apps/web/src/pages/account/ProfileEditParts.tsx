@@ -5,6 +5,7 @@ import { ExternalLink, Eye, EyeOff, Globe, Image, MessageCircle, Plus, Video, X 
 import { useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
+import { TwoFactorCard } from './TwoFactorCard';
 
 export interface ProfileLink { kind: string; label: string; url: string }
 export interface Privacy { publicProfile: boolean; showProgress: boolean; showCommunities: boolean; allowMessages: boolean }
@@ -154,10 +155,7 @@ export function AccountCard({ email, verifiedAt, onLogout }: { email: string; ve
         <span className="muted" style={{ width: 130 }}>Mật khẩu</span>
         <a href="#mat-khau" className="text-[13px] font-semibold">Đổi mật khẩu</a>
       </div>
-      <div className="flex items-center gap-3 text-[14px] flex-wrap">
-        <span className="muted" style={{ width: 130 }}>Xác thực hai lớp</span>
-        <span className="muted text-[13px]">Sắp có · bạn sẽ được nhắc bật khi tính năng ra mắt</span>
-      </div>
+      <TwoFactorCard />
       <div className="flex items-center gap-3 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
         <span className="muted text-[13px] flex-grow">Đăng xuất khỏi thiết bị này. Các phiên khác vẫn giữ nguyên.</span>
         <Button size="sm" style={{ color: T.accentText }} onClick={onLogout}>Đăng xuất</Button>
