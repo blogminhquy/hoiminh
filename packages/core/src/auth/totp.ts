@@ -84,7 +84,7 @@ export async function disable(ctx: Ctx, provider: AuthProvider, password: string
   const userId = requireUser(ctx);
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
-  const identity = await provider.signIn(user.email, password, user.id);
+  const identity = await provider.signIn(user.email, password, user.id, ctx.db);
   if (!identity) throw unauthorized('Mật khẩu không đúng');
   await ctx.db.delete(userTotp).where(eq(userTotp.userId, userId));
   await ctx.email.send(templates.twoFactorChanged(user.email, user.name, false));

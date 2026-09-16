@@ -31,8 +31,9 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 16. Người ngoài hội mua lẻ sản phẩm của hội Freemium được thêm làm thành viên Tiêu chuẩn để có dashboard học (mục 153 để dashboard riêng cho V2).
 17. **Xếp hạng cộng sự** tính lại mỗi 10 phút (cron) và ngay sau khi seed; tháng, quý và từ đầu.
 18. **Welcome DM** dùng bảng `scheduled_jobs` (cron mỗi phút) để trễ N phút, chạy được cả trên Workers; tin nhắn polling 15 giây.
-19. **RLS:** một policy `tenant_isolation` sinh tự động cho mọi bảng theo cột `workspace_id`/`community_id`/`user_id` + `app.bypass`; API production chạy dưới role `hoiminh_app`. PGlite là superuser nên RLS không chặn ở local (đã có test xác nhận RLS được bật).
-20. **CSRF:** API dùng Bearer token trong header, không dùng cookie phiên, nên không cần CSRF token; cookie `hm_ref/hm_vid` chỉ là attribution.
-21. **Rate limit** ở edge do Cloudflare (WAF rules) là chính; API có cửa sổ trượt trong bộ nhớ cho đăng nhập/đăng ký/webhook/đăng bài.
-22. **Doanh thu chủ hội "Có thể rút"**: V1 không có API rút tiền chủ hội tự động (tiền về tài khoản Hội Mình rồi chuyển theo yêu cầu); màn Thanh toán hiển thị số dư/đang giữ 14 ngày và hướng dẫn liên hệ.
-23. **Tin nhắn "Tài nguyên"** trong sidebar là tab ẩn mặc định (mục 191 cho phép hiện/ẩn), dẫn tới thư viện khóa học.
+19. **RLS:** một policy `tenant_isolation` sinh tự động cho mọi bảng theo cột `workspace_id`/`community_id`/`user_id` + `app.bypass`; API production chạy dưới role `hoiminh_app`. Biến phiên được đặt trong transaction của từng request/job (`withTenantScope`, `withSystemScope`). Thi hành là một bước vận hành riêng (`pnpm db:rls on`) chứ không nằm trong migration: bật sai thì truy vấn trả rỗng chứ không báo lỗi, nên phải bật khi có người theo dõi. Phạm vi lấy rộng (mọi workspace và hội có quan hệ, không lọc theo trạng thái thành viên) vì quyền thật do service layer quyết định; RLS là lớp chặn cuối.
+20. **Handler sự kiện nhận ngữ cảnh của bên phát** (`meta.ctx`) thay vì dùng kết nối gốc, nếu không thì chúng nằm ngoài transaction của request: trên Postgres là không thấy biến phiên, trên PGlite (một kết nối) là khóa chết. Cùng lý do, `AuthProvider` nhận executor của request.
+21. **CSRF:** API dùng Bearer token trong header, không dùng cookie phiên, nên không cần CSRF token; cookie `hm_ref/hm_vid` chỉ là attribution.
+22. **Rate limit** ở edge do Cloudflare (WAF rules) là chính; API có cửa sổ trượt trong bộ nhớ cho đăng nhập/đăng ký/webhook/đăng bài.
+23. **Doanh thu chủ hội "Có thể rút"**: V1 không có API rút tiền chủ hội tự động (tiền về tài khoản Hội Mình rồi chuyển theo yêu cầu); màn Thanh toán hiển thị số dư/đang giữ 14 ngày và hướng dẫn liên hệ.
+24. **Tin nhắn "Tài nguyên"** trong sidebar là tab ẩn mặc định (mục 191 cho phép hiện/ẩn), dẫn tới thư viện khóa học.

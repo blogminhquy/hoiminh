@@ -18,6 +18,7 @@
     "db:migrate": "pnpm --filter @hoiminh/db migrate",
     "db:seed": "pnpm --filter @hoiminh/db seed",
     "db:admin": "pnpm --filter @hoiminh/db admin",
+    "db:rls": "pnpm --filter @hoiminh/db rls",
     "db:reset": "pnpm --filter @hoiminh/db reset",
     "deploy": "node infra/deploy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test"

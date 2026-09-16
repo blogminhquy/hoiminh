@@ -38,6 +38,7 @@ export * as apiKeys from './services/api-keys';
 export * as webhooksOut from './services/webhooks-out';
 export * as filesService from './services/files';
 export * as featureFlags from './services/feature-flags';
+export { withTenantScope, withSystemScope, resolveScope, type TenantScope } from './lib/tenant-scope';
 export * as shell from './services/shell';
 export { audit } from './services/audit';
 export { createApp, type App, type CreateAppOptions } from './app';

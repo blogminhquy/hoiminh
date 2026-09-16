@@ -1,7 +1,10 @@
 // Xác thực: Bearer JWT phiên (web) hoặc API key hm_… (tích hợp, MCP). Không có token → anonymous.
-import { apiKeys as apiKeySvc, auth as authSvc, unauthorized, type App, type Ctx } from '@hoiminh/core';
+import { apiKeys as apiKeySvc, auth as authSvc, unauthorized, withSystemScope, withTenantScope, type App, type Ctx } from '@hoiminh/core';
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
+
+/** Đường dẫn máy-với-máy: chạy dưới quyền hệ thống thay vì theo actor. */
+const SYSTEM_PATHS = ['/webhooks', '/pay/simulator', '/r', '/files', '/health'];
 
 /** Gắn ctx vào mỗi request; xác thực nếu có Authorization. */
 export function authMiddleware(app: App): MiddlewareHandler<Env> {
@@ -24,9 +27,18 @@ export function authMiddleware(app: App): MiddlewareHandler<Env> {
       }
     }
     c.set('app', app);
-    c.set('ctx', ctx);
     c.header('x-request-id', requestId);
-    await next();
+    // Mọi truy vấn của request chạy trong một transaction có biến phiên của actor (RLS).
+    // Điểm vào máy-với-máy không có actor mà vẫn phải ghi xuyên tenant: webhook cổng
+    // thanh toán, trang mô phỏng sandbox, đếm lượt bấm link cộng sự, phát tệp theo URL ký.
+    const path = new URL(c.req.url).pathname;
+    const machine = SYSTEM_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+    const run = machine ? withSystemScope : withTenantScope;
+    await run(ctx, async (scoped) => {
+      c.set('ctx', scoped);
+      await next();
+    });
+    // Ghi nhật ký dùng API key sau khi transaction đã đóng, nên dùng ctx gốc.
     if (ctx.actor.type === 'api_key') await apiKeySvc.logApiKeyUse(ctx, ctx.actor.apiKeyId, c.req.method, new URL(c.req.url).pathname, c.res.status).catch(() => null);
   };
 }

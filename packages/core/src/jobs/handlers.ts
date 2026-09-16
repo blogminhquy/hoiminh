@@ -3,6 +3,7 @@ import { templates } from '@hoiminh/email';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { communities, emailLogs, eventRegistrations, events, notificationPrefs, posts, users } from '@hoiminh/db';
 import { systemCtx, type AppContext } from '../context';
+import { withSystemScope } from '../lib/tenant-scope';
 import { raw } from '../lib/db';
 import { snapshotLeaderboards } from '../services/affiliate';
 import { recountCourse } from '../services/courses';
@@ -13,8 +14,9 @@ import type { Job } from './queue';
 
 /** Tạo handler cho hàng đợi. */
 export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
-  return async (job) => {
-    const ctx = systemCtx(app, `job-${job.name}`);
+  return async (job) =>
+    // Job chạy ngoài request nên tự mở transaction có biến phiên bypass (RLS).
+    withSystemScope(systemCtx(app, `job-${job.name}`), async (ctx) => {
     switch (job.name) {
       case 'webhook.deliver':
         await deliver(ctx, job.payload.deliveryId);
@@ -68,5 +70,5 @@ export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
         return;
       }
     }
-  };
+  });
 }

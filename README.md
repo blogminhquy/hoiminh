@@ -96,7 +96,19 @@ DATABASE_URL="<chuỗi kết nối Supabase>" pnpm db:admin "email@cua-ban.com" 
 
 Lệnh này tạo tài khoản mới (hoặc nâng tài khoản đã có), đặt mật khẩu, đánh dấu đã xác minh email và bật `is_super_admin`. Đăng nhập ở `/dang-nhap` rồi vào `/he-thong`; từ đó nâng quyền cho người khác bằng giao diện. Mật khẩu là PBKDF2 nên chỉ dùng được khi `AUTH_PROVIDER=local`.
 
-> **RLS chưa thực sự có tác dụng.** `0001_rls.sql` bật Row Level Security và tạo policy theo `app.user_id` / `app.workspace_ids` / `app.community_ids`, nhưng service layer không hề gọi `set_config` để đặt các biến phiên đó. Nếu chạy API dưới một role *không* sở hữu bảng thì mọi truy vấn sẽ bị lọc sạch. Hiện API chạy bằng chính role sở hữu bảng nên RLS không chặn — an toàn nhưng cũng đồng nghĩa lớp phòng thủ này chưa hoạt động. Muốn bật thật thì phải đặt biến phiên trong từng transaction.
+### Row Level Security
+
+Mỗi request và mỗi job chạy trong một transaction có đặt sẵn `app.user_id`, `app.workspace_ids`, `app.community_ids`, `app.bypass` (`packages/core/src/lib/tenant-scope.ts`), đúng bốn biến mà policy `tenant_isolation` trong `0001_rls.sql` đọc. Cron, hàng đợi và webhook cổng thanh toán chạy với `app.bypass = on`.
+
+Policy vẫn **chưa chặn** cho tới khi bật thi hành, vì vai trò kết nối là chủ sở hữu bảng và Postgres cho chủ sở hữu đi qua RLS:
+
+```bash
+pnpm db:rls status   # xem bảng nào đã bật, bảng nào đang thi hành
+pnpm db:rls on       # FORCE ROW LEVEL SECURITY trên mọi bảng
+pnpm db:rls off      # tắt thi hành, policy vẫn còn
+```
+
+Bật trong lúc có người theo dõi log: nếu một đường chạy nào đó thiếu biến phiên thì truy vấn **không báo lỗi mà trả về rỗng**. `packages/db/src/test/rls.test.ts` dựng một vai trò không sở hữu bảng, bật FORCE rồi kiểm tra policy thật sự chặn đọc và ghi chéo tenant.
 
 ## Tự động deploy khi đẩy lên GitHub
 

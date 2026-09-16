@@ -2,7 +2,7 @@
 import { hashPassword, verifyPassword } from '@hoiminh/config';
 import { eq } from 'drizzle-orm';
 import { userCredentials } from '@hoiminh/db';
-import type { Database } from '@hoiminh/db';
+import type { Database, DbExecutor } from '@hoiminh/db';
 
 export interface AuthIdentity {
   /** Id định danh ở provider (Supabase user id hoặc chính users.id với local). */
@@ -13,12 +13,15 @@ export interface AuthIdentity {
 
 export interface AuthProvider {
   readonly kind: 'local' | 'supabase';
-  /** Tạo danh tính mới với mật khẩu. */
-  signUp(email: string, password: string, meta: { name: string; userId: string }): Promise<AuthIdentity>;
+  /**
+   * `db` là executor của request (transaction có biến phiên RLS). Provider local phải
+   * dùng nó thay vì kết nối gốc, nếu không truy vấn nằm ngoài transaction của request.
+   */
+  signUp(email: string, password: string, meta: { name: string; userId: string }, db?: DbExecutor): Promise<AuthIdentity>;
   /** Kiểm tra email + mật khẩu. */
-  signIn(email: string, password: string, userId: string | null): Promise<AuthIdentity | null>;
+  signIn(email: string, password: string, userId: string | null, db?: DbExecutor): Promise<AuthIdentity | null>;
   /** Đổi mật khẩu. */
-  setPassword(providerUserId: string, password: string): Promise<void>;
+  setPassword(providerUserId: string, password: string, db?: DbExecutor): Promise<void>;
   /** URL bắt đầu đăng nhập Google (null nếu không hỗ trợ). */
   googleAuthUrl(redirectTo: string): string | null;
   /** Bí mật ký JWT phiên (Supabase dùng JWT của Supabase, local dùng AUTH_JWT_SECRET). */
@@ -29,18 +32,21 @@ export interface AuthProvider {
 export class LocalAuthProvider implements AuthProvider {
   readonly kind = 'local' as const;
   constructor(private readonly db: Database, readonly jwtSecret: string) {}
-  async signUp(email: string, password: string, meta: { name: string; userId: string }): Promise<AuthIdentity> {
-    await this.db.insert(userCredentials).values({ userId: meta.userId, passwordHash: await hashPassword(password) }).onConflictDoUpdate({ target: userCredentials.userId, set: { passwordHash: await hashPassword(password) } });
+  private on(db?: DbExecutor): DbExecutor {
+    return db ?? this.db;
+  }
+  async signUp(email: string, password: string, meta: { name: string; userId: string }, db?: DbExecutor): Promise<AuthIdentity> {
+    await this.on(db).insert(userCredentials).values({ userId: meta.userId, passwordHash: await hashPassword(password) }).onConflictDoUpdate({ target: userCredentials.userId, set: { passwordHash: await hashPassword(password) } });
     return { providerUserId: meta.userId, email, emailVerified: false };
   }
-  async signIn(email: string, password: string, userId: string | null): Promise<AuthIdentity | null> {
+  async signIn(email: string, password: string, userId: string | null, db?: DbExecutor): Promise<AuthIdentity | null> {
     if (!userId) return null;
-    const cred = await this.db.query.userCredentials.findFirst({ where: eq(userCredentials.userId, userId) });
+    const cred = await this.on(db).query.userCredentials.findFirst({ where: eq(userCredentials.userId, userId) });
     if (!cred || !(await verifyPassword(password, cred.passwordHash))) return null;
     return { providerUserId: userId, email, emailVerified: true };
   }
-  async setPassword(providerUserId: string, password: string): Promise<void> {
-    await this.db.update(userCredentials).set({ passwordHash: await hashPassword(password), updatedAt: new Date() }).where(eq(userCredentials.userId, providerUserId));
+  async setPassword(providerUserId: string, password: string, db?: DbExecutor): Promise<void> {
+    await this.on(db).update(userCredentials).set({ passwordHash: await hashPassword(password), updatedAt: new Date() }).where(eq(userCredentials.userId, providerUserId));
   }
   googleAuthUrl(): string | null {
     return null;

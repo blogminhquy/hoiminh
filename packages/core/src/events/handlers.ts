@@ -4,6 +4,7 @@ import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
 import { communities, communityMembers, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
+import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
 import { grant } from '../services/entitlements';
@@ -22,15 +23,17 @@ async function communityOf(ctx: Ctx, id: string | null) {
 /** Gắn toàn bộ handler vào bus. Gọi một lần khi khởi động. */
 export function registerHandlers(app: AppContext): void {
   const bus = app.events;
-  const ctx = () => systemCtx(app);
+  // Ưu tiên ngữ cảnh của bên phát: handler phải chạy chung transaction và chung biến
+  // phiên RLS với request đã tạo ra sự kiện. Cron/queue không truyền gì thì dùng hệ thống.
+  const ctx = (meta?: EventMeta): Ctx => (meta?.ctx as Ctx | undefined) ?? systemCtx(app);
 
-  bus.on('user.registered', async (p) => {
-    const c = ctx();
+  bus.on('user.registered', async (p, ev) => {
+    const c = ctx(ev);
     await attachAttribution(c, p.userId, null, p.ref);
   });
 
-  bus.on('member.joined', async (p) => {
-    const c = ctx();
+  bus.on('member.joined', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     const user = await userOf(c, p.userId);
     if (!community || !user) return;
@@ -46,15 +49,15 @@ export function registerHandlers(app: AppContext): void {
     await dispatch(c, community.workspaceId, 'member.joined', { communityId: p.communityId, userId: p.userId, memberId: p.memberId, email: user.email, name: user.name, source: p.source });
   });
 
-  bus.on('member.tier_changed', async (p) => {
-    const c = ctx();
+  bus.on('member.tier_changed', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     if (!community) return;
     await dispatch(c, community.workspaceId, 'member.tier_changed', { communityId: p.communityId, userId: p.userId, fromTierId: p.fromTierId, toTierId: p.toTierId, reason: p.reason });
   });
 
-  bus.on('payment.succeeded', async (p) => {
-    const c = ctx();
+  bus.on('payment.succeeded', async (p, ev) => {
+    const c = ctx(ev);
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
     const user = await userOf(c, p.userId);
     if (!order || !user) return;
@@ -91,34 +94,34 @@ export function registerHandlers(app: AppContext): void {
     await dispatch(c, p.workspaceId, 'payment.succeeded', { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, email: user.email, amountMinor: p.amountMinor, currency: p.currency, provider: p.provider, targetType: p.targetType, targetId: p.targetId, title: meta.title });
   });
 
-  bus.on('payment.refunded', async (p) => {
-    const c = ctx();
+  bus.on('payment.refunded', async (p, ev) => {
+    const c = ctx(ev);
     await reverseCommissionForPayment(c, p.paymentId);
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.refunded', category: 'payment', title: `Đã hoàn ${formatMoney(p.amountMinor)} cho ${(order?.metadata as { title?: string } | undefined)?.title ?? 'đơn hàng'}`, body: 'Tiền về theo phương thức đã trả trong 3–7 ngày làm việc' });
     await dispatch(c, order?.workspaceId ?? null, 'payment.refunded', { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, amountMinor: p.amountMinor });
   });
 
-  bus.on('subscription.cancelled', async (p) => {
-    const c = ctx();
+  bus.on('subscription.cancelled', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     await dispatch(c, community?.workspaceId ?? null, 'subscription.cancelled', { subscriptionId: p.subscriptionId, userId: p.userId, communityId: p.communityId, periodEnd: p.periodEnd });
   });
 
-  bus.on('lesson.completed', async (p) => {
-    const c = ctx();
+  bus.on('lesson.completed', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     await dispatch(c, community?.workspaceId ?? null, 'lesson.completed', { userId: p.userId, lessonId: p.lessonId, courseId: p.courseId, percent: p.percent });
   });
-  bus.on('course.completed', async (p) => {
-    const c = ctx();
+  bus.on('course.completed', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: 'Chứng nhận có tên bạn đã sẵn sàng', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
     await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId });
   });
 
-  bus.on('post.created', async (p) => {
-    const c = ctx();
+  bus.on('post.created', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     if (!community) return;
     await dispatch(c, community.workspaceId, 'post.created', { postId: p.postId, communityId: p.communityId, authorUserId: p.authorUserId, title: p.title });
@@ -131,8 +134,8 @@ export function registerHandlers(app: AppContext): void {
     }
   });
 
-  bus.on('comment.created', async (p) => {
-    const c = ctx();
+  bus.on('comment.created', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     const author = await userOf(c, p.authorUserId);
     if (!community || !author) return;
@@ -150,14 +153,14 @@ export function registerHandlers(app: AppContext): void {
     }
   });
 
-  bus.on('event.registered', async (p) => {
-    const c = ctx();
+  bus.on('event.registered', async (p, ev) => {
+    const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     await dispatch(c, community?.workspaceId ?? null, 'event.registered', { eventId: p.eventId, communityId: p.communityId, userId: p.userId });
   });
 
-  bus.on('affiliate.commission_available', async (p) => {
-    const c = ctx();
+  bus.on('affiliate.commission_available', async (p, ev) => {
+    const c = ctx(ev);
     const user = await userOf(c, p.userId);
     if (!user) return;
     const program = await raw(c.db, sql`select community_id, workspace_id from affiliate_programs where id = ${p.programId}`);
@@ -167,15 +170,15 @@ export function registerHandlers(app: AppContext): void {
     await dispatch(c, pr?.workspace_id ?? null, 'affiliate.commission_available', { commissionId: p.commissionId, affiliateAccountId: p.affiliateAccountId, userId: p.userId, amountMinor: p.amountMinor });
   });
 
-  bus.on('affiliate.withdrawal_requested', async (p) => {
-    const c = ctx();
+  bus.on('affiliate.withdrawal_requested', async (p, ev) => {
+    const c = ctx(ev);
     const program = await raw(c.db, sql`select payer_user_id, community_id, name from affiliate_programs where id = ${p.programId}`);
     const pr = program[0] as { payer_user_id: string | null; community_id: string | null; name: string } | undefined;
     if (pr?.payer_user_id) await notify(c, { userId: pr.payer_user_id, communityId: pr.community_id, kind: 'affiliate.withdrawal_requested', category: 'affiliate', title: `Yêu cầu rút ${formatMoney(p.amountMinor)} mới từ cộng sự`, link: pr.community_id ? `/${(await communityOf(c, pr.community_id))?.slug}/cai-dat/cong-su/rut-tien` : '/he-thong/cong-su', actionLabel: 'Xử lý' });
   });
 
-  bus.on('affiliate.withdrawal_paid', async (p) => {
-    const c = ctx();
+  bus.on('affiliate.withdrawal_paid', async (p, ev) => {
+    const c = ctx(ev);
     const user = await userOf(c, p.userId);
     if (!user) return;
     await c.email.send(templates.withdrawalPaid(user.email, user.name, formatMoney(p.amountMinor), p.transferReference));
@@ -184,16 +187,16 @@ export function registerHandlers(app: AppContext): void {
     await dispatch(c, (program[0] as { workspace_id: string | null } | undefined)?.workspace_id ?? null, 'affiliate.withdrawal_paid', { withdrawalId: p.withdrawalId, userId: p.userId, amountMinor: p.amountMinor, transferReference: p.transferReference });
   });
 
-  bus.on('affiliate.withdrawal_rejected', async (p) => {
-    const c = ctx();
+  bus.on('affiliate.withdrawal_rejected', async (p, ev) => {
+    const c = ctx(ev);
     const user = await userOf(c, p.userId);
     if (!user) return;
     await c.email.send(templates.withdrawalRejected(user.email, user.name, formatMoney(p.amountMinor), p.reason));
     await notify(c, { userId: p.userId, kind: 'affiliate.withdrawal_rejected', category: 'affiliate', title: `Yêu cầu rút ${formatMoney(p.amountMinor)} bị từ chối: ${p.reason}`, link: '/tai-khoan/cong-su' });
   });
 
-  bus.on('message.sent', async (p) => {
-    const c = ctx();
+  bus.on('message.sent', async (p, ev) => {
+    const c = ctx(ev);
     const sender = await userOf(c, p.senderUserId);
     for (const rid of p.recipientUserIds) {
       const r = await userOf(c, rid);

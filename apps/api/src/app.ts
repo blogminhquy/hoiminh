@@ -31,7 +31,8 @@ export function createHonoApp(app: App): Hono<Env> {
     const started = Date.now();
     let db: 'ok' | 'error' = 'ok';
     try {
-      await app.ctx.db.execute(sql`select 1`);
+      // Dùng ctx của request: nó là transaction có biến phiên, không phải kết nối gốc.
+      await c.get('ctx').db.execute(sql`select 1`);
     } catch {
       db = 'error';
     }

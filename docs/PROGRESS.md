@@ -4,7 +4,7 @@ Wiki ngắn để phiên làm việc sau biết đã làm đến đâu mà **kh�
 
 Quy ước làm việc: code xong phần nào → `git add -A && git commit && git push origin main` ngay. Tra cứu code bằng GitNexus (`gitnexus query/context/impact`, MCP đã cấu hình cho Claude Code) thay vì đọc cả file.
 
-## Trạng thái tổng (cập nhật 2026-09-15)
+## Trạng thái tổng (cập nhật 2026-09-16)
 
 | Khối | Trạng thái | Test |
 |---|---|---|
@@ -18,9 +18,12 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
-| `e2e` Playwright 7 luồng (8 test) | ✅ xanh (`pnpm test:e2e`, ~1,5 phút) | 8 passed |
+| `e2e` Playwright 7 luồng (8 test) | ✅ xanh (`pnpm test:e2e`, ~1 phút) | 8 passed |
+| Xác thực hai lớp (TOTP) | ✅ xong 16/09 | 5 test service + thử tay qua API và trình duyệt |
+| Giao diện tối | ✅ xong 16/09 | xem tay trên 4 màn chính |
+| RLS: biến phiên + công tắc thi hành | ✅ xong 16/09 | 5 test dưới vai trò không sở hữu bảng |
 | README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
-| `pnpm check` toàn repo | ✅ typecheck + lint + 51 test Vitest xanh | — |
+| `pnpm check` toàn repo | ✅ typecheck + lint + 57 test Vitest xanh | — |
 
 ## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
@@ -112,19 +115,25 @@ Tìm theo bốn tầng: có tài liệu mà không có code · có code mà khô
 | Chủ hội không đặt được câu hỏi khi xin vào hội | code có, không nối | ✅ trong Cài đặt · Chung |
 | `pnpm dev` hỏng vì gói mcp thoát ngay | có chạy, không ai kiểm | ✅ lọc mcp khỏi `dev` |
 | Ô tìm kiếm header quản trị là ô chết | code có, không nối | ✅ Enter → Hội / Người dùng kèm `?q=` |
-| `feature-flags.isEnabled` không ai gọi — super admin bật/tắt cờ không có tác dụng gì | code có, không nối | ⏳ chưa làm |
-| `POST /orders/:id/admin-refund` không có nút nào gọi | code có, không nối | ⏳ chưa làm |
-| Xác thực hai lớp, giao diện tối ghi "sắp có" | tài liệu có, code không | ⏳ chưa làm |
+| `feature-flags.isEnabled` không ai gọi — super admin bật/tắt cờ không có tác dụng gì | code có, không nối | ✅ 16/09: cờ chặn ở service (store, affiliate_leaderboard, paypal, mcp) |
+| `POST /orders/:id/admin-refund` không có nút nào gọi | code có, không nối | ✅ 16/09: nút Hoàn tiền ở Doanh thu |
+| Xác thực hai lớp, giao diện tối ghi "sắp có" | tài liệu có, code không | ✅ 16/09: TOTP đầy đủ; giao diện tối cho cả 50 màn |
 | R2 chưa cấu hình nên tải ảnh/video hỏng trên Worker | nối, không chạy thật | ⏳ cần credential |
-| RLS có 89 policy nhưng service không đặt biến phiên | nối, không chạy thật | ⏳ cần quyết định |
+| RLS có 89 policy nhưng service không đặt biến phiên | nối, không chạy thật | ✅ 16/09: biến phiên đặt trong mọi request/job; bật thi hành bằng `pnpm db:rls on` |
 
 ## Việc kế tiếp
-1. Thêm secret `CLOUDFLARE_API_TOKEN` vào GitHub (`gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`) rồi `gh variable set DEPLOY_API --body true` để workflow Deploy tự đẩy cả web lẫn API.
-2. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so` mục Đổi mật khẩu.
-3. R2: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video sẽ hỏng vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
-4. Email: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
-5. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
-6. RLS chưa có tác dụng: service layer không đặt `app.user_id` / `app.workspace_ids` / `app.community_ids` nên policy trong `0001_rls.sql` không chạy (API dùng chính role sở hữu bảng). Muốn bật thật phải set biến phiên trong từng transaction.
+
+Cần tài khoản của chủ dự án, không ai làm thay được:
+
+1. **Deploy tự động đang đỏ**: thiếu secret `CLOUDFLARE_API_TOKEN`. Tạo token ở Cloudflare (My Profile → API Tokens → Edit Cloudflare Workers) rồi `gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`; bật deploy API bằng `gh variable set DEPLOY_API --body true`. Chưa có thì bản trên hoiminh.com vẫn là build tay.
+2. **R2**: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video hỏng trên Worker vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
+3. **Email**: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
+4. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
+5. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so`.
+
+Quyết định vận hành:
+
+6. **Bật thi hành RLS**: `pnpm db:rls status` để xem, `pnpm db:rls on` để bật. Biến phiên đã được đặt ở mọi request và job, test `packages/db/src/test/rls.test.ts` chứng minh policy chặn thật dưới vai trò không sở hữu bảng. Bật khi có người theo dõi log: đường chạy nào thiếu biến phiên sẽ trả rỗng chứ không báo lỗi.
 7. Việc V2 theo kiến trúc: tin nhắn thời gian thực, phát trực tiếp, dashboard riêng cho người mua lẻ ngoài hội.
 
 ## Bẫy đã gặp khi viết e2e

@@ -53,7 +53,7 @@ export async function register(ctx: Ctx, provider: AuthProvider, input: Register
   if (existing) throw conflict('Email đã được đăng ký, hãy đăng nhập');
   const handle = await uniqueHandle(ctx, input.name);
   const [user] = await ctx.db.insert(users).values({ email: input.email, name: input.name, handle }).returning();
-  const identity = await provider.signUp(input.email, input.password, { name: input.name, userId: user!.id });
+  const identity = await provider.signUp(input.email, input.password, { name: input.name, userId: user!.id }, ctx.db);
   await ctx.db.update(users).set({ authProviderId: identity.providerUserId }).where(eq(users.id, user!.id));
   await sendVerificationCode(ctx, user!);
   await ctx.events.emit('user.registered', { userId: user!.id, email: user!.email, ref: input.ref ?? null, communitySlug: input.communitySlug ?? null });
@@ -66,7 +66,7 @@ export async function register(ctx: Ctx, provider: AuthProvider, input: Register
  */
 export async function login(ctx: Ctx, provider: AuthProvider, input: LoginInput, meta?: { userAgent?: string }): Promise<AuthSession | TwoFactorChallenge> {
   const user = await ctx.db.query.users.findFirst({ where: eq(users.email, input.email) });
-  const identity = await provider.signIn(input.email, input.password, user?.id ?? null);
+  const identity = await provider.signIn(input.email, input.password, user?.id ?? null, ctx.db);
   if (!user || !identity) throw unauthorized('Email hoặc mật khẩu không đúng');
   if (user.status === 'suspended') throw new AppError('forbidden', 'Tài khoản đã bị tạm khóa');
   if (await totp.isEnabledFor(ctx, user.id)) {
@@ -170,7 +170,7 @@ export async function resetPassword(ctx: Ctx, provider: AuthProvider, token: str
   if (!row) throw invalid('Link đặt lại không hợp lệ hoặc đã hết hạn');
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, row.userId) });
   if (!user) throw notFound();
-  await provider.setPassword(user.authProviderId ?? user.id, password);
+  await provider.setPassword(user.authProviderId ?? user.id, password, ctx.db);
   await ctx.db.update(passwordResets).set({ consumedAt: ctx.now() }).where(eq(passwordResets.id, row.id));
   if (logoutOthers) await ctx.db.update(authSessions).set({ revokedAt: ctx.now() }).where(and(eq(authSessions.userId, user.id), isNull(authSessions.revokedAt)));
   return issueSession(ctx, provider, user, true);
@@ -190,9 +190,9 @@ export async function changePassword(
   if (!userId) throw unauthorized();
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
-  const identity = await provider.signIn(user.email, input.currentPassword, user.id);
+  const identity = await provider.signIn(user.email, input.currentPassword, user.id, ctx.db);
   if (!identity) throw invalid('Mật khẩu hiện tại không đúng');
-  await provider.setPassword(user.authProviderId ?? user.id, input.newPassword);
+  await provider.setPassword(user.authProviderId ?? user.id, input.newPassword, ctx.db);
   if (input.logoutOthers ?? true) {
     const where = keepSessionId
       ? and(eq(authSessions.userId, user.id), isNull(authSessions.revokedAt), ne(authSessions.id, keepSessionId))

@@ -1,7 +1,8 @@
 // Lịch chạy định kỳ: mỗi phút (job hẹn giờ, nhắc sự kiện, hết hạn đơn), 10 phút (xếp hạng), hằng ngày (hold, churn, gói nền tảng).
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { events, scheduledJobs } from '@hoiminh/db';
-import { systemCtx, type AppContext } from '../context';
+import { systemCtx, type AppContext, type Ctx } from '../context';
+import { withSystemScope } from '../lib/tenant-scope';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
 import { expireEntitlements } from '../services/entitlements';
 import { sendWelcomeDm } from '../services/messaging';
@@ -12,13 +13,13 @@ import { retryDue } from '../services/webhooks-out';
 
 export type CronName = 'every_minute' | 'every_10_minutes' | 'daily';
 
-/** Chạy một nhóm cron. Trả về tóm tắt để log. */
+/** Chạy một nhóm cron trong một transaction có biến phiên bypass. Trả về tóm tắt để log. */
 export async function runCron(app: AppContext, name: CronName): Promise<Record<string, number>> {
-  const ctx = systemCtx(app, `cron-${name}`);
+  return withSystemScope(systemCtx(app, `cron-${name}`), async (ctx) => {
   const out: Record<string, number> = {};
   if (name === 'every_minute') {
-    out.scheduledJobs = await runScheduledJobs(app);
-    out.eventReminders = await scheduleEventReminders(app);
+    out.scheduledJobs = await runScheduledJobs(ctx);
+    out.eventReminders = await scheduleEventReminders(ctx);
     out.expiredOrders = await expirePendingOrders(ctx);
     out.webhookRetries = await retryDue(ctx);
   }
@@ -33,11 +34,12 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
   }
   ctx.log.info(`cron.${name}`, out);
   return out;
+  });
 }
 
 /** Job hẹn giờ trong bảng scheduled_jobs (tin nhắn chào sau N phút…). */
-export async function runScheduledJobs(app: AppContext): Promise<number> {
-  const ctx = systemCtx(app, 'cron-scheduled');
+export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<number> {
+  const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-scheduled');
   const due = await ctx.db.query.scheduledJobs.findMany({ where: and(eq(scheduledJobs.status, 'pending'), lte(scheduledJobs.runAt, ctx.now())), limit: 100 });
   let n = 0;
   for (const j of due) {
@@ -63,8 +65,8 @@ export async function runScheduledJobs(app: AppContext): Promise<number> {
 const REMINDER_OFFSETS: Record<string, number> = { '1d': 24 * 60, '1h': 60, '15m': 15, start: 0 };
 
 /** Đặt job nhắc cho các sự kiện sắp diễn ra (mỗi mốc một lần, dedupe theo eventId + mốc). */
-export async function scheduleEventReminders(app: AppContext): Promise<number> {
-  const ctx = systemCtx(app, 'cron-event-reminders');
+export async function scheduleEventReminders(appOrCtx: AppContext | Ctx): Promise<number> {
+  const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-event-reminders');
   const horizon = new Date(ctx.now().getTime() + 25 * 3_600_000);
   const upcoming = await ctx.db.query.events.findMany({ where: and(eq(events.status, 'scheduled'), gte(events.startsAt, ctx.now()), lte(events.startsAt, horizon)) });
   let n = 0;

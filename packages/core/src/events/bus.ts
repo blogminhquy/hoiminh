@@ -29,10 +29,18 @@ export interface DomainEvents {
 }
 
 export type EventName = keyof DomainEvents;
-export type Handler<K extends EventName> = (payload: DomainEvents[K], meta: { eventId: string; at: Date }) => Promise<void> | void;
+/**
+ * `meta.ctx` là ngữ cảnh của bên phát: handler phải dùng `meta.ctx.db` để chạy chung
+ * transaction (và chung biến phiên RLS) với request đã phát ra sự kiện. Không có thì
+ * handler rơi về ngữ cảnh hệ thống lúc đăng ký.
+ */
+export type EventMeta = { eventId: string; at: Date; ctx?: EmitterCtx };
+/** Chỉ cần phần Ctx mà handler dùng; khai báo lỏng để tránh vòng phụ thuộc kiểu. */
+export type EmitterCtx = { db: unknown };
+export type Handler<K extends EventName> = (payload: DomainEvents[K], meta: EventMeta) => Promise<void> | void;
 
 export interface EventBus {
-  emit<K extends EventName>(name: K, payload: DomainEvents[K]): Promise<void>;
+  emit<K extends EventName>(name: K, payload: DomainEvents[K], ctx?: EmitterCtx): Promise<void>;
   on<K extends EventName>(name: K, handler: Handler<K>): void;
 }
 
@@ -45,8 +53,8 @@ export function createEventBus(onError: (name: string, err: unknown) => void = (
       list.push(handler as Handler<EventName>);
       handlers.set(name, list);
     },
-    async emit(name, payload) {
-      const meta = { eventId: crypto.randomUUID(), at: new Date() };
+    async emit(name, payload, ctx) {
+      const meta: EventMeta = { eventId: crypto.randomUUID(), at: new Date(), ctx };
       for (const h of handlers.get(name) ?? []) {
         try {
           await h(payload, meta);
