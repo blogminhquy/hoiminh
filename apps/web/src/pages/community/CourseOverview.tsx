@@ -60,8 +60,8 @@ function Body({ c, slug }: { c: Course; slug: string }) {
     <>
       <div className="card overflow-hidden">
         <div className="h-[220px] flex items-end p-6 relative" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-          <span className="tag absolute top-5 left-6" style={{ background: 'rgba(255,253,249,0.2)', color: T.surface, height: 26, padding: '0 10px' }}>Khóa học · {accessLabel[c.accessMode] ?? c.accessMode}</span>
-          <div style={{ color: T.surface }}>
+          <span className="tag absolute top-5 left-6" style={{ background: 'rgba(255,253,249,0.2)', color: T.invertInk, height: 26, padding: '0 10px' }}>Khóa học · {accessLabel[c.accessMode] ?? c.accessMode}</span>
+          <div style={{ color: T.invertInk }}>
             <div className="serif text-[34px] font-extrabold leading-[1.1]">{c.title}</div>
             <div className="text-[14px] mt-1.5 opacity-85">{c.modules.length} module · {c.lessonCount} bài · {fmtDuration(c.totalDurationSeconds, true)}{c.owner ? ` · ${c.owner.name}` : ''}</div>
           </div>

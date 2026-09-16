@@ -2,10 +2,40 @@
 :root {
   --bg: #F7F3EC; --surface: #FFFDF9; --ink: #1F1B17; --ink2: #5C554D; --ink3: #8C8478; --line: #E8E1D6; --line2: #E3DCD0;
   --accent: #D4593A; --accent-soft: #FBE9E2; --accent-text: #9C3A21; --teal: #0E8E96; --teal-soft: #DDF1F1; --teal-text: #0B6F75;
-  --side: #25201B; --side-text: #CFC6B8; --side-muted: #8C8478; --gold: #C89B3C; --gold-soft: #F8EFD9; --gold-text: #8A6A1E;
+  --side: #25201B; --side-dark: #14110E; --side-text: #CFC6B8; --side-muted: #8C8478;
+  --gold: #C89B3C; --gold-soft: #F8EFD9; --gold-text: #8A6A1E; --gold-dark: #5C4A16; --player: #171310;
+  /* Thẻ nổi bật nền tối (gói Premium, "học tiếp", top 1 bảng xếp hạng): tối ở cả hai giao diện. */
+  --invert-bg: #1F1B17; --invert-ink: #FFFDF9; --invert-line: #1F1B17;
+  --shimmer: #F1EBE1; --focus-ring: rgba(31, 27, 23, 0.06);
   --font-display: Montserrat, 'Segoe UI', Arial, sans-serif; --font-sans: 'Open Sans', 'Segoe UI', system-ui, sans-serif;
 }
 html { color-scheme: light; }
+
+/*
+ * Giao diện tối. Cùng một bảng màu ấm, đảo vai trò sáng/tối và nâng độ tương phản của
+ * màu nhấn cho đủ đọc trên nền tối. `data-theme` do người dùng chọn thắng; không chọn
+ * gì thì theo hệ thống.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #17140F; --surface: #201C16; --ink: #F2EDE4; --ink2: #C3BAAC; --ink3: #948B7D; --line: #2E2820; --line2: #3A332A;
+    --accent: #E0714F; --accent-soft: #3A231B; --accent-text: #F0A98F; --teal: #2FAAB2; --teal-soft: #123437; --teal-text: #6FD3D9;
+    --side: #100E0B; --side-dark: #0B0A08;
+    --gold: #D8AE55; --gold-soft: #352B14; --gold-text: #E3C27E; --gold-dark: #F0DCAE; --player: #0B0A08;
+    --invert-bg: #2C2620; --invert-ink: #F7F3EC; --invert-line: #3A332A;
+    --shimmer: #2A241C; --focus-ring: rgba(242, 237, 228, 0.10);
+  }
+  html:not([data-theme='light']) { color-scheme: dark; }
+}
+:root[data-theme='dark'] {
+  --bg: #17140F; --surface: #201C16; --ink: #F2EDE4; --ink2: #C3BAAC; --ink3: #948B7D; --line: #2E2820; --line2: #3A332A;
+  --accent: #E0714F; --accent-soft: #3A231B; --accent-text: #F0A98F; --teal: #2FAAB2; --teal-soft: #123437; --teal-text: #6FD3D9;
+  --side: #100E0B; --side-dark: #0B0A08;
+  --gold: #D8AE55; --gold-soft: #352B14; --gold-text: #E3C27E; --gold-dark: #F0DCAE; --player: #0B0A08;
+  --invert-bg: #2C2620; --invert-ink: #F7F3EC; --invert-line: #3A332A;
+  --shimmer: #2A241C; --focus-ring: rgba(242, 237, 228, 0.10);
+}
+html[data-theme='dark'] { color-scheme: dark; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: var(--teal); text-decoration: none; }
 a:hover { color: var(--teal-text); }
@@ -18,11 +48,11 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .btn:not(:disabled):hover { filter: brightness(0.96); }
 .btn-primary { background: var(--accent); color: #FFFDF9; }
 .btn-ghost { background: var(--surface); border-color: var(--line2); color: var(--ink); }
-.btn-dark { background: var(--ink); color: #FFFDF9; }
+.btn-dark { background: var(--ink); color: var(--surface); }
 .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
 .btn-lg { height: 48px; padding: 0 24px; font-size: 15px; border-radius: 12px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); font-size: 13px; font-weight: 500; color: var(--ink2); white-space: nowrap; cursor: pointer; }
-.chip.on { background: var(--ink); color: #FFFDF9; border-color: var(--ink); }
+.chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
 .nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: var(--side-text); font-weight: 500; font-size: 14px; cursor: pointer; }
@@ -32,7 +62,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; overflow: hidden; background-size: cover; background-position: center; }
 .muted { color: var(--ink3); }
 .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 14px; width: 100%; }
-.input:focus-within { border-color: var(--ink3); box-shadow: 0 0 0 3px rgba(31,27,23,0.06); }
+.input:focus-within { border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }
 .input input, .input textarea, .input select { flex-grow: 1; min-width: 0; background: transparent; border: 0; outline: 0; height: 100%; color: var(--ink); }
 .input input::placeholder, .input textarea::placeholder { color: var(--ink3); }
 .input.textarea { height: auto; align-items: flex-start; padding: 10px 14px; }
@@ -84,7 +114,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .table-scroll { overflow-x: auto; }
-.skeleton { background: linear-gradient(90deg, var(--line) 25%, #F1EBE1 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
+.skeleton { background: linear-gradient(90deg, var(--line) 25%, var(--shimmer) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(31,27,23,0.45); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; z-index: 40; overflow-y: auto; }
 .modal { box-shadow: 0 24px 60px rgba(31,27,23,0.25); width: 100%; }
@@ -113,3 +143,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   .only-mobile { display: initial !important; }
   .two-col > .main .page-title { font-size: 24px; }
 }
+
+/* Thẻ nhấn nền tối: giữ tối ở cả hai giao diện (gói Premium, học tiếp, hạng nhất bảng xếp hạng). */
+.card-invert { background: var(--invert-bg); color: var(--invert-ink); border-color: var(--invert-line); }
+.card-invert .muted { color: color-mix(in srgb, var(--invert-ink) 62%, transparent); }

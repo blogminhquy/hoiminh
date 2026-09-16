@@ -11,12 +11,12 @@ function Showcase({ c, side }: { c: DiscoverCommunity; side: boolean }) {
   const bg = c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor;
   return (
     <div className="relative overflow-hidden flex-shrink-0 rounded-[20px] transition-all" style={{ width: side ? 260 : 560, maxWidth: side ? '28vw' : '92vw', height: side ? 240 : 320, background: bg, opacity: side ? 0.45 : 1, filter: side ? 'blur(0.5px)' : undefined, boxShadow: side ? undefined : '0 30px 60px rgba(0,0,0,0.45)' }}>
-      <div className="absolute left-6 bottom-6 text-left" style={{ color: T.surface }}>
+      <div className="absolute left-6 bottom-6 text-left" style={{ color: T.invertInk }}>
         <div className="serif font-extrabold leading-[1.1]" style={{ fontSize: side ? 20 : 34 }}>{side ? c.logoMark : c.name}</div>
         {!side && <div className="text-[14px] mt-1.5" style={{ opacity: 0.85 }}>{c.shortDescription}</div>}
       </div>
       {!side && (
-        <div className="absolute rounded-[12px]" style={{ top: -18, right: -18, padding: '12px 16px', paddingTop: 30, paddingRight: 34, background: '#1E8A5A', color: T.surface, boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+        <div className="absolute rounded-[12px]" style={{ top: -18, right: -18, padding: '12px 16px', paddingTop: 30, paddingRight: 34, background: '#1E8A5A', color: T.invertInk, boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
           <div className="font-bold">{c.name}</div>
           <div className="text-[13px]">{fmtCount(c.memberCount)} thành viên</div>
         </div>

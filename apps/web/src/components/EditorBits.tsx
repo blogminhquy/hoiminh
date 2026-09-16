@@ -1,5 +1,5 @@
 // Mảnh dùng chung cho màn soạn thảo: thanh công cụ Markdown, dòng bật/tắt, checklist "Trước khi đăng", breadcrumb, chọn ảnh bìa.
-import { Button, T, Toggle } from '@hoiminh/ui';
+import { Button, HEX, T, Toggle } from '@hoiminh/ui';
 import { Check, ChevronLeft, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -82,7 +82,7 @@ export function Breadcrumb({ to, label, title, size = 26, children }: { to: stri
   );
 }
 
-export const COVER_COLORS = [T.accent, T.teal, '#7A5C3E', '#3E5C7A', '#5C7A3E', '#5C3E7A', T.gold, T.ink];
+export const COVER_COLORS = [HEX.accent, HEX.teal, '#7A5C3E', '#3E5C7A', '#5C7A3E', '#5C3E7A', HEX.gold, HEX.ink];
 
 /** Ảnh bìa 16:9: ảnh tải lên hoặc nền màu, tên đè lên. */
 export function CoverPicker({ title, coverUrl, coverColor, onColor, onFile, uploading, fontSize = 20, extra }: { title: string; coverUrl: string | null; coverColor: string; onColor: (c: string) => void; onFile?: (f: File) => void; uploading?: boolean; fontSize?: number; extra?: ReactNode }) {
@@ -91,7 +91,7 @@ export function CoverPicker({ title, coverUrl, coverColor, onColor, onFile, uplo
     <div className="flex flex-col gap-2">
       <span className="text-[13px] font-semibold">Ảnh bìa</span>
       <div className="rounded-[12px] flex items-end p-3.5 overflow-hidden" style={{ aspectRatio: '16 / 9', background: coverUrl ? `url(${coverUrl}) center/cover` : coverColor }}>
-        {!coverUrl && <span className="serif font-extrabold leading-[1.1]" style={{ color: T.surface, fontSize }}>{title || 'Tên hiện ở đây'}</span>}
+        {!coverUrl && <span className="serif font-extrabold leading-[1.1]" style={{ color: T.invertInk, fontSize }}>{title || 'Tên hiện ở đây'}</span>}
       </div>
       <div className="flex gap-1.5 flex-wrap items-center">
         {onFile && (

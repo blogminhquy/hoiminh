@@ -1,6 +1,6 @@
 // Tạo / sửa sự kiện (eventCreateMain): 4 khối form + rail; POST /v1/communities/:id/events hoặc PATCH /v1/events/:id.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, T } from '@hoiminh/ui';
+import { Button, HEX, T } from '@hoiminh/ui';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -16,7 +16,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const localTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const nextDay = () => { const d = new Date(); d.setDate(d.getDate() + 1); return localDate(d); };
-const EMPTY: EventForm = { title: '', coverColor: T.teal, seriesTitle: '', descriptionMd: '', date: nextDay(), start: '20:00', end: '21:30', recurrence: 'none', occurrences: 8, kind: 'online', meetingUrl: '', location: '', hostUserIds: [], capacity: '', access: 'all_members', allowQuestions: true, autoPublishRecording: true, reminders: ['1d', '1h', 'start'], announceOnFeed: true, broadcastEmail: false };
+const EMPTY: EventForm = { title: '', coverColor: HEX.teal, seriesTitle: '', descriptionMd: '', date: nextDay(), start: '20:00', end: '21:30', recurrence: 'none', occurrences: 8, kind: 'online', meetingUrl: '', location: '', hostUserIds: [], capacity: '', access: 'all_members', allowQuestions: true, autoPublishRecording: true, reminders: ['1d', '1h', 'start'], announceOnFeed: true, broadcastEmail: false };
 
 function fromExisting(e: Existing): EventForm {
   const s = new Date(e.startsAt);

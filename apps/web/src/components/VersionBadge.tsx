@@ -148,7 +148,7 @@ export function VersionBadge() {
         title={updateAvailable ? 'Đã có bản mới — bấm để cập nhật' : `Hội Mình v${build.version} · ${build.shortCommit}`}
         className="hm-ver-pill"
         style={updateAvailable
-          ? { background: T.accent, color: T.surface, borderColor: T.accent }
+          ? { background: T.accent, color: T.invertInk, borderColor: T.accent }
           : { background: T.surface, color: T.ink3, borderColor: T.line }}
       >
         {updateAvailable

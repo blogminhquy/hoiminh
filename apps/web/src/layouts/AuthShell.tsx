@@ -8,7 +8,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   const points = [[<BookOpen size={18} key="b" />, 'Học theo lộ trình, hỏi là có người trả lời'], [<QrCode size={18} key="q" />, 'Trả bằng chuyển khoản, MoMo hay VNPAY, mở khóa tự động'], [<Trophy size={18} key="t" />, 'Giới thiệu bạn bè, nhận hoa hồng mỗi kỳ']] as const;
   return (
     <div className="min-h-screen flex" style={{ background: T.bg }}>
-      <aside className="hidden lg:flex flex-col flex-shrink-0" style={{ width: 560, background: T.side, color: T.surface, padding: '40px 56px' }}>
+      <aside className="hidden lg:flex flex-col flex-shrink-0" style={{ width: 560, background: T.side, color: T.invertInk, padding: '40px 56px' }}>
         <Link to="/kham-pha"><Logo size={28} light /></Link>
         <div className="flex-grow flex flex-col justify-center gap-7">
           <h1 className="serif m-0 text-[40px] leading-[1.15] font-extrabold">Hội của mình,<br />do mình dựng.</h1>

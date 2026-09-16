@@ -1,5 +1,5 @@
 // Tài khoản · Hồ sơ (profileEditMain trong build.mjs): một hồ sơ dùng chung cho mọi hội, PATCH /v1/me.
-import { Button, Field, Input, T, Textarea } from '@hoiminh/ui';
+import { Button, Field, HEX, Input, T, Textarea } from '@hoiminh/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Check, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -24,7 +24,7 @@ export default function Page() {
     if (form || !user || !profile) return;
     setForm({
       name: user.name, handle: user.handle, bio: profile.bio ?? '', location: profile.location ?? '', occupation: profile.occupation ?? '',
-      avatarUrl: user.avatarUrl ?? null, avatarFileId: undefined, coverColor: profile.coverColor ?? T.accent, links: profile.links ?? [],
+      avatarUrl: user.avatarUrl ?? null, avatarFileId: undefined, coverColor: profile.coverColor ?? HEX.accent, links: profile.links ?? [],
       privacy: { ...DEFAULT_PRIVACY, ...(profile.privacy as Partial<Privacy>) },
     });
   }, [form, user, profile]);

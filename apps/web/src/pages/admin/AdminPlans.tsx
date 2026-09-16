@@ -13,7 +13,10 @@ interface Stats { plan: Plan | null; monthlyCount: number; yearlyCount: number; 
 interface Flag { key: string; description: string; enabled: boolean; rules: Record<string, unknown> }
 interface AffiliateInfo { program: { commissionRateBps: number; commissionDurationMonths: number | null }; stats: { paidThisMonthMinor: number } }
 const FEATURES = ['Không giới hạn hội, thành viên, khóa học, video, sự kiện', 'Không thu phí giao dịch', 'Cộng sự và bảng xếp hạng cộng sự', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động và tiện ích', 'Nhận tiền qua chuyển khoản QR, MoMo, VNPAY, PayPal', 'API, webhook và MCP'];
-const FLAG_LABEL: Record<string, string> = { realtime_messaging: 'Tin nhắn thời gian thực', live_streaming: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng cộng sự', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI' };
+// Khóa phải khớp `featureFlags` trong seed và hằng FLAG ở packages/core.
+const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời gian thực', go_live: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng cộng sự', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI', gamification: 'Điểm và cấp độ hoạt động', paypal: 'Cổng PayPal' };
+/** Cờ đang chặn đường chạy thật (không chỉ hiển thị): ghi rõ tắt thì mất gì. */
+const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
 
 function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const qc = useQueryClient();
@@ -43,8 +46,8 @@ export default function Page() {
       <QueryState q={stats} rows={4}>
         {(s) => (
           <div className="flex gap-4 flex-col md:flex-row">
-            <div className="card flex-[1.3_1_0] p-6 flex flex-col gap-4" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
-              <div className="flex items-center gap-2.5 flex-wrap"><span className="font-bold text-[18px]">{s.plan?.name ?? 'Hội Mình'}</span><span className="tag" style={{ background: T.gold, color: T.ink }}>Gói duy nhất</span><span className="flex-grow" /><button type="button" className="btn btn-ghost btn-sm" style={{ background: 'transparent', color: T.surface, borderColor: 'rgba(255,253,249,0.3)' }} onClick={() => setEdit((e) => !e)}>{edit ? 'Đóng' : 'Sửa gói'}</button></div>
+            <div className="card card-invert flex-[1.3_1_0] p-6 flex flex-col gap-4">
+              <div className="flex items-center gap-2.5 flex-wrap"><span className="font-bold text-[18px]">{s.plan?.name ?? 'Hội Mình'}</span><span className="tag" style={{ background: T.gold, color: T.invertBg }}>Gói duy nhất</span><span className="flex-grow" /><button type="button" className="btn btn-ghost btn-sm" style={{ background: 'transparent', color: T.invertInk, borderColor: 'rgba(255,253,249,0.3)' }} onClick={() => setEdit((e) => !e)}>{edit ? 'Đóng' : 'Sửa gói'}</button></div>
               <div className="flex gap-3 flex-col sm:flex-row">
                 {box('Theo tháng', money(s.plan?.monthlyMinor ?? 0), `${s.monthlyCount} chủ hội · ${fmtShortMoney(s.mrrMonthlyMinor)} MRR`)}
                 {box('Theo năm · 2 tháng miễn phí', money(s.plan?.yearlyMinor ?? 0), `${s.yearlyCount} chủ hội · ${fmtShortMoney(s.mrrYearlyMinor)} MRR quy đổi`)}
@@ -70,7 +73,7 @@ export default function Page() {
         <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
           <span className="font-semibold">Tính năng đang bật theo giai đoạn</span>
           <QueryState q={flags} rows={3} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có cờ tính năng' }}>
-            {(list) => <>{list.map((f) => <div key={f.key} className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">{FLAG_LABEL[f.key] ?? f.key}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
+            {(list) => <>{list.map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
           </QueryState>
         </div>
       </div>

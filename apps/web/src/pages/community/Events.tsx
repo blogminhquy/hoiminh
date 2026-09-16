@@ -69,7 +69,7 @@ export default function Page() {
           {(q.data?.recordings ?? []).length === 0 && <div className="muted text-[13px]">Chưa có bản ghi.</div>}
           {(q.data?.recordings ?? []).slice(0, 3).map((r) => (
             <a key={r.id} href={r.videoUrl} target="_blank" rel="noreferrer" className="flex gap-3 items-center" style={{ color: T.ink }}>
-              <div className="w-[72px] h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#171310', color: T.surface }}><Play size={16} /></div>
+              <div className="w-[72px] h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#171310', color: T.invertInk }}><Play size={16} /></div>
               <div className="min-w-0"><div className="text-[13px] font-medium truncate">{r.title}</div><div className="muted text-[12px]">{fmtDate(r.publishedAt).slice(0, 5)}{r.durationSeconds ? ` · ${fmtDuration(r.durationSeconds, true)}` : ''}</div></div>
             </a>
           ))}

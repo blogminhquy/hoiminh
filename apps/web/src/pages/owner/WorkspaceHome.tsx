@@ -13,7 +13,7 @@ function StartTrial() {
   const qc = useQueryClient();
   const m = useMutation({ mutationFn: () => api.post('/v1/me/workspace', {}), onSuccess: () => qc.invalidateQueries({ queryKey: WS_HOME_KEY }) });
   return (
-    <div className="card flex flex-col gap-3 p-6" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+    <div className="card card-invert flex flex-col gap-3 p-6">
       <div className="serif text-[22px] font-extrabold">Bắt đầu 14 ngày dùng thử</div>
       <div className="text-[13px]" style={{ color: T.sideText }}>Không cần thẻ. Tạo hội, đăng khóa học, nhận thanh toán qua chuyển khoản, MoMo, VNPAY, không phí giao dịch.</div>
       {m.isError && <div className="text-[13px]" style={{ color: T.accent }}>{errorMessage(m.error)}</div>}

@@ -1,5 +1,5 @@
 // Khối form của màn Tạo/Sửa khóa học: Thông tin, Ai được học, Nâng cao, và rail xem trước + checklist.
-import { Field, Input, OptionCard, Select, T, Tag } from '@hoiminh/ui';
+import { Field, HEX, Input, OptionCard, Select, T, Tag } from '@hoiminh/ui';
 import { Check, Sparkles, Video } from 'lucide-react';
 import { Checklist, CoverPicker, MdEditor, ToggleRow } from '@/components/EditorBits';
 import { money } from '@/lib/format';
@@ -9,7 +9,7 @@ export interface CourseForm {
   accessMode: 'all_members' | 'premium' | 'store_only' | 'premium_and_store'; priceMinor: number | null; compareAtMinor: number | null;
   previewFirstModule: boolean; affiliateEnabled: boolean; dripEnabled: boolean; certificateEnabled: boolean; sequential: boolean; hiddenFromStore: boolean;
 }
-export const EMPTY_COURSE: CourseForm = { title: '', shortDescription: '', descriptionMd: '', coverFileId: null, coverUrl: null, coverColor: T.accent, introVideoUrl: '', accessMode: 'premium_and_store', priceMinor: null, compareAtMinor: null, previewFirstModule: true, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: false };
+export const EMPTY_COURSE: CourseForm = { title: '', shortDescription: '', descriptionMd: '', coverFileId: null, coverUrl: null, coverColor: HEX.accent, introVideoUrl: '', accessMode: 'premium_and_store', priceMinor: null, compareAtMinor: null, previewFirstModule: true, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: false };
 export const ACCESS_LABEL: Record<CourseForm['accessMode'], string> = { all_members: 'Mọi thành viên', premium: 'Premium', store_only: 'Bán lẻ', premium_and_store: 'Premium miễn phí' };
 
 type Patch = (p: Partial<CourseForm>) => void;
@@ -93,7 +93,7 @@ export function CourseRail({ f, lessonCount, provider }: { f: CourseForm; lesson
         <div className="font-semibold text-[13px]">Xem trước thẻ</div>
         <div className="card overflow-hidden flex flex-col">
           <div className="relative flex items-end p-4" style={{ height: 160, background: f.coverUrl ? `url(${f.coverUrl}) center/cover` : f.coverColor }}>
-            {!f.coverUrl && <span className="serif font-extrabold leading-[1.15]" style={{ color: T.surface, fontSize: 22, maxWidth: 240 }}>{f.title || 'Tên khóa học'}</span>}
+            {!f.coverUrl && <span className="serif font-extrabold leading-[1.15]" style={{ color: T.invertInk, fontSize: 22, maxWidth: 240 }}>{f.title || 'Tên khóa học'}</span>}
             <span className="tag absolute" style={{ top: 12, left: 12, background: T.bg, color: T.ink3 }}>Nháp</span>
           </div>
           <div className="px-4 pt-3.5 pb-4 flex flex-col gap-2.5"><div className="font-semibold text-[15px] truncate">{f.title || 'Tên khóa học'}</div><div className="muted text-[12px]">{meta}</div></div>

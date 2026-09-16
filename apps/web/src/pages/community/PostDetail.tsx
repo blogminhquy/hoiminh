@@ -1,6 +1,6 @@
 // Chi tiết bài viết: nội dung Markdown, ảnh, bình chọn, thích, bình luận; rail tác giả / mục lục / bài liên quan.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar, Button, CATEGORY_COLORS, T, Tag } from '@hoiminh/ui';
+import { Avatar, Button, CATEGORY_COLORS, HEX, T, Tag } from '@hoiminh/ui';
 import { Archive, ChevronLeft, ExternalLink, Heart, MessageCircle, MoreHorizontal, Pin } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -93,7 +93,7 @@ function PostBody({ post, slug }: { post: PostDetail; slug: string }) {
       )}
       {post.poll && <PollBox poll={post.poll} />}
       <div className="flex items-center gap-2 pt-4 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
-        <Button size="sm" icon={<Heart size={14} fill={post.liked ? T.accent : 'none'} />} onClick={() => like.mutate(post.id)} style={post.liked ? { color: T.accentText, background: T.accentSoft, borderColor: T.accentSoft } : undefined} aria-pressed={post.liked}>Thích · {post.likeCount}</Button>
+        <Button size="sm" icon={<Heart size={14} fill={post.liked ? HEX.accent : 'none'} />} onClick={() => like.mutate(post.id)} style={post.liked ? { color: T.accentText, background: T.accentSoft, borderColor: T.accentSoft } : undefined} aria-pressed={post.liked}>Thích · {post.likeCount}</Button>
         <a href="#binh-luan" className="btn btn-ghost btn-sm"><MessageCircle size={14} /> {post.commentCount} bình luận</a>
         <Button size="sm" icon={<Archive size={14} />} onClick={() => setSaved((v) => !v)} aria-pressed={saved}>{saved ? 'Đã lưu' : 'Lưu'}</Button>
         <span className="flex-grow" />

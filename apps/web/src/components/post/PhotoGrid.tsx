@@ -14,7 +14,7 @@ function Photo({ img, h, onClick, overlay }: { img: GridImage; h: number; onClic
     <button type="button" onClick={onClick} className="relative overflow-hidden rounded-[10px] block w-full" style={{ height: h, background: T.line }} aria-label="Xem ảnh">
       <img src={img.url} alt="" className="w-full h-full object-cover" loading="lazy" />
       {overlay && (
-        <span className="absolute inset-0 flex items-center justify-center serif font-extrabold text-[26px]" style={{ background: 'rgba(31,27,23,0.55)', color: T.surface }}>
+        <span className="absolute inset-0 flex items-center justify-center serif font-extrabold text-[26px]" style={{ background: 'rgba(31,27,23,0.55)', color: T.invertInk }}>
           {overlay}
         </span>
       )}

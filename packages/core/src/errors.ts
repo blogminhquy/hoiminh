@@ -19,6 +19,7 @@ function statusOf(code: ErrorCode): number {
       return 401;
     case 'forbidden':
     case 'plan_locked':
+    case 'feature_disabled':
       return 403;
     case 'not_found':
       return 404;

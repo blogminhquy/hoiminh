@@ -16,7 +16,7 @@ export function ConvoRow({ c, on, onClick }: { c: Conversation; on: boolean; onC
       <span className="flex-grow min-w-0 flex flex-col gap-0.5">
         <span className="flex items-center gap-2"><span className="font-semibold flex-grow truncate">{c.other.name}</span><span className="muted text-[12px] flex-shrink-0">{c.lastMessageAt ? timeAgo(c.lastMessageAt, true) : ''}</span></span>
         {c.community && <span className="muted text-[12px] truncate">{c.community.name}</span>}
-        <span className="flex items-center gap-2"><span className="text-[13px] flex-grow truncate" style={{ color: c.unreadCount ? T.ink : T.ink2, fontWeight: c.unreadCount ? 600 : 400 }}>{c.automated && <span style={{ color: T.ink3 }}>Tự động · </span>}{c.preview ?? ''}</span>{c.unreadCount > 0 && <span className="min-w-[18px] h-[18px] rounded-full text-[11px] font-bold inline-flex items-center justify-center px-1.5" style={{ background: T.accent, color: T.surface }}>{c.unreadCount}</span>}</span>
+        <span className="flex items-center gap-2"><span className="text-[13px] flex-grow truncate" style={{ color: c.unreadCount ? T.ink : T.ink2, fontWeight: c.unreadCount ? 600 : 400 }}>{c.automated && <span style={{ color: T.ink3 }}>Tự động · </span>}{c.preview ?? ''}</span>{c.unreadCount > 0 && <span className="min-w-[18px] h-[18px] rounded-full text-[11px] font-bold inline-flex items-center justify-center px-1.5" style={{ background: T.accent, color: T.invertInk }}>{c.unreadCount}</span>}</span>
       </span>
     </button>
   );

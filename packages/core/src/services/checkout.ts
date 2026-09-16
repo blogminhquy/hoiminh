@@ -10,6 +10,7 @@ import { applyCoupon, newReference } from '../lib/money';
 import { requireUser, requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { ownsProduct } from './entitlements';
+import { FLAG, requireFlag } from './feature-flags';
 
 interface Resolved {
   title: string; subtitle: string; amountMinor: number; currency: 'VND' | 'USD'; communityId: string | null; workspaceId: string | null;
@@ -32,6 +33,7 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
   if (t.type === 'product') {
     const p = await ctx.db.query.products.findFirst({ where: and(eq(products.id, t.productId), isNull(products.deletedAt), eq(products.status, 'published')) });
     if (!p) throw notFound('Sản phẩm không tồn tại');
+    await requireFlag(ctx, FLAG.store, 'Cửa hàng đang tạm đóng trên toàn nền tảng', { workspaceId: p.workspaceId });
     if (await ownsProduct(ctx, userId, p.id)) throw conflict('Bạn đã sở hữu sản phẩm này');
     const c = await ctx.db.query.communities.findFirst({ where: eq(communities.id, p.communityId) });
     return { title: p.name, subtitle: `Mua tại ${c?.name ?? 'Cửa hàng'}`, amountMinor: p.priceMinor, currency: p.currency as 'VND', communityId: p.communityId, workspaceId: p.workspaceId, targetType: 'product', targetId: p.id, metadata: { cycle: 'one_time', title: p.name, kind: p.kind, communitySlug: c?.slug, productSlug: p.slug }, enabledProviders: c?.enabledProviders ?? ['sepay', 'momo', 'vnpay'], itemName: p.name };
@@ -53,6 +55,7 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const r = await resolveTarget(ctx, userId, input);
   const providerAccount = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, input.provider), eq(providerAccounts.scopeType, 'platform')) });
   if (providerAccount && !providerAccount.enabled) throw new AppError('payment_error', 'Cổng thanh toán này đang tạm tắt, chọn cách khác');
+  if (input.provider === 'paypal') await requireFlag(ctx, FLAG.paypal, 'PayPal chưa mở trên nền tảng này', { workspaceId: r.workspaceId });
   if (!r.enabledProviders.includes(input.provider) && r.targetType !== 'platform') throw new AppError('payment_error', 'Hội này không nhận thanh toán qua cổng đã chọn');
 
   let coupon: typeof coupons.$inferSelect | null = null;

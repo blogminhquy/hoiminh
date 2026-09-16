@@ -96,7 +96,7 @@ export function StrengthBars({ password, className }: { password: string; classN
 export function CheckBox({ on, onChange, children, disabled }: { on: boolean; onChange: (v: boolean) => void; children: ReactNode; disabled?: boolean }) {
   return (
     <button type="button" role="checkbox" aria-checked={on} disabled={disabled} onClick={() => onChange(!on)} className="inline-flex items-start gap-2 text-left text-[13px]" style={{ color: T.ink2 }}>
-      <span className="inline-flex items-center justify-center flex-shrink-0" style={{ width: 18, height: 18, borderRadius: 5, marginTop: 1, background: on ? T.ink : T.surface, color: T.surface, border: on ? 'none' : `1.5px solid ${T.line2}` }}>
+      <span className="inline-flex items-center justify-center flex-shrink-0" style={{ width: 18, height: 18, borderRadius: 5, marginTop: 1, background: on ? T.ink : T.surface, color: T.invertInk, border: on ? 'none' : `1.5px solid ${T.line2}` }}>
         {on && <Check size={12} />}
       </span>
       <span>{children}</span>

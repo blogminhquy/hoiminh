@@ -26,9 +26,9 @@ function ProductCard({ p, slug }: { p: ProductItem; slug: string }) {
   return (
     <div className="card overflow-hidden flex flex-col" style={{ opacity: p.status === 'draft' ? 0.7 : 1 }}>
       <Link to={to} className="relative h-[170px] flex items-end p-4" style={{ background: p.coverUrl ? `url(${p.coverUrl}) center/cover` : p.coverColor }}>
-        <span className="serif text-[22px] font-bold leading-[1.15] max-w-[240px]" style={{ color: T.surface }}>{p.name}</span>
+        <span className="serif text-[22px] font-bold leading-[1.15] max-w-[240px]" style={{ color: T.invertInk }}>{p.name}</span>
         {p.discountPercent > 0 && !p.owned && <span className="tag absolute top-3 right-3" style={{ background: T.ink, color: T.surface }}>-{p.discountPercent}%</span>}
-        {p.kind === 'bundle' && <span className="tag absolute top-3 left-3" style={{ background: T.gold, color: T.ink }}>Combo</span>}
+        {p.kind === 'bundle' && <span className="tag absolute top-3 left-3" style={{ background: T.gold, color: T.invertBg }}>Combo</span>}
         {p.status === 'draft' && <span className="tag absolute top-3 left-3" style={{ background: T.bg, color: T.ink3 }}>Nháp</span>}
       </Link>
       <div className="p-4 flex flex-col gap-2 flex-grow">

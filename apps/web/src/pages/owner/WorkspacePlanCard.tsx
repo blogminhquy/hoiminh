@@ -61,14 +61,14 @@ export function PlanCard({ d, autoOpen }: { d: WorkspaceHome; autoOpen: boolean 
 
   return (
     <>
-      <div className="card flex flex-col gap-2.5 flex-1" style={{ padding: '20px 24px', background: T.ink, color: T.surface, borderColor: T.ink }}>
+      <div className="card card-invert flex flex-col gap-2.5 flex-1" style={{ padding: '20px 24px' }}>
         <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={16} />Gói nền tảng của bạn</div>
         <div className="serif text-[22px] font-extrabold">{title}</div>
         <div className="text-[13px]" style={{ color: expired ? T.accent : T.sideText }}>{[priceLine, dateLine, 'đầy đủ tính năng, không phí giao dịch'].filter(Boolean).join(' · ')}</div>
         <div className="text-[13px]" style={{ color: T.sideText }}>{d.totals.communities} hội · {d.totals.members} thành viên · không giới hạn</div>
         {expired && <div className="text-[13px]" style={{ color: T.accent }}>Gói đã hết hạn: tạo nội dung đang tạm khóa, dữ liệu vẫn được giữ. Thanh toán để mở lại.</div>}
         <div className="flex gap-2 pt-1 flex-wrap">
-          <button type="button" className="btn btn-ghost btn-sm" style={{ background: 'transparent', color: T.surface, borderColor: 'rgba(255,253,249,0.3)' }} onClick={() => (open ? setOpen(false) : openWith(cycle))}>{open ? 'Đóng' : trial || expired ? 'Thanh toán gói' : 'Quản lý gói'}</button>
+          <button type="button" className="btn btn-ghost btn-sm" style={{ background: 'transparent', color: T.invertInk, borderColor: 'rgba(255,253,249,0.3)' }} onClick={() => (open ? setOpen(false) : openWith(cycle))}>{open ? 'Đóng' : trial || expired ? 'Thanh toán gói' : 'Quản lý gói'}</button>
           {(trial || expired || sub?.billingCycle === 'monthly') && <button type="button" className="btn btn-primary btn-sm" onClick={() => openWith('yearly')}>{trial || expired ? 'Chọn gói năm · 2 tháng miễn phí' : 'Đổi sang gói năm · 2 tháng miễn phí'}</button>}
         </div>
       </div>

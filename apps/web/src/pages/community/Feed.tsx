@@ -50,7 +50,7 @@ function Rail({ shell }: { shell: Shell }) {
     <aside className="rail">
       <div className="card overflow-hidden">
         <div className="h-[120px] flex items-end p-4" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-          <span className="serif text-[22px] font-bold leading-[1.1]" style={{ color: T.surface }}>{c.coverTagline}</span>
+          <span className="serif text-[22px] font-bold leading-[1.1]" style={{ color: T.invertInk }}>{c.coverTagline}</span>
         </div>
         <div className="p-4 flex flex-col gap-2.5">
           <div className="font-semibold text-[16px]">{c.name}</div>
@@ -64,7 +64,7 @@ function Rail({ shell }: { shell: Shell }) {
         </div>
       </div>
       {premium && (
-        <div className="card p-[18px] flex flex-col gap-2.5" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+        <div className="card card-invert p-[18px] flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={16} /> Gói Premium</div>
           <div className="serif text-[19px] font-bold leading-[1.3]">Mở khóa toàn bộ khóa học và trở thành cộng sự</div>
           <div className="text-[13px]" style={{ color: T.sideText }}>{price !== null ? `${money(price)}/${cycle}` : ''} · hủy bất cứ lúc nào</div>

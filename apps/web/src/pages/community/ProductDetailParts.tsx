@@ -135,7 +135,7 @@ export function PriceRail({ p, slug, premium }: { p: Product; slug: string; prem
         <div className="muted text-[12px] flex items-center gap-1.5"><QrCode size={14} />Chuyển khoản QR, MoMo, VNPAY · mở khóa tự động</div>
       </div>
       {showPremium && (
-        <div className="card p-[18px] flex flex-col gap-2" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+        <div className="card card-invert p-[18px] flex flex-col gap-2">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={14} />Rẻ hơn với Premium</div>
           <div className="serif text-[18px] font-extrabold leading-[1.3]">Premium {money(premium.monthlyMinor)}/tháng mở khóa này và mọi khóa Premium khác</div>
           <div className="text-[13px]" style={{ color: T.sideText }}>Bạn đang ở gói {p.viewerTier ? 'Tiêu chuẩn' : 'khách'}. Hủy bất cứ lúc nào.</div>

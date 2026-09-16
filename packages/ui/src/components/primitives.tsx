@@ -63,7 +63,7 @@ export function Tag({ tone = 'neutral', children, className, style }: { tone?: '
 
 export function Card({ children, className, style, dark, padded = true, onClick }: { children: ReactNode; className?: string; style?: CSSProperties; dark?: boolean; padded?: boolean; onClick?: () => void }) {
   return (
-    <div onClick={onClick} className={clsx('card', padded && 'p-4 md:p-5', dark && 'card-dark', onClick && 'cursor-pointer', className)} style={dark ? { background: T.ink, color: T.surface, borderColor: T.ink, ...style } : style}>
+    <div onClick={onClick} className={clsx('card', padded && 'p-4 md:p-5', dark && 'card-invert', onClick && 'cursor-pointer', className)} style={style}>
       {children}
     </div>
   );

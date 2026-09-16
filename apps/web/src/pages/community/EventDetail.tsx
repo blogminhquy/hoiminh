@@ -54,8 +54,8 @@ export default function Page() {
               <Link to={`/${slug}/su-kien`} className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: T.ink3 }}><ChevronLeft size={16} />Sự kiện</Link>
               <div className="card overflow-hidden">
                 <div className="relative flex items-end p-6" style={{ height: 240, background: e.coverColor }}>
-                  <div className="absolute top-5 left-6 flex gap-2">{e.live && <span className="tag" style={{ background: T.accentSoft, color: T.accentText, height: 26, padding: '0 10px' }}>Đang diễn ra</span>}<span className="tag" style={{ background: 'rgba(255,253,249,0.2)', color: T.surface, height: 26, padding: '0 10px' }}><Video size={12} />{placeLabel(e)}</span>{e.access === 'premium' && <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26, padding: '0 10px' }}><Lock size={12} />Premium</span>}</div>
-                  <div style={{ color: T.surface }}><div className="serif text-[24px] md:text-[32px] font-extrabold leading-[1.15] max-w-[560px]">{e.title}</div>{e.seriesIndex ? <div className="text-[14px] opacity-85 mt-1.5">Buổi {e.seriesIndex} · chuỗi</div> : null}</div>
+                  <div className="absolute top-5 left-6 flex gap-2">{e.live && <span className="tag" style={{ background: T.accentSoft, color: T.accentText, height: 26, padding: '0 10px' }}>Đang diễn ra</span>}<span className="tag" style={{ background: 'rgba(255,253,249,0.2)', color: T.invertInk, height: 26, padding: '0 10px' }}><Video size={12} />{placeLabel(e)}</span>{e.access === 'premium' && <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26, padding: '0 10px' }}><Lock size={12} />Premium</span>}</div>
+                  <div style={{ color: T.invertInk }}><div className="serif text-[24px] md:text-[32px] font-extrabold leading-[1.15] max-w-[560px]">{e.title}</div>{e.seriesIndex ? <div className="text-[14px] opacity-85 mt-1.5">Buổi {e.seriesIndex} · chuỗi</div> : null}</div>
                 </div>
                 <div className="p-6 flex flex-col gap-5">
                   <div className="flex gap-4 flex-col md:flex-row">
@@ -78,7 +78,7 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-                  {e.registered && <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-[13px]" style={{ background: T.goldSoft, color: '#5C4A16' }}><Bell size={16} /><span className="flex-grow">Nhắc trước 1 giờ và khi bắt đầu qua thông báo và email. Link phòng chỉ hiện cho người đã đăng ký.</span></div>}
+                  {e.registered && <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-[13px]" style={{ background: T.goldSoft, color: T.goldDark }}><Bell size={16} /><span className="flex-grow">Nhắc trước 1 giờ và khi bắt đầu qua thông báo và email. Link phòng chỉ hiện cho người đã đăng ký.</span></div>}
                   <Markdown md={e.descriptionMd} />
                   {e.recordings.length > 0 && <div className="flex gap-2.5 flex-wrap">{e.recordings.map((r) => <a key={r.id} href={r.videoUrl} target="_blank" rel="noreferrer" className="chip"><Play size={16} />{r.title}{r.durationSeconds ? ` · ${fmtDuration(r.durationSeconds, true)}` : ''}</a>)}</div>}
                 </div>

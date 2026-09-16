@@ -18,7 +18,7 @@ const PERIODS: Array<[Period, string]> = [['month', `Tháng ${now.getMonth() + 1
 
 function Podium({ r, first, showMoney }: { r: Row; first?: boolean; showMoney: boolean }) {
   return (
-    <div className="card flex-1 p-5 flex flex-col items-center gap-2 text-center" style={first ? { background: T.ink, color: T.surface, borderColor: T.ink } : undefined}>
+    <div className={`card flex-1 p-5 flex flex-col items-center gap-2 text-center${first ? ' card-invert' : ''}`}>
       <div className="w-8 h-8 rounded-full flex items-center justify-center font-extrabold serif" style={{ background: first ? T.gold : T.bg, color: first ? T.ink : T.ink2 }}>{r.rank}</div>
       <Avatar name={r.user.name} src={r.user.avatarUrl} color={r.user.coverColor ?? T.ink} size={56} />
       <div className="font-bold text-[16px]">{r.user.name}</div>

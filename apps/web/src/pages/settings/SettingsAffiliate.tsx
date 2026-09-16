@@ -47,7 +47,7 @@ export default function Page() {
             {VIS.map(([k, l]) => <button key={k} type="button" onClick={() => patch({ leaderboardVisibility: k })} className="flex items-center gap-2.5 text-[14px] text-left"><Radio on={f.leaderboardVisibility === k} />{l}</button>)}
             <div className="flex items-center gap-2.5 text-[14px] pt-3" style={{ borderTop: `1px solid ${T.line}` }}><span className="flex-grow">Hiện số tiền doanh thu và hoa hồng</span><Toggle on={f.leaderboardShowMoney} onChange={(leaderboardShowMoney) => patch({ leaderboardShowMoney })} /></div>
           </div>
-          <div className="card p-5 flex flex-col gap-2.5" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+          <div className="card card-invert p-5 flex flex-col gap-2.5">
             <span className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Tháng này</span>
             <div className="flex gap-5"><div><div className="serif text-[22px] font-extrabold">{s.activeAffiliates}</div><div className="text-[12px]" style={{ color: T.sideText }}>cộng sự có phát sinh</div></div><div><div className="serif text-[22px] font-extrabold">{s.referredRevenueShare}%</div><div className="text-[12px]" style={{ color: T.sideText }}>doanh thu từ giới thiệu</div></div></div>
             <div className="text-[13px]" style={{ color: T.sideText }}>Đã trả: {money(s.paidThisMonthMinor)} · chờ bạn chuyển: {money(s.awaitingTransferMinor)} · đang giữ: {money(s.holdingMinor)}</div>

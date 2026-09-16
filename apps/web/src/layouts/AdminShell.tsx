@@ -46,14 +46,14 @@ export function AdminShell() {
       <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: '#14110E', color: T.sideText, padding: '16px 12px' }}>
         <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
           <svg width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill={T.accent} /><circle cx="17" cy="13" r="7" fill={T.teal} fillOpacity="0.85" /></svg>
-          <div className="flex-grow"><div className="serif font-bold text-[14px]" style={{ color: T.surface }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>
+          <div className="flex-grow"><div className="serif font-bold text-[14px]" style={{ color: T.invertInk }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>
         </div>
         <div className="nav-group">Vận hành</div>
         <div className="flex flex-col gap-0.5">
           <Item to="/he-thong" end icon={<House size={20} />} label="Tổng quan" />
           <Item to="/he-thong/hoi" icon={<Users size={20} />} label="Hội" />
           <Item to="/he-thong/nguoi-dung" icon={<User size={20} />} label="Người dùng" />
-          <Item to="/he-thong/thanh-toan" icon={<Wallet size={20} />} label="Thanh toán" extra={unmatched ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.surface }}>{unmatched}</span> : undefined} />
+          <Item to="/he-thong/thanh-toan" icon={<Wallet size={20} />} label="Thanh toán" extra={unmatched ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{unmatched}</span> : undefined} />
         </div>
         <div className="nav-group">Cấu hình</div>
         <div className="flex flex-col gap-0.5">

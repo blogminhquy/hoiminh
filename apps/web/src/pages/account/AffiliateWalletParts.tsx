@@ -20,7 +20,7 @@ export function PayoutProfileCard({ programId, maskedAccount, bankCode, onSaved 
     <div className="card flex-1 p-5 flex flex-col gap-3">
       <div className="flex items-center gap-2"><Wallet size={18} /><span className="font-semibold">Tài khoản nhận tiền</span></div>
       {!edit && maskedAccount ? (
-        <div className="flex items-center gap-3 px-3.5 py-3 rounded-[10px]" style={{ background: T.bg }}><span className="w-10 h-7 rounded-md inline-flex items-center justify-center text-[9px] font-extrabold" style={{ background: '#1B5E3B', color: T.surface }}>{bankCode}</span><div className="flex-grow"><div className="font-semibold">{bank?.name ?? bankCode} {maskedAccount}</div></div><Button size="sm" onClick={() => setEdit(true)}>Đổi tài khoản</Button></div>
+        <div className="flex items-center gap-3 px-3.5 py-3 rounded-[10px]" style={{ background: T.bg }}><span className="w-10 h-7 rounded-md inline-flex items-center justify-center text-[9px] font-extrabold" style={{ background: '#1B5E3B', color: T.invertInk }}>{bankCode}</span><div className="flex-grow"><div className="font-semibold">{bank?.name ?? bankCode} {maskedAccount}</div></div><Button size="sm" onClick={() => setEdit(true)}>Đổi tài khoản</Button></div>
       ) : (
         <div className="flex flex-col gap-2.5">
           <Field label="Ngân hàng"><Select value={f.bankCode} onChange={(e) => setF({ ...f, bankCode: e.target.value })}>{VIETNAM_BANKS.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</Select></Field>

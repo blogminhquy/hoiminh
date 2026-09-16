@@ -23,7 +23,7 @@ export default function Page() {
         </div>
         <div className="w-full rounded-[14px] flex flex-col gap-2.5 text-left" style={{ padding: '16px 18px', border: `1px solid ${T.line}`, background: T.surface }}>
           <div className="flex items-center gap-2.5">
-            <span className="serif inline-flex items-center justify-center font-extrabold text-[12px] rounded-lg" style={{ width: 32, height: 32, background: T.accent, color: T.surface }}>HM</span>
+            <span className="serif inline-flex items-center justify-center font-extrabold text-[12px] rounded-lg" style={{ width: 32, height: 32, background: T.accent, color: T.invertInk }}>HM</span>
             <div><div className="font-semibold text-[13px]">Hội Mình</div><div className="muted text-[12px]">Đặt lại mật khẩu cho tài khoản của bạn</div></div>
             <span className="muted text-[12px] ml-auto">vừa xong</span>
           </div>

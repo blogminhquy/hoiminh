@@ -68,14 +68,14 @@ export function AboutHero({ d }: { d: AboutPage }) {
           <iframe src={embedUrl} title="Video giới thiệu" className="absolute inset-0 w-full h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
         ) : (
           <>
-            <div className="absolute left-4 bottom-4 md:left-7 md:bottom-7" style={{ color: T.surface }}>
+            <div className="absolute left-4 bottom-4 md:left-7 md:bottom-7" style={{ color: T.invertInk }}>
               <div className="serif font-extrabold leading-[1.05] text-[24px] md:text-[40px]" style={{ maxWidth: 520, textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>{cur.title}</div>
               {c.introVideoUrl && i === 0 && <div className="text-[14px] mt-2" style={{ opacity: 0.85 }}>{playing && parse.isError ? 'Không mở được video, thử mở trực tiếp' : 'Video giới thiệu'}</div>}
             </div>
             {c.introVideoUrl && i === 0 && (
               playing && parse.isError
                 ? <a href={c.introVideoUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Mở video</a>
-                : <button type="button" aria-label="Phát video giới thiệu" onClick={play} className="rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.accent, color: T.surface }}>{playing && parse.isPending ? <span className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Play size={30} />}</button>
+                : <button type="button" aria-label="Phát video giới thiệu" onClick={play} className="rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.accent, color: T.invertInk }}>{playing && parse.isPending ? <span className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Play size={30} />}</button>
             )}
           </>
         )}

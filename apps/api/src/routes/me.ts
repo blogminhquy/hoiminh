@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
 import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
+import { affiliate, auth, featureFlags, messaging, notifications, paymentsService, shell, subscriptions, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -15,6 +15,13 @@ meRoutes.get('/', async (c) => {
   const ctx = c.get('ctx');
   const u = await users.me(ctx);
   return c.json({ user: auth.toAuthUser(u), profile: u, communities: await shell.myCommunities(ctx) });
+});
+
+/** Trạng thái tích hợp cho MCP và các client dùng API key: MCP server hỏi lúc khởi động. */
+meRoutes.get('/integration', async (c) => {
+  const ctx = c.get('ctx');
+  const workspaceId = ctx.actor.type === 'api_key' ? ctx.actor.workspaceId : null;
+  return c.json({ workspaceId, mcpEnabled: await featureFlags.isEnabled(ctx, featureFlags.FLAG.mcp, { workspaceId }) });
 });
 meRoutes.patch('/', async (c) => {
   const input = await parse(updateProfileSchema, await body(c));

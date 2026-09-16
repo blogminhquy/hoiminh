@@ -42,7 +42,7 @@ function OrderView({ orderId }: { orderId: string }) {
         <div className="w-full md:w-[520px] flex flex-col gap-3 md:pt-9">
           {o.status === 'paid' && (
             <div className="card p-6 flex flex-col items-center text-center gap-2" style={{ background: T.tealSoft, borderColor: T.tealSoft }}>
-              <span className="w-12 h-12 rounded-full inline-flex items-center justify-center" style={{ background: T.teal, color: T.surface }}><Check size={24} /></span>
+              <span className="w-12 h-12 rounded-full inline-flex items-center justify-center" style={{ background: T.teal, color: T.invertInk }}><Check size={24} /></span>
               <div className="serif text-[20px] font-extrabold">Đã nhận thanh toán</div>
               <div className="text-[13px]" style={{ color: T.tealText }}>Quyền truy cập đã mở{o.paidAt ? ` lúc ${fmtDateTime(o.paidAt)}` : ''}. Đang chuyển bạn về…</div>
               <Link to={o.nextUrl} className="btn btn-dark btn-sm mt-1">Đi ngay</Link>

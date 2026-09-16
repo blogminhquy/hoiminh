@@ -13,6 +13,19 @@ if (!apiKey) {
   process.exit(1);
 }
 const client = createClient(apiUrl, apiKey);
+
+// Cờ `mcp` do super admin giữ: tắt thì server không phục vụ tool nào, thay vì báo lỗi rải rác ở từng lệnh.
+try {
+  const integration = await client.get<{ mcpEnabled: boolean }>('/v1/me/integration');
+  if (!integration.mcpEnabled) {
+    console.error('MCP đang tắt trên nền tảng này. Bật ở Hệ thống → Gói nền tảng → Tính năng → "MCP cho AI".');
+    process.exit(1);
+  }
+} catch (err) {
+  console.error(`Không kiểm tra được trạng thái MCP: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+}
+
 const server = new Server({ name: 'hoiminh', version: '1.0.0' }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) }));

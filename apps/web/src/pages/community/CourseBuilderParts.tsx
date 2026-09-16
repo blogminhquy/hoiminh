@@ -74,7 +74,7 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
         {(d.kind === 'video' || d.videoUrl) && (
           <Field label="Video">
             <div className="flex gap-3 flex-col sm:flex-row">
-              <div className="rounded-[10px] flex items-center justify-center overflow-hidden flex-shrink-0" style={{ width: 200, maxWidth: '100%', aspectRatio: '16 / 9', background: T.player, color: T.surface }}>
+              <div className="rounded-[10px] flex items-center justify-center overflow-hidden flex-shrink-0" style={{ width: 200, maxWidth: '100%', aspectRatio: '16 / 9', background: T.player, color: T.invertInk }}>
                 {embed ? <iframe title="Xem trước video" src={embed.embedUrl} className="w-full h-full" allow="autoplay; fullscreen" /> : <Play size={24} />}
               </div>
               <div className="flex-grow flex flex-col gap-2 min-w-0">

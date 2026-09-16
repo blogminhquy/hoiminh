@@ -82,7 +82,7 @@ export default function Page() {
                 </div>
               )}
               {p.leaderboard && (
-                <div className="card p-4 flex flex-col gap-2" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+                <div className="card card-invert p-4 flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Trophy size={14} />Cộng sự tháng {new Date().getMonth() + 1}</div>
                   <div className="serif text-[20px] font-extrabold">Hạng {p.leaderboard.rank} · {p.leaderboard.referrals} người giới thiệu</div>
                   <div className="text-[13px]" style={{ color: T.sideText }}>{p.leaderboard.paid} người trong số đó đã trả phí</div>

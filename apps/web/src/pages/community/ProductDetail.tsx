@@ -26,7 +26,7 @@ function Cover({ p }: { p: Product }) {
   if (play && embed.data?.embed) return <div className="relative rounded-[18px] overflow-hidden" style={{ aspectRatio: '16 / 9', background: '#171310' }}><iframe src={embed.data.embed.embedUrl} title="Video giới thiệu" className="absolute inset-0 w-full h-full border-0" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div>;
   return (
     <div className="relative rounded-[18px] overflow-hidden flex items-center justify-center" style={{ aspectRatio: '16 / 9', background: p.coverUrl ? `url(${p.coverUrl}) center/cover` : p.coverColor }}>
-      <div className="absolute left-7 bottom-7" style={{ color: T.surface }}><div className="serif text-[28px] md:text-[40px] font-extrabold leading-[1.05] max-w-[520px]">{p.page?.headline || p.name}</div>{p.page?.introVideoUrl && <div className="text-[14px] opacity-85 mt-2">Video giới thiệu</div>}</div>
+      <div className="absolute left-7 bottom-7" style={{ color: T.invertInk }}><div className="serif text-[28px] md:text-[40px] font-extrabold leading-[1.05] max-w-[520px]">{p.page?.headline || p.name}</div>{p.page?.introVideoUrl && <div className="text-[14px] opacity-85 mt-2">Video giới thiệu</div>}</div>
       {p.page?.introVideoUrl && <button type="button" onClick={() => setPlay(true)} aria-label="Phát video giới thiệu" className="w-[72px] h-[72px] rounded-full flex items-center justify-center" style={{ background: T.ink, color: T.surface }}><Play size={30} /></button>}
     </div>
   );

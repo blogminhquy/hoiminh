@@ -31,7 +31,7 @@ function CourseCard({ c, slug }: { c: CourseItem; slug: string }) {
   return (
     <div className="card overflow-hidden flex flex-col">
       <Link to={to} className="relative h-[160px] flex items-end p-4" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-        <span className="serif text-[22px] font-extrabold leading-[1.15] max-w-[240px]" style={{ color: T.surface }}>{c.title}</span>
+        <span className="serif text-[22px] font-extrabold leading-[1.15] max-w-[240px]" style={{ color: T.invertInk }}>{c.title}</span>
         {s === 'lock' && <span className="tag absolute top-3 right-3" style={{ background: T.goldSoft, color: T.goldText }}><Lock size={11} /> Premium</span>}
         {s === 'draft' && <span className="tag absolute top-3 left-3" style={{ background: T.bg, color: T.ink3 }}>Nháp</span>}
         {s === 'done' && <span className="tag absolute top-3 right-3" style={{ background: T.tealSoft, color: T.tealText }}><BadgeCheck size={11} /> Hoàn thành</span>}
@@ -81,7 +81,7 @@ export default function Page() {
         {q.data?.canManage && <Link to={`/${slug}/khoa-hoc/moi`} className="btn btn-primary btn-sm" style={{ height: 36 }}><Plus size={16} /> Tạo khóa học</Link>}
       </div>
       {cont && (
-        <div className="card px-5 py-4 flex items-center gap-4 flex-wrap" style={{ background: T.ink, color: T.surface, borderColor: T.ink }}>
+        <div className="card card-invert px-5 py-4 flex items-center gap-4 flex-wrap">
           <div className="w-14 h-14 rounded-xl flex-shrink-0" style={{ background: cont.course.coverUrl ? `url(${cont.course.coverUrl}) center/cover` : cont.course.coverColor }} />
           <div className="flex-grow min-w-0">
             <div className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Học tiếp</div>

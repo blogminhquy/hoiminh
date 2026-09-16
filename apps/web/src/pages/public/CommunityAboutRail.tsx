@@ -75,7 +75,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
     <aside className="flex flex-col gap-3.5 w-full lg:w-[340px] lg:flex-shrink-0 lg:sticky lg:top-6">
       <div className="card overflow-hidden">
         <div className="flex items-end p-4" style={{ height: 130, background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-          <span className="serif font-extrabold leading-[1.1] text-[22px]" style={{ color: T.surface, textShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>{c.coverTagline || c.name}</span>
+          <span className="serif font-extrabold leading-[1.1] text-[22px]" style={{ color: T.invertInk, textShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>{c.coverTagline || c.name}</span>
         </div>
         <div className="flex flex-col gap-3" style={{ padding: 18 }}>
           <div className="flex items-center gap-3">

@@ -30,7 +30,7 @@ export function TierCard({ t, mode, onChange }: { t: Tier; mode: Mode; onChange:
   const patch = (p: Partial<Tier>) => onChange({ ...t, ...p });
   const setBenefit = (i: number, v: string | null) => patch({ benefits: v === null ? t.benefits.filter((_, j) => j !== i) : t.benefits.map((b, j) => (j === i ? v : b)) });
   return (
-    <div className="card flex-1 p-5 flex flex-col gap-3" style={dark ? { background: T.ink, color: T.surface, borderColor: T.ink } : undefined}>
+    <div className={`card flex-1 p-5 flex flex-col gap-3${dark ? ' card-invert' : ''}`}>
       <div className="flex items-center justify-between gap-2"><input value={t.name} maxLength={40} onChange={(e) => patch({ name: e.target.value })} className="font-semibold text-[15px] bg-transparent min-w-0 flex-grow" style={{ color: 'inherit' }} />{!free && <Toggle on={t.isActive} onChange={(isActive) => patch({ isActive })} />}</div>
       {free ? <div><div className="serif text-[24px] font-bold">Miễn phí</div><div className="text-[12px]" style={{ color: T.ink3 }}>Mặc định khi tham gia</div></div> : (
         <div className="flex flex-col gap-1.5">

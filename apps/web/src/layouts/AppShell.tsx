@@ -33,7 +33,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
         <button type="button" onClick={() => setSwitching((v) => !v)} className="w-full flex items-center gap-2.5 text-left px-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
           <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={40} radius={12} />
           <span className="flex-grow min-w-0">
-            <span className="block font-semibold text-[14px] truncate" style={{ color: T.surface }}>{shell.community.name}</span>
+            <span className="block font-semibold text-[14px] truncate" style={{ color: T.invertInk }}>{shell.community.name}</span>
             <span className="block text-[12px]" style={{ color: T.sideMuted }}>{shell.stats.members} thành viên · {shell.stats.online} đang online</span>
           </span>
           <ChevronDown size={18} style={{ color: T.sideMuted }} />
@@ -44,7 +44,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
       <div className="flex flex-col gap-0.5">
         {tabs.feed !== false && <NavItem to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
         {tabs.members !== false && <NavItem to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
-        {tabs.events !== false && <NavItem to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.surface }}>{shell.stats.upcomingEvents}</span> : undefined} />}
+        {tabs.events !== false && <NavItem to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
         {tabs.affiliate !== false && <NavItem to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng cộng sự" />}
       </div>
       <div className="nav-group">Học tập</div>

@@ -39,7 +39,7 @@ export default function Page() {
         <Link to={`/${shell.community.slug}`} className="btn btn-ghost btn-sm"><Globe size={14} />Xem trước</Link>
         <Button size="sm" variant="dark" loading={save.isPending && save.variables === undefined} onClick={() => save.mutate(undefined)}>{saved ? 'Đã lưu' : 'Lưu thay đổi'}</Button>
       </div>
-      {!f.doorsOpen && <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: T.goldSoft, color: '#5C4A16' }}>Cổng đang đóng: thành viên hiện tại vẫn vào bình thường, người mới không thể tham gia hay mua gói.</div>}
+      {!f.doorsOpen && <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: T.goldSoft, color: T.goldDark }}>Cổng đang đóng: thành viên hiện tại vẫn vào bình thường, người mới không thể tham gia hay mua gói.</div>}
       {save.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(save.error)}</div>}
       <ModePicker value={f.pricingMode} onChange={(pricingMode) => patch({ pricingMode })} />
       {paid && <div className="flex gap-4 flex-col md:flex-row">{f.tiers.map((t) => <TierCard key={t.key} t={t} mode={f.pricingMode} onChange={setTier} />)}</div>}

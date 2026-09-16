@@ -53,7 +53,7 @@ export default function Page() {
         return (
           <div key={d.key} className="card flex flex-col gap-3.5" style={{ padding: '16px 20px' }}>
             <div className="flex items-center gap-3.5">
-              <span className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: d.bg, color: T.surface }}>{d.icon}</span>
+              <span className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: d.bg, color: T.invertInk }}>{d.icon}</span>
               <div className="flex-grow min-w-0"><div className="flex items-center gap-2"><span className="font-semibold">{d.name}</span><span className="text-[12px] font-semibold" style={{ color: p.enabled ? T.teal : T.ink3 }}>{p.enabled ? 'Đang bật' : 'Đang tắt'}</span></div><div className="muted text-[13px]">{d.desc}</div></div>
               <Toggle on={p.enabled} disabled={m.isPending} onChange={(enabled) => m.mutate({ key: d.key, enabled, config: p.config })} />
             </div>
@@ -65,7 +65,7 @@ export default function Page() {
       })}
       {SOON.map((s) => (
         <div key={s.name} className="card flex items-center gap-3.5" style={{ padding: '16px 20px', opacity: 0.75 }}>
-          <span className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: s.bg, color: T.surface }}>{s.icon}</span>
+          <span className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: s.bg, color: T.invertInk }}>{s.icon}</span>
           <div className="flex-grow"><div className="flex items-center gap-2"><span className="font-semibold">{s.name}</span><span className="tag" style={{ background: T.bg, color: T.ink3 }}>Sắp ra mắt</span></div><div className="muted text-[13px]">{s.desc}</div></div>
         </div>
       ))}

@@ -1,5 +1,9 @@
 // Token thiết kế lấy nguyên từ design/build.mjs: bảng màu giấy ấm, nhấn cam đất và xanh ngọc, 8 nền status.
-export const T = {
+//
+// HEX = giá trị thật của giao diện sáng. Chỉ dùng khi màu phải là một chuỗi màu thật:
+// giá trị lưu vào database (coverColor của hội, khóa học, sự kiện) và thuộc tính SVG
+// (fill/stroke không hiểu var()).
+export const HEX = {
   bg: '#F7F3EC',
   surface: '#FFFDF9',
   ink: '#1F1B17',
@@ -23,6 +27,61 @@ export const T = {
   goldDark: '#5C4A16',
   player: '#171310',
 } as const;
+
+/**
+ * T = cùng bộ token nhưng trỏ tới biến CSS, nên mọi `style={{ color: T.ink }}` tự đổi
+ * theo giao diện sáng/tối mà không phải sửa 1.100 chỗ dùng. Biến được khai báo ở
+ * styles.css cho cả hai giao diện.
+ */
+export const T = {
+  bg: 'var(--bg)',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  ink2: 'var(--ink2)',
+  ink3: 'var(--ink3)',
+  line: 'var(--line)',
+  line2: 'var(--line2)',
+  accent: 'var(--accent)',
+  accentSoft: 'var(--accent-soft)',
+  accentText: 'var(--accent-text)',
+  teal: 'var(--teal)',
+  tealSoft: 'var(--teal-soft)',
+  tealText: 'var(--teal-text)',
+  side: 'var(--side)',
+  sideDark: 'var(--side-dark)',
+  sideText: 'var(--side-text)',
+  sideMuted: 'var(--side-muted)',
+  gold: 'var(--gold)',
+  goldSoft: 'var(--gold-soft)',
+  goldText: 'var(--gold-text)',
+  goldDark: 'var(--gold-dark)',
+  player: 'var(--player)',
+  /** Nền và chữ của thẻ nhấn nền tối: tối/sáng cố định ở cả hai giao diện. */
+  invertBg: 'var(--invert-bg)',
+  /** Chữ đặt trên nền màu cố định (ảnh bìa, badge accent, sidebar, player) — luôn gần trắng. */
+  invertInk: 'var(--invert-ink)',
+} as const;
+
+/** Ba lựa chọn giao diện; 'system' theo cài đặt của máy. */
+export type ThemeChoice = 'light' | 'dark' | 'system';
+export const THEME_KEY = 'hm_theme';
+
+/** Gắn giao diện lên thẻ <html>. Gọi sớm (trước khi React render) để không bị nháy sáng. */
+export function applyTheme(choice: ThemeChoice): void {
+  const root = document.documentElement;
+  if (choice === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', choice);
+}
+
+/** Đọc lựa chọn đã lưu; hỏng hoặc chưa có thì theo hệ thống. */
+export function readTheme(): ThemeChoice {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return v === 'light' || v === 'dark' ? v : 'system';
+  } catch {
+    return 'system';
+  }
+}
 
 export const FONT_DISPLAY = "Montserrat, 'Segoe UI', Arial, sans-serif";
 export const FONT_SANS = "'Open Sans', 'Segoe UI', system-ui, sans-serif";

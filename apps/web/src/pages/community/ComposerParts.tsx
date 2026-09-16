@@ -59,7 +59,7 @@ export function ImagePicker({ images, onChange, communityId, inputRef }: { image
           {images.map((im) => (
             <span key={im.fileId} className="relative w-[88px] h-[88px] rounded-[10px] overflow-hidden" style={{ background: T.line }}>
               <img src={im.url} alt="" className="w-full h-full object-cover" />
-              <button type="button" aria-label="Xóa ảnh" onClick={() => onChange(images.filter((x) => x.fileId !== im.fileId))} className="absolute top-1 right-1 w-6 h-6 rounded-full inline-flex items-center justify-center" style={{ background: 'rgba(31,27,23,0.7)', color: T.surface }}><X size={14} /></button>
+              <button type="button" aria-label="Xóa ảnh" onClick={() => onChange(images.filter((x) => x.fileId !== im.fileId))} className="absolute top-1 right-1 w-6 h-6 rounded-full inline-flex items-center justify-center" style={{ background: 'rgba(31,27,23,0.7)', color: T.invertInk }}><X size={14} /></button>
             </span>
           ))}
           {Array.from({ length: busy }, (_, i) => <span key={i} className="skeleton w-[88px] h-[88px]" />)}

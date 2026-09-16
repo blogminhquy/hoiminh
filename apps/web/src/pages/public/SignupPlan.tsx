@@ -24,7 +24,7 @@ const DEFAULT_FEATURES: Array<Array<string | { b: string }>> = [
 function Feature({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-2.5 text-[15px]">
-      <span className="inline-flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 22, height: 22, background: '#1E8A5A', color: T.surface }}><Check size={13} /></span>
+      <span className="inline-flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 22, height: 22, background: '#1E8A5A', color: T.invertInk }}><Check size={13} /></span>
       <span>{children}</span>
     </div>
   );
@@ -56,7 +56,7 @@ export default function Page() {
         <div className="relative flex p-1 rounded-full" style={{ background: 'rgba(255,253,249,0.1)' }}>
           {seg('monthly', 'Theo tháng')}
           {seg('yearly', 'Theo năm')}
-          <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.surface, height: 26, padding: '0 10px' }}>2 tháng miễn phí</span>
+          <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.invertInk, height: 26, padding: '0 10px' }}>2 tháng miễn phí</span>
         </div>
         <QueryState q={plans} rows={1} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có gói nào', hint: 'Hệ thống chưa mở bán gói nền tảng.' }}>
           {(list) => {

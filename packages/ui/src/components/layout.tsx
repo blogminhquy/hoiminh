@@ -44,7 +44,7 @@ export function StatCard({ label, value, sub, subColor, className }: { label: st
 
 export function WalletBox({ label, value, hint, strong }: { label: string; value: ReactNode; hint?: ReactNode; strong?: boolean }) {
   return (
-    <div className="card flex-1 min-w-0 px-[18px] py-4 flex flex-col gap-1" style={strong ? { background: T.ink, color: T.surface, borderColor: T.ink } : undefined}>
+    <div className={`card flex-1 min-w-0 px-[18px] py-4 flex flex-col gap-1${strong ? ' card-invert' : ''}`}>
       <span className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: strong ? T.gold : T.ink3 }}>{label}</span>
       <span className="serif text-[24px] font-extrabold">{value}</span>
       {hint && <span className="text-[12px]" style={{ color: strong ? T.sideText : T.ink3 }}>{hint}</span>}
@@ -94,7 +94,7 @@ export function Logo({ size = 26, light, className }: { size?: number; light?: b
 
 export function CommunityMark({ mark, color, size = 40, radius, url, style }: { mark: string; color: string; size?: number; radius?: number; url?: string | null; style?: CSSProperties }) {
   return (
-    <span className="inline-flex items-center justify-center serif font-extrabold flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: radius ?? Math.round(size * 0.3), background: url ? `url(${url}) center/cover` : color, color: T.surface, fontSize: Math.round(size * 0.42), ...style }}>
+    <span className="inline-flex items-center justify-center serif font-extrabold flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: radius ?? Math.round(size * 0.3), background: url ? `url(${url}) center/cover` : color, color: T.invertInk, fontSize: Math.round(size * 0.42), ...style }}>
       {url ? '' : mark}
     </span>
   );

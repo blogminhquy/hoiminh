@@ -22,7 +22,7 @@ export function SignupHeader() {
 
 export function SignupPage({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: T.side, color: T.surface }}>
+    <div className="min-h-screen flex flex-col" style={{ background: T.side, color: T.invertInk }}>
       <SignupHeader />
       {children}
     </div>

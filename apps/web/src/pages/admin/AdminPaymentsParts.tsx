@@ -43,7 +43,7 @@ export function ProviderRow({ p }: { p: Provider }) {
   const health = !p.enabled ? 'Chưa bật' : healthOk ? `OK${p.lastWebhookAt ? ` · ${timeAgo(p.lastWebhookAt, true)}` : ''}` : `Lỗi · ${p.webhookFailuresThisMonth || p.consecutiveFailures} lần`;
   return (
     <div className="flex items-center gap-3.5 py-3.5 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
-      <span className="w-11 h-[30px] rounded-md inline-flex items-center justify-center text-[9px] font-extrabold serif" style={{ background: meta.bg, color: T.surface }}>{meta.name.slice(0, 5)}</span>
+      <span className="w-11 h-[30px] rounded-md inline-flex items-center justify-center text-[9px] font-extrabold serif" style={{ background: meta.bg, color: T.invertInk }}>{meta.name.slice(0, 5)}</span>
       <div className="flex-grow min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-semibold">{meta.name}</span><span className="tag" style={{ background: p.mode === 'production' ? T.tealSoft : T.goldSoft, color: p.mode === 'production' ? T.tealText : T.goldText }}>{p.mode === 'production' ? 'Production' : 'Sandbox'}</span>{!p.hasCredentials && <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Chưa có credential</span>}</div><div className="muted text-[12px]">Webhook nhận {p.webhooksThisMonth} sự kiện tháng này · lỗi {p.webhookFailuresThisMonth}</div></div>
       <span className="text-[12px] font-semibold whitespace-nowrap" style={{ color: !p.enabled ? T.ink3 : healthOk ? T.teal : T.accentText }}>{health}</span>
       <Button size="sm" onClick={() => setOpen(true)}>Cấu hình</Button>
