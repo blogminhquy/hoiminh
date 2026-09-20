@@ -16,7 +16,6 @@
 .hm-ver-dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
 .hm-ver-panel { width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 56px); display: flex; flex-direction: column; border-radius: 14px; box-shadow: 0 12px 32px rgba(31, 27, 23, .16); overflow: hidden; z-index: 35; }
 .hm-ver-panel > * { flex-shrink: 0; }
-.hm-ver-scroll { flex: 1 1 auto; min-height: 96px; overflow-y: auto; }
 /* Trong khung hội trên mobile có thanh tab dưới — nâng nhãn lên khỏi thanh đó. */
 @media (max-width: 767px) {
   body:has(.mobile-tabs) .hm-ver { bottom: calc(72px + env(safe-area-inset-bottom)); }

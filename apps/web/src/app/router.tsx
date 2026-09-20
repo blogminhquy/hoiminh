@@ -52,6 +52,7 @@ const accountRoutes: RouteObject = {
         { path: '/tai-khoan', element: <Navigate to="/tai-khoan/goi" replace /> },
         { path: '/tai-khoan/ho-so', element: page(() => import('@/pages/account/ProfileEdit')) },
         { path: '/tai-khoan/goi', element: page(() => import('@/pages/account/AccountBilling')) },
+        { path: '/tai-khoan/phien-ban', element: page(() => import('@/pages/account/VersionPage')) },
         { path: '/tai-khoan/cong-su', element: page(() => import('@/pages/account/AffiliateWallet')) },
         { path: '/tai-khoan/cong-su/:programId', element: page(() => import('@/pages/account/AffiliateWallet')) },
       ],

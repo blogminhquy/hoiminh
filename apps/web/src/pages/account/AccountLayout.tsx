@@ -1,6 +1,7 @@
-// Khung Tài khoản (accountNav trong build.mjs): nav 220px 8 mục bên trái, nội dung trang con bên phải.
+// Khung Tài khoản (accountNav trong build.mjs): nav 220px bên trái (8 mục thiết kế + Phiên bản), nội dung trang con bên phải.
 import { THEME_KEY, applyTheme, readTheme, type ThemeChoice } from '@hoiminh/ui';
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { useVersionStatus } from '@/lib/version';
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
@@ -32,6 +33,17 @@ function ThemeItem() {
   );
 }
 
+/** Mục Phiên bản: kèm chấm cam khi máy chủ đã có bản mới. */
+function VersionItem({ on }: { on: boolean }) {
+  const { build, updateAvailable } = useVersionStatus();
+  return (
+    <Link to="/tai-khoan/phien-ban" className={`settings-nav-item flex items-center gap-2${on ? ' on' : ''}`}>
+      <span className="flex-grow">Phiên bản</span>
+      <span className="text-[11px] font-semibold tabular-nums" style={{ color: updateAvailable ? 'var(--accent-text)' : 'var(--ink3)' }}>{updateAvailable ? 'có bản mới' : `v${build.version}`}</span>
+    </Link>
+  );
+}
+
 export default function Page() {
   const { pathname, hash } = useLocation();
   const isAccount = pathname === '/tai-khoan/ho-so' && hash === '#tai-khoan';
@@ -51,6 +63,7 @@ export default function Page() {
           <Link key={it.label} to={it.to} className={`settings-nav-item${it.on ? ' on' : ''}`}>{it.label}</Link>
         ))}
         <ThemeItem />
+        <VersionItem on={pathname === '/tai-khoan/phien-ban'} />
       </nav>
       <div className="settings-main">
         <Outlet />
