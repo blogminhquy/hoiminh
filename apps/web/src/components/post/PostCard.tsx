@@ -27,6 +27,7 @@ export interface FeedPost {
   images: GridImage[];
   poll: Poll | null;
   videoUrl?: string | null;
+  moderationStatus?: 'approved' | 'pending';
 }
 
 export function StatusBox({ text, bgKey, height = 240, fontSize = 28 }: { text: string; bgKey: string | null; height?: number | string; fontSize?: number }) {
@@ -46,13 +47,30 @@ export function useToggleLike(targetType: 'post' | 'comment') {
   });
 }
 
-export function PostCard({ post, slug, onMenu }: { post: FeedPost; slug: string; onMenu?: (post: FeedPost) => void }) {
+/** Duyệt / từ chối bài chờ duyệt (người kiểm duyệt). */
+export function useModeratePost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; action: 'approve' | 'reject'; reason?: string }) => api.post(`/v1/posts/${v.id}/moderate`, { action: v.action, ...(v.reason ? { reason: v.reason } : {}) }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['feed'] }); void qc.invalidateQueries({ queryKey: ['post'] }); },
+  });
+}
+
+export function PostCard({ post, slug, onMenu, canModerate }: { post: FeedPost; slug: string; onMenu?: (post: FeedPost) => void; canModerate?: boolean }) {
   const like = useToggleLike('post');
+  const moderate = useModeratePost();
+  const pending = post.moderationStatus === 'pending';
   const cat = CATEGORY_COLORS[post.space.colorKey] ?? CATEGORY_COLORS.neutral!;
   const href = `/${slug}/bai-viet/${post.id}`;
   const isStatus = Boolean(post.statusBgKey) && !post.title && post.images.length === 0;
   return (
     <article className="card px-6 py-5 flex flex-col gap-3" style={post.pinned ? { borderColor: T.gold } : undefined}>
+      {pending && (
+        <div className="flex items-center gap-2.5 flex-wrap px-3 py-2 rounded-[10px] text-[12px]" style={{ background: T.goldSoft, color: T.goldText }}>
+          <span className="font-semibold flex-grow">{canModerate ? 'Bài của thành viên mới, đang chờ duyệt' : 'Bài của bạn đang chờ quản trị viên duyệt, chỉ bạn thấy'}</span>
+          {canModerate && <><button type="button" className="btn btn-dark btn-sm" disabled={moderate.isPending} onClick={() => moderate.mutate({ id: post.id, action: 'approve' })}>Duyệt</button><button type="button" className="btn btn-ghost btn-sm" disabled={moderate.isPending} onClick={() => { const reason = window.prompt('Lý do từ chối (tác giả sẽ thấy):') ?? ''; moderate.mutate({ id: post.id, action: 'reject', reason }); }}>Từ chối</button></>}
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <UserAvatar user={post.author} size={40} />
         <div className="flex-grow min-w-0">

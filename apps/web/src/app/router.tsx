@@ -28,6 +28,7 @@ const publicRoutes: RouteObject[] = [
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
   { path: '/thanh-toan/:orderId', element: page(() => import('@/pages/community/Checkout')) },
+  { path: '/chung-nhan/:courseId/:userId', element: page(() => import('@/pages/public/Certificate')) },
 ];
 
 const ownerRoutes: RouteObject = {

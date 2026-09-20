@@ -129,7 +129,7 @@ export default function Page() {
         {feed.isLoading && <LoadingBlock rows={3} />}
         {feed.isError && <ErrorBox message={errorMessage(feed.error)} onRetry={() => void feed.refetch()} />}
         {feed.isSuccess && posts.length === 0 && <Empty title={q ? 'Không tìm thấy bài nào' : 'Chưa có bài viết'} hint={q ? 'Thử từ khóa khác' : 'Hãy là người đầu tiên chia sẻ với cộng đồng'} />}
-        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} />)}
+        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} canModerate={feed.data?.pages[0]?.access.canModerate} />)}
         {feed.hasNextPage && !q && (
           <Button block loading={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>Tải thêm</Button>
         )}

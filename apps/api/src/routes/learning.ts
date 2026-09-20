@@ -10,6 +10,8 @@ export const learningRoutes = router();
 learningRoutes.get('/communities/:id/courses', async (c) => c.json(await courses.listCourses(c.get('ctx'), c.req.param('id'))));
 learningRoutes.post('/communities/:id/courses', requireAuth, async (c) => c.json(await courses.createCourse(c.get('ctx'), c.req.param('id'), await parse(createCourseSchema, await body(c))), 201));
 learningRoutes.get('/courses/:id', async (c) => c.json(await courses.getCourse(c.get('ctx'), c.req.param('id'))));
+// Công khai: trang kiểm tra chứng nhận không cần đăng nhập.
+learningRoutes.get('/courses/:id/certificate/:userId', async (c) => c.json(await courses.certificate(c.get('ctx'), c.req.param('id'), c.req.param('userId'))));
 learningRoutes.patch('/courses/:id', requireAuth, async (c) => c.json(await courses.updateCourse(c.get('ctx'), c.req.param('id'), await parse(updateCourseSchema, await body(c)))));
 learningRoutes.delete('/courses/:id', requireAuth, async (c) => {
   await courses.deleteCourse(c.get('ctx'), c.req.param('id'));

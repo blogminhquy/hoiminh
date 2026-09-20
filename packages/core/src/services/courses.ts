@@ -1,7 +1,8 @@
 // Khóa học: thư viện, chi tiết, tạo/sửa/đăng, module và bài học, nhúng video, tài liệu.
+import { sha256Hex } from '@hoiminh/config';
 import { parseVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { comments, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
+import { comments, communities, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
@@ -67,6 +68,26 @@ export async function getCourse(ctx: Ctx, courseId: string) {
   }) }));
   const [learners] = await ctx.db.select({ c: sql<number>`count(*)::int`, done: sql<number>`count(*) filter (where percent = 100)::int` }).from(courseProgress).where(eq(courseProgress.courseId, courseId));
   return { ...c, owner, modules: tree, progress: progress ?? null, access: decision, canManage: staff, resources: resources.map((r) => ({ id: r.id, fileId: r.fileId, name: r.name, url: r.url, lessonId: r.lessonId, sizeBytes: r.sizeBytes })), discussions: discussions.map((d) => ({ ...d.c, author: d.author, lesson: d.lesson })), learners: { total: learners?.c ?? 0, completed: learners?.done ?? 0 }, product: productRow ? { id: productRow.id, priceMinor: productRow.priceMinor, compareAtMinor: productRow.compareAtMinor, slug: productRow.slug } : null };
+}
+
+/**
+ * Chứng nhận hoàn thành: công khai để ai có link cũng kiểm tra được. Chỉ tồn tại khi khóa bật
+ * certificateEnabled và người học đã đạt 100%; dữ liệu đọc thẳng từ course_progress nên không
+ * làm giả được bằng cách sửa link.
+ */
+export async function certificate(ctx: Ctx, courseId: string, userId: string) {
+  const c = await ctx.db.query.courses.findFirst({ where: and(eq(courses.id, courseId), isNull(courses.deletedAt)) });
+  if (!c || !c.certificateEnabled || c.status !== 'published') throw notFound('Khóa học này không cấp chứng nhận');
+  const progress = await ctx.db.query.courseProgress.findFirst({ where: and(eq(courseProgress.courseId, courseId), eq(courseProgress.userId, userId)) });
+  if (!progress || progress.percent < 100 || !progress.completedAt) throw notFound('Người học chưa hoàn thành khóa này');
+  const [learner, owner, community] = await Promise.all([
+    ctx.db.query.users.findFirst({ where: eq(users.id, userId), columns: { id: true, name: true, handle: true } }),
+    ctx.db.query.users.findFirst({ where: eq(users.id, c.ownerUserId), columns: { name: true } }),
+    c.communityId ? ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { name: true, slug: true, logoMark: true, logoColor: true } }) : null,
+  ]);
+  if (!learner) throw notFound();
+  const code = (await sha256Hex(`certificate:${courseId}:${userId}`)).slice(0, 12).toUpperCase();
+  return { code, learner, course: { id: c.id, title: c.title, lessonCount: c.lessonCount, totalDurationSeconds: c.totalDurationSeconds }, owner: owner?.name ?? null, community, completedAt: progress.completedAt, verifyUrl: `${ctx.env.APP_URL}/chung-nhan/${courseId}/${userId}` };
 }
 
 /** Bài học: video nhúng, nội dung, tài liệu (signed URL nếu riêng), bài trước/sau, khóa nếu chưa có quyền. */
