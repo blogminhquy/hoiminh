@@ -51,7 +51,20 @@ export async function getCourse(ctx: Ctx, courseId: string) {
   const done = new Set(doneRows.map((d) => d.lessonId));
   const resources = lessonRows.length ? await ctx.db.query.lessonResources.findMany({ where: inArray(lessonResources.lessonId, lessonRows.map((l) => l.id)), orderBy: asc(lessonResources.sortOrder) }) : [];
   const firstModuleId = modules[0]?.id;
-  const tree = modules.map((m) => ({ ...m, lessons: lessonRows.filter((l) => l.moduleId === m.id).map((l) => ({ id: l.id, title: l.title, kind: l.kind, durationSeconds: l.durationSeconds, isPreview: l.isPreview || (c.previewFirstModule && m.id === firstModuleId), done: done.has(l.id), locked: !(decision.allowed || l.isPreview || (c.previewFirstModule && m.id === firstModuleId)), current: progress?.lastLessonId === l.id })) }));
+  // Khóa theo thứ tự: khóa bật "Bắt buộc học theo thứ tự" thì bài sau chỉ mở khi mọi bài trước
+  // đã hoàn thành; một bài bật "Phải hoàn thành" thì riêng bài kế tiếp chờ nó. Người quản lý
+  // khóa không bị chặn. Hai cờ này trước đây chỉ được lưu, không nơi nào đọc.
+  let allPrevDone = true;
+  let prevRequires = false;
+  const tree = modules.map((m) => ({ ...m, lessons: lessonRows.filter((l) => l.moduleId === m.id).map((l) => {
+    const sequentialLocked = !staff && ((c.sequential && !allPrevDone) || (prevRequires && !allPrevDone));
+    const isDone = done.has(l.id);
+    // Cờ "phải hoàn thành" chỉ giữ bài kế tiếp; hết bài đó thì xét lại theo bài mới.
+    prevRequires = l.requireComplete && !isDone;
+    if (!isDone) allPrevDone = false;
+    const previewable = l.isPreview || (c.previewFirstModule && m.id === firstModuleId);
+    return { id: l.id, title: l.title, kind: l.kind, durationSeconds: l.durationSeconds, isPreview: previewable, done: isDone, locked: !(decision.allowed || previewable) || sequentialLocked, sequentialLocked, current: progress?.lastLessonId === l.id };
+  }) }));
   const [learners] = await ctx.db.select({ c: sql<number>`count(*)::int`, done: sql<number>`count(*) filter (where percent = 100)::int` }).from(courseProgress).where(eq(courseProgress.courseId, courseId));
   return { ...c, owner, modules: tree, progress: progress ?? null, access: decision, canManage: staff, resources: resources.map((r) => ({ id: r.id, fileId: r.fileId, name: r.name, url: r.url, lessonId: r.lessonId, sizeBytes: r.sizeBytes })), discussions: discussions.map((d) => ({ ...d.c, author: d.author, lesson: d.lesson })), learners: { total: learners?.c ?? 0, completed: learners?.done ?? 0 }, product: productRow ? { id: productRow.id, priceMinor: productRow.priceMinor, compareAtMinor: productRow.compareAtMinor, slug: productRow.slug } : null };
 }
@@ -71,9 +84,11 @@ export async function getLesson(ctx: Ctx, lessonId: string) {
   }
   const resources = locked ? [] : await Promise.all(course.resources.filter((r) => r.lessonId === lessonId).map(async (r) => ({ ...r, url: r.url.startsWith('seed://') || r.url.startsWith('http') ? r.url : await ctx.media.getSignedUrl(r.url, 3600) })));
   const embed = l.videoUrl ? parseVideoUrl(l.videoUrl) : null;
-  const drip = course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
+  // Nhỏ giọt chỉ có tác dụng khi khóa bật dripEnabled; trước đây dripDays của bài tự khóa dù công tắc khóa đang tắt.
+  const drip = course.dripEnabled && course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
   const dripLocked = Boolean(drip && drip > ctx.now() && !course.canManage);
-  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
+  const sequentialLocked = entry?.sequentialLocked ?? false;
+  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
 }
 
 /** Đánh dấu hoàn thành bài, cập nhật course_progress, phát lesson.completed / course.completed. */

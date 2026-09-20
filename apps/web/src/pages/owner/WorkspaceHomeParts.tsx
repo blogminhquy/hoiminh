@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { fmtCount, fmtDate, fmtShortMoney } from '@/lib/format';
+import { SITE_HOST } from '@/lib/site';
 
 export interface WorkspaceHome {
   workspace: { id: string; name: string; slug: string; planKey: string; status: string; trialEndsAt: string | null; contentLockedAt: string | null; ownerUserId: string } | null;
@@ -27,7 +28,7 @@ export function HoiCard({ c, role }: { c: WorkspaceHome['owned'][number]; role: 
     <div className="card flex flex-col gap-3.5 p-5">
       <div className="flex items-center gap-3">
         <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={48} radius={14} />
-        <div className="flex-grow min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">hoiminh.vn/{c.slug}</div></div>
+        <div className="flex-grow min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">{SITE_HOST}/{c.slug}</div></div>
         {draft ? <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Nháp</span> : <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>{MODE_LABEL[c.pricingMode] ?? c.pricingMode}</span>}
       </div>
       <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>

@@ -54,7 +54,7 @@ function Composer({ onSubmit, placeholder, loading, autoFocus, compact }: { onSu
   );
 }
 
-function One({ c, canModerate, onReply, onLike, onPin, depth = 0 }: { c: CommentItem; canModerate: boolean; onReply: (parentId: string, text: string) => void; onLike: (id: string) => void; onPin: (id: string, pinned: boolean) => void; depth?: number }) {
+function One({ c, canModerate, meId, onReply, onLike, onPin, onDelete, depth = 0 }: { c: CommentItem; canModerate: boolean; meId: string | null; onReply: (parentId: string, text: string) => void; onLike: (id: string) => void; onPin: (id: string, pinned: boolean) => void; onDelete: (id: string) => void; depth?: number }) {
   const [replying, setReplying] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const replies = showAll ? c.replies : c.replies.slice(0, 2);
@@ -76,10 +76,11 @@ function One({ c, canModerate, onReply, onLike, onPin, depth = 0 }: { c: Comment
           <button type="button" className="font-semibold" style={{ color: c.liked ? T.accentText : T.ink2 }} onClick={() => onLike(c.id)}>Thích{c.likeCount ? ` · ${c.likeCount}` : ''}</button>
           {depth === 0 && <button type="button" className="font-semibold" style={{ color: T.ink2 }} onClick={() => setReplying((v) => !v)}>Trả lời</button>}
           {canModerate && depth === 0 && <button type="button" className="font-semibold" style={{ color: T.ink3 }} onClick={() => onPin(c.id, !c.pinned)}>{c.pinned ? 'Bỏ ghim' : 'Ghim'}</button>}
+          {(canModerate || (meId && c.author.id === meId)) && <button type="button" className="font-semibold" style={{ color: T.ink3 }} onClick={() => { if (window.confirm('Xóa bình luận này?')) onDelete(c.id); }}>Xóa</button>}
         </div>
         {replies.length > 0 && (
           <div className="flex flex-col gap-3 pt-1.5 ml-1 pl-3.5" style={{ borderLeft: `2px solid ${T.line}` }}>
-            {replies.map((r) => <One key={r.id} c={r} canModerate={canModerate} onReply={onReply} onLike={onLike} onPin={onPin} depth={1} />)}
+            {replies.map((r) => <One key={r.id} c={r} canModerate={canModerate} meId={meId} onReply={onReply} onLike={onLike} onPin={onPin} onDelete={onDelete} depth={1} />)}
           </div>
         )}
         {c.replies.length > 2 && !showAll && (
@@ -99,6 +100,8 @@ export function CommentThread({ targetType, targetId, title, extraHeader, placeh
   const create = useMutation({ mutationFn: (input: { contentMd: string; parentCommentId?: string }) => api.post('/v1/comments', { targetType, targetId, ...input }), onSuccess: invalidate });
   const like = useMutation({ mutationFn: (id: string) => api.post('/v1/reactions/toggle', { targetType: 'comment', targetId: id }), onSuccess: invalidate });
   const pin = useMutation({ mutationFn: (v: { id: string; pinned: boolean }) => api.post(`/v1/comments/${v.id}/pin`, { pinned: v.pinned }), onSuccess: invalidate });
+  const del = useMutation({ mutationFn: (id: string) => api.del(`/v1/comments/${id}`), onSuccess: invalidate });
+  const meId = useAuth().user?.id ?? null;
   return (
     <div className="card px-6 md:px-8 py-6 flex flex-col gap-5">
       <div className="flex items-center gap-3 flex-wrap">
@@ -110,7 +113,7 @@ export function CommentThread({ targetType, targetId, title, extraHeader, placeh
       <Composer placeholder={placeholder} loading={create.isPending} onSubmit={(t) => create.mutate({ contentMd: t })} />
       <div className="flex flex-col gap-[18px] pt-1.5" style={{ borderTop: `1px solid ${T.line}` }}>
         <QueryState q={q} rows={2} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có bình luận', hint: 'Hãy là người đầu tiên' }}>
-          {(d) => d.items.map((c) => <One key={c.id} c={c} canModerate={d.canModerate} onReply={(parentCommentId, contentMd) => create.mutate({ contentMd, parentCommentId })} onLike={(id) => like.mutate(id)} onPin={(id, pinned) => pin.mutate({ id, pinned })} />)}
+          {(d) => d.items.map((c) => <One key={c.id} c={c} canModerate={d.canModerate} meId={meId} onReply={(parentCommentId, contentMd) => create.mutate({ contentMd, parentCommentId })} onLike={(id) => like.mutate(id)} onPin={(id, pinned) => pin.mutate({ id, pinned })} onDelete={(id) => del.mutate(id)} />)}
         </QueryState>
       </div>
     </div>

@@ -84,14 +84,17 @@ export async function overview(ctx: Ctx, days = 30) {
 }
 
 /** Danh sách hội toàn hệ thống với bộ lọc và GMV 30 ngày. */
-export async function listCommunities(ctx: Ctx, q: { status?: 'active' | 'draft' | 'archived' | 'locked'; q?: string; limit?: number }) {
+export async function listCommunities(ctx: Ctx, q: { status?: 'active' | 'draft' | 'archived' | 'locked' | 'reported'; q?: string; limit?: number }) {
   requireSuperAdmin(ctx);
   const conds = [isNull(communities.deletedAt)];
-  if (q.status) conds.push(eq(communities.status, q.status));
+  // "Bị báo cáo" = đang hoạt động nhưng có lý do khóa chờ xử lý (cùng định nghĩa với ô "hội bị báo cáo" ở Tổng quan).
+  if (q.status === 'reported') conds.push(eq(communities.status, 'active'), sql`${communities.lockedReason} is not null`);
+  else if (q.status) conds.push(eq(communities.status, q.status));
   if (q.q) conds.push(or(ilike(communities.name, `%${q.q}%`), ilike(communities.slug, `%${q.q}%`), ilike(users.name, `%${q.q}%`))!);
   const rows = await ctx.db.select({ c: communities, owner: { id: users.id, name: users.name, email: users.email }, ws: { status: workspaces.status, trialEndsAt: workspaces.trialEndsAt, id: workspaces.id }, gmv: sql<string>`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`, cycle: sql<string | null>`(select billing_cycle from platform_subscriptions ps where ps.workspace_id = ${communities.workspaceId} and ps.status = 'active' limit 1)` }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(and(...conds)).orderBy(desc(sql`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`)).limit(q.limit ?? 50);
   const counts = await ctx.db.select({ status: communities.status, c: sql<number>`count(*)::int` }).from(communities).where(isNull(communities.deletedAt)).groupBy(communities.status);
-  return { items: rows.map((r) => ({ ...r.c, owner: r.owner, workspaceStatus: r.ws.status, trialEndsAt: r.ws.trialEndsAt, gmv30Minor: Number(r.gmv), planCycle: r.cycle })), counts: Object.fromEntries(counts.map((c) => [c.status, c.c])) as Record<string, number> };
+  const [reported] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(communities).where(and(isNull(communities.deletedAt), eq(communities.status, 'active'), sql`${communities.lockedReason} is not null`));
+  return { items: rows.map((r) => ({ ...r.c, owner: r.owner, workspaceStatus: r.ws.status, trialEndsAt: r.ws.trialEndsAt, gmv30Minor: Number(r.gmv), planCycle: r.cycle })), counts: { ...(Object.fromEntries(counts.map((c) => [c.status, c.c])) as Record<string, number>), reported: reported?.c ?? 0 } };
 }
 
 /** Khóa / mở khóa / lưu trữ hội (bị báo cáo). */

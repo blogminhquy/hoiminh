@@ -418,3 +418,64 @@ describe('Xác thực hai lớp (TOTP)', () => {
     expect(s.user.id).toBe(userId);
   });
 });
+
+describe('Công tắc khóa học có tác dụng thật (rà soát 20/09)', () => {
+  it('học theo thứ tự: bài 2 khóa tới khi bài 1 hoàn thành; người quản lý không bị chặn', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa thứ tự', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: true, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'M1' });
+    const l1 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a' });
+    const l2 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 2', kind: 'text', contentMd: 'b' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const duy = await app.as('duy');
+    expect((await courses.getLesson(duy, l1.id)).locked).toBe(false);
+    const before = await courses.getLesson(duy, l2.id);
+    expect(before.locked).toBe(true);
+    expect(before.sequentialLocked).toBe(true);
+    expect(before.lockReason).toBe('sequential');
+    expect((await courses.getLesson(mq, l2.id)).locked).toBe(false);
+    await courses.completeLesson(duy, l1.id);
+    expect((await courses.getLesson(duy, l2.id)).locked).toBe(false);
+  });
+  it('bài bật "phải hoàn thành" giữ đúng bài kế tiếp; nhỏ giọt chỉ chạy khi khóa bật dripEnabled', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa cờ bài', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: true, dripEnabled: false, certificateEnabled: false, sequential: false, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'M1' });
+    const l1 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a', requireComplete: true });
+    const l2 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 2', kind: 'text', contentMd: 'b', dripDays: 30 });
+    const l3 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 3', kind: 'text', contentMd: 'c' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const cong = await app.as('cong');
+    expect((await courses.getLesson(cong, l2.id)).sequentialLocked).toBe(true);
+    expect((await courses.getLesson(cong, l3.id)).sequentialLocked).toBe(false);
+    await courses.completeLesson(cong, l1.id);
+    const l2view = await courses.getLesson(cong, l2.id);
+    expect(l2view.sequentialLocked).toBe(false);
+    expect(l2view.dripLocked).toBe(false);
+    await courses.updateCourse(mq, course.id, { dripEnabled: true });
+    expect((await courses.getLesson(cong, l2.id)).dripLocked).toBe(true);
+  });
+  it('khóa tắt "cộng sự nhận hoa hồng" thì đơn mua khóa đó không tính hoa hồng', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const make = async (affiliateEnabled: boolean) => {
+      const c = await courses.createCourse(mq, kd, { title: `Khóa hoa hồng ${affiliateEnabled}`, shortDescription: 'x', descriptionMd: '', accessMode: 'store_only', priceMinor: 100_000, previewFirstModule: false, affiliateEnabled, dripEnabled: false, certificateEnabled: false, sequential: false, hiddenFromStore: false });
+      const mod = await courses.upsertModule(mq, c.id, { title: 'M1' });
+      await courses.upsertLesson(mq, c.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a' });
+      await courses.updateCourse(mq, c.id, { status: 'published' });
+      const full = await courses.getCourse(mq, c.id);
+      const session = await checkout.createCheckout(await app.as('thulan'), { target: { type: 'product', productId: full.product!.id }, provider: 'sepay' });
+      return session.orderId;
+    };
+    expect(await affiliate.productsAllowCommission(app.system(), await make(false))).toBe(false);
+    expect(await affiliate.productsAllowCommission(app.system(), await make(true))).toBe(true);
+  });
+  it('quản trị: bộ lọc "bị báo cáo" chỉ trả hội đang hoạt động có lý do khóa chờ xử lý', async () => {
+    const adminCtx = await app.as('admin');
+    const r = await admin.listCommunities(adminCtx, { status: 'reported' });
+    expect(r.counts.reported).toBe(r.items.length);
+    expect(r.items.every((c) => c.status === 'active' && c.lockedReason)).toBe(true);
+  });
+});

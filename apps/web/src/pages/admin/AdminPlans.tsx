@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Field, Input, T, Toggle, money } from '@hoiminh/ui';
 import { Check, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { fmtShortMoney } from '@/lib/format';
@@ -16,7 +16,7 @@ const FEATURES = ['Không giới hạn hội, thành viên, khóa học, video, 
 // Khóa phải khớp `featureFlags` trong seed và hằng FLAG ở packages/core.
 const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời gian thực', go_live: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng cộng sự', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI', gamification: 'Điểm và cấp độ hoạt động', paypal: 'Cổng PayPal' };
 /** Cờ đang chặn đường chạy thật (không chỉ hiển thị): ghi rõ tắt thì mất gì. */
-const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
+const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán', realtime_chat: 'chưa có tác dụng: tính năng thuộc V2, chưa xây', go_live: 'chưa có tác dụng: tính năng thuộc V2, chưa xây', gamification: 'chưa có tác dụng: tính năng thuộc V2, chưa xây' };
 
 function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const qc = useQueryClient();
@@ -34,12 +34,28 @@ function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
 
 export default function Page() {
   const qc = useQueryClient();
+  // Cùng một trang phục vụ hai mục nav: /he-thong/goi (gói, cộng sự nền tảng) và /he-thong/tinh-nang (cờ tính năng).
+  // Trước đây hai mục dẫn tới màn giống hệt nhau.
+  const featuresView = useLocation().pathname.endsWith('/tinh-nang');
   const [edit, setEdit] = useState(false);
   const stats = useQuery({ queryKey: ['admin', 'plans'], queryFn: () => api.get<Stats>('/v1/admin/plans') });
   const flags = useQuery({ queryKey: ['admin', 'flags'], queryFn: () => api.get<Flag[]>('/v1/admin/flags') });
   const aff = useQuery({ queryKey: ['admin', 'affiliate'], queryFn: () => api.get<AffiliateInfo>('/v1/admin/affiliate') });
   const setFlag = useMutation({ mutationFn: (p: { key: string; enabled: boolean }) => api.put(`/v1/admin/flags/${p.key}`, { enabled: p.enabled }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'flags'] }) });
   const box = (label: string, value: string, sub: string) => <div className="flex-1 px-4 py-3.5 rounded-xl" style={{ background: 'rgba(255,253,249,0.08)' }}><div className="text-[12px]" style={{ color: T.sideText }}>{label}</div><div className="serif text-[26px] font-extrabold">{value}</div><div className="text-[12px]" style={{ color: T.sideText }}>{sub}</div></div>;
+  if (featuresView) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Tính năng và giới hạn</h1><div className="muted text-[13px]">Cờ tính năng bật/tắt cho toàn nền tảng. Giới hạn theo gói chưa có vì mới có một gói: xem <Link to="/he-thong/goi" style={{ color: T.teal }}>Gói nền tảng</Link>.</div></div></div>
+        <div className="card flex flex-col gap-2.5" style={{ padding: '18px 20px', maxWidth: 720 }}>
+          <span className="font-semibold">Tính năng đang bật theo giai đoạn</span>
+          <QueryState q={flags} rows={3} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có cờ tính năng' }}>
+            {(list) => <>{list.map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
+          </QueryState>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Gói nền tảng</h1><div className="muted text-[13px]">Hiện chỉ có một gói đầy đủ tính năng, trả theo tháng hoặc năm. Không thu phí giao dịch.</div></div></div>
@@ -53,7 +69,7 @@ export default function Page() {
                 {box('Theo năm · 2 tháng miễn phí', money(s.plan?.yearlyMinor ?? 0), `${s.yearlyCount} chủ hội · ${fmtShortMoney(s.mrrYearlyMinor)} MRR quy đổi`)}
                 {box('Dùng thử', `${s.plan?.trialDays ?? 14} ngày`, `${s.trialCount} đang thử · ${s.conversionRate}% chuyển trả phí`)}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 text-[13px] pt-3" style={{ gap: '8px 24px', color: T.sideText, borderTop: '1px solid rgba(255,253,249,0.15)' }}>{FEATURES.map((f) => <div key={f} className="flex items-center gap-2"><span style={{ color: T.teal }}><Check size={14} /></span>{f}</div>)}</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 text-[13px] pt-3" style={{ gap: '8px 24px', color: T.sideText, borderTop: '1px solid rgba(255,253,249,0.15)' }}>{(s.plan?.features?.length ? s.plan.features : FEATURES).map((f) => <div key={f} className="flex items-center gap-2"><span style={{ color: T.teal }}><Check size={14} /></span>{f}</div>)}</div>
             </div>
             <div className="flex-1 flex flex-col gap-3">
               {edit && s.plan ? <PlanEditor plan={s.plan} onClose={() => setEdit(false)} /> : (

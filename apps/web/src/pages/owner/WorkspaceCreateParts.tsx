@@ -5,6 +5,7 @@ import { OptionCard, T } from '@hoiminh/ui';
 import { toSlug } from '@hoiminh/contracts';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { SITE_HOST } from '@/lib/site';
 
 export const STEPS = ['Tên', 'Đường dẫn', 'Mô tả', 'Kiểu thu phí', 'Mẫu', 'Xong'] as const;
 export type PricingMode = 'free' | 'freemium' | 'subscription' | 'one_time';
@@ -40,7 +41,7 @@ export function SlugInput({ value, onChange, check }: { value: string; onChange:
   const bad = check.data?.available === false;
   return (
     <div className="input" style={{ color: T.ink }}>
-      <span className="muted">hoiminh.vn/</span>
+      <span className="muted">{SITE_HOST}/</span>
       <input value={value} onChange={(e) => onChange(toSlug(e.target.value))} placeholder="ten-hoi" className="flex-grow" />
       {ok && <span style={{ color: T.teal }}><Check size={16} /></span>}
       {bad && <span className="text-[12px] font-semibold" style={{ color: T.accentText }}>{check.data?.reason ?? 'Đã có người dùng'}</span>}
@@ -61,7 +62,7 @@ export function Done({ slug, name }: { slug: string; name: string }) {
     <div className="flex flex-col items-center gap-3 text-center py-4">
       <span className="w-14 h-14 rounded-full inline-flex items-center justify-center" style={{ background: T.tealSoft, color: T.tealText }}><Check size={28} /></span>
       <div className="serif text-[24px] font-extrabold">{name} đã sẵn sàng</div>
-      <div className="muted text-[14px]">Đường dẫn hội: <strong style={{ color: T.ink }}>hoiminh.vn/{slug}</strong>. Hội đang ở trạng thái nháp cho tới khi bạn đăng bài đầu tiên hoặc mở cổng trong Cài đặt.</div>
+      <div className="muted text-[14px]">Đường dẫn hội: <strong style={{ color: T.ink }}>{SITE_HOST}/{slug}</strong>. Hội đang ở trạng thái nháp cho tới khi bạn đăng bài đầu tiên hoặc mở cổng trong Cài đặt.</div>
       <div className="flex gap-2 flex-wrap justify-center pt-2">
         <Link to={`/${slug}/cai-dat`} className="btn btn-ghost">Cài đặt hội</Link>
         <Link to={`/${slug}/bang-tin`} className="btn btn-primary">Vào hội</Link>
