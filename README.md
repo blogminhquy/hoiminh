@@ -81,8 +81,11 @@ infra           deploy.mjs
 
    **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request — làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `worker.ts` dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]`.
 4. **Worker web**: `pnpm --filter @hoiminh/web build` rồi `pnpm --filter @hoiminh/web run deploy`. `apps/web/wrangler.toml` phục vụ `dist` bằng Worker static assets (`not_found_handling = "single-page-application"` lo route SPA, `public/_headers` lo cache) và tự tạo bản ghi DNS cho `hoiminh.com`, `www.hoiminh.com`. Biến build: `VITE_API_URL`, `VITE_APP_URL`.
-5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
-6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
+5. **R2**: chỉ cần binding `FILES` trong `apps/api/wrangler.toml` (đã khai báo, workflow deploy tự chạy `wrangler r2 bucket create hoiminh-files`). Tệp đi qua API (`PUT /files/upload/<key>` theo URL ký, `GET /files/<key>`) rồi vào bucket, không cần secret. Tùy chọn: gắn domain public cho bucket rồi đặt `R2_PUBLIC_BASE_URL` để ảnh public phát thẳng từ CDN; hoặc điền đủ 4 biến `R2_*` để trình duyệt tải thẳng lên R2 qua S3 (tệp rất lớn).
+6. **Resend**: ở Resend → Domains → thêm `hoiminh.com` và tạo các bản ghi DNS nó yêu cầu (trên Cloudflare DNS), chờ "Verified"; tạo API key rồi `wrangler secret put RESEND_API_KEY`. Địa chỉ gửi là `EMAIL_FROM` (mặc định `no-reply@hoiminh.com`, phải cùng tên miền đã xác minh). Kiểm chứng bằng nút **Gửi email thử** ở `/he-thong` (kết quả hiện ngay, mọi email đều ghi ở `/he-thong/nhat-ky` tab Email hệ thống).
+7. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
+
+Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`.
 
 Đã dựng sẵn trên tài khoản Cloudflare: Worker **hoiminh-web** phục vụ web ở `hoiminh.com` + `www.hoiminh.com`, Worker **hoiminh-api** ở `api.hoiminh.com`, hàng đợi `hoiminh-jobs` và `hoiminh-jobs-dlq`. Không dùng Cloudflare Pages: Worker tự tạo được bản ghi DNS cho tên miền riêng còn Pages thì phải thêm DNS bằng tay.
 
@@ -127,18 +130,13 @@ gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 
 Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Build → **Connect to Git**. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
 
-## Nhãn phiên bản và nút cập nhật
+## Phiên bản và nút cập nhật
 
-Góc dưới bên trái mọi màn hình có nhãn `v1.1.0 · <commit>`. Bấm vào để mở bảng:
+Góc dưới bên trái mọi màn hình có nhãn `v<phiên bản> · <commit>`. Bấm vào: bản đang chạy, bản trên máy chủ (đọc từ `/version.json`, hỏi lại mỗi 2 phút và khi quay lại tab), nút **Cập nhật ngay** khi hai bên lệch (xóa cache rồi nạp lại; nhãn đổi màu cam "Có bản mới").
 
-- **Đang chạy** — phiên bản, nhánh, giờ build, commit message của bản trình duyệt đang mở.
-- **Máy chủ** — phiên bản đang phục vụ trên Cloudflare, đọc từ `/version.json` (hỏi lại mỗi 2 phút và mỗi lần quay lại tab).
-- **Cập nhật ngay** — hiện khi hai bên lệch nhau; xóa cache trình duyệt rồi nạp lại để lấy bản mới. Khi có bản mới, nhãn đổi sang màu cam "Có bản mới".
-- **Lịch sử phiên bản** — đọc từ `CHANGELOG.md` lúc build, nên viết CHANGELOG là đủ, không cần sửa code.
-- **Máy này** — nhật ký các phiên bản trình duyệt này đã dùng (lưu ở localStorage, tối đa 20 dòng).
-- Super admin thấy thêm liên kết tới commit trên GitHub và trang chạy lại workflow deploy.
+Chi tiết nằm ở **Tài khoản · Phiên bản** (`/tai-khoan/phien-ban`): lịch sử phiên bản đọc từ `CHANGELOG.md` lúc build (viết CHANGELOG là đủ), nhật ký các bản trình duyệt này đã dùng (localStorage, 20 dòng), super admin thấy thêm liên kết commit và trang chạy lại deploy.
 
-Thông tin build do `apps/web/scripts/version-plugin.ts` sinh ra lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
+Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 
 ## Cấu hình cổng thanh toán
 
