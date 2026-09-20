@@ -24,7 +24,7 @@ export function configWarnings(ctx: Ctx): ConfigWarning[] {
   const out: ConfigWarning[] = [];
   const prod = ctx.env.APP_ENV === 'production';
   if (ctx.media.kind === 'local') {
-    out.push({ key: 'r2', label: 'Chưa cấu hình R2', detail: prod ? 'Tải ảnh và tệp đang hỏng: Worker không có hệ tệp. Đặt R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET.' : 'Đang lưu tệp trên đĩa máy này. Lên production cần R2.', severity: prod ? 'error' : 'warn' });
+    out.push({ key: 'r2', label: 'Chưa nối R2', detail: prod ? 'Tải ảnh và tệp đang hỏng: Worker không có hệ tệp. Deploy API với binding FILES ([[r2_buckets]] trong wrangler.toml, bucket hoiminh-files) là đủ, không cần secret.' : 'Đang lưu tệp trên đĩa máy này. Lên production cần R2.', severity: prod ? 'error' : 'warn' });
   }
   if (!ctx.env.RESEND_API_KEY) {
     out.push({ key: 'resend', label: 'Chưa cấu hình email', detail: 'Email xác minh, mời thành viên và nhắc sự kiện chỉ được ghi log, không ai nhận được. Đặt RESEND_API_KEY.', severity: prod ? 'error' : 'warn' });

@@ -3,6 +3,7 @@ import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll } from '@hoiminh/db/seed';
+import { fakeBucket } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
 
@@ -138,5 +139,46 @@ describe('API', () => {
     expect(denied.status).toBe(403);
     const recon = await json('/v1/admin/reconciliation?status=unmatched', { auth: t });
     expect((await recon.json()).items.length).toBeGreaterThan(0);
+  });
+  it('tệp: production mà chưa nối R2 → 503 nói rõ nguyên nhân; có binding R2 → tải lên và phát lại qua API', async () => {
+    const dbHandle = (app.ctx as { db: unknown }).db as never;
+    const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    const body = JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: 5, purpose: 'post_image', communityId });
+
+    const noR2 = await createApp({ env: loadEnv(base), db: dbHandle });
+    const h0 = createHonoApp(noR2);
+    const blocked = await h0.request('/v1/files/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
+    expect(blocked.status).toBe(503);
+    expect(((await blocked.json()) as { message: string }).message).toContain('R2');
+
+    const bucket = fakeBucket();
+    const withR2 = await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket });
+    const h1 = createHonoApp(withR2);
+    const ask = await h1.request('/v1/files/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body });
+    expect(ask.status).toBe(201);
+    const r = (await ask.json()) as { fileId: string; upload: { url: string; headers: Record<string, string> }; url: string };
+    expect(r.upload.url.startsWith('https://api.test/files/upload/public/post_image/')).toBe(true);
+    expect(r.url.startsWith('https://api.test/files/public/post_image/')).toBe(true);
+
+    const put = await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) });
+    expect(put.status).toBe(200);
+    expect(bucket.objects.size).toBe(1);
+
+    const forged = await h1.request(r.upload.url.replace(/sig=[0-9a-f]+/, 'sig=0000'), { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([9]) });
+    expect(forged.status).toBe(403);
+
+    const get = await h1.request(r.url);
+    expect(get.status).toBe(200);
+    expect(get.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await get.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+
+    const done = await h1.request(`/v1/files/${r.fileId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ width: 1, height: 1 }) });
+    expect(done.status).toBe(200);
+
+    // Tệp riêng: không có chữ ký thì bị chặn, dù tệp có trong bucket.
+    await bucket.put('private/digital_product/x.pdf', new Uint8Array([1]), { httpMetadata: { contentType: 'application/pdf' } });
+    expect((await h1.request('/files/private/digital_product/x.pdf')).status).toBe(403);
+    const signed = await withR2.ctx.media.getSignedUrl('private/digital_product/x.pdf', 60);
+    expect((await h1.request(signed)).status).toBe(200);
   });
 });

@@ -1,7 +1,7 @@
 // Gói nền tảng, API key, webhook gửi đi, tệp, hồ sơ công khai, sức khỏe.
 import { createApiKeySchema, createWebhookSchema } from '@hoiminh/contracts';
 import { apiKeys, filesService, platformBilling, users, webhooksOut } from '@hoiminh/core';
-import { LocalMediaProvider } from '@hoiminh/media';
+import { ProxiedMediaProvider } from '@hoiminh/media';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -29,37 +29,57 @@ const uploadSchema = z.object({ fileName: z.string().min(1).max(200), mimeType: 
 platformRoutes.post('/files/upload-url', requireAuth, async (c) => c.json(await filesService.requestUpload(c.get('ctx'), await parse(uploadSchema, await body(c))), 201));
 platformRoutes.post('/files/:id/complete', requireAuth, async (c) => c.json(await filesService.completeUpload(c.get('ctx'), c.req.param('id'), await parse(z.object({ width: z.number().nullable().optional(), height: z.number().nullable().optional() }), await body(c)))));
 
-/** Lưu trữ tệp local (khi không cấu hình R2): PUT nhận tệp, GET phát tệp; URL riêng phải có chữ ký. */
+/**
+ * Tệp đi qua API (binding R2 trên Worker, hoặc đĩa local khi dev): PUT nhận tệp theo URL ký,
+ * GET phát tệp; tệp riêng (`private/`) phải có chữ ký còn hạn. Với R2 qua S3 thì trình duyệt
+ * nói thẳng với R2, các route này trả 404.
+ */
 export const localFilesRoutes = router();
-const store = new Map<string, { bytes: Uint8Array; type: string }>();
+const memory = new Map<string, { bytes: Uint8Array; type: string }>();
+
+function proxied(c: { get(k: 'ctx'): { media: unknown } }): ProxiedMediaProvider | null {
+  const m = c.get('ctx').media;
+  return m instanceof ProxiedMediaProvider ? m : null;
+}
 
 localFilesRoutes.put('/upload/*', async (c) => {
-  const ctx = c.get('ctx');
-  const media = ctx.media;
-  if (!(media instanceof LocalMediaProvider)) return c.json({ code: 'not_found', message: 'Không dùng lưu trữ local' }, 404);
+  const media = proxied(c);
+  if (!media) return c.json({ code: 'not_found', message: 'Tệp không đi qua API ở cấu hình này' }, 404);
   const key = c.req.path.replace(/^\/files\/upload\//, '');
   const u = new URL(c.req.url);
-  if (!(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'URL tải lên không hợp lệ' }, 403);
+  if (!(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'URL tải lên không hợp lệ hoặc đã hết hạn' }, 403);
+  const type = c.req.header('content-type') ?? 'application/octet-stream';
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  await persist(key, bytes, c.req.header('content-type') ?? 'application/octet-stream');
-  return c.json({ ok: true, key });
+  if (media.store) await media.store.put(key, bytes, type);
+  else await persistLocal(key, bytes, type);
+  return c.json({ ok: true, key, bytes: bytes.byteLength });
 });
 localFilesRoutes.get('/*', async (c) => {
-  const ctx = c.get('ctx');
-  const media = ctx.media;
+  const media = proxied(c);
+  if (!media) return c.json({ code: 'not_found', message: 'Tệp không đi qua API ở cấu hình này' }, 404);
   const key = c.req.path.replace(/^\/files\//, '');
-  if (key.startsWith('private/')) {
+  const isPrivate = key.startsWith('private/');
+  if (isPrivate) {
     const u = new URL(c.req.url);
-    if (!(media instanceof LocalMediaProvider) || !(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'Tệp riêng cần URL ký' }, 403);
+    if (!(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'Tệp riêng cần URL ký còn hạn' }, 403);
   }
-  const f = await load(key);
+  const cache = isPrivate ? 'private, max-age=300' : 'public, max-age=31536000, immutable';
+  if (media.store) {
+    const obj = await media.store.get(key);
+    if (!obj) return c.json({ code: 'not_found', message: 'Không có tệp' }, 404);
+    const headers: Record<string, string> = { 'Content-Type': obj.contentType, 'Cache-Control': cache };
+    if (obj.size !== null) headers['Content-Length'] = String(obj.size);
+    if (obj.etag) headers.ETag = obj.etag;
+    return c.body(obj.body as ReadableStream, 200, headers);
+  }
+  const f = await loadLocal(key);
   if (!f) return c.json({ code: 'not_found', message: 'Không có tệp' }, 404);
   const buf = f.bytes.buffer.slice(f.bytes.byteOffset, f.bytes.byteOffset + f.bytes.byteLength) as ArrayBuffer;
-  return c.body(buf, 200, { 'Content-Type': f.type, 'Cache-Control': key.startsWith('private/') ? 'private, max-age=300' : 'public, max-age=31536000' });
+  return c.body(buf, 200, { 'Content-Type': f.type, 'Cache-Control': cache });
 });
 
-async function persist(key: string, bytes: Uint8Array, type: string): Promise<void> {
-  store.set(key, { bytes, type });
+async function persistLocal(key: string, bytes: Uint8Array, type: string): Promise<void> {
+  memory.set(key, { bytes, type });
   try {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
@@ -68,11 +88,11 @@ async function persist(key: string, bytes: Uint8Array, type: string): Promise<vo
     await fs.writeFile(file, bytes);
     await fs.writeFile(file + '.type', type);
   } catch {
-    /* môi trường không có fs (Worker): giữ trong bộ nhớ */
+    /* môi trường không có fs: giữ trong bộ nhớ (chỉ để test) */
   }
 }
-async function load(key: string): Promise<{ bytes: Uint8Array; type: string } | null> {
-  const mem = store.get(key);
+async function loadLocal(key: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const mem = memory.get(key);
   if (mem) return mem;
   try {
     const fs = await import('node:fs/promises');

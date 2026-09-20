@@ -6,11 +6,14 @@
 // giữ sẵn pool ở phía Cloudflare nên bắt tay gần như không tốn gì.
 import { loadEnv } from '@hoiminh/config';
 import { CloudflareQueue, createApp, createJobHandler, runCron, type App, type Job } from '@hoiminh/core';
+import type { R2BucketLike } from '@hoiminh/media';
 import { createHonoApp } from './app';
 
 interface WorkerEnv extends Record<string, unknown> {
   JOBS: Queue<Job>;
   HYPERDRIVE?: { connectionString: string };
+  /** Bucket R2 `hoiminh-files` ([[r2_buckets]]); ảnh và tệp đi qua API vào đây, không cần secret. */
+  FILES?: R2Bucket;
 }
 
 async function build(env: WorkerEnv): Promise<{ app: App; hono: ReturnType<typeof createHonoApp> }> {
@@ -18,7 +21,7 @@ async function build(env: WorkerEnv): Promise<{ app: App; hono: ReturnType<typeo
   // Hyperdrive gộp kết nối phía Cloudflare; không có binding thì dùng thẳng DATABASE_URL (pooler Supabase).
   if (env.HYPERDRIVE?.connectionString) raw.DATABASE_URL = env.HYPERDRIVE.connectionString;
   const parsed = loadEnv(raw);
-  const app = await createApp({ env: parsed, queue: new CloudflareQueue(env.JOBS as unknown as { send(body: Job): Promise<void> }), migrate: false });
+  const app = await createApp({ env: parsed, queue: new CloudflareQueue(env.JOBS as unknown as { send(body: Job): Promise<void> }), migrate: false, r2Bucket: (env.FILES as R2BucketLike | undefined) ?? null });
   return { app, hono: createHonoApp(app) };
 }
 
