@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export * from './crypto';
 export * from './totp';
+export * from './version';
 
 const bool = z
   .union([z.boolean(), z.string()])
@@ -32,7 +33,7 @@ export const envSchema = z.object({
   ENCRYPTION_KEY_VERSION: z.coerce.number().int().default(1),
 
   RESEND_API_KEY: z.string().default(''),
-  EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.vn>'),
+  EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
 
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),

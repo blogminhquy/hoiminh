@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 1.3.0 — 2026-09-20
+
+(Đang viết: R2 qua binding, Resend có nhật ký, trang Phiên bản trong Tài khoản, kết quả rà soát.)
+
 ## 1.2.0 — 2026-09-16
 
 Đóng bốn khoản nợ trong đợt rà soát 15/09: cờ tính năng không nối vào đâu, không có nút hoàn tiền cho chủ hội, xác thực hai lớp và giao diện tối mới chỉ là chữ "sắp có", và RLS có policy nhưng không có biến phiên.

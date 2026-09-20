@@ -14,6 +14,7 @@ MOMO_MODE = "production"
 VNPAY_MODE = "sandbox"
 PAYPAL_MODE = "sandbox"
 R2_BUCKET = "hoiminh-files"
+EMAIL_FROM = "Hội Mình <no-reply@hoiminh.com>"
 LOG_LEVEL = "info"
 
 # Tên miền riêng: Cloudflare tự tạo bản ghi DNS api.hoiminh.com khi deploy.

@@ -140,6 +140,25 @@ describe('API', () => {
     const recon = await json('/v1/admin/reconciliation?status=unmatched', { auth: t });
     expect((await recon.json()).items.length).toBeGreaterThan(0);
   });
+  it('email thử: không có RESEND_API_KEY thì trả logged, có dòng trong nhật ký email; /health báo provider', async () => {
+    const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
+    const t = (await login.json()).accessToken;
+    const ov = await (await json('/v1/admin/overview', { auth: t })).json();
+    expect(ov.infra.email).toBe('log');
+    expect(ov.infra.media).toBe('đĩa local');
+    const r = await json('/v1/admin/email/test', { method: 'POST', auth: t });
+    expect(r.status).toBe(200);
+    const res = await r.json();
+    expect(res.status).toBe('logged');
+    expect(res.to).toBe('admin@hoiminh.vn');
+    const logs = await (await json('/v1/admin/logs?kind=email&limit=5', { auth: t })).json();
+    expect(logs.emails[0].template).toBe('test_email');
+    expect(logs.emails[0].status).toBe('logged');
+    expect((await json('/v1/admin/email/test', { method: 'POST', auth: token })).status).toBe(403);
+    const health = await (await json('/health')).json();
+    expect(health.email).toBe('log');
+    expect(health.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
   it('tệp: production mà chưa nối R2 → 503 nói rõ nguyên nhân; có binding R2 → tải lên và phát lại qua API', async () => {
     const dbHandle = (app.ctx as { db: unknown }).db as never;
     const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
