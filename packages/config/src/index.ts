@@ -65,6 +65,11 @@ export const envSchema = z.object({
   PAYPAL_USD_RATE: z.coerce.number().default(25000),
 
   DEV_FAKE_EMAIL: bool.default(true),
+
+  // Phát hành web thủ công: token Cloudflare chỉ cần quyền "Workers Scripts: Edit".
+  CF_RELEASE_API_TOKEN: z.string().default(''),
+  CF_RELEASE_ACCOUNT_ID: z.string().default(''),
+  CF_RELEASE_WEB_SCRIPT: z.string().default('hoiminh-web'),
 });
 
 export type Env = z.infer<typeof envSchema>;

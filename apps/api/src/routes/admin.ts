@@ -1,6 +1,6 @@
 // /v1/admin: quản trị hệ thống (super admin).
 import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema } from '@hoiminh/contracts';
-import { admin, affiliate, featureFlags, platformBilling, requireSuperAdmin, withdrawals } from '@hoiminh/core';
+import { admin, affiliate, featureFlags, platformBilling, releases, requireSuperAdmin, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -39,6 +39,10 @@ adminRoutes.get('/plans', async (c) => c.json(await platformBilling.planStats(c.
 adminRoutes.patch('/plans/:key', async (c) => c.json(await platformBilling.updatePlan(c.get('ctx'), c.req.param('key'), await parse(z.object({ name: z.string().optional(), monthlyMinor: z.number().int().optional(), yearlyMinor: z.number().int().optional(), trialDays: z.number().int().optional(), description: z.string().optional() }), await body(c)))));
 adminRoutes.get('/flags', async (c) => c.json(await featureFlags.listFlags(c.get('ctx'))));
 adminRoutes.put('/flags/:key', async (c) => c.json(await featureFlags.setFlag(c.get('ctx'), c.req.param('key'), await parse(z.object({ enabled: z.boolean().optional(), description: z.string().optional(), rules: z.object({ workspaceIds: z.array(z.string()).optional(), planKeys: z.array(z.string()).optional(), percent: z.number().optional() }).optional() }), await body(c)))));
+
+// Phát hành web: danh sách phiên bản đã tải lên Cloudflare, đưa một bản lên chạy (hoặc quay lui).
+adminRoutes.get('/releases', async (c) => c.json(await releases.listReleases(c.get('ctx'))));
+adminRoutes.post('/releases/:versionId/deploy', async (c) => c.json(await releases.deployRelease(c.get('ctx'), c.req.param('versionId'))));
 
 // Cộng sự nền tảng
 async function platformProgram(c: Ctx$) {
