@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
-import { rateLimit } from '../middleware/common';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const meRoutes = router();
 meRoutes.use('*', requireAuth);
@@ -32,7 +32,7 @@ meRoutes.patch('/', async (c) => {
   }
   return c.json(await users.updateProfile(ctx, { ...input, avatarUrl }));
 });
-meRoutes.post('/password', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+meRoutes.post('/password', rateLimit('write'), async (c) => {
   const input = await parse(changePasswordSchema, await body(c));
   await auth.changePassword(c.get('ctx'), c.get('app').auth, input, c.get('sessionId'));
   return c.json({ ok: true });
@@ -41,10 +41,10 @@ meRoutes.post('/password', rateLimit({ windowMs: 60_000, max: 10 }), async (c) =
 // Xác thực hai lớp của chính mình.
 const codeSchema = z.object({ code: z.string().min(6).max(20) });
 meRoutes.get('/2fa', async (c) => c.json(await totp.status(c.get('ctx'))));
-meRoutes.post('/2fa/start', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => c.json(await totp.startSetup(c.get('ctx'))));
-meRoutes.post('/2fa/confirm', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => c.json(await totp.confirmSetup(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
-meRoutes.post('/2fa/backup-codes', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => c.json(await totp.regenerateBackupCodes(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
-meRoutes.post('/2fa/disable', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => {
+meRoutes.post('/2fa/start', rateLimit('write'), async (c) => c.json(await totp.startSetup(c.get('ctx'))));
+meRoutes.post('/2fa/confirm', rateLimit('write'), async (c) => c.json(await totp.confirmSetup(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
+meRoutes.post('/2fa/backup-codes', rateLimit('write'), async (c) => c.json(await totp.regenerateBackupCodes(c.get('ctx'), (await parse(codeSchema, await body(c))).code)));
+meRoutes.post('/2fa/disable', rateLimit('write'), async (c) => {
   const input = await parse(z.object({ password: z.string().min(1) }), await body(c));
   await totp.disable(c.get('ctx'), c.get('app').auth, input.password);
   return c.json({ ok: true });

@@ -1,4 +1,5 @@
 // Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
+import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
@@ -6,6 +7,7 @@ import { seedAll } from '@hoiminh/db/seed';
 import { fakeBucket } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
+import { resetMemoryLimits, TIERS } from './middleware/rate-limit';
 
 let app: App;
 let hono: ReturnType<typeof createHonoApp>;
@@ -229,6 +231,33 @@ describe('API', () => {
       expect(withRef.headers.get('x-hm-cache')).toBeNull();
     } finally {
       delete g.caches;
+    }
+  });
+  it('đăng nhập sai liên tục bị chặn theo email, người khác cùng IP vẫn vào được', async () => {
+    resetMemoryLimits();
+    const attempt = (email: string) => hono.request('/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'cf-connecting-ip': '1.2.3.4' }, body: JSON.stringify({ email, password: 'sai-mat-khau' }) });
+    for (let i = 0; i < TIERS.auth.limit; i++) expect((await attempt('minhquy@gmail.com')).status).toBe(401);
+    const blocked = await attempt('minhquy@gmail.com');
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get('retry-after')).toBe('60');
+    expect((await attempt('duynguyen@gmail.com')).status).toBe(401);
+    resetMemoryLimits();
+  });
+
+  it('dùng binding Rate Limiting của Cloudflare khi có', async () => {
+    const keys: string[] = [];
+    const env = { RL_API: { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: false }; } } };
+    const res = await hono.request('/v1/plans', { headers: { 'cf-connecting-ip': '5.6.7.8' } }, env);
+    expect(res.status).toBe(429);
+    expect(keys[0]).toContain('ip:5.6.7.8');
+    const authed = await hono.request('/v1/plans', { headers: { Authorization: 'Bearer abc' } }, env);
+    expect(authed.status).toBe(429);
+    expect(keys[1]).toMatch(/^api:t:/);
+  });
+  it('hạn mức trong code khớp binding trong wrangler.toml', () => {
+    const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
+    for (const t of Object.values(TIERS)) {
+      expect(toml).toMatch(new RegExp(`name = "${t.binding}"\\s*\\nnamespace_id = "\\d+"\\s*\\nsimple = \\{ limit = ${t.limit}, period = ${t.period} \\}`));
     }
   });
 });

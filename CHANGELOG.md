@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.9.0 - 2026-09-28
+
+Chặn spam và dò mật khẩu bằng bộ đếm chung của Cloudflare, bước 4 trong lộ trình chịu tải.
+
+### Bảo mật
+
+- **Giới hạn số lần gọi dùng Rate Limiting binding của Cloudflare** thay cho bộ đếm trong bộ nhớ. Bộ đếm cũ gần như không chặn được gì trên Workers vì mỗi bản Worker đếm riêng. Bốn nhóm, khai báo trong `apps/api/wrangler.toml`:
+  - `api` 600 lần/phút cho toàn bộ `/v1`, chạy trước khi mở kết nối database nên request bị chặn không tốn gì.
+  - `auth` 10 lần/phút cho đăng nhập, đăng ký, 2FA, quên mật khẩu, gửi lại mã.
+  - `write` 20 lần/phút cho đăng bài, bình luận, thanh toán, đổi mật khẩu, thao tác 2FA.
+  - `webhook` 1200 lần/phút cho webhook cổng thanh toán.
+- **Khóa đếm không gộp nhầm người dùng**: mạng di động dùng chung IP cho rất nhiều máy, nên người đã đăng nhập được đếm theo tài khoản hoặc phiên; đăng nhập đếm theo IP cộng email, nên kẻ dò mật khẩu một tài khoản bị chặn mà người khác cùng IP vẫn vào được.
+- Không còn tin header `x-forwarded-for` (ai cũng tự gửi được); chỉ dùng `cf-connecting-ip` do Cloudflare đặt. Bị chặn thì trả 429 kèm `Retry-After`.
+- Test bắt hạn mức trong code luôn khớp với `wrangler.toml`.
+
 ## 1.8.0 - 2026-09-28
 
 Giảm tải database, bước 3 trong lộ trình chịu tải: khi đông người, chỗ nghẽn đầu tiên là số kết nối database, không phải Worker.
