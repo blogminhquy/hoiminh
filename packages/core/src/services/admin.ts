@@ -1,9 +1,10 @@
 // Quản trị hệ thống: tổng quan, hội, người dùng, cổng thanh toán, đối soát (ghép thủ công), nhật ký và webhook.
-import { encryptJson } from '@hoiminh/config';
+import { decryptJson, encryptJson, isLocalEnv, providersWithDefaultSecrets } from '@hoiminh/config';
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { auditLogs, communities, orders, payments, providerAccounts, reconciliationItems, users, webhookEvents, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
+import { envWithProviderAccounts, paymentsFor } from '../lib/payment-accounts';
 import { invalidState, notFound } from '../errors';
 import { requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
@@ -20,7 +21,7 @@ export interface ConfigWarning {
  * Hạ tầng chưa cấu hình xong. Những thứ này không làm app sập ngay mà hỏng âm thầm
  * (tải ảnh lỗi, email không ai nhận), nên phải hiện ra chứ không để phát hiện qua khiếu nại.
  */
-export function configWarnings(ctx: Ctx): ConfigWarning[] {
+export async function configWarnings(ctx: Ctx): Promise<ConfigWarning[]> {
   const out: ConfigWarning[] = [];
   const prod = ctx.env.APP_ENV === 'production';
   if (ctx.media.kind === 'local') {
@@ -28,6 +29,11 @@ export function configWarnings(ctx: Ctx): ConfigWarning[] {
   }
   if (!ctx.env.RESEND_API_KEY) {
     out.push({ key: 'resend', label: 'Chưa cấu hình email', detail: 'Email xác minh, mời thành viên và nhắc sự kiện chỉ được ghi log, không ai nhận được. Đặt RESEND_API_KEY.', severity: prod ? 'error' : 'warn' });
+  }
+  if (!isLocalEnv(ctx.env.APP_ENV)) {
+    const locked = providersWithDefaultSecrets(await envWithProviderAccounts(ctx));
+    const NAMES = { sepay: 'SePay', momo: 'MoMo', vnpay: 'VNPAY' } as const;
+    if (locked.length) out.push({ key: 'payments', label: `Cổng đang khóa: ${locked.map((p) => NAMES[p]).join(', ')}`, detail: 'Cổng còn dùng bí mật mặc định nên không nhận thanh toán và từ chối mọi webhook. Nhập credential thật ở Thanh toán, hoặc đặt secret trên Worker API.', severity: prod ? 'error' : 'warn' });
   }
   return out;
 }
@@ -53,7 +59,7 @@ export async function overview(ctx: Ctx, days = 30) {
   const daily = await raw(ctx.db, sql`select to_char(paid_at, 'YYYY-MM-DD') as d, sum(total_minor)::bigint as v from orders where status = 'paid' and paid_at > now() - make_interval(days => ${days}) group by 1 order by 1`);
   const byProvider = await raw(ctx.db, sql`select provider, sum(amount_minor)::bigint as v from payments where status = 'succeeded' and paid_at > now() - make_interval(days => ${days}) group by provider`);
   const recent = await ctx.db.select({ c: communities, owner: { name: users.name }, ws: { status: workspaces.status } }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(isNull(communities.deletedAt)).orderBy(desc(communities.createdAt)).limit(5);
-  return { config: configWarnings(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), trialsEnding: Number(row.trials_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => ({ ...x.c, ownerName: x.owner.name, workspaceStatus: x.ws.status })) };
+  return { config: await configWarnings(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), trialsEnding: Number(row.trials_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => ({ ...x.c, ownerName: x.owner.name, workspaceStatus: x.ws.status })) };
 }
 
 /** Danh sách hội toàn hệ thống với bộ lọc và GMV 30 ngày. */
@@ -104,12 +110,13 @@ export async function listProviders(ctx: Ctx) {
   requireSuperAdmin(ctx);
   const rows = await ctx.db.query.providerAccounts.findMany({ where: eq(providerAccounts.scopeType, 'platform') });
   const all = ['sepay', 'momo', 'vnpay', 'paypal'] as const;
+  const router = await paymentsFor(ctx);
   const out = [];
   for (const p of all) {
     const row = rows.find((r) => r.provider === p);
     const stats = await raw(ctx.db, sql`select count(*)::int as total, count(*) filter (where processing_status = 'failed')::int as failed, max(created_at) as last from webhook_events where provider = ${p} and created_at > date_trunc('month', now())`);
     const s = stats[0] as { total: number; failed: number; last: string | null };
-    const adapter = ctx.payments.get(p);
+    const adapter = router.get(p);
     out.push({ provider: p, enabled: row?.enabled ?? true, mode: row?.mode ?? adapter.mode, health: row?.lastHealthStatus ?? 'unknown', lastHealthAt: row?.lastHealthAt ?? null, consecutiveFailures: Number(row?.consecutiveFailures ?? 0), webhooksThisMonth: Number(s.total), webhookFailuresThisMonth: Number(s.failed), lastWebhookAt: s.last, hasCredentials: Boolean(row?.credentialsEncrypted), configuration: row?.configuration ?? {} });
   }
   return out;
@@ -118,10 +125,18 @@ export async function listProviders(ctx: Ctx) {
 export async function updateProvider(ctx: Ctx, provider: 'sepay' | 'momo' | 'vnpay' | 'paypal', input: { enabled?: boolean; mode?: 'sandbox' | 'production'; credentials?: Record<string, string> }) {
   requireSuperAdmin(ctx);
   const existing = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, provider), eq(providerAccounts.scopeType, 'platform')) });
-  const values = { provider, scopeType: 'platform' as const, enabled: input.enabled ?? existing?.enabled ?? true, mode: input.mode ?? existing?.mode ?? 'sandbox', credentialsEncrypted: input.credentials ? await encryptJson(input.credentials, ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION) : (existing?.credentialsEncrypted ?? null), updatedAt: ctx.now() };
+  const values = { provider, scopeType: 'platform' as const, enabled: input.enabled ?? existing?.enabled ?? true, mode: input.mode ?? existing?.mode ?? 'sandbox', credentialsEncrypted: input.credentials ? await encryptJson(await mergeCredentials(ctx, existing?.credentialsEncrypted ?? null, input.credentials), ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION) : (existing?.credentialsEncrypted ?? null), updatedAt: ctx.now() };
   const [row] = existing ? await ctx.db.update(providerAccounts).set(values).where(eq(providerAccounts.id, existing.id)).returning() : await ctx.db.insert(providerAccounts).values(values).returning();
   await audit(ctx, { action: 'provider.update', resourceType: 'provider_account', resourceId: provider, metadata: { enabled: values.enabled, mode: values.mode, credentialsChanged: Boolean(input.credentials) } });
   return { provider: row!.provider, enabled: row!.enabled, mode: row!.mode };
+}
+
+/** Ô để trống trong form nghĩa là "giữ nguyên": gộp với credential đã lưu thay vì ghi đè mất. */
+async function mergeCredentials(ctx: Ctx, stored: string | null, incoming: Record<string, string>): Promise<Record<string, string>> {
+  const next = Object.fromEntries(Object.entries(incoming).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+  if (!stored) return next;
+  const prev = await decryptJson<Record<string, string>>(stored, ctx.env.ENCRYPTION_KEY).catch(() => ({}));
+  return { ...prev, ...next };
 }
 
 /** Bảng đối soát chuyển khoản. */

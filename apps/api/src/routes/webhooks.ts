@@ -1,5 +1,5 @@
 // Webhook nhận từ cổng thanh toán (không cần đăng nhập, verify chữ ký trong service) + trang mô phỏng cho sandbox không credential.
-import { hmacHex } from '@hoiminh/config';
+import { hmacHex, isLocalEnv, type Env } from '@hoiminh/config';
 import { paymentsService, AppError } from '@hoiminh/core';
 import { MomoAdapter, vnpQueryString } from '@hoiminh/payments';
 import { query, router, type Ctx$ } from '../lib/hono';
@@ -30,25 +30,45 @@ webhookRoutes.post('/vnpay', async (c) => {
   return c.json(r.body as Record<string, unknown>, r.status as 200);
 });
 
-/** Trang mô phỏng thanh toán cho sandbox không có credential (chỉ ngoài production). */
+/** Thoát ký tự HTML: mọi giá trị từ query string đều do người lạ kiểm soát. */
+function esc(v: unknown): string {
+  return String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
+}
+
+/** Chỉ quay về chính web của mình; đường dẫn lạ (trang giả mạo) thì về trang chủ. */
+function safeReturn(env: Env, value: unknown): string {
+  try {
+    const url = new URL(String(value ?? ''), env.APP_URL);
+    return url.origin === new URL(env.APP_URL).origin ? url.toString() : env.APP_URL;
+  } catch {
+    return env.APP_URL;
+  }
+}
+
+/** Trang này đánh dấu đơn "đã thanh toán" mà không cần tiền thật: chỉ mở ở máy dev và khi chạy test. */
+function requireLocal(env: Env): void {
+  if (!isLocalEnv(env.APP_ENV)) throw new AppError('not_found', 'Không có trang này');
+}
+
+/** Trang mô phỏng thanh toán cho sandbox không có credential (chỉ ở dev và test). */
 export const simulatorRoutes = router();
 simulatorRoutes.get('/', (c) => {
   const env = c.get('ctx').env;
-  if (env.APP_ENV === 'production') throw new AppError('not_found', 'Không có trang này');
+  requireLocal(env);
   const q = query(c);
-  const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Mô phỏng ${q.provider}</title><style>body{font-family:'Open Sans',system-ui,sans-serif;background:#F7F3EC;color:#1F1B17;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#FFFDF9;border:1px solid #E8E1D6;border-radius:16px;padding:32px;max-width:420px;width:100%}h1{font-family:Montserrat,sans-serif;font-size:22px;margin:0 0 8px}p{color:#5C554D}button{display:block;width:100%;margin-top:12px;height:44px;border:0;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer}.ok{background:#D4593A;color:#fff}.no{background:#F7F3EC;color:#1F1B17}</style></head><body><div class="card"><h1>Sandbox ${String(q.provider).toUpperCase()}</h1><p>Đây là trang mô phỏng vì chưa cấu hình credential thật. Số tiền: <strong>${Number(q.amount).toLocaleString('vi-VN')}</strong> · Đơn: <strong>${q.orderId}</strong></p><form method="post" action="/pay/simulator/confirm"><input type="hidden" name="provider" value="${q.provider}"><input type="hidden" name="orderId" value="${q.orderId}"><input type="hidden" name="amount" value="${q.amount}"><input type="hidden" name="requestId" value="${q.requestId ?? ''}"><input type="hidden" name="return" value="${q.return ?? ''}"><button class="ok" name="result" value="success">Thanh toán thành công</button><button class="no" name="result" value="fail">Thanh toán thất bại</button></form></div></body></html>`;
+  const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Mô phỏng ${esc(q.provider)}</title><style>body{font-family:'Open Sans',system-ui,sans-serif;background:#F7F3EC;color:#1F1B17;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#FFFDF9;border:1px solid #E8E1D6;border-radius:16px;padding:32px;max-width:420px;width:100%}h1{font-family:Montserrat,sans-serif;font-size:22px;margin:0 0 8px}p{color:#5C554D}button{display:block;width:100%;margin-top:12px;height:44px;border:0;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer}.ok{background:#D4593A;color:#fff}.no{background:#F7F3EC;color:#1F1B17}</style></head><body><div class="card"><h1>Sandbox ${esc(String(q.provider ?? '').toUpperCase())}</h1><p>Đây là trang mô phỏng vì chưa cấu hình credential thật. Số tiền: <strong>${esc(Number(q.amount).toLocaleString('vi-VN'))}</strong> · Đơn: <strong>${esc(q.orderId)}</strong></p><form method="post" action="/pay/simulator/confirm"><input type="hidden" name="provider" value="${esc(q.provider)}"><input type="hidden" name="orderId" value="${esc(q.orderId)}"><input type="hidden" name="amount" value="${esc(q.amount)}"><input type="hidden" name="requestId" value="${esc(q.requestId)}"><input type="hidden" name="return" value="${esc(safeReturn(env, q.return))}"><button class="ok" name="result" value="success">Thanh toán thành công</button><button class="no" name="result" value="fail">Thanh toán thất bại</button></form></div></body></html>`;
   return c.html(html);
 });
 simulatorRoutes.post('/confirm', async (c) => {
   const ctx = c.get('ctx');
   const env = ctx.env;
-  if (env.APP_ENV === 'production') throw new AppError('not_found', 'Không có trang này');
+  requireLocal(env);
   const form = await c.req.parseBody();
   const provider = String(form.provider);
   const orderId = String(form.orderId);
   const amount = Number(form.amount);
   const success = form.result === 'success';
-  const ret = String(form.return || env.APP_URL);
+  const ret = safeReturn(env, form.return);
   if (provider === 'momo') {
     const p = { partnerCode: env.MOMO_PARTNER_CODE, orderId, requestId: String(form.requestId || orderId), amount, orderInfo: 'Hoi Minh', orderType: 'momo_wallet', transId: Date.now(), resultCode: success ? 0 : 1006, message: success ? 'Successful.' : 'Cancelled', payType: 'qr', responseTime: Date.now(), extraData: '', signature: '' };
     p.signature = await hmacHex(env.MOMO_SECRET_KEY, MomoAdapter.ipnSignatureString(env.MOMO_ACCESS_KEY, p));

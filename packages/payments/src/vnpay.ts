@@ -1,5 +1,5 @@
 // VNPAY: redirect tới cổng với chữ ký HMAC-SHA512, IPN xác minh vnp_SecureHash.
-import { hmacHex, timingSafeEqual } from '@hoiminh/config';
+import { hmacHex, timingSafeEqual, isLocalEnv } from '@hoiminh/config';
 import type { CheckoutInput, CheckoutResult, IncomingWebhook, NormalizedEvent, PaymentAdapter } from './types';
 
 export interface VnpayConfig {
@@ -46,7 +46,7 @@ export class VnpayAdapter implements PaymentAdapter {
     };
     const qs = vnpQueryString(params);
     const hash = await hmacHex(this.cfg.hashSecret, qs, 'SHA-512');
-    if (!this.hasCredentials && this.cfg.appEnv !== 'production' && this.cfg.simulatorUrl) {
+    if (!this.hasCredentials && isLocalEnv(this.cfg.appEnv) && this.cfg.simulatorUrl) {
       const url = `${this.cfg.simulatorUrl}?provider=vnpay&orderId=${encodeURIComponent(params.vnp_TxnRef!)}&amount=${input.amountMinor}&return=${encodeURIComponent(input.returnUrl)}`;
       return { provider: 'vnpay', providerPaymentId: null, instruction: { kind: 'redirect', url }, raw: { simulated: true, params } };
     }

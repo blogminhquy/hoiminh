@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.4.0 - 2026-09-28
+
+Vá các lỗi tiền và bảo mật trong đợt review 27/09, trước khi mở bán thật.
+
+### Bảo mật
+
+- **Production thiếu bí mật thì không khởi động**: `AUTH_JWT_SECRET` còn giá trị mặc định (hoặc ngắn hơn 32 ký tự) hay thiếu `ENCRYPTION_KEY` làm API dừng ngay với thông báo rõ, thay vì chạy tiếp bằng giá trị ai cũng biết.
+- **Cổng thanh toán còn bí mật mặc định bị khóa** ở mọi môi trường ngoài dev/test: không tạo thanh toán, mọi webhook bị coi là sai chữ ký. Trang Tổng quan hệ thống hiện cảnh báo cổng nào đang khóa.
+- **Trang mô phỏng thanh toán** chỉ mở ở dev/test (trước đây mở cả staging), thoát HTML mọi tham số, và chỉ chuyển hướng về chính web.
+- **Hoàn đơn gói nền tảng** chỉ super admin làm được; API key của chủ hội không còn lọt qua.
+
+### Thanh toán
+
+- **PayPal chạy đúng**: đơn lưu số USD thực thu và webhook được so với số đó (trước đây so cent USD với đồng VND nên không bao giờ xác nhận). Tiền tệ khác USD bị bỏ qua. `CHECKOUT.ORDER.APPROVED` giờ gọi capture thay vì cấp quyền khi chưa thu được tiền; chỉ `PAYMENT.CAPTURE.COMPLETED` mới mở quyền. Hoàn tiền luôn gửi số tiền, để hoàn một phần không thành hoàn toàn bộ.
+- **Credential nhập ở /he-thong/thanh-toan được dùng thật**, ưu tiên hơn biến môi trường. Để trống một ô là giữ nguyên, không xóa các ô đã lưu.
+- **Xác nhận thanh toán không bị trùng**: cập nhật có điều kiện nên hai webhook đồng thời chỉ một cái cấp quyền, cộng LTV và tính hoa hồng. Số hóa đơn cấp dưới khóa giao dịch nên không trùng.
+- **Hoàn tiền giữ chỗ số tiền trước khi gọi cổng**: không vượt số đã thu kể cả khi bấm hai lần cùng lúc, hoàn một phần được nhiều lần, webhook báo hoàn cho chính lần hoàn từ trang quản trị không bị ghi lần hai.
+- Webhook của cổng khác không còn khớp được đơn của cổng khác (chỉ chuyển khoản SePay được khớp chéo, và chỉ với đơn VND). Thông báo thất bại đến muộn không lật được thanh toán đã thành công.
+
 ## 1.3.1 - 2026-09-28
 
 ### Sửa lỗi
