@@ -64,7 +64,7 @@ describe('releases', () => {
     const calls = mockCloudflare();
     const s = await deployRelease(ctx(), NEW);
     const post = calls.find((c) => c.method === 'POST');
-    expect(post?.url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/hoiminh-web/deployments');
+    expect(post?.url).toBe('https://api.cloudflare.com/client/v4/accounts/acc/workers/scripts/hoiminh-api/deployments');
     expect(post?.body).toMatchObject({ strategy: 'percentage', versions: [{ version_id: NEW, percentage: 100 }] });
     expect(s.liveVersionId).toBe(NEW);
   });

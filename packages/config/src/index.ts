@@ -70,7 +70,8 @@ export const envSchema = z.object({
   // Phát hành web thủ công: token Cloudflare chỉ cần quyền "Workers Scripts: Edit".
   CF_RELEASE_API_TOKEN: z.string().default(''),
   CF_RELEASE_ACCOUNT_ID: z.string().default(''),
-  CF_RELEASE_WEB_SCRIPT: z.string().default('hoiminh-web'),
+  // Worker được phát hành: từ khi gộp, hoiminh-api phục vụ cả web lẫn API nên cả hai lên bản mới cùng lúc.
+  CF_RELEASE_WEB_SCRIPT: z.string().default('hoiminh-api'),
 });
 
 export type Env = z.infer<typeof envSchema>;

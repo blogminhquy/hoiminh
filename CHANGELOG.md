@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 1.7.0 - 2026-09-28
+
+Gộp web và API vào một Worker, tách việc chạy nền sang Worker riêng, để chịu được lượng thành viên lớn và dễ quản lý hơn.
+
+### Triển khai
+
+- **`hoiminh-api` phục vụ cả giao diện lẫn API** ở `hoiminh.com`, `www.hoiminh.com`, `api.hoiminh.com`. File giao diện do Cloudflare trả thẳng (không chạy code, không tính phí request); chỉ `/v1`, `/webhooks`, `/pay`, `/r`, `/files`, `/health` mới chạy Worker. Bỏ Worker `hoiminh-web`.
+- **`hoiminh-jobs` (`apps/jobs`) mới**: cron và hàng đợi job chạy riêng, việc nặng không làm chậm người đang dùng.
+- Nút Cập nhật ở `/he-thong/phien-ban` giờ đưa web và API lên bản mới cùng lúc, không còn lệch bản.
+- Workflow deploy kiểm tra hai Worker đã đủ secret bắt buộc trước khi deploy; thiếu thì dừng, web đang chạy giữ nguyên.
+- Binding R2 `FILES` và `EMAIL_FROM` có ở cả hai Worker; workflow vẫn tự tạo bucket.
+- Nâng wrangler của API lên v4.
+
+### Bảo mật
+
+- Web gọi API cùng tên miền. CORS chỉ mở cho chính web thay vì phản chiếu mọi origin kèm cookie.
+
 ## 1.6.0 - 2026-09-28
 
 Trang **Hạ tầng và khóa** (`/he-thong/ha-tang`): đổi key dịch vụ ngay trên web, không phải vào Cloudflare đặt secret nữa.

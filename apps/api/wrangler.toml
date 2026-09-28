@@ -1,4 +1,6 @@
-# Cloudflare Worker cho API Hội Mình. Secrets đặt bằng `wrangler secret put <TÊN>`.
+# Worker hoiminh-api: phục vụ cả giao diện (apps/web/dist) lẫn API cho Hội Mình.
+# Tên giữ là "hoiminh-api" để không mất các secret đã đặt; secrets đặt bằng `wrangler secret put <TÊN>`.
+# Cron và hàng đợi job chạy ở Worker riêng hoiminh-jobs (apps/jobs/wrangler.toml).
 name = "hoiminh-api"
 main = "src/worker.ts"
 compatibility_date = "2024-10-01"
@@ -17,7 +19,24 @@ R2_BUCKET = "hoiminh-files"
 EMAIL_FROM = "Hội Mình <no-reply@hoiminh.com>"
 LOG_LEVEL = "info"
 
-# Tên miền riêng: Cloudflare tự tạo bản ghi DNS api.hoiminh.com khi deploy.
+# Giao diện: build trước bằng `pnpm --filter @hoiminh/web build`. Cloudflare trả file tĩnh thẳng, không chạy code
+# (không tính phí request); đường dẫn không khớp tệp nào trả index.html (ứng dụng một trang, react-router).
+# Chỉ các đường dẫn dưới đây mới chạy Worker. Thêm route API mới ở tiền tố khác thì phải thêm vào đây.
+[assets]
+directory = "../web/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/v1/*", "/webhooks/*", "/pay/*", "/r/*", "/files/*", "/health"]
+
+# Tên miền riêng: Cloudflare tự tạo bản ghi DNS khi deploy.
+# api.hoiminh.com giữ lại vì cổng thanh toán gửi webhook về đó và API key của chủ hội đang dùng nó.
+[[routes]]
+pattern = "hoiminh.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.hoiminh.com"
+custom_domain = true
+
 [[routes]]
 pattern = "api.hoiminh.com"
 custom_domain = true
@@ -34,28 +53,18 @@ id = "f4c98cf06b33403caab8d1a68e89ab0a"
 binding = "FILES"
 bucket_name = "hoiminh-files"
 
+# Chỉ gửi job vào hàng đợi; hoiminh-jobs là nơi xử lý.
 [[queues.producers]]
 queue = "hoiminh-jobs"
 binding = "JOBS"
-
-[[queues.consumers]]
-queue = "hoiminh-jobs"
-max_batch_size = 10
-max_retries = 5
-dead_letter_queue = "hoiminh-jobs-dlq"
-
-[triggers]
-# mỗi phút: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook
-# 10 phút: snapshot xếp hạng cộng sự
-# 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng
-crons = ["* * * * *", "*/10 * * * *", "0 18 * * *"]
 
 [observability]
 enabled = true
 
 # Tùy chọn: R2_PUBLIC_BASE_URL (domain public của bucket), hoặc R2_ACCOUNT_ID + R2_ACCESS_KEY_ID +
 # R2_SECRET_ACCESS_KEY để trình duyệt tải thẳng lên R2 qua S3 thay vì đi qua API.
-# Secrets cần đặt:
-#   DATABASE_URL, DATABASE_DIRECT_URL, AUTH_JWT_SECRET, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
-#   SUPABASE_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, SEPAY_API_KEY, SEPAY_BANK_ACCOUNT, MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY,
-#   VNPAY_TMN_CODE, VNPAY_HASH_SECRET, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID
+# Secrets cần đặt (Worker hoiminh-jobs cần cùng bộ này, xem README mục "Hai Worker"):
+#   DATABASE_URL, DATABASE_DIRECT_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+#   SUPABASE_JWT_SECRET, RESEND_API_KEY, SEPAY_API_KEY, SEPAY_BANK_ACCOUNT, MOMO_PARTNER_CODE, MOMO_ACCESS_KEY, MOMO_SECRET_KEY,
+#   VNPAY_TMN_CODE, VNPAY_HASH_SECRET, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID,
+#   CF_RELEASE_API_TOKEN, CF_RELEASE_ACCOUNT_ID (chỉ hoiminh-api, cho nút Cập nhật ở /he-thong/phien-ban)

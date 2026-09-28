@@ -72,7 +72,7 @@ describe('Hạ tầng: phát hành web qua Cloudflare', () => {
   it('lưu token và Account ID thì phần phát hành được coi là đã cấu hình', async () => {
     const before = await infra.getInfra(await app.as('admin'));
     expect(before.release.configured).toBe(false);
-    expect(before.release.fields.webScript).toMatchObject({ source: 'default', value: 'hoiminh-web' });
+    expect(before.release.fields.webScript).toMatchObject({ source: 'default', value: 'hoiminh-api' });
     await expect(infra.updateInfra(await app.as('admin'), 'release', { values: { accountId: 'khong-hop-le' } })).rejects.toMatchObject({ code: 'validation_error' });
     const d = await infra.updateInfra(await app.as('admin'), 'release', { values: { apiToken: 'cf_token_abcdefghijklmnopqrstuvwxyz', accountId: '0123456789abcdef0123456789abcdef' } });
     expect(d.release.configured).toBe(true);

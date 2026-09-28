@@ -147,7 +147,7 @@ function EmailPanel({ d }: { d: Infra }) {
 const RELEASE_FIELDS: FieldSpec[] = [
   { name: 'apiToken', label: 'API token', secret: true, placeholder: 'Token có quyền Workers Scripts: Edit', hint: 'Dán token mới để thay. Để trống là giữ nguyên.' },
   { name: 'accountId', label: 'Account ID', placeholder: '32 ký tự, xem ở trang Overview của Cloudflare', hint: 'Trên Cloudflare Dashboard, mở một tên miền bất kỳ, Account ID nằm ở cột bên phải.', mono: true },
-  { name: 'webScript', label: 'Tên Worker web', placeholder: 'hoiminh-web', hint: 'Thường giữ nguyên hoiminh-web.', mono: true },
+  { name: 'webScript', label: 'Tên Worker phát hành', placeholder: 'hoiminh-api', hint: 'Worker phục vụ cả web lẫn API. Thường giữ nguyên hoiminh-api.', mono: true },
 ];
 
 function ReleasePanel({ d }: { d: Infra }) {

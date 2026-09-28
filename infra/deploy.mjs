@@ -1,5 +1,5 @@
-// Script deploy: migration lên Supabase → deploy Worker API → build web → deploy Worker web.
-// Dùng: node infra/deploy.mjs [--skip-migrate] [--skip-web] [--skip-api]
+// Script deploy tay: migration lên Supabase → build giao diện → deploy hoiminh-api (web + API) → deploy hoiminh-jobs.
+// Dùng: node infra/deploy.mjs [--skip-migrate] [--skip-jobs]
 import { execSync } from 'node:child_process';
 
 const args = new Set(process.argv.slice(2));
@@ -15,9 +15,8 @@ if (!args.has('--skip-migrate')) {
   }
   run('pnpm --filter @hoiminh/db migrate');
 }
-if (!args.has('--skip-api')) run('pnpm --filter @hoiminh/api run deploy');
-if (!args.has('--skip-web')) {
-  run('pnpm --filter @hoiminh/web build');
-  run('pnpm --filter @hoiminh/web run deploy');
-}
+run('pnpm --filter @hoiminh/web build');
+run('pnpm --filter @hoiminh/api run deploy');
+// Sau hoiminh-api: hàng đợi chỉ có một nơi xử lý, bản cũ của hoiminh-api phải nhả ra trước.
+if (!args.has('--skip-jobs')) run('pnpm --filter @hoiminh/jobs run deploy');
 console.log('\n✔ Deploy xong.');
