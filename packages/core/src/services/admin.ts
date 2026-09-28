@@ -2,7 +2,7 @@
 import { decryptJson, encryptJson, isLocalEnv, providersWithDefaultSecrets } from '@hoiminh/config';
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { auditLogs, communities, emailLogs, orders, payments, providerAccounts, reconciliationItems, users, webhookEvents, workspaces } from '@hoiminh/db';
-import { emailProviderLabel, templates } from '@hoiminh/email';
+import { emailProviderLabel, sendImmediately, templates } from '@hoiminh/email';
 import { actorUserId, type Ctx } from '../context';
 import { raw } from '../lib/db';
 import { envWithProviderAccounts, paymentsFor } from '../lib/payment-accounts';
@@ -60,7 +60,7 @@ export async function sendTestEmail(ctx: Ctx) {
   const me = userId ? await ctx.db.query.users.findFirst({ where: eq(users.id, userId) }) : null;
   if (!me) throw notFound('Không tìm thấy tài khoản');
   const sentAt = ctx.now().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-  const result = await ctx.email.send(templates.testEmail(me.email, me.name, { env: ctx.env.APP_ENV, from: ctx.env.EMAIL_FROM, sentAt }));
+  const result = await sendImmediately(ctx.email, templates.testEmail(me.email, me.name, { env: ctx.env.APP_ENV, from: ctx.env.EMAIL_FROM, sentAt }));
   await audit(ctx, { action: 'admin.email_test', resourceType: 'user', resourceId: me.id, metadata: { status: result.status, error: result.error ?? null } });
   return { to: me.email, provider: emailProviderLabel(ctx.email), from: ctx.env.EMAIL_FROM, ...result };
 }

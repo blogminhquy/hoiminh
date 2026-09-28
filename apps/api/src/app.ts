@@ -7,6 +7,7 @@ import { cors } from 'hono/cors';
 import type { Env } from './lib/hono';
 import { authMiddleware } from './middleware/auth';
 import { errorHandler, requestLog } from './middleware/common';
+import { publicCache } from './middleware/public-cache';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { commerceRoutes } from './routes/commerce';
@@ -29,6 +30,8 @@ export function createHonoApp(app: App): Hono<Env> {
   const appOrigin = new URL(app.ctx.env.APP_URL);
   const allowed = new Set([appOrigin.origin, `${appOrigin.protocol}//www.${appOrigin.host}`]);
   h.use('*', cors({ origin: (origin) => (allowed.has(origin) ? origin : null), credentials: true, allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'], exposeHeaders: ['X-Request-Id'] }));
+  // Trước authMiddleware: lượt trúng cache không mở transaction database.
+  h.use('/v1/*', publicCache(60));
   h.use('*', authMiddleware(app));
   h.use('*', requestLog(app.ctx.log));
 

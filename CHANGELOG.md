@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.8.0 - 2026-09-28
+
+Giảm tải database, bước 3 trong lộ trình chịu tải: khi đông người, chỗ nghẽn đầu tiên là số kết nối database, không phải Worker.
+
+### Hiệu năng
+
+- **Email gửi sau khi transaction đóng.** Trước đây mỗi email (xác minh, mời thành viên, thanh toán, tin nhắn...) gọi Resend ngay giữa transaction của request, giữ một kết nối database suốt lúc chờ mạng. Nay email trong request hoặc job chỉ được ghi nhận (`DeferredSender`), commit xong mới gửi. Thao tác lỗi và bị hủy thì email không đi, trước đây vẫn đi. Email thử của quản trị vẫn gửi ngay để thấy kết quả.
+- **Phạm vi quyền một truy vấn.** Mỗi request của người đăng nhập trước đây chạy bốn truy vấn để biết workspace và hội của họ; nay gộp thành một câu SQL, kết quả giống hệt (có test so với cách cũ).
+- **Cache ở Cloudflare cho trang công khai**: khám phá hội, trang giới thiệu hội, bảng giá, hồ sơ công khai. Khách chưa đăng nhập nhận bản cache tối đa 60 giây, lượt trúng cache không mở transaction và không chạm database. Người đã đăng nhập và link có mã giới thiệu (`?ref=`) luôn đi thẳng. Header `x-hm-cache` cho biết HIT hay MISS.
+- Đã rà index của các bảng đọc nhiều (bảng tin, bình luận, thông báo, tin nhắn, thành viên, đơn hàng, workspace): đều đã có, không cần migration.
+
 ## 1.7.0 - 2026-09-28
 
 Gộp web và API vào một Worker, tách việc chạy nền sang Worker riêng, để chịu được lượng thành viên lớn và dễ quản lý hơn.

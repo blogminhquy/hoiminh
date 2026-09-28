@@ -9,7 +9,8 @@ export interface EmailMessage {
 }
 
 export interface EmailSendResult {
-  status: 'sent' | 'logged' | 'failed';
+  /** `queued`: đã nhận, sẽ gửi khi transaction của request/job đóng (DeferredSender). */
+  status: 'sent' | 'logged' | 'failed' | 'queued';
   providerMessageId?: string;
   error?: string;
 }

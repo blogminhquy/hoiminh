@@ -79,6 +79,43 @@ export class SwitchableSender implements EmailSender {
   }
 }
 
+/**
+ * Giữ email lại tới khi transaction của request (hoặc job) đóng rồi mới gửi.
+ * Gửi qua Resend là một lời gọi HTTP: gọi giữa transaction thì kết nối database bị giữ suốt lúc chờ,
+ * đông người là cạn kết nối. Kèm lợi ích đúng đắn: thao tác lỗi và bị hủy thì email không đi.
+ */
+export class DeferredSender implements EmailSender {
+  private readonly queue: EmailMessage[] = [];
+  constructor(readonly inner: EmailSender) {}
+  async send(message: EmailMessage): Promise<EmailSendResult> {
+    this.queue.push(message);
+    return { status: 'queued' };
+  }
+  /** Gửi ngay, không chờ (email thử của quản trị cần biết kết quả tức thì). */
+  sendNow(message: EmailMessage): Promise<EmailSendResult> {
+    return this.inner.send(message);
+  }
+  /** Gửi mọi email đang giữ; gọi sau khi transaction đã commit. */
+  async flush(onError: (m: EmailMessage, err: unknown) => void): Promise<void> {
+    for (const m of this.queue.splice(0)) {
+      try {
+        await this.inner.send(m);
+      } catch (err) {
+        onError(m, err);
+      }
+    }
+  }
+  /** Bỏ mọi email đang giữ; gọi khi transaction bị hủy. */
+  discard(): number {
+    return this.queue.splice(0).length;
+  }
+}
+
+/** Gửi ngay cả khi đang ở trong transaction (bỏ qua DeferredSender). Chỉ dùng khi cần kết quả tức thì. */
+export function sendImmediately(sender: EmailSender, message: EmailMessage): Promise<EmailSendResult> {
+  return sender instanceof DeferredSender ? sender.sendNow(message) : sender.send(message);
+}
+
 /** Chọn bộ gửi theo cấu hình. */
 export function createEmailSender(opts: { resendApiKey: string; from: string; onLog?: (m: EmailMessage) => void }): EmailSender {
   return opts.resendApiKey ? new ResendSender(opts.resendApiKey, opts.from) : new LogSender(opts.onLog);
@@ -88,6 +125,7 @@ export function createEmailSender(opts: { resendApiKey: string; from: string; on
 export function emailProviderLabel(sender: EmailSender): string {
   if (sender instanceof RecordingSender) return sender.label;
   if (sender instanceof SwitchableSender) return emailProviderLabel(sender.inner);
+  if (sender instanceof DeferredSender) return emailProviderLabel(sender.inner);
   if (sender instanceof ResendSender) return 'Resend';
   if (sender instanceof LogSender) return 'log';
   return 'custom';
