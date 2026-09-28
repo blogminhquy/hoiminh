@@ -75,11 +75,42 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/** Giá trị mặc định của schema: công khai trong mã nguồn nên không bao giờ được dùng làm bí mật thật. */
+const DEFAULTS: Env = envSchema.parse({});
+
 /** Đọc và validate biến môi trường từ một object bất kỳ (process.env hoặc Worker env). */
 export function loadEnv(source: Record<string, string | undefined> = {}): Env {
   const cleaned: Record<string, string> = {};
   for (const [k, v] of Object.entries(source)) if (v !== undefined && v !== '') cleaned[k] = v;
-  return envSchema.parse(cleaned);
+  const env = envSchema.parse(cleaned);
+  if (env.APP_ENV === 'production') assertProductionSecrets(env);
+  return env;
+}
+
+/**
+ * Production mà thiếu bí mật thì dừng hẳn thay vì chạy tiếp bằng giá trị mặc định:
+ * AUTH_JWT_SECRET mặc định cho phép ai cũng ký được token (kể cả super admin),
+ * ENCRYPTION_KEY trống khiến dữ liệu "mã hóa" dùng khóa toàn số 0.
+ */
+export function assertProductionSecrets(env: Env): void {
+  const problems: string[] = [];
+  if (env.AUTH_JWT_SECRET === DEFAULTS.AUTH_JWT_SECRET || env.AUTH_JWT_SECRET.length < 32) problems.push('AUTH_JWT_SECRET (đặt chuỗi ngẫu nhiên từ 32 ký tự)');
+  if (!env.ENCRYPTION_KEY) problems.push('ENCRYPTION_KEY (32 byte base64)');
+  if (problems.length) throw new Error(`Production thiếu bí mật bắt buộc: ${problems.join(', ')}`);
+}
+
+/** Cổng thanh toán nào còn dùng bí mật mặc định (ai đọc mã nguồn cũng giả được webhook của cổng đó). */
+export function providersWithDefaultSecrets(env: Env): Array<'sepay' | 'momo' | 'vnpay'> {
+  const out: Array<'sepay' | 'momo' | 'vnpay'> = [];
+  if (env.SEPAY_API_KEY === DEFAULTS.SEPAY_API_KEY) out.push('sepay');
+  if (env.MOMO_SECRET_KEY === DEFAULTS.MOMO_SECRET_KEY || env.MOMO_ACCESS_KEY === DEFAULTS.MOMO_ACCESS_KEY) out.push('momo');
+  if (env.VNPAY_HASH_SECRET === DEFAULTS.VNPAY_HASH_SECRET) out.push('vnpay');
+  return out;
+}
+
+/** Trang mô phỏng thanh toán và các lối tắt sandbox chỉ mở ở máy dev và khi chạy test. */
+export function isLocalEnv(appEnv: Env['APP_ENV'] | string): boolean {
+  return appEnv === 'development' || appEnv === 'test';
 }
 
 /** Hằng số nghiệp vụ đã chốt trong kiến trúc. */

@@ -199,5 +199,16 @@ describe('API', () => {
     expect((await h1.request('/files/private/digital_product/x.pdf')).status).toBe(403);
     const signed = await withR2.ctx.media.getSignedUrl('private/digital_product/x.pdf', 60);
     expect((await h1.request(signed)).status).toBe(200);
+    });
+  it('trang mô phỏng thanh toán thoát HTML và không chuyển hướng ra ngoài', async () => {
+    const page = await hono.request('/pay/simulator?provider=%3Cscript%3Ealert(1)%3C%2Fscript%3E&orderId=%22%3E%3Cimg&amount=1&return=https%3A%2F%2Fevil.example%2Fx');
+    const html = await page.text();
+    expect(html).not.toContain('<script>alert(1)');
+    expect(html).toContain('&lt;SCRIPT&gt;');
+    expect(html).not.toContain('evil.example');
+    const form = new URLSearchParams({ provider: 'none', orderId: 'x', amount: '1', result: 'fail', return: 'https://evil.example/x' });
+    const res = await hono.request('/pay/simulator/confirm', { method: 'POST', body: form, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).not.toContain('evil.example');
   });
 });

@@ -1,4 +1,6 @@
-// PayPal: tạo order USD qua REST (sandbox), webhook xác minh bằng API verify-webhook-signature.
+// PayPal: tạo order USD qua REST, webhook xác minh bằng API verify-webhook-signature.
+// Hai bước: CHECKOUT.ORDER.APPROVED chỉ là người mua đồng ý, phải gọi capture; chỉ PAYMENT.CAPTURE.COMPLETED mới là tiền đã về.
+import { isLocalEnv } from '@hoiminh/config';
 import type { CheckoutInput, CheckoutResult, IncomingWebhook, NormalizedEvent, PaymentAdapter, RefundInput } from './types';
 
 export interface PaypalConfig {
@@ -39,10 +41,12 @@ export class PaypalAdapter implements PaymentAdapter {
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     const usdCents = input.currency === 'USD' ? input.amountMinor : this.toUsdCents(input.amountMinor);
     const value = (usdCents / 100).toFixed(2);
-    if (!this.hasCredentials && this.cfg.appEnv !== 'production' && this.cfg.simulatorUrl) {
+    const settlement = { amountMinor: usdCents, currency: 'USD' as const };
+    if (!this.hasCredentials && isLocalEnv(this.cfg.appEnv) && this.cfg.simulatorUrl) {
       const url = `${this.cfg.simulatorUrl}?provider=paypal&orderId=${encodeURIComponent(input.reference)}&amount=${usdCents}&return=${encodeURIComponent(input.returnUrl)}`;
-      return { provider: 'paypal', providerPaymentId: null, instruction: { kind: 'redirect', url }, raw: { simulated: true, usd: value } };
+      return { provider: 'paypal', providerPaymentId: null, instruction: { kind: 'redirect', url }, settlement, raw: { simulated: true, usd: value } };
     }
+    if (!this.hasCredentials) throw new Error('PayPal chưa có credential');
     const res = await this.fetchImpl(`${this.base}/v2/checkout/orders`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${await this.token()}`, 'Content-Type': 'application/json' },
@@ -51,13 +55,22 @@ export class PaypalAdapter implements PaymentAdapter {
     const data = (await res.json()) as { id: string; links?: Array<{ rel: string; href: string }> };
     const approve = data.links?.find((l) => l.rel === 'approve')?.href;
     if (!approve) throw new Error('PayPal không trả về link phê duyệt');
-    return { provider: 'paypal', providerPaymentId: data.id, instruction: { kind: 'redirect', url: approve }, raw: data as unknown as Record<string, unknown> };
+    return { provider: 'paypal', providerPaymentId: data.id, instruction: { kind: 'redirect', url: approve }, settlement, raw: data as unknown as Record<string, unknown> };
+  }
+
+  /** Thu tiền order đã được duyệt. Order đã capture trước đó (webhook gửi lại) vẫn tính là xong. */
+  async capture(orderId: string): Promise<{ ok: boolean }> {
+    if (!this.hasCredentials) return { ok: false };
+    const res = await this.fetchImpl(`${this.base}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token()}`, 'Content-Type': 'application/json', 'PayPal-Request-Id': `capture-${orderId}` } });
+    if (res.ok) return { ok: true };
+    const data = (await res.json().catch(() => null)) as { details?: Array<{ issue?: string }> } | null;
+    return { ok: Boolean(data?.details?.some((d) => d.issue === 'ORDER_ALREADY_CAPTURED')) };
   }
 
   async verifyWebhook(req: IncomingWebhook): Promise<boolean> {
     if (!this.hasCredentials) {
       // Sandbox không credential: chấp nhận webhook do trang mô phỏng của chính API gửi kèm header nội bộ.
-      return req.headers['x-hoiminh-simulator'] === 'paypal' && this.cfg.appEnv !== 'production';
+      return req.headers['x-hoiminh-simulator'] === 'paypal' && isLocalEnv(this.cfg.appEnv);
     }
     const h = req.headers;
     const res = await this.fetchImpl(`${this.base}/v1/notifications/verify-webhook-signature`, {
@@ -70,7 +83,7 @@ export class PaypalAdapter implements PaymentAdapter {
   }
 
   parseWebhook(req: IncomingWebhook): NormalizedEvent | null {
-    let e: { id: string; event_type: string; create_time?: string; resource?: { id?: string; custom_id?: string; amount?: { value: string; currency_code: string }; purchase_units?: Array<{ custom_id?: string; reference_id?: string; amount?: { value: string } }> } };
+    let e: { id: string; event_type: string; create_time?: string; resource?: { id?: string; custom_id?: string; amount?: { value: string; currency_code: string }; purchase_units?: Array<{ custom_id?: string; reference_id?: string; amount?: { value: string; currency_code?: string } }> } };
     try {
       e = JSON.parse(req.rawBody);
     } catch {
@@ -81,13 +94,18 @@ export class PaypalAdapter implements PaymentAdapter {
     const unit = r.purchase_units?.[0];
     const reference = (r.custom_id ?? unit?.custom_id ?? unit?.reference_id ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '') || null;
     const value = Number(r.amount?.value ?? unit?.amount?.value ?? 0);
-    const type = e.event_type === 'PAYMENT.CAPTURE.COMPLETED' || e.event_type === 'CHECKOUT.ORDER.APPROVED' ? 'payment.succeeded' : e.event_type === 'PAYMENT.CAPTURE.REFUNDED' ? 'payment.refunded' : e.event_type === 'PAYMENT.CAPTURE.DENIED' ? 'payment.failed' : 'ignored';
+    const currency = r.amount?.currency_code ?? unit?.amount?.currency_code ?? 'USD';
+    const TYPES: Record<string, NormalizedEvent['type']> = { 'PAYMENT.CAPTURE.COMPLETED': 'payment.succeeded', 'CHECKOUT.ORDER.APPROVED': 'payment.approved', 'PAYMENT.CAPTURE.REFUNDED': 'payment.refunded', 'PAYMENT.CAPTURE.DENIED': 'payment.failed' };
+    // Chỉ tạo order bằng USD; tiền tệ khác nghĩa là payload không phải của mình, không xử lý.
+    const type = currency === 'USD' ? (TYPES[e.event_type] ?? 'ignored') : 'ignored';
     return { providerEventId: `paypal-${e.id}`, type, reference, providerPaymentId: r.id ?? null, amountMinor: Math.round(value * 100), currency: 'USD', transactionAt: e.create_time ? new Date(e.create_time) : new Date(), raw: e as unknown as Record<string, unknown> };
   }
 
   async refund(input: RefundInput): Promise<{ ok: boolean; providerRefundId: string | null; manual: boolean }> {
     if (!this.hasCredentials || !input.providerPaymentId) return { ok: true, providerRefundId: null, manual: true };
-    const res = await this.fetchImpl(`${this.base}/v2/payments/captures/${input.providerPaymentId}/refund`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ note_to_payer: input.reason }) });
+    // Luôn gửi số tiền: không gửi thì PayPal hoàn toàn bộ, kể cả khi chỉ muốn hoàn một phần.
+    const amount = { value: (input.amountMinor / 100).toFixed(2), currency_code: 'USD' };
+    const res = await this.fetchImpl(`${this.base}/v2/payments/captures/${encodeURIComponent(input.providerPaymentId)}/refund`, { method: 'POST', headers: { Authorization: `Bearer ${await this.token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, note_to_payer: input.reason }) });
     const data = (await res.json()) as { id?: string; status?: string };
     return { ok: data.status === 'COMPLETED' || data.status === 'PENDING', providerRefundId: data.id ?? null, manual: false };
   }
