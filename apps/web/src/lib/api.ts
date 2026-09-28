@@ -10,7 +10,8 @@ export class ApiError extends Error {
   }
 }
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8787';
+// Production: web và API cùng một Worker, gọi cùng tên miền (không cần CORS). Dev: API chạy riêng ở cổng 8787.
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || (import.meta.env.PROD ? '' : 'http://localhost:8787');
 const KEY_ACCESS = 'hm_access';
 const KEY_REFRESH = 'hm_refresh';
 

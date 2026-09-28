@@ -37,3 +37,4 @@ Ghi lại các điểm kiến trúc chưa nói rõ và cách đã chọn (phươ
 22. **Rate limit** ở edge do Cloudflare (WAF rules) là chính; API có cửa sổ trượt trong bộ nhớ cho đăng nhập/đăng ký/webhook/đăng bài.
 23. **Doanh thu chủ hội "Có thể rút"**: V1 không có API rút tiền chủ hội tự động (tiền về tài khoản Hội Mình rồi chuyển theo yêu cầu); màn Thanh toán hiển thị số dư/đang giữ 14 ngày và hướng dẫn liên hệ.
 24. **Tin nhắn "Tài nguyên"** trong sidebar là tab ẩn mặc định (mục 191 cho phép hiện/ẩn), dẫn tới thư viện khóa học.
+25. **Hai Worker thay vì ba**: `hoiminh-api` phục vụ cả giao diện (Worker static assets, file tĩnh không chạy code) lẫn API trên cùng tên miền, nên web và API luôn cùng phiên bản, bỏ được CORS và sau này dùng được cookie httpOnly. Cron và hàng đợi nằm ở `hoiminh-jobs` để việc nặng không chiếm tài nguyên của request người dùng. Chỗ nghẽn khi đông người là database, không phải số Worker. Giữ tên `hoiminh-api` để không mất secret đã đặt.

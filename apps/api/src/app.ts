@@ -23,7 +23,11 @@ import { simulatorRoutes, webhookRoutes } from './routes/webhooks';
 export function createHonoApp(app: App): Hono<Env> {
   const h = new Hono<Env>();
   h.onError(errorHandler(app.ctx.log));
-  h.use('*', cors({ origin: (origin) => origin || app.ctx.env.APP_URL, credentials: true, allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'], exposeHeaders: ['X-Request-Id'] }));
+  // Web gọi API cùng tên miền nên không cần CORS. Chỉ mở cho chính web (APP_URL và bản www), để trang lạ
+  // không đọc được phản hồi kèm cookie của người dùng. Gọi từ máy chủ (API key, MCP) không bị CORS ảnh hưởng.
+  const appOrigin = new URL(app.ctx.env.APP_URL);
+  const allowed = new Set([appOrigin.origin, `${appOrigin.protocol}//www.${appOrigin.host}`]);
+  h.use('*', cors({ origin: (origin) => (allowed.has(origin) ? origin : null), credentials: true, allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'], exposeHeaders: ['X-Request-Id'] }));
   h.use('*', authMiddleware(app));
   h.use('*', requestLog(app.ctx.log));
 

@@ -125,7 +125,7 @@ Tìm theo bốn tầng: có tài liệu mà không có code · có code mà khô
 
 Cần tài khoản của chủ dự án, không ai làm thay được:
 
-1. **Deploy tự động đang đỏ**: thiếu secret `CLOUDFLARE_API_TOKEN`. Tạo token ở Cloudflare (My Profile → API Tokens → Edit Cloudflare Workers) rồi `gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`; bật deploy API bằng `gh variable set DEPLOY_API --body true`. Chưa có thì bản trên hoiminh.com vẫn là build tay.
+1. **Deploy tự động đang đỏ**: thiếu secret `CLOUDFLARE_API_TOKEN`. Tạo token ở Cloudflare (My Profile, API Tokens, Edit Cloudflare Workers) rồi `gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`, sau đó làm các bước chuyển sang hai Worker ở README, mục "Hai Worker". Chưa có thì bản trên hoiminh.com vẫn là build tay.
 2. **R2**: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video hỏng trên Worker vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
 3. **Email**: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
 4. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.

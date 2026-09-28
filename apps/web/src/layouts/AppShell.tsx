@@ -6,7 +6,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } 
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
-import { errorMessage } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
@@ -121,7 +121,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const [invite, setInvite] = useState(false);
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
   const communityId = shell.data?.community.id;
-  useEffect(() => { if (communityId && user) void fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8787'}/v1/communities/${communityId}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [user, communityId]);
+  useEffect(() => { if (communityId && user) void fetch(`${api.url}/v1/communities/${communityId}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [user, communityId]);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (!slug) {

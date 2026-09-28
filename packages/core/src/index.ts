@@ -43,3 +43,4 @@ export { withTenantScope, withSystemScope, resolveScope, type TenantScope } from
 export * as shell from './services/shell';
 export { audit } from './services/audit';
 export { createApp, type App, type CreateAppOptions } from './app';
+export { createWorkerApp, type WorkerBindings } from './worker-app';

@@ -77,14 +77,33 @@ infra           deploy.mjs
 
    Muốn đăng nhập Google thì bật Supabase Auth, điền `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` và đặt `AUTH_PROVIDER=supabase`; khi đó tài khoản tạo bằng `db:admin` hay `db:seed` không đăng nhập được nữa.
 2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
-3. **Worker API**: `apps/api/wrangler.toml` đã khai báo queue `hoiminh-jobs`, Hyperdrive và cron (mỗi phút, 10 phút, hằng ngày). Đặt secret bằng `wrangler secret put` cho mọi biến trong `.env.example` (DATABASE_URL, AUTH_JWT_SECRET, ENCRYPTION_KEY, RESEND_API_KEY, R2_*, SEPAY_*, MOMO_*, VNPAY_*, PAYPAL_*). Deploy: `pnpm --filter @hoiminh/api run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
+3. **Hai Worker** (xem mục "Hai Worker" bên dưới): `hoiminh-api` (`apps/api`) phục vụ cả giao diện lẫn API, `hoiminh-jobs` (`apps/jobs`) chạy cron và hàng đợi. Cả hai cần cùng bộ secret, đặt bằng `wrangler secret put <TÊN>` trong thư mục của từng Worker (danh sách ở cuối `apps/api/wrangler.toml`). Deploy: build giao diện trước (`pnpm --filter @hoiminh/web build`), rồi `pnpm --filter @hoiminh/api run deploy`, rồi `pnpm --filter @hoiminh/jobs run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
 
-   **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request — làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `worker.ts` dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]`.
-4. **Worker web**: `pnpm --filter @hoiminh/web build` rồi `pnpm --filter @hoiminh/web run deploy`. `apps/web/wrangler.toml` phục vụ `dist` bằng Worker static assets (`not_found_handling = "single-page-application"` lo route SPA, `public/_headers` lo cache) và tự tạo bản ghi DNS cho `hoiminh.com`, `www.hoiminh.com`. Biến build: `VITE_API_URL`, `VITE_APP_URL`.
-5. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
-6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-api`, `--skip-web`).
+   **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request; làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `createWorkerApp` (`packages/core/src/worker-app.ts`) dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]` của cả hai Worker.
+4. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
+5. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`).
 
-Đã dựng sẵn trên tài khoản Cloudflare: Worker **hoiminh-web** phục vụ web ở `hoiminh.com` + `www.hoiminh.com`, Worker **hoiminh-api** ở `api.hoiminh.com`, hàng đợi `hoiminh-jobs` và `hoiminh-jobs-dlq`. Không dùng Cloudflare Pages: Worker tự tạo được bản ghi DNS cho tên miền riêng còn Pages thì phải thêm DNS bằng tay.
+### Hai Worker
+
+| Worker | Thư mục | Làm gì | Tên miền |
+|---|---|---|---|
+| `hoiminh-api` | `apps/api` | Giao diện (file tĩnh từ `apps/web/dist`) và API | `hoiminh.com`, `www.hoiminh.com`, `api.hoiminh.com` |
+| `hoiminh-jobs` | `apps/jobs` | Cron (mỗi phút, 10 phút, 01:00 giờ Việt Nam) và hàng đợi `hoiminh-jobs` | không có |
+
+- File giao diện do Cloudflare trả thẳng, không chạy code và không tính phí request. Chỉ các đường dẫn trong `run_worker_first` (`/v1/*`, `/webhooks/*`, `/pay/*`, `/r/*`, `/files/*`, `/health`) mới vào Worker. Thêm route API ở tiền tố mới thì phải thêm vào danh sách này.
+- Web gọi API cùng tên miền nên không cần CORS. CORS chỉ mở cho `APP_URL` và bản `www`.
+- `api.hoiminh.com` giữ lại cho webhook cổng thanh toán và API key của chủ hội.
+- Tên `hoiminh-api` giữ nguyên để không mất các secret đã đặt, dù giờ nó phục vụ cả web.
+- Nút Cập nhật ở `/he-thong/phien-ban` phát hành `hoiminh-api`, nên web và API luôn lên bản mới cùng lúc.
+
+**Chuyển từ ba Worker cũ sang hai Worker (làm một lần):**
+
+1. Đặt secret bắt buộc cho `hoiminh-api` nếu chưa có: `cd apps/api && npx wrangler secret put AUTH_JWT_SECRET` (chuỗi ngẫu nhiên từ 32 ký tự), tương tự `ENCRYPTION_KEY` (32 byte base64, tạo bằng `openssl rand -base64 32`).
+2. Tạo `hoiminh-jobs` và đặt cùng bộ secret: `cd apps/jobs && npx wrangler secret put AUTH_JWT_SECRET`. Lần đầu wrangler hỏi có tạo Worker `hoiminh-jobs` không, chọn có. Lặp lại cho mọi secret đang có ở `hoiminh-api` (xem bằng `npx wrangler secret list --name hoiminh-api`).
+3. Ngay trước khi deploy: Cloudflare Dashboard, Workers & Pages, `hoiminh-web`, Settings, Domains & Routes, gỡ `hoiminh.com` và `www.hoiminh.com`. Từ lúc gỡ tới lúc deploy xong (vài phút) web không truy cập được.
+4. GitHub, Actions, Deploy, Run workflow. Workflow tự kiểm tra hai Worker đã đủ secret trước khi deploy; thiếu thì dừng và web cũ giữ nguyên.
+5. Kiểm tra `https://hoiminh.com` và `https://api.hoiminh.com/health`, rồi xóa Worker `hoiminh-web`.
+6. Xóa biến `VITE_API_URL` và `DEPLOY_API` trong GitHub, Settings, Variables: không còn dùng.
 
 ### Tài khoản quản trị đầu tiên
 
@@ -112,20 +131,18 @@ Bật trong lúc có người theo dõi log: nếu một đường chạy nào �
 
 ## Tự động deploy khi đẩy lên GitHub
 
-`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck · lint · test) → build web → `wrangler deploy`. Bấm **Actions → Deploy → Run workflow** để deploy lại bằng tay.
+`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck, lint, test), kiểm tra hai Worker đã đủ secret bắt buộc (`infra/check-secrets.sh`), build giao diện, deploy `hoiminh-api`, rồi deploy `hoiminh-jobs`. Bấm **Actions, Deploy, Run workflow** để deploy lại bằng tay.
 
 Cần đúng một secret do người dùng tự tạo (Claude/CLI không tạo được API token thay bạn):
 
-1. Cloudflare → **My Profile → API Tokens → Create Token → Edit Cloudflare Workers**, chọn account `Blogminhquy@gmail.com's Account`.
+1. Cloudflare, **My Profile, API Tokens, Create Token, Edit Cloudflare Workers**, chọn account `Blogminhquy@gmail.com's Account`.
 2. Lưu vào GitHub:
 
 ```bash
 gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 ```
 
-Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_API_URL`, `VITE_APP_URL`. Đặt thêm biến `DEPLOY_API=true` (`gh variable set DEPLOY_API --body true`) khi Worker API đã có đủ secret trên Cloudflare, lúc đó workflow deploy luôn cả API.
-
-Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Build → **Connect to Git**. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
+Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_APP_URL`.
 
 ## Phiên bản và phát hành
 
@@ -140,7 +157,7 @@ Người dùng thường không thấy gì: khi máy chủ có bản mới, trì
 Bật phát hành thủ công (admin bấm mới lên bản mới):
 
 1. Tạo token Cloudflare chỉ có quyền **Workers Scripts: Edit**.
-2. `cd apps/api && wrangler secret put CF_RELEASE_API_TOKEN` và `wrangler secret put CF_RELEASE_ACCOUNT_ID` (tên Worker web mặc định `hoiminh-web`, đổi bằng `CF_RELEASE_WEB_SCRIPT`).
+2. `cd apps/api && wrangler secret put CF_RELEASE_API_TOKEN` và `wrangler secret put CF_RELEASE_ACCOUNT_ID` (Worker được phát hành mặc định là `hoiminh-api`, đổi bằng `CF_RELEASE_WEB_SCRIPT`).
 3. GitHub, Settings, Variables: đặt `RELEASE_MODE=manual`. Từ đó `deploy.yml` chạy `wrangler versions upload --tag v<phiên bản>-<commit>` thay cho `wrangler deploy`.
 
 Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
