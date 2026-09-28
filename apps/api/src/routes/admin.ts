@@ -1,6 +1,6 @@
 // /v1/admin: quản trị hệ thống (super admin).
 import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema } from '@hoiminh/contracts';
-import { admin, affiliate, featureFlags, platformBilling, releases, requireSuperAdmin, withdrawals } from '@hoiminh/core';
+import { admin, affiliate, featureFlags, infra, platformBilling, releases, requireSuperAdmin, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -36,6 +36,12 @@ adminRoutes.post('/reconciliation/:id/match', async (c) => {
 adminRoutes.get('/payments', async (c) => c.json(await admin.listPayments(c.get('ctx'), { status: query(c).status, provider: query(c).provider, limit: query(c).limit ? Number(query(c).limit) : undefined })));
 adminRoutes.get('/logs', async (c) => c.json(await admin.logs(c.get('ctx'), { kind: query(c).kind as 'audit', limit: query(c).limit ? Number(query(c).limit) : undefined })));
 adminRoutes.post('/email/test', async (c) => c.json(await admin.sendTestEmail(c.get('ctx'))));
+
+// Hạ tầng: khóa Resend và Cloudflare đổi được trên web (lưu mã hóa, ưu tiên hơn secret của Worker).
+const infraUpdateSchema = z.object({ values: z.record(z.string().max(500)).optional(), clear: z.array(z.string()).optional() });
+adminRoutes.get('/infra', async (c) => c.json(await infra.getInfra(c.get('ctx'))));
+adminRoutes.put('/infra/:section', async (c) => c.json(await infra.updateInfra(c.get('ctx'), await parse(z.enum(['email', 'release']), c.req.param('section')), await parse(infraUpdateSchema, await body(c)))));
+adminRoutes.post('/infra/release/test', async (c) => c.json(await infra.testRelease(c.get('ctx'))));
 adminRoutes.get('/plans', async (c) => c.json(await platformBilling.planStats(c.get('ctx'))));
 adminRoutes.patch('/plans/:key', async (c) => c.json(await platformBilling.updatePlan(c.get('ctx'), c.req.param('key'), await parse(z.object({ name: z.string().optional(), monthlyMinor: z.number().int().optional(), yearlyMinor: z.number().int().optional(), trialDays: z.number().int().optional(), description: z.string().optional() }), await body(c)))));
 adminRoutes.get('/flags', async (c) => c.json(await featureFlags.listFlags(c.get('ctx'))));

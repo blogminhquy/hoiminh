@@ -29,7 +29,7 @@ export async function configWarnings(ctx: Ctx): Promise<ConfigWarning[]> {
     out.push({ key: 'r2', label: 'Chưa nối R2', detail: prod ? 'Tải ảnh và tệp đang hỏng: Worker không có hệ tệp. Deploy API với binding FILES ([[r2_buckets]] trong wrangler.toml, bucket hoiminh-files) là đủ, không cần secret.' : 'Đang lưu tệp trên đĩa máy này. Lên production cần R2.', severity: prod ? 'error' : 'warn' });
   }
   if (!ctx.env.RESEND_API_KEY) {
-    out.push({ key: 'resend', label: 'Chưa cấu hình email', detail: `Email xác minh, mời thành viên và nhắc sự kiện chỉ được ghi vào nhật ký, không ai nhận được. Ở Resend: xác minh tên miền của địa chỉ gửi (${ctx.env.EMAIL_FROM}) bằng bản ghi DNS, tạo API key rồi đặt secret RESEND_API_KEY cho Worker.`, severity: prod ? 'error' : 'warn' });
+    out.push({ key: 'resend', label: 'Chưa cấu hình email', detail: `Email xác minh, mời thành viên và nhắc sự kiện chỉ được ghi vào nhật ký, không ai nhận được. Ở Resend: xác minh tên miền của địa chỉ gửi (${ctx.env.EMAIL_FROM}) bằng bản ghi DNS, tạo API key rồi dán vào Hệ thống · Hạ tầng.`, severity: prod ? 'error' : 'warn' });
   }
   if (!isLocalEnv(ctx.env.APP_ENV)) {
     const locked = providersWithDefaultSecrets(await envWithProviderAccounts(ctx));

@@ -70,7 +70,7 @@ export default function Page() {
                     <span className="flex-grow"><strong>{w.label}.</strong> {w.detail}</span>
                   </div>
                 ))}
-                <TestEmail />
+                <div className="flex items-center gap-3 flex-wrap"><TestEmail /><span className="flex-grow" /><Link to="/he-thong/ha-tang" className="text-[12px] font-semibold whitespace-nowrap" style={{ color: T.teal }}>Đổi khóa ở Hạ tầng và khóa</Link></div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <StatCard label="Người dùng" value={fmtCount(d.totals.users)} sub={`+${fmtCount(d.totals.usersNew)} trong kỳ`} subColor={T.teal} />
