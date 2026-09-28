@@ -1,5 +1,5 @@
 // Khung quản trị hệ thống (saShell trong build.mjs): sidebar #14110E, nhóm Vận hành / Cấu hình / Giám sát.
-import { BadgeCheck, FileText, House, MessageCircle, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
+import { BadgeCheck, FileText, House, MessageCircle, Rocket, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
 import { Avatar, Logo, T, Tag } from '@hoiminh/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -7,6 +7,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react
 import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useVersionStatus } from '@/lib/version';
 
 /** Ô tìm nhanh: Enter đưa tới danh sách Hội hoặc Người dùng kèm từ khóa (đoán theo có dấu @ hay không). */
 function AdminSearch() {
@@ -26,6 +27,13 @@ function AdminSearch() {
   );
 }
 
+/** Trên mobile thanh bên bị ẩn, nên hiện hàng chip cuộn ngang thay thế. */
+const MOBILE_NAV: [string, string][] = [
+  ['/he-thong', 'Tổng quan'], ['/he-thong/hoi', 'Hội'], ['/he-thong/nguoi-dung', 'Người dùng'], ['/he-thong/thanh-toan', 'Thanh toán'],
+  ['/he-thong/goi', 'Gói'], ['/he-thong/cong-su', 'Cộng sự'], ['/he-thong/tinh-nang', 'Tính năng'], ['/he-thong/phien-ban', 'Phiên bản'],
+  ['/he-thong/nhat-ky', 'Nhật ký'], ['/he-thong/ho-tro', 'Hỗ trợ'],
+];
+
 function Item({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
   return (
     <NavLink to={to} end={end} className={({ isActive }) => `nav-item${isActive ? ' on' : ''}`}>{icon}<span className="flex-grow">{label}</span>{extra}</NavLink>
@@ -35,6 +43,7 @@ function Item({ to, icon, label, extra, end }: { to: string; icon: ReactNode; la
 export function AdminShell() {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const { updateAvailable } = useVersionStatus();
   const health = useQuery({ queryKey: ['health'], queryFn: () => fetch(`${api.url}/health`).then((r) => r.json() as Promise<{ status: string; env: string }>), staleTime: 60_000 });
   const todo = useQuery({ queryKey: ['admin', 'overview', 30], queryFn: () => api.get<{ todo: { unmatched: number } }>('/v1/admin/overview?days=30'), enabled: Boolean(user?.isSuperAdmin), staleTime: 60_000 });
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
@@ -60,6 +69,7 @@ export function AdminShell() {
           <Item to="/he-thong/goi" icon={<BadgeCheck size={20} />} label="Gói nền tảng" />
           <Item to="/he-thong/cong-su" icon={<Trophy size={20} />} label="Cộng sự nền tảng" />
           <Item to="/he-thong/tinh-nang" icon={<Settings size={20} />} label="Tính năng và giới hạn" />
+          <Item to="/he-thong/phien-ban" icon={<Rocket size={20} />} label="Phiên bản" extra={updateAvailable ? <span className="w-2 h-2 rounded-full" style={{ background: T.accent }} /> : undefined} />
         </div>
         <div className="nav-group">Giám sát</div>
         <div className="flex flex-col gap-0.5">
@@ -77,10 +87,17 @@ export function AdminShell() {
           <span className="only-mobile"><Logo size={22} /></span>
           <AdminSearch />
           <span className="flex-grow" />
-          <Tag tone={health.data?.env === 'production' ? 'accent' : 'teal'}>Môi trường: {health.data?.env === 'production' ? 'Production' : (health.data?.env ?? '…')}</Tag>
-          <Link to="/admin" className="btn btn-ghost btn-sm">Về Hội của tôi</Link>
+          <span className="hide-mobile"><Tag tone={health.data?.env === 'production' ? 'accent' : 'teal'}>Môi trường: {health.data?.env === 'production' ? 'Production' : (health.data?.env ?? '…')}</Tag></span>
+          <Link to="/admin" className="btn btn-ghost btn-sm">Về Hội<span className="hide-mobile">&nbsp;của tôi</span></Link>
           <Avatar name={user.name} src={user.avatarUrl} color={T.ink} size={40} />
         </header>
+        <nav className="admin-mobile-nav gap-1.5 overflow-x-auto px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}`, background: T.surface }}>
+          {MOBILE_NAV.map(([to, label]) => (
+            <NavLink key={to} to={to} end={to === '/he-thong'} className={({ isActive }) => `chip flex-shrink-0${isActive ? ' on' : ''}`}>
+              {label}{to === '/he-thong/phien-ban' && updateAvailable ? <span className="w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}
+            </NavLink>
+          ))}
+        </nav>
         <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
           <Outlet />
         </div>

@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## 1.3.0 — 2026-09-20
+## 1.4.0 - 2026-09-28
 
-Đợt rà soát thứ ba, lần này đọc code và database production thay vì đọc PROGRESS.md. Ba việc chính: nối R2 bằng binding của Worker (không cần secret), gắn Resend có kiểm chứng, chuyển lịch sử phiên bản thành một mục trong Tài khoản. Kèm theo là một loạt công tắc và nút "trông như xong" mà không có tác dụng.
+Gộp đợt rà soát 20/09 (PR #3) vào main. Hai việc chính: nối R2 bằng binding của Worker (không cần secret), gắn Resend có kiểm chứng. Kèm theo là một loạt công tắc và nút "trông như xong" mà không có tác dụng. Mục "Tài khoản, Phiên bản" của đợt này không được giữ: phiên bản đã chuyển vào Quản trị hệ thống ở 1.3.0.
 
 ### Hạ tầng
 
@@ -10,10 +10,6 @@
 - **Resend có kiểm chứng.** `RecordingSender` ghi email_logs cho mọi lần gửi (sent / failed / logged, id Resend, lỗi); nút "Gửi email thử" ở Hệ thống · Tổng quan; tab "Email hệ thống" ở Nhật ký; `/health` báo provider email và tệp đang dùng. `EMAIL_FROM` mặc định đổi sang hoiminh.com cho khớp tên miền.
 - **Phiên bản một nguồn:** `APP_VERSION` trong @hoiminh/config, test bắt khớp package.json và mục đầu CHANGELOG. Trước đây root ghi 1.1.0, CHANGELOG 1.2.0, `/health` trả '1.0.0' cứng.
 - **Migration production thiếu:** bảng `user_totp` (xác thực hai lớp, ghi "xong 16/09") chưa từng được tạo trên Supabase, nên bật hai lớp trên hoiminh.com sẽ lỗi. Đã áp 0002 và 0003 (cột `posts.moderation_status`) bằng vai trò `hoiminh_app`, ghi vào bảng migration của drizzle.
-
-### Tài khoản
-
-- **Tài khoản · Phiên bản** (`/tai-khoan/phien-ban`): bản đang chạy, bản trên máy chủ, Cập nhật ngay, lịch sử phiên bản đọc từ CHANGELOG, nhật ký máy này. Nhãn góc màn hình chỉ còn phần cập nhật và một liên kết sang trang này.
 
 ### Công tắc và nút có tác dụng thật
 
@@ -23,6 +19,30 @@
 - Sự kiện: bỏ công tắc "Tự đăng bản ghi" (không có nguồn để tự lấy), thêm nút "Thêm bản ghi" cho người tổ chức.
 - Xóa bài, xóa module trong Soạn khóa học; xóa bình luận. Thông báo có "Tải thêm". Mời thành viên xong danh sách làm mới ngay.
 - `/he-thong/tinh-nang` và `/he-thong/ho-tro` có nội dung riêng thay vì trùng hai màn khác; ba cờ V2 ghi rõ "chưa có tác dụng". Đường dẫn hội hiện đúng tên miền đang chạy thay vì "hoiminh.vn".
+
+## 1.3.1 - 2026-09-28
+
+### Sửa lỗi
+
+- Trang **Hội của tôi** (`/admin`) báo "Có lỗi xảy ra, thử lại sau" trên production với mọi chủ hội đã có workspace. Nguyên nhân: câu tính doanh thu 30 ngày đặt thẳng một `Date` trong `sql\`...\``, mà drizzle tắt bộ chuyển ngày giờ của postgres-js nên driver nổ `TypeError` trước khi câu lệnh tới Postgres. PGlite ở local và trong test không bị nên không bắt được. Sửa ở tầng kết nối (`packages/db/src/client.ts`): mọi `Date` trong tham số đều đổi thành chuỗi ISO, nên các câu `sql` khác cũng không dính lỗi này.
+- Test mới `postgres-dates.test.ts` chạy trên Postgres thật khi có `TEST_POSTGRES_URL`.
+
+## 1.3.0 - 2026-09-27
+
+Chuyển phần phiên bản từ nhãn nổi trên mọi màn hình vào Quản trị hệ thống, và cho super admin tự bấm để đưa bản mới lên cho mọi người.
+
+### Triển khai
+
+- Trang **Phiên bản** (`/he-thong/phien-ban`): xem bản đang chạy, danh sách bản đã tải lên Cloudflare, nút Cập nhật và Quay lui, lịch sử phiên bản thu gọn theo từng bản.
+- API `GET /v1/admin/releases` và `POST /v1/admin/releases/:versionId/deploy` gọi Cloudflare Workers Versions, có ghi nhật ký thao tác.
+- `deploy.yml` thêm chế độ `RELEASE_MODE=manual`: chỉ tải bản lên (`wrangler versions upload`), chờ admin phát hành.
+- Người dùng thường tự nhận bản mới ở lần chuyển trang kế tiếp; lỗi tải chunk cũ sau deploy cũng tự nạp lại.
+
+### Giao diện
+
+- Bỏ nhãn phiên bản góc dưới màn hình và nhật ký "Máy này".
+- Quản trị hệ thống dùng được trên điện thoại: hàng chip điều hướng thay cho thanh bên bị ẩn, header không còn tràn. Chủ hội là super admin thấy thêm mục "Hệ thống" ở thanh trên.
+- Sửa số phiên bản trong `package.json` bị kẹt ở 1.1.0.
 
 ## 1.2.0 — 2026-09-16
 

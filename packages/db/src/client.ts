@@ -54,7 +54,16 @@ async function openPostgres(url: string): Promise<DbHandle> {
   const { default: postgres } = await import('postgres');
   const sql = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
   const db = drizzlePostgres(sql, { schema });
+  // drizzle thay serializer ngày giờ của postgres-js bằng hàm trả nguyên giá trị (cột đã tự đổi Date
+  // thành chuỗi). Nhưng Date đặt thẳng trong sql`...` thì đi tới driver nguyên dạng Date và nổ
+  // TypeError trước khi câu lệnh tới Postgres. PGlite không bị nên test local không bắt được.
+  for (const type of [1184, 1082, 1083, 1114]) sql.options.serializers[type] = serializeDateParam;
   return { db: db as unknown as Database, driver: db, kind: 'postgres', close: async () => sql.end({ timeout: 5 }) };
+}
+
+/** Tham số ngày giờ gửi cho postgres-js: Date thành chuỗi ISO, còn lại giữ nguyên. */
+export function serializeDateParam(value: unknown): unknown {
+  return value instanceof Date ? value.toISOString() : value;
 }
 
 export { schema };

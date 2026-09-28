@@ -130,11 +130,23 @@ gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 
 Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Build → **Connect to Git**. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
 
-## Phiên bản và nút cập nhật
+## Phiên bản và phát hành
 
-Góc dưới bên trái mọi màn hình có nhãn `v<phiên bản> · <commit>`. Bấm vào: bản đang chạy, bản trên máy chủ (đọc từ `/version.json`, hỏi lại mỗi 2 phút và khi quay lại tab), nút **Cập nhật ngay** khi hai bên lệch (xóa cache rồi nạp lại; nhãn đổi màu cam "Có bản mới").
+Không còn nhãn phiên bản trên mọi màn hình. Mọi thứ nằm ở **Quản trị hệ thống, Phiên bản** (`/he-thong/phien-ban`), chỉ super admin thấy:
 
-Chi tiết nằm ở **Tài khoản · Phiên bản** (`/tai-khoan/phien-ban`): lịch sử phiên bản đọc từ `CHANGELOG.md` lúc build (viết CHANGELOG là đủ), nhật ký các bản trình duyệt này đã dùng (localStorage, 20 dòng), super admin thấy thêm liên kết commit và trang chạy lại deploy.
+- **Bản đang chạy**: phiên bản, nhánh, giờ build, commit của trình duyệt đang mở, so với `/version.json` trên Cloudflare.
+- **Phát hành**: danh sách 15 bản gần nhất đã tải lên Cloudflare. Bấm **Cập nhật** để đưa một bản lên chạy 100% cho mọi người, bấm **Quay lui** ở bản cũ hơn khi có lỗi. Mỗi lần bấm được ghi vào nhật ký thao tác (`release.deploy`).
+- **Lịch sử phiên bản**: đọc từ `CHANGELOG.md` lúc build, nên viết CHANGELOG là đủ.
+
+Người dùng thường không thấy gì: khi máy chủ có bản mới, trình duyệt tự nạp lại ở lần chuyển trang kế tiếp (không mất nội dung đang gõ dở), và nếu chunk cũ đã bị xóa sau deploy thì cũng tự nạp lại một lần.
+
+Bật phát hành thủ công (admin bấm mới lên bản mới):
+
+1. Tạo token Cloudflare chỉ có quyền **Workers Scripts: Edit**.
+2. `cd apps/api && wrangler secret put CF_RELEASE_API_TOKEN` và `wrangler secret put CF_RELEASE_ACCOUNT_ID` (tên Worker web mặc định `hoiminh-web`, đổi bằng `CF_RELEASE_WEB_SCRIPT`).
+3. GitHub, Settings, Variables: đặt `RELEASE_MODE=manual`. Từ đó `deploy.yml` chạy `wrangler versions upload --tag v<phiên bản>-<commit>` thay cho `wrangler deploy`.
+
+Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
 
 Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 

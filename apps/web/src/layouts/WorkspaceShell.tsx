@@ -23,6 +23,7 @@ export function WorkspaceShell() {
           {item('/admin/nha-phat-trien', 'Nhà phát triển')}
           {item('/kham-pha', 'Khám phá')}
           {item('/tai-khoan/goi', 'Tài khoản')}
+          {user?.isSuperAdmin && item('/he-thong', 'Hệ thống')}
         </nav>
         <span className="flex-grow" />
         <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}>
