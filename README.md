@@ -80,8 +80,11 @@ infra           deploy.mjs
 3. **Hai Worker** (xem mục "Hai Worker" bên dưới): `hoiminh-api` (`apps/api`) phục vụ cả giao diện lẫn API, `hoiminh-jobs` (`apps/jobs`) chạy cron và hàng đợi. Cả hai cần cùng bộ secret, đặt bằng `wrangler secret put <TÊN>` trong thư mục của từng Worker (danh sách ở cuối `apps/api/wrangler.toml`). Deploy: build giao diện trước (`pnpm --filter @hoiminh/web build`), rồi `pnpm --filter @hoiminh/api run deploy`, rồi `pnpm --filter @hoiminh/jobs run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
 
    **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request; làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `createWorkerApp` (`packages/core/src/worker-app.ts`) dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]` của cả hai Worker.
-4. **R2**: tạo bucket `hoiminh-files`, bật public access hoặc gắn domain, điền `R2_*`.
-5. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`).
+4. **R2**: chỉ cần binding `FILES` trong `wrangler.toml` của cả hai Worker (đã khai báo, workflow deploy tự chạy `wrangler r2 bucket create hoiminh-files`). Tệp đi qua API (`PUT /files/upload/<key>` theo URL ký, `GET /files/<key>`) rồi vào bucket, không cần secret. Tùy chọn: gắn domain public cho bucket rồi đặt `R2_PUBLIC_BASE_URL` để ảnh public phát thẳng từ CDN; hoặc điền đủ 4 biến `R2_*` để trình duyệt tải thẳng lên R2 qua S3 (tệp rất lớn).
+5. **Resend**: ở Resend → Domains → thêm `hoiminh.com` và tạo các bản ghi DNS nó yêu cầu (trên Cloudflare DNS), chờ "Verified"; tạo API key rồi nhập ở `/he-thong/ha-tang` (hoặc `wrangler secret put RESEND_API_KEY` cho cả hai Worker). Địa chỉ gửi là `EMAIL_FROM` (mặc định `no-reply@hoiminh.com`, phải cùng tên miền đã xác minh). Kiểm chứng bằng nút **Gửi email thử** ở `/he-thong` (kết quả hiện ngay, mọi email đều ghi ở `/he-thong/nhat-ky` tab Email hệ thống).
+6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`).
+
+Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`.
 
 ### Hai Worker
 
@@ -144,6 +147,16 @@ gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 
 Đã đặt sẵn trong repo: secret `CLOUDFLARE_ACCOUNT_ID`, biến `VITE_APP_URL`.
 
+## Hạ tầng và khóa
+
+Super admin đổi key dịch vụ ở **Quản trị hệ thống, Hạ tầng và khóa** (`/he-thong/ha-tang`), không cần `wrangler secret put`:
+
+- **Email (Resend)**: API key và địa chỉ gửi, nút Gửi email thử.
+- **Phát hành web (Cloudflare)**: token (quyền Workers Scripts: Edit), Account ID, tên Worker web.
+- **R2** và **bí mật hệ thống** (database, `AUTH_JWT_SECRET`, `ENCRYPTION_KEY`): chỉ xem. Ba bí mật này vẫn đặt bằng secret của Worker, vì sai một khóa là trang quản trị không mở được để sửa.
+
+Khóa nhập trên web được mã hóa bằng `ENCRYPTION_KEY`, lưu trong bảng `provider_accounts`, và được ưu tiên hơn secret cùng tên trên Worker. Bỏ giá trị đã lưu thì quay về secret. Đổi `ENCRYPTION_KEY` thì phải nhập lại các khóa này (và credential cổng thanh toán).
+
 ## Phiên bản và phát hành
 
 Không còn nhãn phiên bản trên mọi màn hình. Mọi thứ nằm ở **Quản trị hệ thống, Phiên bản** (`/he-thong/phien-ban`), chỉ super admin thấy:
@@ -162,7 +175,7 @@ Bật phát hành thủ công (admin bấm mới lên bản mới):
 
 Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
 
-Thông tin build do `apps/web/scripts/version-plugin.ts` sinh ra lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
+Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 
 ## Cấu hình cổng thanh toán
 

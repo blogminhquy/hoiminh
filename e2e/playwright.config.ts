@@ -26,7 +26,8 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
-  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'] },
+  // PW_CHROMIUM_PATH: dùng Chromium có sẵn trên máy (môi trường không tải được trình duyệt của Playwright).
+  use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'vi-VN', ...devices['Desktop Chrome'], ...(process.env.PW_CHROMIUM_PATH ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } } : {}) },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     { command: 'pnpm --filter @hoiminh/db reset && pnpm --filter @hoiminh/api dev', url: 'http://localhost:8787/health', cwd: root, env: E2E_ENV, timeout: 180_000, reuseExistingServer: false, stdout: 'ignore', stderr: 'pipe' },

@@ -18,11 +18,17 @@ MOMO_MODE = "production"
 VNPAY_MODE = "sandbox"
 PAYPAL_MODE = "sandbox"
 R2_BUCKET = "hoiminh-files"
+EMAIL_FROM = "Hội Mình <no-reply@hoiminh.com>"
 LOG_LEVEL = "info"
 
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "f4c98cf06b33403caab8d1a68e89ab0a"
+
+# Job dọn tệp và gửi email kèm tệp cần đọc cùng bucket với hoiminh-api.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "hoiminh-files"
 
 # Job có thể sinh job mới (vd. gửi email sau khi xử lý), nên vẫn cần quyền gửi vào hàng đợi.
 [[queues.producers]]

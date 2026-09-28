@@ -4,7 +4,7 @@ Wiki ngắn để phiên làm việc sau biết đã làm đến đâu mà **kh�
 
 Quy ước làm việc: code xong phần nào → `git add -A && git commit && git push origin main` ngay. Tra cứu code bằng GitNexus (`gitnexus query/context/impact`, MCP đã cấu hình cho Claude Code) thay vì đọc cả file.
 
-## Trạng thái tổng (cập nhật 2026-09-16)
+## Trạng thái tổng (cập nhật 2026-09-20)
 
 | Khối | Trạng thái | Test |
 |---|---|---|
@@ -12,18 +12,19 @@ Quy ước làm việc: code xong phần nào → `git add -A && git commit && g
 | `packages/db` schema + migration + RLS + seed | ✅ xong | 5 test xanh |
 | `packages/core` service layer (auth, hội, thành viên, bài viết, khóa học, sự kiện, cửa hàng, checkout, thanh toán, entitlement, affiliate, rút tiền, tin nhắn, thông báo, gói nền tảng, admin, doanh thu, API key, webhook) | ✅ xong | 21 test flows xanh (đủ 7 luồng mục 6) |
 | `packages/payments` SePay/MoMo/VNPAY/PayPal | ✅ xong | 9 test xanh |
-| `packages/email`, `packages/media` | ✅ xong | 2 + 3 test xanh |
+| `packages/email`, `packages/media` | ✅ xong; 20/09: R2 qua binding Worker, RecordingSender ghi mọi email | 3 + 7 test xanh |
 | `apps/api` Hono REST + webhook + cron + worker | ✅ xong | 9 test tích hợp xanh |
 | `apps/mcp` 10 tool | ✅ xong | 2 test xanh |
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |
 | `e2e` Playwright 7 luồng (8 test) | ✅ xanh (`pnpm test:e2e`, ~1 phút) | 8 passed |
-| Xác thực hai lớp (TOTP) | ✅ xong 16/09 | 5 test service + thử tay qua API và trình duyệt |
+| Xác thực hai lớp (TOTP) | ✅ code xong 16/09; ⚠️ bảng `user_totp` chưa từng có trên Supabase tới 20/09 (đã áp tay, xem mục Rà soát 20/09) | 5 test service |
 | Giao diện tối | ✅ xong 16/09 | xem tay trên 4 màn chính |
 | RLS: biến phiên + công tắc thi hành | ✅ xong 16/09 | 5 test dưới vai trò không sở hữu bảng |
 | README.md, DECISIONS.md, CHANGELOG.md | ✅ xong | — |
-| `pnpm check` toàn repo | ✅ typecheck + lint + 57 test Vitest xanh | — |
+| Tài khoản · Phiên bản, chứng nhận hoàn thành, duyệt bài thành viên mới | ✅ 20/09 | 3 + 3 test core, chụp màn hình Playwright |
+| `pnpm check` toàn repo | ✅ 20/09: typecheck 12/12, lint, 77 test Vitest xanh | — |
 
 ## Bảng ánh xạ 50 màn hình (mục 5) → file → kiểm thử
 
@@ -121,13 +122,34 @@ Tìm theo bốn tầng: có tài liệu mà không có code · có code mà khô
 | R2 chưa cấu hình nên tải ảnh/video hỏng trên Worker | nối, không chạy thật | ⏳ cần credential |
 | RLS có 89 policy nhưng service không đặt biến phiên | nối, không chạy thật | ✅ 16/09: biến phiên đặt trong mọi request/job; bật thi hành bằng `pnpm db:rls on` |
 
+## Rà soát 2026-09-20 (lệnh `/ra-soat`, phiên Claude Code trên web)
+
+Giới hạn của phiên: container không gọi được hoiminh.com / api.hoiminh.com (proxy chặn), không có credential Cloudflare, Resend hay R2. Kiểm chứng bằng: database production qua Supabase MCP, log GitHub Actions, chạy API + web local và chụp màn hình Playwright, test Vitest. Không có tài khoản quản trị production để đi từng luồng trên trình duyệt thật.
+
+| Phát hiện | Bằng chứng | Tầng | Xử lý |
+|---|---|---|---|
+| Avatar quản trị tải ngày 16/09 ghi `files.status = ready` nhưng URL `api.hoiminh.com/files/public/avatar/...` không phát được | bảng `files` + `users.avatar_url` production; provider local giữ tệp trong Map bộ nhớ của Worker | nối, không chạy thật | ✅ R2 qua binding `FILES`, workflow tự tạo bucket; test API đầy đủ luồng |
+| Bảng `user_totp` không tồn tại trên Supabase (migration 0002 chưa chạy; `drizzle.__drizzle_migrations` chỉ có 0000, 0001) nên bật hai lớp trên production sẽ 500 | `information_schema.tables` production | trông như xong mà hỏng | ✅ áp 0002 + 0003 bằng `set role hoiminh_app`, ghi hash vào bảng migration |
+| `email_logs` production trống, Resend gửi lỗi không ghi đâu cả | `email_logs` = 0 dòng; `ResendSender` trả `failed` rồi thôi | có chạy, không ai kiểm | ✅ RecordingSender, nút Gửi email thử, tab Email, `/health` báo provider |
+| Deploy GitHub Actions đỏ 3/3 lần | log run 35082811288: thiếu `CLOUDFLARE_API_TOKEN` | chờ chủ dự án | ⏳ xem Việc kế tiếp |
+| Phiên bản ba nơi ba số (package.json 1.1.0, CHANGELOG 1.2.0, `/health` '1.0.0') | grep | trông như xong | ✅ `APP_VERSION` + test bắt khớp |
+| Công tắc khóa học `sequential`, `requireComplete`, `dripEnabled`, `affiliateEnabled`, `certificateEnabled` chỉ lưu, không đọc | grep service | code có, không nối | ✅ tất cả có tác dụng; chứng nhận có trang công khai |
+| Cài đặt "Duyệt bài thành viên mới N ngày" không làm gì | `posts.createPost` không đọc | code có, không nối | ✅ cột `moderation_status`, duyệt/từ chối trên thẻ bài |
+| Sự kiện "Tự đăng bản ghi" không có job nào; `POST /events/:id/recordings` không màn nào gọi | grep jobs/handlers | code có, không nối | ✅ bỏ công tắc, thêm nút Thêm bản ghi |
+| `DELETE /lessons`, `/modules`, `/comments` không có nút | grep web | code có, không nối | ✅ |
+| `/he-thong/tinh-nang` = `/he-thong/goi`, `/he-thong/ho-tro` = `/he-thong/hoi` | router + component | trông như xong | ✅ tách nội dung, lọc "Bị báo cáo" mới |
+| Sidebar "Tài nguyên" trỏ `?tab=tai-nguyen` không ai đọc; Thông báo không phân trang; Mời xong không làm mới; URL hội hiện `hoiminh.vn` | grep | nối hỏng | ✅ |
+| Tiện ích `links` / `webhook` / `meta_pixel` bật tắt không tác dụng; cờ V2 `realtime_chat`, `go_live`, `gamification` không ai kiểm | grep | code có, không nối | ⏳ cờ V2 ghi rõ "chưa có tác dụng"; ba tiện ích còn nợ (Pixel cần chèn script ở trang giới thiệu, webhook đã có ở Nhà phát triển) |
+| Ô tìm kiếm header hội chỉ lọc trang bảng tin đã tải; `hm_current_slug` chỉ ở localStorage | đọc code | nice-to-have | ⏳ |
+
 ## Việc kế tiếp
 
 Cần tài khoản của chủ dự án, không ai làm thay được:
 
 1. **Deploy tự động đang đỏ**: thiếu secret `CLOUDFLARE_API_TOKEN`. Tạo token ở Cloudflare (My Profile, API Tokens, Edit Cloudflare Workers) rồi `gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh`, sau đó làm các bước chuyển sang hai Worker ở README, mục "Hai Worker". Chưa có thì bản trên hoiminh.com vẫn là build tay.
-2. **R2**: tạo bucket `hoiminh-files`, điền `R2_*` — chưa có thì tải ảnh/video hỏng trên Worker vì `packages/media` rơi về lưu trên đĩa mà Worker không có đĩa.
-3. **Email**: `RESEND_API_KEY` — chưa có thì email xác minh, mời thành viên, nhắc sự kiện chỉ ghi log.
+2. **R2**: không cần tạo gì bằng tay nữa. Workflow deploy tự tạo bucket `hoiminh-files` và gắn binding `FILES` cho cả hai Worker. Kiểm: `curl https://api.hoiminh.com/health` phải trả `"media":"R2 (binding)"`, rồi tải lại avatar ở `/tai-khoan/ho-so`. Avatar hiện tại của `minhquy1711@gmail.com` đã mất tệp, cần tải lại.
+3. **Email (Resend)**: Resend → Domains → thêm `hoiminh.com` → tạo đúng các bản ghi DNS (DKIM, SPF, MX trả về) trên Cloudflare DNS → chờ Verified → API Keys → tạo key → nhập ở `/he-thong/ha-tang` (hoặc `wrangler secret put RESEND_API_KEY` cho cả `hoiminh-api` và `hoiminh-jobs`). Kiểm: `/he-thong` → **Gửi email thử** phải báo "Đã gửi qua Resend", hộp thư nhận được; `/health` trả `"email":"Resend"`.
+3b. **Deploy bản này** rồi thử bật xác thực hai lớp ở `/tai-khoan/ho-so` trên production (bảng đã có, nhưng chưa ai thử trên hoiminh.com).
 4. Điền credential SePay/MoMo/VNPAY/PayPal thật trong `/he-thong/thanh-toan` và bật production.
 5. Đổi mật khẩu tài khoản quản trị `minhquy1711@gmail.com` (đang là mật khẩu tạm) ở `/tai-khoan/ho-so`.
 

@@ -1,5 +1,6 @@
 // Lắp ráp Hono app: middleware, route /v1, webhook, /r, /files, /pay/simulator, /health.
-import type { App } from '@hoiminh/core';
+import { admin, type App } from '@hoiminh/core';
+import { APP_VERSION } from '@hoiminh/config';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -40,7 +41,8 @@ export function createHonoApp(app: App): Hono<Env> {
     } catch {
       db = 'error';
     }
-    return c.json({ status: db === 'ok' ? 'ok' : 'degraded', db, latencyMs: Date.now() - started, env: app.ctx.env.APP_ENV, version: '1.0.0', time: new Date().toISOString() }, db === 'ok' ? 200 : 503);
+    const infra = admin.infraStatus(c.get('ctx'));
+    return c.json({ status: db === 'ok' ? 'ok' : 'degraded', db, email: infra.email, media: infra.media, latencyMs: Date.now() - started, env: app.ctx.env.APP_ENV, version: APP_VERSION, time: new Date().toISOString() }, db === 'ok' ? 200 : 503);
   });
 
   h.route('/v1/auth', authRoutes);

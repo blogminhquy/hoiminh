@@ -16,6 +16,10 @@ contentRoutes.get('/communities/:id/feed', async (c) => {
 });
 contentRoutes.post('/communities/:id/posts', requireAuth, rateLimit({ windowMs: 60_000, max: 10, key: () => 'post' }), async (c) => c.json(await posts.createPost(c.get('ctx'), c.req.param('id'), await parse(createPostSchema, await body(c))), 201));
 contentRoutes.get('/posts/:id', async (c) => c.json(await posts.getPost(c.get('ctx'), c.req.param('id'))));
+contentRoutes.post('/posts/:id/moderate', requireAuth, async (c) => {
+  const input = await parse(z.object({ action: z.enum(['approve', 'reject']), reason: z.string().max(300).optional() }), await body(c));
+  return c.json(await posts.moderatePost(c.get('ctx'), c.req.param('id'), input.action, input.reason));
+});
 contentRoutes.patch('/posts/:id', requireAuth, async (c) => {
   const input = await parse(updatePostSchema, await body(c));
   return c.json(await posts.updatePost(c.get('ctx'), c.req.param('id'), { title: input.title, contentMd: input.contentMd, spaceId: input.spaceId, pinned: input.pinned, statusBgKey: input.statusBgKey }));

@@ -5,6 +5,7 @@
 // lần gọi dựng App mới: phần ngoài DB chỉ là tạo object, còn postgres-js kết nối lười và Hyperdrive
 // giữ sẵn pool ở phía Cloudflare nên bắt tay gần như không tốn gì.
 import { loadEnv } from '@hoiminh/config';
+import type { R2BucketLike } from '@hoiminh/media';
 import { createApp, type App } from './app';
 import { CloudflareQueue, type Job } from './jobs/queue';
 
@@ -12,6 +13,8 @@ import { CloudflareQueue, type Job } from './jobs/queue';
 export interface WorkerBindings {
   JOBS: { send(body: Job): Promise<void> };
   HYPERDRIVE?: { connectionString: string };
+  /** Bucket R2 `hoiminh-files` ([[r2_buckets]]); ảnh và tệp đi qua API vào đây, không cần secret. */
+  FILES?: R2BucketLike;
   [key: string]: unknown;
 }
 
@@ -20,5 +23,5 @@ export async function createWorkerApp(env: WorkerBindings): Promise<App> {
   for (const [k, v] of Object.entries(env)) if (typeof v === 'string') raw[k] = v;
   // Hyperdrive gộp kết nối phía Cloudflare; không có binding thì dùng thẳng DATABASE_URL (pooler Supabase).
   if (env.HYPERDRIVE?.connectionString) raw.DATABASE_URL = env.HYPERDRIVE.connectionString;
-  return createApp({ env: loadEnv(raw), queue: new CloudflareQueue(env.JOBS), migrate: false });
+  return createApp({ env: loadEnv(raw), queue: new CloudflareQueue(env.JOBS), migrate: false, r2Bucket: env.FILES ?? null });
 }

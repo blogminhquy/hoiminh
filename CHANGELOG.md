@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.5.0 - 2026-09-28
+## 1.7.0 - 2026-09-28
 
 Gộp web và API vào một Worker, tách việc chạy nền sang Worker riêng, để chịu được lượng thành viên lớn và dễ quản lý hơn.
 
@@ -10,11 +10,50 @@ Gộp web và API vào một Worker, tách việc chạy nền sang Worker riên
 - **`hoiminh-jobs` (`apps/jobs`) mới**: cron và hàng đợi job chạy riêng, việc nặng không làm chậm người đang dùng.
 - Nút Cập nhật ở `/he-thong/phien-ban` giờ đưa web và API lên bản mới cùng lúc, không còn lệch bản.
 - Workflow deploy kiểm tra hai Worker đã đủ secret bắt buộc trước khi deploy; thiếu thì dừng, web đang chạy giữ nguyên.
+- Binding R2 `FILES` và `EMAIL_FROM` có ở cả hai Worker; workflow vẫn tự tạo bucket.
 - Nâng wrangler của API lên v4.
 
 ### Bảo mật
 
 - Web gọi API cùng tên miền. CORS chỉ mở cho chính web thay vì phản chiếu mọi origin kèm cookie.
+
+## 1.6.0 - 2026-09-28
+
+Trang **Hạ tầng và khóa** (`/he-thong/ha-tang`): đổi key dịch vụ ngay trên web, không phải vào Cloudflare đặt secret nữa.
+
+### Quản trị hệ thống
+
+- **Email (Resend)**: dán API key và địa chỉ gửi, lưu xong có hiệu lực ngay; nút Gửi email thử nằm cạnh để kiểm tra liền. Kèm hướng dẫn từng bước lấy key và xác minh tên miền.
+- **Phát hành web (Cloudflare)**: token, Account ID, tên Worker web cho nút Cập nhật và Quay lui ở trang Phiên bản; nút Kiểm tra kết nối.
+- **Lưu trữ tệp (R2)** và **Bí mật hệ thống** (database, AUTH_JWT_SECRET, ENCRYPTION_KEY): chỉ xem trạng thái. Ba bí mật này cố ý không sửa được trên web, vì sai một khóa là chính trang này không mở được.
+- Mỗi ô cho biết giá trị đang dùng lấy từ đâu (nhập ở trang này, secret trên Cloudflare, mặc định, chưa có). Bí mật chỉ hiện 4 ký tự cuối; ô bí mật để trống là giữ nguyên; "Bỏ giá trị đã lưu" để quay về secret của Worker. Kiểm tra định dạng trước khi lưu (key Resend bắt đầu bằng `re_`, Account ID 32 ký tự).
+- Mục mới "Hạ tầng và khóa" trong thanh bên và hàng chip trên điện thoại; khối Hạ tầng ở Tổng quan có liên kết sang. Chữ trên trang tối thiểu 16px.
+
+### Kỹ thuật
+
+- Khóa lưu mã hóa (`ENCRYPTION_KEY`) trong `provider_accounts` với provider `infra_email`, `infra_release`, như credential cổng thanh toán, nên không cần migration. `createApp` gộp khóa đã lưu vào `env` (ưu tiên hơn secret); Worker giữ bản giải mã trong isolate 30 giây.
+- `SwitchableSender`: lưu key mới là bộ gửi email đổi ngay, không cần khởi động lại. Mọi thay đổi ghi nhật ký thao tác `infra.update` (chỉ tên ô, không ghi giá trị).
+- API `GET /v1/admin/infra`, `PUT /v1/admin/infra/:section`, `POST /v1/admin/infra/release/test` (chỉ super admin). 8 test mới.
+
+## 1.5.0 - 2026-09-28
+
+Gộp đợt rà soát 20/09 (PR #3) vào main. Hai việc chính: nối R2 bằng binding của Worker (không cần secret), gắn Resend có kiểm chứng. Kèm theo là một loạt công tắc và nút "trông như xong" mà không có tác dụng. Mục "Tài khoản, Phiên bản" của đợt này không được giữ: phiên bản đã chuyển vào Quản trị hệ thống ở 1.3.0.
+
+### Hạ tầng
+
+- **R2 qua binding `FILES` của Worker.** Trên production, avatar tải ngày 16/09 được ghi `ready` nhưng URL không phát được: provider local ghi bằng `node:fs`, Worker không có hệ tệp. Nay chỉ cần `[[r2_buckets]]` trong `wrangler.toml` (workflow deploy tự tạo bucket) là tải ảnh, tài liệu, tệp số chạy; tệp đi qua API theo URL ký HMAC. Bốn biến `R2_*` thành tùy chọn (tải thẳng qua S3 cho tệp lớn); `R2_PUBLIC_BASE_URL` để phát ảnh public từ CDN.
+- **Resend có kiểm chứng.** `RecordingSender` ghi email_logs cho mọi lần gửi (sent / failed / logged, id Resend, lỗi); nút "Gửi email thử" ở Hệ thống · Tổng quan; tab "Email hệ thống" ở Nhật ký; `/health` báo provider email và tệp đang dùng. `EMAIL_FROM` mặc định đổi sang hoiminh.com cho khớp tên miền.
+- **Phiên bản một nguồn:** `APP_VERSION` trong @hoiminh/config, test bắt khớp package.json và mục đầu CHANGELOG. Trước đây root ghi 1.1.0, CHANGELOG 1.2.0, `/health` trả '1.0.0' cứng.
+- **Migration production thiếu:** bảng `user_totp` (xác thực hai lớp, ghi "xong 16/09") chưa từng được tạo trên Supabase, nên bật hai lớp trên hoiminh.com sẽ lỗi. Đã áp 0002 và 0003 (cột `posts.moderation_status`) bằng vai trò `hoiminh_app`, ghi vào bảng migration của drizzle.
+
+### Công tắc và nút có tác dụng thật
+
+- Khóa học: "Bắt buộc học theo thứ tự", "Phải hoàn thành" (bài), "Nhỏ giọt" theo công tắc khóa, "Cộng sự nhận hoa hồng khi bán lẻ" đều được service đọc. Trước đây chỉ lưu.
+- **Chứng nhận hoàn thành** (`/chung-nhan/:courseId/:userId`): trang công khai, in được, đọc từ course_progress; banner "Hoàn thành 100% để nhận chứng nhận" giờ là lời hứa thật. Thông báo hoàn thành khóa dẫn tới chứng nhận.
+- **Duyệt bài thành viên mới** (Cài đặt · Bảng tin · N ngày đầu): bài của người mới vào trạng thái chờ duyệt, chỉ tác giả và người kiểm duyệt thấy; người kiểm duyệt nhận thông báo, bấm Duyệt / Từ chối ngay trên thẻ bài; tác giả được báo kết quả.
+- Sự kiện: bỏ công tắc "Tự đăng bản ghi" (không có nguồn để tự lấy), thêm nút "Thêm bản ghi" cho người tổ chức.
+- Xóa bài, xóa module trong Soạn khóa học; xóa bình luận. Thông báo có "Tải thêm". Mời thành viên xong danh sách làm mới ngay.
+- `/he-thong/tinh-nang` và `/he-thong/ho-tro` có nội dung riêng thay vì trùng hai màn khác; ba cờ V2 ghi rõ "chưa có tác dụng". Đường dẫn hội hiện đúng tên miền đang chạy thay vì "hoiminh.vn".
 
 ## 1.4.0 - 2026-09-28
 

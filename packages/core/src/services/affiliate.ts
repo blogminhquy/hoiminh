@@ -1,7 +1,7 @@
 // Affiliate Engine hai tầng: click → attribution 30 ngày → conversion → hoa hồng pending → available sau hold → ví (sổ cái bất biến).
 import { BUSINESS, sha256Hex, randomCode } from '@hoiminh/config';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, orders, payments, users } from '@hoiminh/db';
+import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, notFound } from '../errors';
@@ -76,6 +76,14 @@ export async function attachAttribution(ctx: Ctx, userId: string, visitorId: str
 }
 
 /** Sau payment.succeeded: tạo conversion + hoa hồng pending (UNIQUE payment_id + rule_version chống trùng). */
+/** Đơn có sản phẩm gắn khóa học mà khóa đó tắt affiliateEnabled thì không trả hoa hồng. */
+export async function productsAllowCommission(ctx: Ctx, orderId: string): Promise<boolean> {
+  const items = await ctx.db.query.orderItems.findMany({ where: and(eq(orderItems.orderId, orderId), eq(orderItems.resourceType, 'product')) });
+  if (!items.length) return true;
+  const rows = await ctx.db.select({ enabled: courses.affiliateEnabled }).from(products).innerJoin(courses, eq(courses.id, products.courseId)).where(inArray(products.id, items.map((i) => i.resourceId)));
+  return rows.every((r) => r.enabled);
+}
+
 export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: string; orderId: string; userId: string; communityId: string | null; workspaceId: string | null; amountMinor: number; targetType: 'tier' | 'product' | 'platform'; affiliateAccountId: string | null }): Promise<string | null> {
   let program: typeof affiliatePrograms.$inferSelect | undefined;
   let accountId = p.affiliateAccountId;
@@ -90,6 +98,8 @@ export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: strin
     }
   } else if (p.communityId) {
     program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, p.communityId) });
+    // Khóa học bán lẻ có công tắc "Cộng sự được nhận hoa hồng khi bán lẻ khóa này". Tắt thì không tính.
+    if (p.targetType === 'product' && !(await productsAllowCommission(ctx, p.orderId))) return null;
   }
   if (!program || program.status !== 'active' || !accountId) return null;
   const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, accountId) });

@@ -1,15 +1,17 @@
 // Mời thành viên: link mời dùng nhiều lần + gửi email (quản trị); thành viên thường thấy link chia sẻ hội.
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Modal, T } from '@hoiminh/ui';
 import { Copy, Link as LinkIcon, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 
 export function InviteModal({ open, onClose, communityId, slug, canInvite }: { open: boolean; onClose: () => void; communityId: string; slug: string; canInvite: boolean }) {
+  const qc = useQueryClient();
   const [emails, setEmails] = useState('');
   const [copied, setCopied] = useState(false);
   const shareUrl = `${window.location.origin}/${slug}`;
-  const m = useMutation({ mutationFn: (list: string[]) => api.post<Array<{ email: string | null; url: string }>>(`/v1/communities/${communityId}/invites`, list.length ? { emails: list } : {}) });
+  // Gửi xong thì danh sách thành viên (tab Đã mời) và số đếm phải đổi ngay, không chờ người dùng tải lại.
+  const m = useMutation({ mutationFn: (list: string[]) => api.post<Array<{ email: string | null; url: string }>>(`/v1/communities/${communityId}/invites`, list.length ? { emails: list } : {}), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['members', communityId] }); void qc.invalidateQueries({ queryKey: ['shell'] }); } });
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* bỏ qua */ }
   };

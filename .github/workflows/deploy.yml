@@ -76,6 +76,8 @@ jobs:
           VITE_API_URL: ''
           VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.com' }}
         run: pnpm --filter @hoiminh/web build
+      - name: Tạo bucket R2 (bỏ qua nếu đã có)
+        run: pnpm --filter @hoiminh/api exec wrangler r2 bucket create hoiminh-files || echo "bucket đã có"
       - name: Deploy ngay
         if: vars.RELEASE_MODE != 'manual'
         run: pnpm --filter @hoiminh/api exec wrangler deploy

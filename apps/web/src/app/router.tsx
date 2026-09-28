@@ -28,6 +28,7 @@ const publicRoutes: RouteObject[] = [
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
   { path: '/thanh-toan/:orderId', element: page(() => import('@/pages/community/Checkout')) },
+  { path: '/chung-nhan/:courseId/:userId', element: page(() => import('@/pages/public/Certificate')) },
 ];
 
 const ownerRoutes: RouteObject = {
@@ -118,6 +119,7 @@ const adminRoutes: RouteObject = {
     { path: 'cong-su', element: page(() => import('@/pages/admin/AdminAffiliate')) },
     { path: 'tinh-nang', element: page(() => import('@/pages/admin/AdminPlans')) },
     { path: 'phien-ban', element: page(() => import('@/pages/admin/AdminVersions')) },
+    { path: 'ha-tang', element: page(() => import('@/pages/admin/AdminInfra')) },
     { path: 'nhat-ky', element: page(() => import('@/pages/admin/AdminLogs')) },
     { path: 'ho-tro', element: page(() => import('@/pages/admin/AdminCommunities')) },
   ],

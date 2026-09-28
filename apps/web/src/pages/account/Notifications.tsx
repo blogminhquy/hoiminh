@@ -1,8 +1,9 @@
 // Thông báo (notificationsMain): chip lọc, danh sách nhóm theo ngày với icon loại, đánh dấu đã đọc; rail cài đặt nhanh + theo cộng đồng.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Chip, CommunityMark, Select, T, Toggle } from '@hoiminh/ui';
 import { AtSign, Bell, BellOff, Calendar, CheckCheck, CircleDollarSign, Heart, Mail, Megaphone, MessageCircle, UserPlus } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
@@ -42,7 +43,14 @@ export default function Page() {
   const qc = useQueryClient();
   const { communities } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
-  const q = useQuery({ queryKey: ['notifications', filter], queryFn: () => api.get<List>(`/v1/me/notifications?filter=${filter}`) });
+  // Phân trang theo cursor: trước đây chỉ đọc trang đầu, quá 30 thông báo là không xem được nữa.
+  const pages = useInfiniteQuery({
+    queryKey: ['notifications', filter],
+    queryFn: ({ pageParam }) => api.get<List>(`/v1/me/notifications?filter=${filter}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`),
+    initialPageParam: '' as string,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+  const q = { ...pages, data: pages.data ? { items: pages.data.pages.flatMap((p) => p.items), nextCursor: pages.data.pages.at(-1)?.nextCursor ?? null, unreadCount: pages.data.pages[0]?.unreadCount ?? 0 } : undefined } as unknown as UseQueryResult<List>;
   const prefs = useQuery({ queryKey: ['notification-prefs'], queryFn: () => api.get<Prefs>('/v1/me/notifications/prefs') });
   const invalidate = () => { void qc.invalidateQueries({ queryKey: ['notifications'] }); void qc.invalidateQueries({ queryKey: ['badges'] }); };
   const read = useMutation({ mutationFn: (id?: string) => api.post('/v1/me/notifications/read', id ? { id } : {}), onSuccess: invalidate });
@@ -63,6 +71,7 @@ export default function Page() {
             return (
               <div className="card overflow-hidden">
                 {d.items.map((n) => { const g = dayGroup(n.createdAt); const head = g !== last; last = g; return <div key={n.id}>{head && <div className="th" style={{ padding: '12px 20px 8px' }}>{g}</div>}<Row n={n} onRead={() => { if (!n.readAt) read.mutate(n.id); }} /></div>; })}
+                {pages.hasNextPage && <div className="flex justify-center py-3" style={{ borderTop: `1px solid ${T.line}` }}><button type="button" className="btn btn-ghost btn-sm" disabled={pages.isFetchingNextPage} onClick={() => void pages.fetchNextPage()}>{pages.isFetchingNextPage ? 'Đang tải…' : 'Tải thêm'}</button></div>}
               </div>
             );
           }}

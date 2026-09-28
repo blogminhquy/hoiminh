@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { MessageModal } from './MessageModal';
+import { Link } from 'react-router-dom';
 
 export interface Resource { id: string; name: string; url: string; lessonId: string; sizeBytes: number | null }
 export interface Owner extends UserLite { id: string; bio: string | null }
 
-export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccessedAt, certificate }: { percent: number; doneLessons: number; watchedSeconds: number; lastAccessedAt: string | null; certificate: boolean }) {
+export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccessedAt, certificate, certificateUrl }: { percent: number; doneLessons: number; watchedSeconds: number; lastAccessedAt: string | null; certificate: boolean; certificateUrl?: string | null }) {
   return (
     <div className="card p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-3.5">
@@ -23,9 +24,9 @@ export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccesse
         </div>
       </div>
       {certificate && (
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px]" style={{ background: T.goldSoft, color: T.goldDark }}>
-          <BadgeCheck size={16} /><span>Hoàn thành 100% để nhận <strong>chứng nhận</strong> có tên bạn và link kiểm tra.</span>
-        </div>
+        percent >= 100 && certificateUrl
+          ? <Link to={certificateUrl} className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px] font-semibold" style={{ background: T.tealSoft, color: T.tealText }}><BadgeCheck size={16} /><span>Xem chứng nhận hoàn thành của bạn</span></Link>
+          : <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px]" style={{ background: T.goldSoft, color: T.goldDark }}><BadgeCheck size={16} /><span>Hoàn thành 100% để nhận <strong>chứng nhận</strong> có tên bạn và link kiểm tra.</span></div>
       )}
     </div>
   );

@@ -60,6 +60,7 @@ const STATUS: Record<string, [string, 'accent' | 'teal' | 'gold' | 'neutral' | '
   draft: ['Nháp', 'neutral'], published: ['Đã đăng', 'teal'], archived: ['Lưu trữ', 'neutral'], locked: ['Đã khóa', 'danger'],
   matched: ['Đã khớp', 'teal'], unmatched: ['Chưa khớp', 'gold'], wrong_content: ['Sai nội dung', 'gold'], missing_code: ['Thiếu mã', 'gold'], amount_mismatch: ['Lệch số tiền', 'danger'], duplicate: ['Trùng', 'danger'], manual_review: ['Cần xem', 'gold'],
   trialing: ['Dùng thử', 'neutral'], past_due: ['Quá hạn', 'danger'],
+  sent: ['Đã gửi', 'teal'], logged: ['Chỉ ghi log', 'gold'],
 };
 export function StatusTag({ status }: { status: string }) {
   const [label, tone] = STATUS[status] ?? [status, 'neutral'];

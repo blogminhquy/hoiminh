@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export * from './crypto';
 export * from './totp';
+export * from './version';
 
 const bool = z
   .union([z.boolean(), z.string()])
@@ -32,7 +33,7 @@ export const envSchema = z.object({
   ENCRYPTION_KEY_VERSION: z.coerce.number().int().default(1),
 
   RESEND_API_KEY: z.string().default(''),
-  EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.vn>'),
+  EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
 
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),
@@ -97,6 +98,15 @@ export function assertProductionSecrets(env: Env): void {
   if (env.AUTH_JWT_SECRET === DEFAULTS.AUTH_JWT_SECRET || env.AUTH_JWT_SECRET.length < 32) problems.push('AUTH_JWT_SECRET (đặt chuỗi ngẫu nhiên từ 32 ký tự)');
   if (!env.ENCRYPTION_KEY) problems.push('ENCRYPTION_KEY (32 byte base64)');
   if (problems.length) throw new Error(`Production thiếu bí mật bắt buộc: ${problems.join(', ')}`);
+}
+
+/** Bí mật hệ thống đã đặt thật chưa, để hiện ở Hệ thống · Hạ tầng (không bao giờ trả về giá trị). */
+export function systemSecretStatus(env: Env): { authJwtSecret: boolean; encryptionKey: boolean; database: 'postgres' | 'pglite' } {
+  return {
+    authJwtSecret: env.AUTH_JWT_SECRET !== DEFAULTS.AUTH_JWT_SECRET && env.AUTH_JWT_SECRET.length >= 32,
+    encryptionKey: Boolean(env.ENCRYPTION_KEY),
+    database: env.DATABASE_URL.startsWith('pglite') ? 'pglite' : 'postgres',
+  };
 }
 
 /** Cổng thanh toán nào còn dùng bí mật mặc định (ai đọc mã nguồn cũng giả được webhook của cổng đó). */

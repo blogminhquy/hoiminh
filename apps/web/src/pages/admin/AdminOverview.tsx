@@ -1,15 +1,16 @@
 // Hệ thống · Tổng quan (saOverviewMain): chip kỳ, 5 thẻ số liệu, GMV theo ngày + tỷ trọng cổng, khối Cần xử lý, hội mới.
-import { useQuery } from '@tanstack/react-query';
-import { Bars, Chip, CommunityMark, StatCard, T, money } from '@hoiminh/ui';
-import { AlertTriangle, BadgeCheck, ExternalLink, Users, Wallet } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Bars, Button, Chip, CommunityMark, StatCard, T, money } from '@hoiminh/ui';
+import { AlertTriangle, BadgeCheck, ExternalLink, Send, Users, Wallet } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { fmtCount, fmtDate, fmtShortMoney } from '@/lib/format';
 
 interface Overview {
   config: Array<{ key: string; label: string; detail: string; severity: 'error' | 'warn' }>;
+  infra: { email: string; emailFrom: string; media: string; mediaKind: 'r2' | 'local'; env: string };
   totals: { users: number; usersNew: number; communities: number; communitiesNew: number; gmvMinor: number; platformRevenueMinor: number; failedPayments: number; totalPayments: number };
   todo: { unmatched: number; webhookFailures: number; reported: number; trialsEnding: number };
   daily: Array<{ date: string; amountMinor: number }>; byProvider: Array<{ provider: string; amountMinor: number }>;
@@ -18,6 +19,23 @@ interface Overview {
 const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý']];
 const PROVIDER: Record<string, string> = { sepay: 'Chuyển khoản QR', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal' };
 const MODE: Record<string, string> = { free: 'Miễn phí', freemium: 'Freemium', subscription: 'Thu phí', one_time: 'Trọn đời' };
+
+interface TestEmailResult { to: string; provider: string; from: string; status: 'sent' | 'failed' | 'logged'; providerMessageId?: string; error?: string }
+
+/** Nút gửi email thử tới chính quản trị đang đăng nhập; kết quả hiện ngay bên cạnh. */
+function TestEmail() {
+  const m = useMutation({ mutationFn: () => api.post<TestEmailResult>('/v1/admin/email/test') });
+  const r = m.data;
+  return (
+    <div className="flex items-center gap-2.5 flex-wrap text-[12px]">
+      <Button size="sm" icon={<Send size={13} />} loading={m.isPending} onClick={() => m.mutate()}>Gửi email thử</Button>
+      {m.isError && <span style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
+      {r && r.status === 'sent' && <span style={{ color: T.tealText }}>Đã gửi qua {r.provider} tới {r.to}. Kiểm tra hộp thư (cả mục Spam).</span>}
+      {r && r.status === 'logged' && <span style={{ color: T.goldText }}>Chưa có RESEND_API_KEY nên email chỉ ghi vào nhật ký, không ai nhận được.</span>}
+      {r && r.status === 'failed' && <span style={{ color: T.accentText }}>Resend từ chối: {r.error}. Thường do tên miền trong "{r.from}" chưa xác minh ở Resend.</span>}
+    </div>
+  );
+}
 
 function Todo({ icon, bg, fg, text, action, to }: { icon: ReactNode; bg: string; fg: string; text: string; action: string; to: string }) {
   return <div className="flex items-center gap-2.5 text-[13px]"><span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: bg, color: fg }}>{icon}</span><span className="flex-grow">{text}</span><Link to={to} className="text-[12px] font-semibold whitespace-nowrap" style={{ color: T.teal }}>{action}</Link></div>;
@@ -38,19 +56,22 @@ export default function Page() {
           const failPct = d.totals.totalPayments ? Math.round((d.totals.failedPayments / d.totals.totalPayments) * 1000) / 10 : 0;
           return (
             <>
-              {d.config.length > 0 && (
-                <div className="card px-5 py-4 flex flex-col gap-2" style={{ borderColor: d.config.some((w) => w.severity === 'error') ? T.accent : T.gold }}>
-                  <span className="font-semibold text-[14px]">Hạ tầng chưa cấu hình xong</span>
-                  {d.config.map((w) => (
-                    <div key={w.key} className="flex items-start gap-2.5 text-[13px]">
-                      <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: w.severity === 'error' ? T.accentSoft : T.goldSoft, color: w.severity === 'error' ? T.accentText : T.goldText }}>
-                        <AlertTriangle size={14} />
-                      </span>
-                      <span className="flex-grow"><strong>{w.label}.</strong> {w.detail}</span>
-                    </div>
-                  ))}
+              <div className="card px-5 py-4 flex flex-col gap-2.5" style={{ borderColor: d.config.some((w) => w.severity === 'error') ? T.accent : d.config.length ? T.gold : undefined }}>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-semibold text-[14px]">{d.config.length ? 'Hạ tầng chưa cấu hình xong' : 'Hạ tầng'}</span>
+                  <span className="flex-grow" />
+                  <span className="muted text-[12px]">Email: <strong style={{ color: d.infra.email === 'Resend' ? T.tealText : T.goldText }}>{d.infra.email}</strong> · Tệp: <strong style={{ color: d.infra.mediaKind === 'r2' ? T.tealText : T.goldText }}>{d.infra.media}</strong> · gửi từ {d.infra.emailFrom}</span>
                 </div>
-              )}
+                {d.config.map((w) => (
+                  <div key={w.key} className="flex items-start gap-2.5 text-[13px]">
+                    <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: w.severity === 'error' ? T.accentSoft : T.goldSoft, color: w.severity === 'error' ? T.accentText : T.goldText }}>
+                      <AlertTriangle size={14} />
+                    </span>
+                    <span className="flex-grow"><strong>{w.label}.</strong> {w.detail}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-3 flex-wrap"><TestEmail /><span className="flex-grow" /><Link to="/he-thong/ha-tang" className="text-[12px] font-semibold whitespace-nowrap" style={{ color: T.teal }}>Đổi khóa ở Hạ tầng và khóa</Link></div>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <StatCard label="Người dùng" value={fmtCount(d.totals.users)} sub={`+${fmtCount(d.totals.usersNew)} trong kỳ`} subColor={T.teal} />
                 <StatCard label="Hội đang hoạt động" value={fmtCount(d.totals.communities)} sub={`+${d.totals.communitiesNew} hội mới`} subColor={T.teal} />

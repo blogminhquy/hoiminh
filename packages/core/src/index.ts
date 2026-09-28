@@ -39,6 +39,7 @@ export * as webhooksOut from './services/webhooks-out';
 export * as filesService from './services/files';
 export * as featureFlags from './services/feature-flags';
 export * as releases from './services/releases';
+export * as infra from './services/infra';
 export { withTenantScope, withSystemScope, resolveScope, type TenantScope } from './lib/tenant-scope';
 export * as shell from './services/shell';
 export { audit } from './services/audit';
