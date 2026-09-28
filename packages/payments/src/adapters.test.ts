@@ -1,9 +1,10 @@
 // Test 4 adapter với payload mẫu theo đúng định dạng của từng cổng.
-import { hmacHex } from '@hoiminh/config';
+import { hmacHex, loadEnv } from '@hoiminh/config';
 import { describe, expect, it } from 'vitest';
 import { MomoAdapter, type MomoIpnPayload } from './momo';
 import { PaypalAdapter } from './paypal';
 import { SepayAdapter } from './sepay';
+import { createPaymentRouter } from './index';
 import { extractReference, normalizeReference } from './types';
 import { VnpayAdapter, vnpQueryString } from './vnpay';
 
@@ -98,5 +99,76 @@ describe('PayPal', () => {
     expect(e?.type).toBe('payment.succeeded');
     expect(e?.reference).toBe('HM8K2QX');
     expect(e?.amountMinor).toBe(996);
+  });
+});
+
+describe('PayPal hai bước', () => {
+  const body = (event_type: string, currency = 'USD') => ({ id: 'WH-2', event_type, resource: { id: 'ORDER-1', purchase_units: [{ custom_id: 'HM8K2QX', amount: { value: '9.96', currency_code: currency } }] } });
+  const req = (b: unknown) => ({ headers: {}, rawBody: JSON.stringify(b), query: {} });
+
+  it('ORDER.APPROVED chỉ là đã duyệt, chưa phải đã trả; tiền tệ lạ bị bỏ qua', () => {
+    const pp = new PaypalAdapter({ mode: 'sandbox', clientId: 'id', clientSecret: 'secret', webhookId: 'wh', usdRate: 25000, appEnv: 'test' });
+    expect(pp.parseWebhook(req(body('CHECKOUT.ORDER.APPROVED')))?.type).toBe('payment.approved');
+    expect(pp.parseWebhook(req(body('PAYMENT.CAPTURE.COMPLETED', 'EUR')))?.type).toBe('ignored');
+  });
+
+  it('capture gọi đúng API, order đã capture trước đó vẫn tính là xong', async () => {
+    const calls: string[] = [];
+    let captured = false;
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith('/capture')) {
+        if (captured) return new Response(JSON.stringify({ details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] }), { status: 422 });
+        captured = true;
+        return new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 201 });
+      }
+      return new Response(JSON.stringify({ access_token: 't' }), { status: 200 });
+    };
+    const pp = new PaypalAdapter({ mode: 'sandbox', clientId: 'id', clientSecret: 'secret', webhookId: 'wh', usdRate: 25000, appEnv: 'test' }, fetchImpl);
+    expect(await pp.capture('ORDER-1')).toEqual({ ok: true });
+    expect(await pp.capture('ORDER-1')).toEqual({ ok: true });
+    expect(calls.filter((c) => c.includes('/v2/checkout/orders/ORDER-1/capture'))).toHaveLength(2);
+  });
+
+  it('hoàn tiền luôn gửi số tiền, để hoàn một phần không thành hoàn toàn bộ', async () => {
+    let sent: unknown = null;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (String(input).includes('/refund')) {
+        sent = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({ id: 'RF-1', status: 'COMPLETED' }), { status: 201 });
+      }
+      return new Response(JSON.stringify({ access_token: 't' }), { status: 200 });
+    };
+    const pp = new PaypalAdapter({ mode: 'sandbox', clientId: 'id', clientSecret: 'secret', webhookId: 'wh', usdRate: 25000, appEnv: 'test' }, fetchImpl);
+    const r = await pp.refund({ providerPaymentId: 'CAP-1', reference: 'HM 8K2QX', amountMinor: 250, reason: 'một phần' });
+    expect(r.ok).toBe(true);
+    expect(sent).toMatchObject({ amount: { value: '2.50', currency_code: 'USD' } });
+  });
+});
+
+describe('Cổng dùng bí mật mặc định', () => {
+  it('ngoài máy dev bị khóa: không tạo thanh toán, webhook đúng khóa mặc định vẫn bị từ chối', async () => {
+    const env = loadEnv({ APP_ENV: 'staging' });
+    const router = createPaymentRouter(env, 'http://localhost/pay/simulator');
+    const req = { headers: { authorization: `Apikey ${env.SEPAY_API_KEY}` }, rawBody: '{}', query: {} };
+    expect(await router.get('sepay').verifyWebhook(req)).toBe(false);
+    await expect(router.get('momo').createCheckout({ reference: 'HM 1', orderId: 'o', amountMinor: 1, currency: 'VND', description: '', customerEmail: '', returnUrl: '', ipnUrl: '' })).rejects.toThrow(/khóa/);
+    const real = createPaymentRouter(loadEnv({ APP_ENV: 'staging', SEPAY_API_KEY: 'khoa-that' }), '');
+    expect(await real.get('sepay').verifyWebhook({ ...req, headers: { authorization: 'Apikey khoa-that' } })).toBe(true);
+  });
+
+  it('ở dev và test vẫn dùng được như trước', async () => {
+    const env = loadEnv({ APP_ENV: 'test' });
+    const router = createPaymentRouter(env, '');
+    expect(await router.get('sepay').verifyWebhook({ headers: { authorization: `Apikey ${env.SEPAY_API_KEY}` }, rawBody: '{}', query: {} })).toBe(true);
+  });
+});
+
+describe('Production thiếu bí mật', () => {
+  it('dừng khởi động khi AUTH_JWT_SECRET mặc định hoặc thiếu ENCRYPTION_KEY', () => {
+    expect(() => loadEnv({ APP_ENV: 'production' })).toThrow(/AUTH_JWT_SECRET/);
+    expect(() => loadEnv({ APP_ENV: 'production', AUTH_JWT_SECRET: 'x'.repeat(40) })).toThrow(/ENCRYPTION_KEY/);
+    expect(() => loadEnv({ APP_ENV: 'production', AUTH_JWT_SECRET: 'x'.repeat(40), ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' })).not.toThrow();
   });
 });

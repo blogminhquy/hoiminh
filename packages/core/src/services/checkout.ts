@@ -11,6 +11,7 @@ import { requireUser, requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { ownsProduct } from './entitlements';
 import { FLAG, requireFlag } from './feature-flags';
+import { paymentsFor } from '../lib/payment-accounts';
 
 interface Resolved {
   title: string; subtitle: string; amountMinor: number; currency: 'VND' | 'USD'; communityId: string | null; workspaceId: string | null;
@@ -93,14 +94,14 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   }
 
   const reference = newReference();
-  const adapter = ctx.payments.get(input.provider);
+  const adapter = (await paymentsFor(ctx)).get(input.provider);
   const order = await ctx.db.transaction(async (tx) => {
     const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider: input.provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + 30 * 60_000) }).returning();
     await tx.insert(orderItems).values({ orderId: o!.id, resourceType: r.targetType, resourceId: r.targetId, name: r.itemName, unitMinor: r.amountMinor, totalMinor: total });
     return o!;
   });
   const checkout = await adapter.createCheckout({ reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl: input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`, ipnUrl: `${ctx.env.API_URL}/webhooks/${input.provider}` });
-  const [payment] = await ctx.db.insert(payments).values({ workspaceId: r.workspaceId, communityId: r.communityId, orderId: order.id, customerUserId: userId, provider: input.provider, providerPaymentId: checkout.providerPaymentId, amountMinor: total, currency: r.currency, status: 'pending', paymentMethod: input.provider === 'sepay' ? 'bank_transfer' : input.provider, reference, instruction: checkout.instruction as unknown as Record<string, unknown> }).returning();
+  const [payment] = await ctx.db.insert(payments).values({ workspaceId: r.workspaceId, communityId: r.communityId, orderId: order.id, customerUserId: userId, provider: input.provider, providerPaymentId: checkout.providerPaymentId, amountMinor: total, currency: r.currency, status: 'pending', paymentMethod: input.provider === 'sepay' ? 'bank_transfer' : input.provider, reference, instruction: { ...(checkout.instruction as unknown as Record<string, unknown>), ...(checkout.settlement ? { settlement: checkout.settlement } : {}) } }).returning();
   await ctx.db.insert(paymentAttempts).values({ paymentId: payment!.id, provider: input.provider, status: 'created', request: { reference, amountMinor: total }, response: checkout.raw });
   await audit(ctx, { action: 'checkout.create', resourceType: 'order', resourceId: order.id, communityId: r.communityId, workspaceId: r.workspaceId, metadata: { provider: input.provider, amountMinor: total } });
   return { orderId: order.id, paymentId: payment!.id, reference, provider: input.provider, status: 'pending', amountMinor: total, discountMinor: discount, currency: r.currency, instruction: checkout.instruction, summary: { title: r.title, subtitle: r.subtitle, lines: [{ label: r.itemName, amountMinor: r.amountMinor }, { label: 'Giảm giá', amountMinor: -discount }] }, referredBy };

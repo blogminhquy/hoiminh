@@ -17,6 +17,8 @@ export interface CheckoutResult {
   provider: PaymentProvider;
   providerPaymentId: string | null;
   instruction: PaymentInstruction;
+  /** Số tiền cổng thực sự thu, khi khác tiền của đơn (PayPal thu USD cho đơn VND). Webhook được so với số này. */
+  settlement?: { amountMinor: number; currency: 'VND' | 'USD' };
   raw: Record<string, unknown>;
 }
 
@@ -26,7 +28,8 @@ export interface IncomingWebhook {
   query: Record<string, string>;
 }
 
-export type NormalizedEventType = 'payment.succeeded' | 'payment.failed' | 'payment.refunded' | 'ignored';
+/** `payment.approved`: người mua đã đồng ý nhưng tiền chưa về (PayPal cần gọi capture). Không cấp quyền. */
+export type NormalizedEventType = 'payment.succeeded' | 'payment.approved' | 'payment.failed' | 'payment.refunded' | 'ignored';
 
 export interface NormalizedEvent {
   providerEventId: string;
@@ -46,6 +49,7 @@ export interface NormalizedEvent {
 export interface RefundInput {
   providerPaymentId: string | null;
   reference: string;
+  /** Tính theo tiền của cổng (USD cent với PayPal). */
   amountMinor: number;
   reason: string;
 }
@@ -61,6 +65,8 @@ export interface PaymentAdapter {
   parseWebhook(req: IncomingWebhook): NormalizedEvent | null;
   /** Yêu cầu hoàn tiền (một số cổng chỉ hỗ trợ thủ công). */
   refund(input: RefundInput): Promise<{ ok: boolean; providerRefundId: string | null; manual: boolean }>;
+  /** Thu tiền một giao dịch đã được duyệt (chỉ cổng hai bước như PayPal). */
+  capture?(providerPaymentId: string): Promise<{ ok: boolean }>;
   /** Phản hồi HTTP mà cổng mong đợi sau khi nhận webhook. */
   webhookResponse(ok: boolean): { status: number; body: unknown };
 }

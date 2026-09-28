@@ -1,5 +1,5 @@
 // MoMo: tạo giao dịch ví (captureWallet) và IPN có chữ ký HMAC-SHA256.
-import { hmacHex, timingSafeEqual } from '@hoiminh/config';
+import { hmacHex, timingSafeEqual, isLocalEnv } from '@hoiminh/config';
 import type { CheckoutInput, CheckoutResult, IncomingWebhook, NormalizedEvent, PaymentAdapter, RefundInput } from './types';
 
 export interface MomoConfig {
@@ -60,7 +60,7 @@ export class MomoAdapter implements PaymentAdapter {
     };
     body.signature = await hmacHex(this.cfg.secretKey, MomoAdapter.createSignatureString({ accessKey: this.cfg.accessKey, amount: body.amount, extraData: body.extraData, ipnUrl: body.ipnUrl, orderId: body.orderId, orderInfo: body.orderInfo, partnerCode: body.partnerCode, redirectUrl: body.redirectUrl, requestId, requestType: body.requestType }));
 
-    if (!this.hasCredentials && this.cfg.appEnv !== 'production' && this.cfg.simulatorUrl) {
+    if (!this.hasCredentials && isLocalEnv(this.cfg.appEnv) && this.cfg.simulatorUrl) {
       // Sandbox không có credential: trang mô phỏng của API sẽ gửi IPN đã ký bằng secret sandbox.
       const url = `${this.cfg.simulatorUrl}?provider=momo&orderId=${encodeURIComponent(input.reference)}&amount=${input.amountMinor}&requestId=${encodeURIComponent(requestId)}&return=${encodeURIComponent(input.returnUrl)}`;
       return { provider: 'momo', providerPaymentId: requestId, instruction: { kind: 'redirect', url }, raw: { simulated: true, request: body } };

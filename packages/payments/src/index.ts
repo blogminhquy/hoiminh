@@ -1,5 +1,5 @@
 // Payment Integration Layer: router chọn adapter theo provider, tất cả đi qua cùng interface.
-import type { Env } from '@hoiminh/config';
+import { isLocalEnv, providersWithDefaultSecrets, type Env } from '@hoiminh/config';
 import type { PaymentProvider } from '@hoiminh/contracts';
 import { MomoAdapter } from './momo';
 import { PaypalAdapter } from './paypal';
@@ -18,6 +18,22 @@ export type PaymentRouter = {
   all(): PaymentAdapter[];
 };
 
+/**
+ * Cổng còn dùng bí mật mặc định (công khai trong mã nguồn) thì ngoài máy dev bị khóa hẳn:
+ * không tạo thanh toán, và mọi webhook bị coi là sai chữ ký, để không ai giả được "đã thanh toán".
+ */
+function locked(inner: PaymentAdapter): PaymentAdapter {
+  return {
+    provider: inner.provider,
+    mode: inner.mode,
+    createCheckout: async () => { throw new Error(`Cổng ${inner.provider} chưa có bí mật thật nên đang khóa`); },
+    verifyWebhook: async () => false,
+    parseWebhook: (req) => inner.parseWebhook(req),
+    refund: async () => ({ ok: false, providerRefundId: null, manual: false }),
+    webhookResponse: (ok) => inner.webhookResponse(ok),
+  };
+}
+
 /** Tạo router adapter từ biến môi trường. `simulatorUrl` là trang mô phỏng của API cho sandbox không credential. */
 export function createPaymentRouter(env: Env, simulatorUrl: string): PaymentRouter {
   const adapters: Record<PaymentProvider, PaymentAdapter> = {
@@ -26,5 +42,6 @@ export function createPaymentRouter(env: Env, simulatorUrl: string): PaymentRout
     vnpay: new VnpayAdapter({ mode: env.VNPAY_MODE, tmnCode: env.VNPAY_TMN_CODE, hashSecret: env.VNPAY_HASH_SECRET, endpoint: env.VNPAY_ENDPOINT, simulatorUrl, appEnv: env.APP_ENV }),
     paypal: new PaypalAdapter({ mode: env.PAYPAL_MODE, clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET, webhookId: env.PAYPAL_WEBHOOK_ID, usdRate: env.PAYPAL_USD_RATE, simulatorUrl, appEnv: env.APP_ENV }),
   };
+  if (!isLocalEnv(env.APP_ENV)) for (const p of providersWithDefaultSecrets(env)) adapters[p] = locked(adapters[p]);
   return { get: (p) => adapters[p], all: () => Object.values(adapters) };
 }
