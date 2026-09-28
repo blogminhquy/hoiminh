@@ -4,6 +4,7 @@ import type { Database } from '@hoiminh/db';
 import type { EmailSender } from '@hoiminh/email';
 import type { MediaProvider } from '@hoiminh/media';
 import type { PaymentRouter } from '@hoiminh/payments';
+import type { InfraValues } from './lib/infra-settings';
 import type { EventBus } from './events/bus';
 import type { JobQueue } from './jobs/queue';
 
@@ -25,6 +26,15 @@ export interface AppContext {
   queue: JobQueue;
   log: Logger;
   now: () => Date;
+  /** Khóa hạ tầng lưu ở Hệ thống · Hạ tầng; không có khi ngữ cảnh không dựng từ createApp. */
+  infra?: InfraRuntime;
+}
+
+/** Áp khóa hạ tầng mới vào App đang chạy (env + bộ gửi email) mà không cần khởi động lại. */
+export interface InfraRuntime {
+  /** Env gốc trước khi gộp khóa đã lưu (secret của Worker hoặc .env). */
+  base: Env;
+  apply: (values: InfraValues) => void;
 }
 
 /** Người thực hiện: người dùng đăng nhập, API key của workspace, hoặc hệ thống (cron/webhook). */

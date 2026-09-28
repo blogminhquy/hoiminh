@@ -99,6 +99,15 @@ export function assertProductionSecrets(env: Env): void {
   if (problems.length) throw new Error(`Production thiếu bí mật bắt buộc: ${problems.join(', ')}`);
 }
 
+/** Bí mật hệ thống đã đặt thật chưa, để hiện ở Hệ thống · Hạ tầng (không bao giờ trả về giá trị). */
+export function systemSecretStatus(env: Env): { authJwtSecret: boolean; encryptionKey: boolean; database: 'postgres' | 'pglite' } {
+  return {
+    authJwtSecret: env.AUTH_JWT_SECRET !== DEFAULTS.AUTH_JWT_SECRET && env.AUTH_JWT_SECRET.length >= 32,
+    encryptionKey: Boolean(env.ENCRYPTION_KEY),
+    database: env.DATABASE_URL.startsWith('pglite') ? 'pglite' : 'postgres',
+  };
+}
+
 /** Cổng thanh toán nào còn dùng bí mật mặc định (ai đọc mã nguồn cũng giả được webhook của cổng đó). */
 export function providersWithDefaultSecrets(env: Env): Array<'sepay' | 'momo' | 'vnpay'> {
   const out: Array<'sepay' | 'momo' | 'vnpay'> = [];

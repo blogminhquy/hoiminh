@@ -130,6 +130,16 @@ gh secret set CLOUDFLARE_API_TOKEN --repo blogminhquy/hoiminh
 
 Cách khác, không cần token: Cloudflare Dashboard → Workers & Pages → `hoiminh-web` → Settings → Build → **Connect to Git**. Khi đó Cloudflare tự build mỗi lần push (nhưng không chạy test trước).
 
+## Hạ tầng và khóa
+
+Super admin đổi key dịch vụ ở **Quản trị hệ thống, Hạ tầng và khóa** (`/he-thong/ha-tang`), không cần `wrangler secret put`:
+
+- **Email (Resend)**: API key và địa chỉ gửi, nút Gửi email thử.
+- **Phát hành web (Cloudflare)**: token (quyền Workers Scripts: Edit), Account ID, tên Worker web.
+- **R2** và **bí mật hệ thống** (database, `AUTH_JWT_SECRET`, `ENCRYPTION_KEY`): chỉ xem. Ba bí mật này vẫn đặt bằng secret của Worker, vì sai một khóa là trang quản trị không mở được để sửa.
+
+Khóa nhập trên web được mã hóa bằng `ENCRYPTION_KEY`, lưu trong bảng `provider_accounts`, và được ưu tiên hơn secret cùng tên trên Worker. Bỏ giá trị đã lưu thì quay về secret. Đổi `ENCRYPTION_KEY` thì phải nhập lại các khóa này (và credential cổng thanh toán).
+
 ## Phiên bản và phát hành
 
 Không còn nhãn phiên bản trên mọi màn hình. Mọi thứ nằm ở **Quản trị hệ thống, Phiên bản** (`/he-thong/phien-ban`), chỉ super admin thấy:

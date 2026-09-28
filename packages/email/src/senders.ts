@@ -39,10 +39,11 @@ export class LogSender implements EmailSender {
  * Không có lớp này thì email gửi qua Resend thất bại là mất dấu: không log, không bảng nào ghi.
  */
 export class RecordingSender implements EmailSender {
-  readonly label: string;
   private readonly pending = new Set<Promise<void>>();
-  constructor(private readonly inner: EmailSender, private readonly record: (m: EmailMessage, r: EmailSendResult) => Promise<void> | void) {
-    this.label = inner instanceof ResendSender ? 'Resend' : inner instanceof LogSender ? 'log' : 'custom';
+  constructor(private readonly inner: EmailSender, private readonly record: (m: EmailMessage, r: EmailSendResult) => Promise<void> | void) {}
+  /** Tính lại mỗi lần đọc: bộ gửi bên trong có thể đổi lúc chạy (SwitchableSender). */
+  get label(): string {
+    return emailProviderLabel(this.inner);
   }
   async send(message: EmailMessage): Promise<EmailSendResult> {
     const r = await this.inner.send(message);
@@ -61,6 +62,23 @@ export class RecordingSender implements EmailSender {
   }
 }
 
+/**
+ * Bộ gửi thay được lúc đang chạy: đổi API key Resend ở Hệ thống · Hạ tầng thì email kế tiếp
+ * (kể cả email thử ngay sau khi lưu) đi qua key mới mà không cần khởi động lại.
+ */
+export class SwitchableSender implements EmailSender {
+  constructor(private current: EmailSender) {}
+  use(next: EmailSender): void {
+    this.current = next;
+  }
+  get inner(): EmailSender {
+    return this.current;
+  }
+  send(message: EmailMessage): Promise<EmailSendResult> {
+    return this.current.send(message);
+  }
+}
+
 /** Chọn bộ gửi theo cấu hình. */
 export function createEmailSender(opts: { resendApiKey: string; from: string; onLog?: (m: EmailMessage) => void }): EmailSender {
   return opts.resendApiKey ? new ResendSender(opts.resendApiKey, opts.from) : new LogSender(opts.onLog);
@@ -69,6 +87,7 @@ export function createEmailSender(opts: { resendApiKey: string; from: string; on
 /** Bộ gửi đang dùng là gì, để hiện ở /health và Hệ thống · Tổng quan. */
 export function emailProviderLabel(sender: EmailSender): string {
   if (sender instanceof RecordingSender) return sender.label;
+  if (sender instanceof SwitchableSender) return emailProviderLabel(sender.inner);
   if (sender instanceof ResendSender) return 'Resend';
   if (sender instanceof LogSender) return 'log';
   return 'custom';
