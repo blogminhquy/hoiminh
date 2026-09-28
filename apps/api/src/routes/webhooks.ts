@@ -3,10 +3,10 @@ import { hmacHex, isLocalEnv, type Env } from '@hoiminh/config';
 import { paymentsService, AppError } from '@hoiminh/core';
 import { MomoAdapter, vnpQueryString } from '@hoiminh/payments';
 import { query, router, type Ctx$ } from '../lib/hono';
-import { rateLimit } from '../middleware/common';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const webhookRoutes = router();
-webhookRoutes.use('*', rateLimit({ windowMs: 60_000, max: 600, key: () => 'webhook' }));
+webhookRoutes.use('*', rateLimit('webhook', { scope: 'webhook' }));
 
 async function incoming(c: Ctx$) {
   const headers: Record<string, string> = {};

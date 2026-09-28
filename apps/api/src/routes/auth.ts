@@ -3,11 +3,11 @@ import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema,
 import { auth, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
-import { rateLimit } from '../middleware/common';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const authRoutes = router();
 
-authRoutes.post('/register', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+authRoutes.post('/register', rateLimit('auth'), async (c) => {
   const input = await parse(registerSchema, await body(c));
   const ctx = c.get('ctx');
   const ref = input.ref ?? getCookie(c.req.header('cookie'), 'hm_ref') ?? undefined;
@@ -15,14 +15,14 @@ authRoutes.post('/register', rateLimit({ windowMs: 60_000, max: 10 }), async (c)
   return c.json(session, 201);
 });
 
-authRoutes.post('/login', rateLimit({ windowMs: 60_000, max: 20 }), async (c) => {
+authRoutes.post('/login', rateLimit('auth'), async (c) => {
   const input = await parse(loginSchema, await body(c));
   const session = await auth.login(c.get('ctx'), c.get('app').auth, input, { userAgent: c.req.header('user-agent') });
   return c.json(session);
 });
 
 /** Bước hai của đăng nhập: vé + mã từ ứng dụng xác thực (hoặc mã dự phòng). */
-authRoutes.post('/2fa', rateLimit({ windowMs: 60_000, max: 10 }), async (c) => {
+authRoutes.post('/2fa', rateLimit('auth'), async (c) => {
   const input = await parse(z.object({ ticket: z.string().min(10), code: z.string().min(6).max(20), remember: z.boolean().optional() }), await body(c));
   const session = await auth.verifyTwoFactor(c.get('ctx'), c.get('app').auth, input.ticket, input.code, input.remember ?? true, { userAgent: c.req.header('user-agent') });
   return c.json(session);
@@ -61,13 +61,13 @@ authRoutes.post('/verify-email', async (c) => {
   return c.json(await auth.verifyEmail(ctx, requireUser(ctx), code));
 });
 
-authRoutes.post('/resend-verification', rateLimit({ windowMs: 60_000, max: 3 }), async (c) => {
+authRoutes.post('/resend-verification', rateLimit('auth'), async (c) => {
   const ctx = c.get('ctx');
   await auth.resendVerification(ctx, requireUser(ctx));
   return c.json({ ok: true });
 });
 
-authRoutes.post('/forgot-password', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => {
+authRoutes.post('/forgot-password', rateLimit('auth'), async (c) => {
   const { email } = await parse(forgotPasswordSchema, await body(c));
   const r = await auth.forgotPassword(c.get('ctx'), email);
   return c.json({ ok: true, ...(c.get('ctx').env.APP_ENV === 'test' ? r : {}) });

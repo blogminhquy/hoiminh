@@ -4,7 +4,7 @@ import { checkout, paymentsService, store } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
-import { rateLimit } from '../middleware/common';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const commerceRoutes = router();
 
@@ -21,7 +21,7 @@ commerceRoutes.delete('/products/:id', requireAuth, async (c) => {
 });
 commerceRoutes.get('/products/:id/downloads', requireAuth, async (c) => c.json(await store.digitalDownloads(c.get('ctx'), c.req.param('id'))));
 
-commerceRoutes.post('/checkout', requireAuth, rateLimit({ windowMs: 60_000, max: 10, key: () => 'checkout' }), async (c) => {
+commerceRoutes.post('/checkout', requireAuth, rateLimit('write', { scope: 'checkout' }), async (c) => {
   const input = await parse(createCheckoutSchema, await body(c));
   const cookieRef = getCookie(c.req.header('cookie'), 'hm_ref');
   return c.json(await checkout.createCheckout(c.get('ctx'), { ...input, ref: input.ref ?? cookieRef ?? undefined }), 201);

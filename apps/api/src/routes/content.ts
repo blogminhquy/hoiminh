@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
-import { rateLimit } from '../middleware/common';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const contentRoutes = router();
 
@@ -14,7 +14,7 @@ contentRoutes.get('/communities/:id/feed', async (c) => {
   const q = await parse(feedQuerySchema, query(c));
   return c.json(await posts.feed(c.get('ctx'), c.req.param('id'), q));
 });
-contentRoutes.post('/communities/:id/posts', requireAuth, rateLimit({ windowMs: 60_000, max: 10, key: () => 'post' }), async (c) => c.json(await posts.createPost(c.get('ctx'), c.req.param('id'), await parse(createPostSchema, await body(c))), 201));
+contentRoutes.post('/communities/:id/posts', requireAuth, rateLimit('write', { scope: 'post' }), async (c) => c.json(await posts.createPost(c.get('ctx'), c.req.param('id'), await parse(createPostSchema, await body(c))), 201));
 contentRoutes.get('/posts/:id', async (c) => c.json(await posts.getPost(c.get('ctx'), c.req.param('id'))));
 contentRoutes.post('/posts/:id/moderate', requireAuth, async (c) => {
   const input = await parse(z.object({ action: z.enum(['approve', 'reject']), reason: z.string().max(300).optional() }), await body(c));
@@ -38,7 +38,7 @@ contentRoutes.get('/comments', async (c) => {
   const q = await parse(targetSchema.extend({ sort: z.enum(['top', 'newest']).optional() }), query(c));
   return c.json(await comments.listComments(c.get('ctx'), q.targetType, q.targetId, { sort: q.sort }));
 });
-contentRoutes.post('/comments', requireAuth, rateLimit({ windowMs: 60_000, max: 30, key: () => 'comment' }), async (c) => {
+contentRoutes.post('/comments', requireAuth, rateLimit('write', { scope: 'comment' }), async (c) => {
   const input = await parse(targetSchema.merge(createCommentSchema), await body(c));
   const ctx = c.get('ctx');
   const imageUrl = input.imageFileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null) : null;
