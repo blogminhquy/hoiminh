@@ -3,6 +3,7 @@ import type { CreatePostInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { communities, communityMembers, communityTiers, files, pollOptions, pollVotes, polls, postImages, posts, reactions, spaces, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
+import { notify } from './notifications';
 import { forbidden, invalid, notFound } from '../errors';
 import { canUseStatusBg, excerptOf } from '../lib/markdown';
 import { decodeCursor, paginate } from '../lib/pagination';
@@ -26,6 +27,9 @@ export async function feed(ctx: Ctx, communityId: string, q: { spaceId?: string;
   if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để xem bảng tin');
   const limit = q.limit ?? 20;
   const conds = [eq(posts.communityId, communityId), isNull(posts.deletedAt)];
+  // Bài chờ duyệt chỉ tác giả và người kiểm duyệt thấy.
+  const me = ctx.actor.type === 'user' ? ctx.actor.userId : null;
+  if (!access.permissions.has('post.moderate')) conds.push(me ? or(eq(posts.moderationStatus, 'approved'), eq(posts.authorUserId, me))! : eq(posts.moderationStatus, 'approved'));
   if (q.spaceId) conds.push(eq(posts.spaceId, q.spaceId));
   const c = decodeCursor(q.cursor);
   if (c) conds.push(or(lt(posts.createdAt, new Date(c.at)), and(eq(posts.createdAt, new Date(c.at)), lt(posts.id, c.id)))!);
@@ -67,10 +71,11 @@ export async function createPost(ctx: Ctx, communityId: string, input: CreatePos
   if (!space) throw invalid('Chọn chuyên mục trước khi đăng');
   await canPostInSpace(ctx, access, space);
   if (input.broadcastEmail && !access.permissions.has('post.broadcast')) throw forbidden('Chỉ quản trị viên gửi email cho tất cả thành viên');
+  const moderationStatus = await needsModeration(ctx, communityId, userId, access.permissions.has('post.moderate')) ? 'pending' : 'approved';
   const imageFiles = input.imageFileIds.length ? await ctx.db.query.files.findMany({ where: and(inArray(files.id, input.imageFileIds), eq(files.ownerUserId, userId)) }) : [];
   const statusBgKey = input.statusBgKey && canUseStatusBg(input.contentMd, imageFiles.length, input.title) ? input.statusBgKey : null;
   const post = await ctx.db.transaction(async (tx) => {
-    const [p] = await tx.insert(posts).values({ communityId, spaceId: space.id, authorUserId: userId, title: input.title, contentMd: input.contentMd, excerpt: excerptOf(input.contentMd), statusBgKey, videoUrl: input.videoUrl ?? null, linkUrl: input.linkUrl ?? null, broadcast: input.broadcastEmail }).returning();
+    const [p] = await tx.insert(posts).values({ communityId, spaceId: space.id, authorUserId: userId, title: input.title, contentMd: input.contentMd, excerpt: excerptOf(input.contentMd), statusBgKey, videoUrl: input.videoUrl ?? null, linkUrl: input.linkUrl ?? null, broadcast: input.broadcastEmail, moderationStatus }).returning();
     if (imageFiles.length) await tx.insert(postImages).values(input.imageFileIds.map((fid, i) => ({ postId: p!.id, fileId: fid, url: imageFiles.find((f) => f.id === fid)?.url ?? '', width: imageFiles.find((f) => f.id === fid)?.width ?? null, height: imageFiles.find((f) => f.id === fid)?.height ?? null, sortOrder: i })).filter((r) => r.url));
     if (input.poll) {
       const [poll] = await tx.insert(polls).values({ postId: p!.id, question: input.poll.question, multipleChoice: input.poll.multipleChoice, closesAt: input.poll.closesAt ? new Date(input.poll.closesAt) : null }).returning();
@@ -79,9 +84,58 @@ export async function createPost(ctx: Ctx, communityId: string, input: CreatePos
     await tx.update(spaces).set({ postCount: sql`${spaces.postCount} + 1` }).where(eq(spaces.id, space.id));
     return p!;
   });
-  await ctx.events.emit('post.created', { postId: post.id, communityId, authorUserId: userId, spaceId: space.id, broadcast: input.broadcastEmail, title: input.title || excerptOf(input.contentMd, 80) });
-  if (input.broadcastEmail) await ctx.queue.enqueue('post.broadcast', { postId: post.id });
+  if (moderationStatus === 'pending') {
+    await notifyModerators(ctx, communityId, post.id, userId);
+  } else {
+    await ctx.events.emit('post.created', { postId: post.id, communityId, authorUserId: userId, spaceId: space.id, broadcast: input.broadcastEmail, title: input.title || excerptOf(input.contentMd, 80) });
+    if (input.broadcastEmail) await ctx.queue.enqueue('post.broadcast', { postId: post.id });
+  }
   return post;
+}
+
+/**
+ * Cài đặt "Duyệt bài của thành viên mới trong N ngày đầu" (Cài đặt · Bảng tin). Trước đây chỉ
+ * được lưu, không nơi nào đọc. Người có quyền kiểm duyệt không bị duyệt.
+ */
+async function needsModeration(ctx: Ctx, communityId: string, userId: string, canModerate: boolean): Promise<boolean> {
+  if (canModerate) return false;
+  const c = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { moderateNewMembersDays: true } });
+  if (!c || c.moderateNewMembersDays <= 0) return false;
+  const m = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, communityId), eq(communityMembers.userId, userId)), columns: { joinedAt: true } });
+  if (!m) return true;
+  return ctx.now().getTime() - m.joinedAt.getTime() < c.moderateNewMembersDays * 86_400_000;
+}
+
+async function notifyModerators(ctx: Ctx, communityId: string, postId: string, authorUserId: string) {
+  const [community, author, mods] = await Promise.all([
+    ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true } }),
+    ctx.db.query.users.findFirst({ where: eq(users.id, authorUserId), columns: { name: true } }),
+    ctx.db.query.communityMembers.findMany({ where: and(eq(communityMembers.communityId, communityId), inArray(communityMembers.role, ['owner', 'admin', 'moderator']), eq(communityMembers.status, 'active')), columns: { userId: true } }),
+  ]);
+  for (const m of mods) {
+    if (m.userId === authorUserId) continue;
+    await notify(ctx, { userId: m.userId, communityId, kind: 'post.pending', category: 'post', title: `${author?.name ?? 'Thành viên mới'} đăng bài chờ duyệt`, body: 'Thành viên mới trong thời gian duyệt bài', actorUserId: authorUserId, link: community ? `/${community.slug}/bai-viet/${postId}` : null, actionLabel: 'Duyệt' });
+  }
+}
+
+/** Duyệt hoặc từ chối bài chờ duyệt. Duyệt thì phát post.created như bài thường; từ chối thì xóa mềm và báo tác giả. */
+export async function moderatePost(ctx: Ctx, postId: string, action: 'approve' | 'reject', reason = '') {
+  const post = await ctx.db.query.posts.findFirst({ where: and(eq(posts.id, postId), isNull(posts.deletedAt)) });
+  if (!post) throw notFound();
+  await requireCommunityPermission(ctx, post.communityId, 'post.moderate');
+  if (post.moderationStatus !== 'pending') throw invalid('Bài này không chờ duyệt');
+  const community = await ctx.db.query.communities.findFirst({ where: eq(communities.id, post.communityId), columns: { slug: true } });
+  if (action === 'approve') {
+    await ctx.db.update(posts).set({ moderationStatus: 'approved', createdAt: ctx.now(), updatedAt: ctx.now() }).where(eq(posts.id, postId));
+    await ctx.events.emit('post.created', { postId, communityId: post.communityId, authorUserId: post.authorUserId, spaceId: post.spaceId, broadcast: false, title: post.title || excerptOf(post.contentMd, 80) });
+    await notify(ctx, { userId: post.authorUserId, communityId: post.communityId, kind: 'post.approved', category: 'post', title: 'Bài viết của bạn đã được duyệt', body: post.title || excerptOf(post.contentMd, 80), link: community ? `/${community.slug}/bai-viet/${postId}` : null, actionLabel: 'Xem' });
+  } else {
+    await ctx.db.update(posts).set({ deletedAt: ctx.now() }).where(eq(posts.id, postId));
+    await ctx.db.update(spaces).set({ postCount: sql`greatest(${spaces.postCount} - 1, 0)` }).where(eq(spaces.id, post.spaceId));
+    await notify(ctx, { userId: post.authorUserId, communityId: post.communityId, kind: 'post.rejected', category: 'post', title: 'Bài viết của bạn không được duyệt', body: reason || post.title || excerptOf(post.contentMd, 80), link: community ? `/${community.slug}/bang-tin` : null, actionLabel: null });
+  }
+  await audit(ctx, { action: `post.${action}`, resourceType: 'post', resourceId: postId, communityId: post.communityId, metadata: { reason } });
+  return { ok: true };
 }
 
 /** Chi tiết bài viết: nội dung đầy đủ, ảnh, bình chọn, tác giả, bài liên quan, mục lục. */
@@ -90,6 +144,7 @@ export async function getPost(ctx: Ctx, postId: string) {
   if (!row) throw notFound('Bài viết không tồn tại');
   const access = await resolveCommunityAccess(ctx, row.p.communityId);
   if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để đọc bài');
+  if (row.p.moderationStatus === 'pending' && !access.permissions.has('post.moderate') && !(ctx.actor.type === 'user' && ctx.actor.userId === row.p.authorUserId)) throw notFound('Bài viết không tồn tại');
   const [images, liked, pollMap, member, related, authorPosts] = await Promise.all([
     ctx.db.query.postImages.findMany({ where: eq(postImages.postId, postId), orderBy: asc(postImages.sortOrder) }),
     ctx.actor.type === 'user' ? ctx.db.query.reactions.findFirst({ where: and(eq(reactions.userId, ctx.actor.userId), eq(reactions.targetType, 'post'), eq(reactions.targetId, postId)) }) : null,

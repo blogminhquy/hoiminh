@@ -1,7 +1,7 @@
 // Chi tiết sự kiện (eventDetailMain): bìa + nhãn, ngày giờ + CTA, nhắc, mô tả, bản ghi, câu hỏi gửi trước, thảo luận; rail người tham gia, chuỗi, tổ chức.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, DateBlock, T } from '@hoiminh/ui';
-import { Bell, Calendar, Check, ChevronLeft, ChevronUp, Download, ExternalLink, Lock, Play, Settings, Users, Video } from 'lucide-react';
+import { Bell, Calendar, Check, ChevronLeft, ChevronUp, Download, ExternalLink, Lock, Play, Plus, Settings, Users, Video } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
@@ -33,6 +33,27 @@ function Questions({ e }: { e: EventDetail }) {
           <div className="flex-grow min-w-0"><div className="flex items-center gap-2 text-[13px]"><Avatar name={qn.user.name} src={qn.user.avatarUrl} color={qn.user.coverColor ?? T.ink} size={22} /><span className="font-semibold">{qn.user.name}</span>{qn.answeredAt && <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>Đã trả lời</span>}</div><div className="text-[14px] mt-1" style={{ color: T.ink2 }}>{qn.question}</div></div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Người tổ chức dán link video (YouTube, Vimeo…) sau buổi; bản ghi hiện ở trang sự kiện và mục Xem lại. */
+function AddRecording({ eventId }: { eventId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const m = useMutation({
+    mutationFn: () => api.post(`/v1/events/${eventId}/recordings`, { videoUrl: url.trim(), ...(title.trim() ? { title: title.trim() } : {}) }),
+    onSuccess: () => { setOpen(false); setUrl(''); setTitle(''); void qc.invalidateQueries({ queryKey: ['event', eventId] }); void qc.invalidateQueries({ queryKey: ['events'] }); },
+  });
+  if (!open) return <button type="button" className="btn btn-ghost btn-sm justify-start" onClick={() => setOpen(true)}><Plus size={14} />Thêm bản ghi</button>;
+  return (
+    <div className="flex flex-col gap-2 pt-1">
+      <div className="input" style={{ height: 38 }}><input value={url} onChange={(ev) => setUrl(ev.target.value)} placeholder="Link video bản ghi (YouTube, Vimeo…)" className="flex-grow min-w-0" /></div>
+      <div className="input" style={{ height: 38 }}><input value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="Tên bản ghi (tùy chọn)" className="flex-grow min-w-0" /></div>
+      {m.isError && <span className="text-[12px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
+      <div className="flex gap-2"><Button size="sm" onClick={() => setOpen(false)}>Hủy</Button><Button size="sm" variant="dark" loading={m.isPending} disabled={!/^https?:\/\//.test(url.trim())} onClick={() => m.mutate()}>Đăng bản ghi</Button></div>
     </div>
   );
 }
@@ -104,6 +125,7 @@ export default function Page() {
                   <div className="font-semibold text-[13px]">Dành cho người tổ chức</div>
                   <Link to={`/${slug}/su-kien/${e.id}/sua`} className="btn btn-ghost btn-sm justify-start"><Settings size={14} />Sửa sự kiện</Link>
                   <button type="button" className="btn btn-ghost btn-sm justify-start" onClick={() => void api.get<Array<{ name: string; email: string; handle: string }>>(`/v1/events/${e.id}/attendees`).then((rows) => saveBlob(toCsvBlob([['Tên', 'Email', 'Handle'], ...rows.map((r) => [r.name, r.email, r.handle])]), `nguoi-dang-ky-${e.id.slice(0, 8)}.csv`))}><Download size={14} />Xuất danh sách</button>
+                  <AddRecording eventId={e.id} />
                 </div>
               )}
             </aside>

@@ -1,7 +1,7 @@
 // Consumer hàng đợi: email, webhook gửi đi, broadcast bài viết, tin nhắn chào, nhắc sự kiện, snapshot, đếm lại khóa.
 import { templates } from '@hoiminh/email';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { communities, emailLogs, eventRegistrations, events, notificationPrefs, posts, users } from '@hoiminh/db';
+import { communities, eventRegistrations, events, notificationPrefs, posts, users } from '@hoiminh/db';
 import { systemCtx, type AppContext } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { raw } from '../lib/db';
@@ -49,8 +49,8 @@ export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
           for (const r of rows.slice(i, i + 500)) {
             const p = prefs.find((x) => x.userId === r.id);
             if (p && (p.emailDigest === false || p.perCommunity[post.communityId] === 'off')) continue;
-            const res = await ctx.email.send(templates.broadcastPost(r.email, community.name, post.title || post.excerpt.slice(0, 60), post.excerpt, `${ctx.env.APP_URL}/${community.slug}/bai-viet/${post.id}`));
-            await ctx.db.insert(emailLogs).values({ toEmail: r.email, template: 'broadcast_post', subject: post.title, status: res.status, providerMessageId: res.providerMessageId ?? null, error: res.error ?? null });
+            // Kết quả gửi được RecordingSender ghi vào email_logs.
+            await ctx.email.send(templates.broadcastPost(r.email, community.name, post.title || post.excerpt.slice(0, 60), post.excerpt, `${ctx.env.APP_URL}/${community.slug}/bai-viet/${post.id}`));
             sent++;
           }
         }

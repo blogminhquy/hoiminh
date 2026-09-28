@@ -1,8 +1,8 @@
 // Lắp ráp AppContext từ env: db, email, media, payments, bus, queue, logger, handlers.
 import type { Env } from '@hoiminh/config';
 import { connect, runMigrations, type Database } from '@hoiminh/db';
-import { createEmailSender, type EmailMessage } from '@hoiminh/email';
-import { createMediaProvider } from '@hoiminh/media';
+import { RecordingSender, createEmailSender, type EmailMessage } from '@hoiminh/email';
+import { createMediaProvider, type R2BucketLike } from '@hoiminh/media';
 import { createPaymentRouter } from '@hoiminh/payments';
 import { emailLogs } from '@hoiminh/db';
 import { LocalAuthProvider, SupabaseAuthProvider, type AuthProvider } from './auth/providers';
@@ -19,6 +19,8 @@ export interface CreateAppOptions {
   /** Tự chạy migration khi khởi động (local/test). */
   migrate?: boolean;
   onEmail?: (m: EmailMessage) => void;
+  /** Binding R2 của Worker (`FILES`): có nó thì tệp lên R2 mà không cần secret R2_*. */
+  r2Bucket?: R2BucketLike | null;
 }
 
 export interface App {
@@ -39,15 +41,17 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
     close = handle.close;
   }
   const log = consoleLogger(env.LOG_LEVEL);
-  const email = createEmailSender({
-    resendApiKey: env.RESEND_API_KEY,
-    from: env.EMAIL_FROM,
-    onLog: (m) => {
-      opts.onEmail?.(m);
-      void db!.insert(emailLogs).values({ toEmail: m.to, template: m.template, subject: m.subject, status: 'logged' }).catch(() => null);
+  // Mọi lần gửi (Resend hay log) đều ghi vào email_logs kèm kết quả, để quản trị thấy email
+  // có đi thật không thay vì đoán. Ghi bằng kết nối gốc và không chờ (xem RecordingSender);
+  // close() chờ flush để Worker không đóng kết nối khi dòng nhật ký chưa ghi xong.
+  const rootDb = db;
+  const email = new RecordingSender(
+    createEmailSender({ resendApiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, onLog: (m) => opts.onEmail?.(m) }),
+    async (m, r) => {
+      await rootDb.insert(emailLogs).values({ toEmail: m.to, template: m.template, subject: m.subject, status: r.status, providerMessageId: r.providerMessageId ?? null, error: r.error ?? null });
     },
-  });
-  const media = createMediaProvider({ r2: { accountId: env.R2_ACCOUNT_ID, accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY, bucket: env.R2_BUCKET, publicBaseUrl: env.R2_PUBLIC_BASE_URL }, apiUrl: env.API_URL, secret: env.AUTH_JWT_SECRET });
+  );
+  const media = createMediaProvider({ r2: { accountId: env.R2_ACCOUNT_ID, accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY, bucket: env.R2_BUCKET, publicBaseUrl: env.R2_PUBLIC_BASE_URL }, r2Bucket: opts.r2Bucket ?? null, apiUrl: env.API_URL, secret: env.AUTH_JWT_SECRET });
   const payments = createPaymentRouter(env, `${env.API_URL}/pay/simulator`);
   const events = createEventBus((name, err) => log.error('event.handler_failed', { name, err: String(err) }));
   const queue = opts.queue ?? new InMemoryQueue();
@@ -57,5 +61,5 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
   const auth: AuthProvider = env.AUTH_PROVIDER === 'supabase' && env.SUPABASE_URL
     ? new SupabaseAuthProvider({ url: env.SUPABASE_URL, anonKey: env.SUPABASE_ANON_KEY, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY, jwtSecret: env.SUPABASE_JWT_SECRET || env.AUTH_JWT_SECRET })
     : new LocalAuthProvider(db, env.AUTH_JWT_SECRET);
-  return { ctx, auth, close };
+  return { ctx, auth, close: async () => { await email.flush(); await close(); } };
 }

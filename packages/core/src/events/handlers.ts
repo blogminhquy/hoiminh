@@ -2,7 +2,7 @@
 import { formatMoney } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
-import { communities, communityMembers, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
+import { communities, communityMembers, courses, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
@@ -116,7 +116,8 @@ export function registerHandlers(app: AppContext): void {
   bus.on('course.completed', async (p, ev) => {
     const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
-    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: 'Chứng nhận có tên bạn đã sẵn sàng', link: community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: 'Xem' });
+    const course = await c.db.query.courses.findFirst({ where: eq(courses.id, p.courseId), columns: { certificateEnabled: true } });
+    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'course.completed', category: 'system', title: 'Chúc mừng, bạn đã hoàn thành khóa học', body: course?.certificateEnabled ? 'Chứng nhận có tên bạn đã sẵn sàng' : undefined, link: course?.certificateEnabled ? `/chung-nhan/${p.courseId}/${p.userId}` : community ? `/${community.slug}/khoa-hoc/${p.courseId}` : null, actionLabel: course?.certificateEnabled ? 'Xem chứng nhận' : 'Xem' });
     await dispatch(c, community?.workspaceId ?? null, 'course.completed', { userId: p.userId, courseId: p.courseId });
   });
 

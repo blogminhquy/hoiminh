@@ -3,16 +3,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Chip, CommunityMark, T, money } from '@hoiminh/ui';
 import { Download, Search } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { saveBlob, toCsvBlob } from '@/lib/download';
 import { daysUntil, fmtCount } from '@/lib/format';
+import { SITE_HOST } from '@/lib/site';
 
 interface Row { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; memberCount: number; lockedReason: string | null; owner: { id: string; name: string; email: string }; workspaceStatus: string; trialEndsAt: string | null; gmv30Minor: number; planCycle: string | null }
 interface List { items: Row[]; counts: Record<string, number> }
-type Status = 'active' | 'draft' | 'archived' | 'locked';
+type Status = 'active' | 'draft' | 'archived' | 'locked' | 'reported';
 const STATUSES: Array<[Status, string]> = [['active', 'Hoạt động'], ['draft', 'Nháp'], ['archived', 'Lưu trữ'], ['locked', 'Bị khóa']];
+/** /he-thong/ho-tro: cùng bảng nhưng mở sẵn hội bị báo cáo và hội đã khóa, là hai việc cần xử lý. */
+const SUPPORT_STATUSES: Array<[Status, string]> = [['reported', 'Bị báo cáo'], ['locked', 'Bị khóa'], ['active', 'Hoạt động']];
 
 function planOf(r: Row): string { return r.planCycle === 'yearly' ? 'Năm' : r.planCycle === 'monthly' ? 'Tháng' : 'Dùng thử'; }
 function stateOf(r: Row): [string, string] {
@@ -27,7 +30,9 @@ function stateOf(r: Row): [string, string] {
 
 export default function Page() {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<Status>('active');
+  const support = useLocation().pathname.endsWith('/ho-tro');
+  const [status, setStatus] = useState<Status>(support ? 'reported' : 'active');
+  const statuses = support ? SUPPORT_STATUSES : STATUSES;
   // Nhận từ khóa từ ô tìm nhanh trên header quản trị (?q=...).
   const [params] = useSearchParams();
   const [q, setQ] = useState(params.get('q') ?? '');
@@ -39,8 +44,8 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="serif m-0 text-[28px] font-extrabold">Hội</h1>
-        <div className="flex gap-2 flex-wrap md:ml-3">{STATUSES.map(([k, l]) => <Chip key={k} on={status === k} onClick={() => setStatus(k)}>{l} · {list.data?.counts[k] ?? 0}</Chip>)}</div>
+        <h1 className="serif m-0 text-[28px] font-extrabold">{support ? 'Hỗ trợ và khiếu nại' : 'Hội'}</h1>
+        <div className="flex gap-2 flex-wrap md:ml-3">{statuses.map(([k, l]) => <Chip key={k} on={status === k} onClick={() => setStatus(k)}>{l} · {list.data?.counts[k] ?? 0}</Chip>)}</div>
         <span className="flex-grow" />
         <button type="button" className="btn btn-ghost btn-sm" onClick={exportCsv} disabled={!list.data}><Download size={14} />Xuất CSV</button>
       </div>
@@ -52,7 +57,7 @@ export default function Page() {
             <div className="grid gap-3 px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 960 }}>{['Hội', 'Chủ hội', 'Gói', 'Thành viên', 'GMV 30 ngày', 'Trạng thái', ''].map((h, i) => <span key={i} className="th">{h}</span>)}</div>
             {d.items.map((r) => { const [st, color] = stateOf(r); const plan = planOf(r); return (
               <div key={r.id} className="grid gap-3 items-center px-5 py-3 text-[13px]" style={{ gridTemplateColumns: cols, minWidth: 960, borderTop: `1px solid ${T.line}` }}>
-                <div className="flex items-center gap-2.5 min-w-0"><CommunityMark mark={r.logoMark} color={r.logoColor} url={r.logoUrl} size={34} radius={9} /><div className="min-w-0"><div className="font-semibold truncate">{r.name}</div><div className="muted text-[12px] truncate">hoiminh.vn/{r.slug}</div></div></div>
+                <div className="flex items-center gap-2.5 min-w-0"><CommunityMark mark={r.logoMark} color={r.logoColor} url={r.logoUrl} size={34} radius={9} /><div className="min-w-0"><div className="font-semibold truncate">{r.name}</div><div className="muted text-[12px] truncate">{SITE_HOST}/{r.slug}</div></div></div>
                 <span className="truncate">{r.owner.name}</span>
                 <span className="tag" style={{ background: plan === 'Dùng thử' ? T.bg : T.goldSoft, color: plan === 'Dùng thử' ? T.ink2 : T.goldText, width: 'fit-content' }}>{plan}</span>
                 <span>{fmtCount(r.memberCount)}</span>

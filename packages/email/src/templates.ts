@@ -63,6 +63,9 @@ export const templates = {
     make('broadcast_post', to, `[${community}] ${title}`, title, `<p>${excerpt}</p>`, { label: 'Đọc bài', url }),
   newMessage: (to: string, from: string, preview: string, url: string) =>
     make('new_message', to, `${from} nhắn cho bạn`, `Tin nhắn mới từ ${from}`, `<p>${preview}</p>`, { label: 'Trả lời', url }),
+  /** Email thử do quản trị hệ thống bấm gửi để kiểm chứng Resend đã nối. */
+  testEmail: (to: string, name: string, meta: { env: string; from: string; sentAt: string }) =>
+    make('test_email', to, 'Email thử từ Hội Mình', 'Resend đã nối', `<p>Chào ${name}, đây là email thử gửi từ Hệ thống · Tổng quan. Nhận được nghĩa là RESEND_API_KEY đúng và tên miền gửi đã xác minh.</p><p style="font-size:13px;color:#8C8478;">Môi trường: ${meta.env} · Gửi từ: ${meta.from} · Lúc: ${meta.sentAt}</p>`),
   invite: (to: string, community: string, inviter: string, url: string) =>
     make('invite', to, `${inviter} mời bạn vào ${community}`, `Bạn được mời vào ${community}`, `<p><strong>${inviter}</strong> mời bạn tham gia hội <strong>${community}</strong> trên Hội Mình.</p>`, { label: 'Tham gia', url }),
 };

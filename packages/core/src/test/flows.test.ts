@@ -16,6 +16,7 @@ import * as entitlementSvc from '../services/entitlements';
 import * as events from '../services/events';
 import * as members from '../services/members';
 import * as messaging from '../services/messaging';
+import * as notifications from '../services/notifications';
 import * as paymentsSvc from '../services/payments';
 import * as posts from '../services/posts';
 import * as withdrawals from '../services/withdrawals';
@@ -416,5 +417,132 @@ describe('Xác thực hai lớp (TOTP)', () => {
     expect((await totp.status(ctx)).enabled).toBe(false);
     const s = await loginOk(app.anon(), app.auth, { email, password, remember: true });
     expect(s.user.id).toBe(userId);
+  });
+});
+
+describe('Công tắc khóa học có tác dụng thật (rà soát 20/09)', () => {
+  it('học theo thứ tự: bài 2 khóa tới khi bài 1 hoàn thành; người quản lý không bị chặn', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa thứ tự', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: true, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'M1' });
+    const l1 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a' });
+    const l2 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 2', kind: 'text', contentMd: 'b' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const duy = await app.as('duy');
+    expect((await courses.getLesson(duy, l1.id)).locked).toBe(false);
+    const before = await courses.getLesson(duy, l2.id);
+    expect(before.locked).toBe(true);
+    expect(before.sequentialLocked).toBe(true);
+    expect(before.lockReason).toBe('sequential');
+    expect((await courses.getLesson(mq, l2.id)).locked).toBe(false);
+    await courses.completeLesson(duy, l1.id);
+    expect((await courses.getLesson(duy, l2.id)).locked).toBe(false);
+  });
+  it('bài bật "phải hoàn thành" giữ đúng bài kế tiếp; nhỏ giọt chỉ chạy khi khóa bật dripEnabled', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa cờ bài', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: true, dripEnabled: false, certificateEnabled: false, sequential: false, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'M1' });
+    const l1 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a', requireComplete: true });
+    const l2 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 2', kind: 'text', contentMd: 'b', dripDays: 30 });
+    const l3 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 3', kind: 'text', contentMd: 'c' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const cong = await app.as('cong');
+    expect((await courses.getLesson(cong, l2.id)).sequentialLocked).toBe(true);
+    expect((await courses.getLesson(cong, l3.id)).sequentialLocked).toBe(false);
+    await courses.completeLesson(cong, l1.id);
+    const l2view = await courses.getLesson(cong, l2.id);
+    expect(l2view.sequentialLocked).toBe(false);
+    expect(l2view.dripLocked).toBe(false);
+    await courses.updateCourse(mq, course.id, { dripEnabled: true });
+    expect((await courses.getLesson(cong, l2.id)).dripLocked).toBe(true);
+  });
+  it('khóa tắt "cộng sự nhận hoa hồng" thì đơn mua khóa đó không tính hoa hồng', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const make = async (affiliateEnabled: boolean) => {
+      const c = await courses.createCourse(mq, kd, { title: `Khóa hoa hồng ${affiliateEnabled}`, shortDescription: 'x', descriptionMd: '', accessMode: 'store_only', priceMinor: 100_000, previewFirstModule: false, affiliateEnabled, dripEnabled: false, certificateEnabled: false, sequential: false, hiddenFromStore: false });
+      const mod = await courses.upsertModule(mq, c.id, { title: 'M1' });
+      await courses.upsertLesson(mq, c.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a' });
+      await courses.updateCourse(mq, c.id, { status: 'published' });
+      const full = await courses.getCourse(mq, c.id);
+      const session = await checkout.createCheckout(await app.as('thulan'), { target: { type: 'product', productId: full.product!.id }, provider: 'sepay' });
+      return session.orderId;
+    };
+    expect(await affiliate.productsAllowCommission(app.system(), await make(false))).toBe(false);
+    expect(await affiliate.productsAllowCommission(app.system(), await make(true))).toBe(true);
+  });
+  it('quản trị: bộ lọc "bị báo cáo" chỉ trả hội đang hoạt động có lý do khóa chờ xử lý', async () => {
+    const adminCtx = await app.as('admin');
+    const r = await admin.listCommunities(adminCtx, { status: 'reported' });
+    expect(r.counts.reported).toBe(r.items.length);
+    expect(r.items.every((c) => c.status === 'active' && c.lockedReason)).toBe(true);
+  });
+});
+
+describe('Duyệt bài thành viên mới và chứng nhận hoàn thành (rà soát 20/09)', () => {
+  it('bật duyệt bài N ngày: thành viên mới đăng thì chờ duyệt, chỉ tác giả và người kiểm duyệt thấy; duyệt xong ai cũng thấy', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    await communities.updateFeedSettings(mq, kd, { moderateNewMembersDays: 7 });
+    // Người mới: đăng ký rồi vào hội ngay trong test này.
+    const s = await register(app.anon(), app.auth, { name: 'Mới Toanh', email: 'moitoanh@example.com', password: 'matkhau123', communitySlug: 'minhquy', acceptTerms: true });
+    const newbie = { ...app.anon(), actor: { type: 'user' as const, userId: s.user.id, isSuperAdmin: false, email: 'moitoanh@example.com' } };
+    await verifyEmail(newbie, s.user.id, '482913');
+    const aboutN = await communities.aboutPage(newbie, 'minhquy');
+    await members.joinCommunity(newbie, 'minhquy', { answers: aboutN.joinQuestions.map((q) => ({ questionId: q.id, answer: 'Học' })) });
+    const space = await app.ids('space:kd:chia-se');
+    const post = await posts.createPost(newbie, kd, { spaceId: space, title: 'Bài chờ duyệt', contentMd: 'xin chào', imageFileIds: [], broadcastEmail: false });
+    expect(post.moderationStatus).toBe('pending');
+    const duy = await app.as('duy');
+    expect((await posts.feed(duy, kd, {})).items.some((p) => p.id === post.id)).toBe(false);
+    await expect(posts.getPost(duy, post.id)).rejects.toThrow(/không tồn tại/);
+    expect((await posts.feed(newbie, kd, {})).items.some((p) => p.id === post.id)).toBe(true);
+    expect((await posts.feed(mq, kd, {})).items.some((p) => p.id === post.id)).toBe(true);
+    await expect(posts.moderatePost(duy, post.id, 'approve')).rejects.toThrow();
+    await posts.moderatePost(mq, post.id, 'approve');
+    expect((await posts.feed(duy, kd, {})).items.some((p) => p.id === post.id)).toBe(true);
+    // Thành viên lâu năm không bị duyệt (seed ghi joined_at lúc seed nên lùi tay 30 ngày); tắt cài đặt thì người mới cũng không.
+    const { sql: rawSql } = await import('drizzle-orm');
+    await app.ctx.db.execute(rawSql`update community_members set joined_at = now() - interval '30 days' where user_id = ${await app.ids('user:duy')} and community_id = ${kd}`);
+    const old = await posts.createPost(duy, kd, { spaceId: space, title: 'Bài cũ', contentMd: 'ok', imageFileIds: [], broadcastEmail: false });
+    expect(old.moderationStatus).toBe('approved');
+    await communities.updateFeedSettings(mq, kd, { moderateNewMembersDays: 0 });
+    expect((await posts.createPost(newbie, kd, { spaceId: space, title: 'Bài 2', contentMd: 'ok', imageFileIds: [], broadcastEmail: false })).moderationStatus).toBe('approved');
+  });
+  it('từ chối bài chờ duyệt thì bài bị xóa mềm và tác giả nhận thông báo', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    await communities.updateFeedSettings(mq, kd, { moderateNewMembersDays: 30 });
+    const s = await register(app.anon(), app.auth, { name: 'Mới Hai', email: 'moihai@example.com', password: 'matkhau123', communitySlug: 'minhquy', acceptTerms: true });
+    const newbie = { ...app.anon(), actor: { type: 'user' as const, userId: s.user.id, isSuperAdmin: false, email: 'moihai@example.com' } };
+    await verifyEmail(newbie, s.user.id, '482913');
+    const aboutN = await communities.aboutPage(newbie, 'minhquy');
+    await members.joinCommunity(newbie, 'minhquy', { answers: aboutN.joinQuestions.map((q) => ({ questionId: q.id, answer: 'Học' })) });
+    const post = await posts.createPost(newbie, kd, { spaceId: await app.ids('space:kd:chia-se'), title: 'Spam', contentMd: 'mua ngay', imageFileIds: [], broadcastEmail: false });
+    await posts.moderatePost(mq, post.id, 'reject', 'Quảng cáo');
+    await expect(posts.getPost(mq, post.id)).rejects.toThrow();
+    const n = await notifications.listNotifications(newbie, {});
+    expect(n.items.some((x: { kind: string; body: string | null }) => x.kind === 'post.rejected' && x.body === 'Quảng cáo')).toBe(true);
+    await communities.updateFeedSettings(mq, kd, { moderateNewMembersDays: 0 });
+  });
+  it('chứng nhận: chỉ có khi khóa bật cấp chứng nhận và học đủ 100%; ai cũng kiểm tra được', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa chứng nhận', shortDescription: 'x', descriptionMd: '', accessMode: 'all_members', previewFirstModule: false, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'M1' });
+    const l1 = await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', kind: 'text', contentMd: 'a' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const cong = await app.as('cong');
+    const congId = await app.ids('user:cong');
+    await expect(courses.certificate(app.anon(), course.id, congId)).rejects.toThrow(/chưa hoàn thành/);
+    await courses.completeLesson(cong, l1.id);
+    const cert = await courses.certificate(app.anon(), course.id, congId);
+    expect(cert.learner.id).toBe(congId);
+    expect(cert.course.title).toBe('Khóa chứng nhận');
+    expect(cert.verifyUrl).toContain(`/chung-nhan/${course.id}/${congId}`);
+    await courses.updateCourse(mq, course.id, { certificateEnabled: false });
+    await expect(courses.certificate(app.anon(), course.id, congId)).rejects.toThrow(/không cấp/);
   });
 });

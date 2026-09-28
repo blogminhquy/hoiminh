@@ -1,7 +1,7 @@
 // Cột trái Soạn khóa học: danh sách module/bài, kéo thả sắp xếp (HTML5 DnD), thêm module/bài, nhập nhanh từ link.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
-import { ChevronDown, ChevronRight, GripVertical, Plus, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { fmtDuration } from '@/lib/format';
@@ -10,7 +10,7 @@ import { KIND_ICON, type LessonKind } from './CourseBuilderParts';
 export interface OutlineLesson { id: string; title: string; kind: LessonKind; durationSeconds: number | null; isPreview: boolean }
 export interface OutlineModule { id: string; title: string; lessons: OutlineLesson[] }
 
-function LessonItem({ l, on, onSelect, onDragStart, onDrop }: { l: OutlineLesson; on: boolean; onSelect: () => void; onDragStart: () => void; onDrop: () => void }) {
+function LessonItem({ l, on, onSelect, onDragStart, onDrop, onDelete }: { l: OutlineLesson; on: boolean; onSelect: () => void; onDragStart: () => void; onDrop: () => void; onDelete: () => void }) {
   const dur = l.kind === 'task' ? 'Bài tập' : l.kind === 'file' ? 'Tài liệu' : fmtDuration(l.durationSeconds);
   return (
     <div draggable onDragStart={onDragStart} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onDrop(); }} onClick={onSelect} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(); }}
@@ -20,6 +20,7 @@ function LessonItem({ l, on, onSelect, onDragStart, onDrop }: { l: OutlineLesson
       <span className="flex-grow min-w-0 truncate" style={{ fontWeight: on ? 600 : 400 }}>{l.title}</span>
       {l.isPreview && <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 18, padding: '0 5px', fontSize: 10 }}>Xem thử</span>}
       <span className="muted text-[11px]">{dur}</span>
+      {on && <button type="button" aria-label="Xóa bài" title="Xóa bài" style={{ color: T.ink3 }} onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 size={14} /></button>}
     </div>
   );
 }
@@ -34,6 +35,9 @@ export function Outline({ courseId, modules, selected, onSelect, onOpenImport, o
     mutationFn: (moduleId: string) => api.post<{ id: string }>(`/v1/courses/${courseId}/lessons`, { moduleId, title: 'Bài mới', kind: 'video' }),
     onSuccess: (l) => { onSelect(l.id); void refresh(); },
   });
+  // Xóa bài / module: API đã có từ đầu nhưng không nút nào gọi, nên bài tạo nhầm phải xóa bằng SQL.
+  const delLesson = useMutation({ mutationFn: (id: string) => api.del(`/v1/lessons/${id}`), onSuccess: () => void refresh() });
+  const delModule = useMutation({ mutationFn: (id: string) => api.del(`/v1/modules/${id}`), onSuccess: () => void refresh() });
   const reorder = useMutation({ mutationFn: (mods: OutlineModule[]) => api.put(`/v1/courses/${courseId}/reorder`, { modules: mods.map((m, i) => ({ id: m.id, sortOrder: i, lessonIds: m.lessons.map((l) => l.id) })) }), onSuccess: () => void refresh() });
   const openModuleId = modules.find((m) => open[m.id])?.id ?? null;
   const total = modules.reduce((n, m) => n + m.lessons.length, 0);
@@ -64,8 +68,9 @@ export function Outline({ courseId, modules, selected, onSelect, onOpenImport, o
             <span className="flex-grow font-bold text-[13px] truncate">{i + 1}. {m.title}</span>
             <span className="muted text-[11px]">{m.lessons.length} bài</span>
             <button type="button" onClick={() => addLesson.mutate(m.id)} style={{ color: T.ink3 }} aria-label="Thêm bài"><Plus size={14} /></button>
+            <button type="button" onClick={() => { if (window.confirm(m.lessons.length ? `Xóa module "${m.title}" và ${m.lessons.length} bài trong đó?` : `Xóa module "${m.title}"?`)) delModule.mutate(m.id); }} style={{ color: T.ink3 }} aria-label="Xóa module" title="Xóa module"><Trash2 size={14} /></button>
           </div>
-          {open[m.id] && m.lessons.map((l) => <LessonItem key={l.id} l={l} on={selected === l.id} onSelect={() => onSelect(l.id)} onDragStart={() => setDrag(l.id)} onDrop={() => moveLesson(m.id, l.id)} />)}
+          {open[m.id] && m.lessons.map((l) => <LessonItem key={l.id} l={l} on={selected === l.id} onSelect={() => onSelect(l.id)} onDragStart={() => setDrag(l.id)} onDrop={() => moveLesson(m.id, l.id)} onDelete={() => { if (window.confirm(`Xóa bài "${l.title}"?`)) delLesson.mutate(l.id); }} />)}
         </div>
       ))}
       <div className="flex gap-1.5" style={{ padding: '8px 4px 2px' }}>

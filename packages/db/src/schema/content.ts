@@ -38,6 +38,8 @@ export const posts = pgTable(
     linkUrl: text('link_url'),
     pinned: boolean('pinned').notNull().default(false),
     broadcast: boolean('broadcast').notNull().default(false),
+    /** 'pending' khi thành viên mới đăng trong thời gian hội bật duyệt bài (moderate_new_members_days). */
+    moderationStatus: text('moderation_status').$type<'approved' | 'pending'>().notNull().default('approved'),
     likeCount: integer('like_count').notNull().default(0),
     commentCount: integer('comment_count').notNull().default(0),
     lastCommentAt: ts('last_comment_at'),

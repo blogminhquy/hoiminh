@@ -8,6 +8,7 @@ import { api, errorMessage } from '@/lib/api';
 import { rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { fmtCount } from '@/lib/format';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
+import { SITE_HOST } from '@/lib/site';
 
 interface JoinResult { member: { status: string }; alreadyMember?: boolean }
 
@@ -80,7 +81,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
         <div className="flex flex-col gap-3" style={{ padding: 18 }}>
           <div className="flex items-center gap-3">
             <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={48} radius={14} style={{ marginTop: -42, border: `3px solid ${T.surface}` }} />
-            <div className="min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">hoiminh.vn/{c.slug} · {categoryLabel(c.category)}</div></div>
+            <div className="min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">{SITE_HOST}/{c.slug} · {categoryLabel(c.category)}</div></div>
           </div>
           {c.shortDescription && <div className="text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription}</div>}
           <div className="grid grid-cols-3 gap-2 py-2.5" style={{ borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` }}>

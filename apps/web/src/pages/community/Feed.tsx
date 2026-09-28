@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { isPremium, useShell, type Shell } from '@/lib/community';
 import { fmtTime } from '@/lib/format';
 import { Composer } from './Composer';
+import { SITE_HOST } from '@/lib/site';
 
 interface FeedPage { items: FeedPost[]; nextCursor: string | null; spaces: Array<{ id: string; name: string; colorKey: string }>; access: { role: string; canBroadcast: boolean; canModerate: boolean } }
 
@@ -54,7 +55,7 @@ function Rail({ shell }: { shell: Shell }) {
         </div>
         <div className="p-4 flex flex-col gap-2.5">
           <div className="font-semibold text-[16px]">{c.name}</div>
-          <div className="muted text-[13px]">hoiminh.vn/{c.slug}</div>
+          <div className="muted text-[13px]">{SITE_HOST}/{c.slug}</div>
           <p className="m-0 text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription}</p>
           <div className="grid grid-cols-3 gap-2 pt-1.5" style={{ borderTop: `1px solid ${T.line}` }}>
             {[[shell.stats.members, 'Thành viên'], [shell.stats.online, 'Online'], [shell.stats.admins, 'Quản trị']].map(([n, l]) => (
@@ -128,7 +129,7 @@ export default function Page() {
         {feed.isLoading && <LoadingBlock rows={3} />}
         {feed.isError && <ErrorBox message={errorMessage(feed.error)} onRetry={() => void feed.refetch()} />}
         {feed.isSuccess && posts.length === 0 && <Empty title={q ? 'Không tìm thấy bài nào' : 'Chưa có bài viết'} hint={q ? 'Thử từ khóa khác' : 'Hãy là người đầu tiên chia sẻ với cộng đồng'} />}
-        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} />)}
+        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} canModerate={feed.data?.pages[0]?.access.canModerate} />)}
         {feed.hasNextPage && !q && (
           <Button block loading={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>Tải thêm</Button>
         )}

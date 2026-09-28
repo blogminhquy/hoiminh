@@ -50,7 +50,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
       <div className="nav-group">Học tập</div>
       <div className="flex flex-col gap-0.5">
         {tabs.courses !== false && <NavItem to={`/${s}/khoa-hoc`} icon={<BookOpen size={20} />} label="Khóa học" extra={shell.coursePercent !== null ? <span className="text-[12px] font-semibold" style={{ color: T.teal }}>{shell.coursePercent}%</span> : undefined} />}
-        {tabs.resources && <NavItem to={`/${s}/khoa-hoc?tab=tai-nguyen`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
+        {tabs.resources && <NavItem to={`/${s}/khoa-hoc`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
       </div>
       {tabs.store !== false && (
         <>

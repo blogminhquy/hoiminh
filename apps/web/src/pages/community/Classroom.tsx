@@ -13,7 +13,7 @@ import { LessonRow, ModuleHead, lessonState, moduleMeta, type LessonLite, type M
 
 interface LessonDto {
   lesson: { id: string; title: string; kind: 'video' | 'text' | 'task' | 'file'; contentMd: string; durationSeconds: number | null; videoUrl: string | null };
-  embed: { provider: string; embedUrl: string } | null; locked: boolean; dripLocked: boolean; dripUnlocksAt: string | null; lockReason: string | null;
+  embed: { provider: string; embedUrl: string } | null; locked: boolean; sequentialLocked: boolean; dripLocked: boolean; dripUnlocksAt: string | null; lockReason: string | null;
   course: { id: string; title: string; lessonCount: number; modules: ModuleLite[]; progress: { completedLessons: number; totalLessons: number; percent: number } | null; accessMode: string; product: { id: string; priceMinor: number; slug: string } | null };
   prev: LessonLite | null; next: LessonLite | null; resources: Array<{ id: string; name: string; url: string }>; done: boolean;
 }
@@ -49,9 +49,9 @@ function LockedPlayer({ d, slug }: { d: LessonDto; slug: string }) {
     <div className="relative rounded-2xl overflow-hidden flex items-center justify-center p-4" style={{ aspectRatio: '16 / 9', background: '#171310' }}>
       <div className="card relative flex flex-col items-center text-center gap-3 p-6 w-full" style={{ maxWidth: 460 }}>
         <span className="w-12 h-12 rounded-full inline-flex items-center justify-center" style={{ background: T.goldSoft, color: T.goldText }}><Lock size={22} /></span>
-        <div className="serif text-[20px] font-extrabold leading-[1.3]">{d.dripLocked ? 'Bài này mở theo lịch' : store ? 'Bài này nằm trong khóa bán lẻ' : 'Bài này nằm trong gói Premium'}</div>
-        <div className="text-[14px]" style={{ color: T.ink2 }}>{d.dripLocked ? `Bài sẽ mở sau khi bạn học được một thời gian trong khóa.` : `Mở khóa ${remaining} bài còn lại, tài nguyên, Q&A hằng tuần${store ? '' : ' và quyền làm cộng sự'}.`}</div>
-        {!d.dripLocked && <div className="flex gap-2 pt-1 flex-wrap justify-center"><Link to={to} className="btn btn-primary">{store ? 'Mua khóa học' : 'Nâng cấp Premium'}</Link><Link to={`/${slug}/khoa-hoc/${d.course.id}`} className="btn btn-ghost">Xem quyền lợi</Link></div>}
+        <div className="serif text-[20px] font-extrabold leading-[1.3]">{d.sequentialLocked ? 'Học xong bài trước để mở bài này' : d.dripLocked ? 'Bài này mở theo lịch' : store ? 'Bài này nằm trong khóa bán lẻ' : 'Bài này nằm trong gói Premium'}</div>
+        <div className="text-[14px]" style={{ color: T.ink2 }}>{d.sequentialLocked ? 'Khóa này yêu cầu học theo thứ tự. Bấm "Đánh dấu hoàn thành" ở bài trước rồi quay lại.' : d.dripLocked ? `Bài sẽ mở sau khi bạn học được một thời gian trong khóa.` : `Mở khóa ${remaining} bài còn lại, tài nguyên, Q&A hằng tuần${store ? '' : ' và quyền làm cộng sự'}.`}</div>
+        {!d.dripLocked && !d.sequentialLocked && <div className="flex gap-2 pt-1 flex-wrap justify-center"><Link to={to} className="btn btn-primary">{store ? 'Mua khóa học' : 'Nâng cấp Premium'}</Link><Link to={`/${slug}/khoa-hoc/${d.course.id}`} className="btn btn-ghost">Xem quyền lợi</Link></div>}
         <span className="muted text-[12px]">Hủy bất cứ lúc nào · thanh toán bằng chuyển khoản, MoMo, VNPAY</span>
       </div>
     </div>

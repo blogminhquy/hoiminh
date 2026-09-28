@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { UserAvatar, type UserLite } from '@/components/UserLink';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { useShell } from '@/lib/community';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
@@ -117,6 +118,7 @@ function Body({ c, slug }: { c: Course; slug: string }) {
 export default function Page() {
   const { courseId = '' } = useParams();
   const shell = useShell();
+  const { user } = useAuth();
   const slug = shell.community.slug;
   const q = useQuery({ queryKey: ['course', courseId], queryFn: () => api.get<Course>(`/v1/courses/${courseId}`), enabled: Boolean(courseId) });
   const c = q.data;
@@ -129,7 +131,7 @@ export default function Page() {
       </div>
       {c && (
         <aside className="rail">
-          <ProgressRing percent={c.progress?.percent ?? 0} doneLessons={c.progress?.completedLessons ?? 0} watchedSeconds={watched} lastAccessedAt={c.progress?.lastAccessedAt ?? null} certificate={c.certificateEnabled} />
+          <ProgressRing percent={c.progress?.percent ?? 0} doneLessons={c.progress?.completedLessons ?? 0} watchedSeconds={watched} lastAccessedAt={c.progress?.lastAccessedAt ?? null} certificate={c.certificateEnabled} certificateUrl={user ? `/chung-nhan/${c.id}/${user.id}` : null} />
           <ResourceList resources={c.resources} />
           <InstructorCard owner={c.owner} communityId={shell.community.id} />
           <Learners total={c.learners.total} completed={c.learners.completed} sample={c.discussions.map((d) => d.author).filter((u, i, a) => a.findIndex((x) => x.handle === u.handle) === i).slice(0, 6)} />
