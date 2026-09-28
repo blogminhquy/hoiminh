@@ -211,4 +211,24 @@ describe('API', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).not.toContain('evil.example');
   });
+  it('trang công khai được cache cho khách, người đăng nhập đi thẳng', async () => {
+    const store = new Map<string, Response>();
+    const g = globalThis as { caches?: unknown };
+    g.caches = { default: { match: async (r: Request) => store.get(r.url)?.clone(), put: async (r: Request, res: Response) => void store.set(r.url, res) } };
+    try {
+      const first = await hono.request('/v1/communities/discover');
+      expect(first.status).toBe(200);
+      expect(first.headers.get('cache-control')).toContain('public');
+      expect(first.headers.get('x-hm-cache')).toBe('MISS');
+      const second = await hono.request('/v1/communities/discover');
+      expect(second.headers.get('x-hm-cache')).toBe('HIT');
+      expect(await second.json()).toEqual(await first.json());
+      const authed = await hono.request('/v1/communities/discover', { headers: { Authorization: `Bearer ${token}` } });
+      expect(authed.headers.get('x-hm-cache')).toBeNull();
+      const withRef = await hono.request('/v1/communities/discover?ref=abc');
+      expect(withRef.headers.get('x-hm-cache')).toBeNull();
+    } finally {
+      delete g.caches;
+    }
+  });
 });

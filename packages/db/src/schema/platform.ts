@@ -204,7 +204,7 @@ export const emailLogs = pgTable(
     toEmail: text('to_email').notNull(),
     template: text('template').notNull(),
     subject: text('subject').notNull(),
-    status: text('status').$type<'sent' | 'failed' | 'logged'>().notNull(),
+    status: text('status').$type<'sent' | 'failed' | 'logged' | 'queued'>().notNull(),
     providerMessageId: text('provider_message_id'),
     error: text('error'),
     createdAt: ts('created_at').notNull().defaultNow(),
