@@ -1,3 +1,11 @@
+# Đồng bộ với GitHub (bắt buộc)
+
+Máy và GitHub phải luôn là cùng một bản. Mọi phần việc làm theo ba bước:
+
+1. **Trước khi code, kiểm tra repo đã ở bản mới nhất chưa.** Chạy `git fetch origin`, rồi so nhánh đang làm với `origin/main` (và với nhánh từ xa của chính nó nếu có). Nếu đang cũ hơn thì **kéo về trước, rồi mới code**: trên `main` dùng `git pull --ff-only origin main`; trên nhánh làm việc hoặc worktree thì kéo bản mới của `origin/main` vào nhánh. Không code trên bản cũ.
+2. **Code xong thì luôn push lên GitHub**, để GitHub có bản mới nhất và máy khớp với GitHub. Không để việc đã xong chỉ nằm trên máy: sau khi push, `git status -sb` không được còn `ahead`. Khi thay đổi đã vào `main` trên GitHub thì kéo `main` về repo chính.
+3. **Không tự ý ghi đè khi không đồng bộ được.** Có thay đổi chưa commit chặn việc kéo về, hoặc máy và GitHub đã rẽ nhánh (không fast-forward được) thì dừng lại và báo chủ dự án. Không dùng `--force` hay `reset --hard` để cho khớp khi chưa được đồng ý.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
