@@ -8,6 +8,7 @@ import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
 import { hasEntitlement, ownsProduct } from './entitlements';
+import { releaseFiles } from './files';
 import { assertWorkspaceUnlocked } from './workspaces';
 
 function discountPercent(price: number, compareAt: number | null): number | null {
@@ -105,12 +106,14 @@ export async function updateProduct(ctx: Ctx, productId: string, input: Partial<
   return row!;
 }
 
-/** Xóa mềm sản phẩm. */
+/** Xóa mềm sản phẩm; ảnh bìa của sản phẩm và trang bán bị gỡ và dọn khỏi R2. Tệp số đã bán không đụng tới. */
 export async function deleteProduct(ctx: Ctx, productId: string) {
   const p = await ctx.db.query.products.findFirst({ where: eq(products.id, productId) });
   if (!p) throw notFound();
   await requireCommunityPermission(ctx, p.communityId, 'store.manage');
-  await ctx.db.update(products).set({ deletedAt: ctx.now(), status: 'archived' }).where(eq(products.id, productId));
+  await ctx.db.update(products).set({ deletedAt: ctx.now(), status: 'archived', coverUrl: null }).where(eq(products.id, productId));
+  await ctx.db.update(productPages).set({ coverImageUrl: null }).where(eq(productPages.productId, productId));
+  await releaseFiles(ctx, { urls: [p.coverUrl] }, { communityId: p.communityId });
 }
 
 /** Link tải tệp số (signed URL, chỉ người sở hữu). */

@@ -8,6 +8,7 @@ import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
 import { canAccessCourse } from './entitlements';
+import { releaseFiles } from './files';
 import { assertWorkspaceUnlocked } from './workspaces';
 
 /** Thư viện khóa học của hội: thẻ có % tiến độ, nhãn Nháp/khóa, khối "Học tiếp". */
@@ -166,6 +167,8 @@ export async function updateCourse(ctx: Ctx, courseId: string, input: Partial<Cr
       await createProduct(ctx, c.communityId, { kind: 'course', name: row!.title, shortDescription: row!.shortDescription, coverColor: row!.coverColor, priceMinor: row!.priceMinor, compareAtMinor: row!.compareAtMinor, currency: 'VND', courseId, bundleItemProductIds: [], digitalFileIds: [], page: { headline: row!.title, subheadline: row!.shortDescription, benefits: [], faq: [], ctaText: 'Mua ngay', guarantee: 'Hoàn tiền trong 7 ngày nếu bạn xem chưa quá 20% nội dung.', salesMode: 'native' }, status: row!.hiddenFromStore ? 'draft' : 'published' });
     }
   }
+  // Đổi ảnh bìa (kể cả bản sao ở sản phẩm cửa hàng, đã cập nhật ở trên) thì tệp cũ trên R2 không còn ai dùng.
+  if (cover && c.coverUrl && c.coverUrl !== cover.url) await releaseFiles(ctx, { urls: [c.coverUrl] }, { ownerUserIds: [c.ownerUserId], communityId: c.communityId });
   await audit(ctx, { action: input.status ? `course.${input.status}` : 'course.update', resourceType: 'course', resourceId: courseId, communityId: c.communityId });
   return row!;
 }
@@ -251,11 +254,12 @@ export async function recountCourse(ctx: Ctx, courseId: string): Promise<void> {
   await ctx.db.update(courseProgress).set({ totalLessons: agg?.n ?? 0, percent: sql`least(100, round(completed_lessons * 100.0 / greatest(${agg?.n ?? 0}, 1)))::int` }).where(eq(courseProgress.courseId, courseId));
 }
 
-/** Xóa mềm khóa học. */
+/** Xóa mềm khóa học; ảnh bìa bị gỡ và dọn khỏi R2 (giữ lại nếu sản phẩm cửa hàng của khóa còn dùng chung). */
 export async function deleteCourse(ctx: Ctx, courseId: string) {
   const c = await ctx.db.query.courses.findFirst({ where: eq(courses.id, courseId) });
   if (!c || !c.communityId) throw notFound();
   await requireCommunityPermission(ctx, c.communityId, 'course.manage');
-  await ctx.db.update(courses).set({ deletedAt: ctx.now(), status: 'archived' }).where(eq(courses.id, courseId));
+  await ctx.db.update(courses).set({ deletedAt: ctx.now(), status: 'archived', coverUrl: null }).where(eq(courses.id, courseId));
+  await releaseFiles(ctx, { urls: [c.coverUrl] }, { ownerUserIds: [c.ownerUserId], communityId: c.communityId });
   await audit(ctx, { action: 'course.delete', resourceType: 'course', resourceId: courseId, communityId: c.communityId });
 }

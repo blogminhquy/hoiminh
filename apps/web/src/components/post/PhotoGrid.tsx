@@ -1,6 +1,7 @@
 // Lưới ảnh kiểu Facebook: 1 ảnh lớn + hàng nhỏ, thừa thì +N (fbGrid trong design/build.mjs).
 import { useState } from 'react';
 import { T } from '@hoiminh/ui';
+import { SINGLE_PHOTO_MAX_HEIGHT, singlePhotoBox } from './photo-layout';
 
 export interface GridImage {
   id: string;
@@ -22,6 +23,15 @@ function Photo({ img, h, onClick, overlay }: { img: GridImage; h: number; onClic
   );
 }
 
+/** Bài chỉ có 1 ảnh: hiện nguyên vẹn đúng tỷ lệ (không cắt), thay vì khung rộng hết thẻ cắt bằng object-cover. */
+function SinglePhoto({ img, maxHeight, onClick }: { img: GridImage; maxHeight: number; onClick?: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="relative overflow-hidden rounded-[10px] block" style={{ ...singlePhotoBox(img, maxHeight), background: T.line }} aria-label="Xem ảnh">
+      <img src={img.url} alt="" className="absolute inset-0 w-full h-full object-contain" loading="lazy" />
+    </button>
+  );
+}
+
 export function PhotoGrid({ images, compact }: { images: GridImage[]; compact?: boolean }) {
   const [open, setOpen] = useState<number | null>(null);
   const n = images.length;
@@ -29,7 +39,7 @@ export function PhotoGrid({ images, compact }: { images: GridImage[]; compact?: 
   const k = compact ? 0.6 : 1;
   const view = (i: number) => () => setOpen(i);
   let body;
-  if (n === 1) body = <Photo img={images[0]!} h={360 * k} onClick={view(0)} />;
+  if (n === 1) body = <SinglePhoto img={images[0]!} maxHeight={SINGLE_PHOTO_MAX_HEIGHT * k} onClick={view(0)} />;
   else if (n === 2) body = <div className="grid grid-cols-2 gap-1.5">{images.map((im, i) => <Photo key={im.id} img={im} h={260 * k} onClick={view(i)} />)}</div>;
   else if (n === 3)
     body = (

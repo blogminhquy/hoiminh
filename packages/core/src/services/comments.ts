@@ -6,6 +6,7 @@ import { raw } from '../lib/db';
 import { forbidden, notFound } from '../errors';
 import { mentions } from '../lib/markdown';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
+import { releaseFiles } from './files';
 
 const authorCols = { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor };
 
@@ -72,14 +73,15 @@ export async function pinComment(ctx: Ctx, commentId: string, pinned: boolean) {
   await ctx.db.update(comments).set({ pinned, updatedAt: ctx.now() }).where(eq(comments.id, commentId));
 }
 
-/** Xóa mềm bình luận. */
+/** Xóa mềm bình luận; ảnh đính kèm (nếu có) bị gỡ và dọn khỏi R2. */
 export async function deleteComment(ctx: Ctx, commentId: string) {
   const c = await ctx.db.query.comments.findFirst({ where: eq(comments.id, commentId) });
   if (!c) throw notFound();
   const access = await resolveCommunityAccess(ctx, c.communityId);
   if (!(ctx.actor.type === 'user' && ctx.actor.userId === c.authorUserId) && !access.permissions.has('post.moderate')) throw forbidden();
-  await ctx.db.update(comments).set({ deletedAt: ctx.now() }).where(eq(comments.id, commentId));
+  await ctx.db.update(comments).set({ deletedAt: ctx.now(), imageUrl: null }).where(eq(comments.id, commentId));
   if (c.targetType === 'post') await ctx.db.update(posts).set({ commentCount: sql`greatest(${posts.commentCount} - 1, 0)` }).where(eq(posts.id, c.targetId));
+  await releaseFiles(ctx, { urls: [c.imageUrl] }, { ownerUserIds: [c.authorUserId], communityId: c.communityId });
 }
 
 /** Thích/bỏ thích bài viết hoặc bình luận. Trả về trạng thái mới và số lượt. */

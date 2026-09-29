@@ -29,7 +29,7 @@ export default function Page() {
     onSuccess: (c) => { setSaved(true); setTimeout(() => setSaved(false), 2000); void qc.invalidateQueries({ queryKey: shellKey(shell.community.slug) }); void qc.invalidateQueries({ queryKey: ['about'] }); if (c.slug !== shell.community.slug) navigate(`/${c.slug}/cai-dat/chung`); },
   });
   const archive = useMutation({ mutationFn: () => api.post(`/v1/communities/${shell.community.id}/archive`, {}), onSuccess: () => navigate('/admin') });
-  const onLogo = async (file: File) => { setUploading(true); try { const r = await api.upload(file, 'avatar', { communityId: shell.community.id }); patch({ logoFileId: r.fileId, logoUrl: r.url }); } finally { setUploading(false); } };
+  const onLogo = async (file: File) => { setUploading(true); try { const r = await api.upload(file, 'avatar', { communityId: shell.community.id }); if (f?.logoFileId) void api.discardUpload(f.logoFileId); patch({ logoFileId: r.fileId, logoUrl: r.url }); } finally { setUploading(false); } };
   if (!f) return <LoadingBlock rows={5} />;
   return (
     <>
@@ -38,7 +38,7 @@ export default function Page() {
       <div className="card p-6 flex flex-col gap-[18px]">
         <div className="flex gap-5 items-center">
           <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={f.logoUrl} size={88} radius={20} />
-          <div className="flex flex-col gap-2"><span className="font-semibold">Logo</span><div className="flex gap-2"><Button size="sm" loading={uploading} onClick={() => fileRef.current?.click()}><ImageIcon size={14} />Tải ảnh lên</Button>{f.logoUrl && <Button size="sm" onClick={() => patch({ logoFileId: null, logoUrl: null })}>Xóa</Button>}</div><span className="muted text-[12px]">PNG hoặc JPG, vuông, tối thiểu 256px</span><input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void onLogo(file); e.target.value = ''; }} /></div>
+          <div className="flex flex-col gap-2"><span className="font-semibold">Logo</span><div className="flex gap-2"><Button size="sm" loading={uploading} onClick={() => fileRef.current?.click()}><ImageIcon size={14} />Tải ảnh lên</Button>{f.logoUrl && <Button size="sm" onClick={() => { if (f.logoFileId) void api.discardUpload(f.logoFileId); patch({ logoFileId: null, logoUrl: null }); }}>Xóa</Button>}</div><span className="muted text-[12px]">PNG hoặc JPG, vuông, tối thiểu 256px</span><input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) void onLogo(file); e.target.value = ''; }} /></div>
         </div>
         <Field label="Tên cộng đồng"><Input value={f.name} maxLength={80} onChange={(e) => patch({ name: e.target.value })} /></Field>
         <Field label="Đường dẫn" hint="Người lạ mở link này sẽ thấy trang giới thiệu hội trước, đổi đường dẫn sẽ làm link cũ ngừng hoạt động">

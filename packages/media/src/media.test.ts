@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LocalMediaProvider, R2BindingProvider, R2BucketStore, createMediaProvider, validateUpload } from './index';
+import { LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, createMediaProvider, validateUpload } from './index';
 import { fakeBucket } from './testing';
 
 describe('media', () => {
@@ -38,6 +38,22 @@ describe('media', () => {
   it('đủ 4 biến R2_* thì ưu tiên S3 tải thẳng', () => {
     const p = createMediaProvider({ r2: { accountId: 'a', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b' }, r2Bucket: fakeBucket(), apiUrl: 'http://x', secret: 's' });
     expect(p.label).toBe('R2 (S3)');
+  });
+  it('R2Provider.delete: 204 và 404 là xong, lỗi khác ném ra để job xóa tệp thử lại', async () => {
+    const p = new R2Provider({ accountId: 'acc', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b', publicBaseUrl: 'https://f.test' });
+    const realFetch = globalThis.fetch;
+    try {
+      for (const status of [204, 404]) {
+        globalThis.fetch = (async () => new Response(null, { status })) as typeof fetch;
+        await expect(p.delete('public/a.png')).resolves.toBeUndefined();
+      }
+      for (const status of [403, 400]) { // 5xx không thử ở đây: aws4fetch tự thử lại 5xx nhiều lần với thời gian chờ tăng dần
+        globalThis.fetch = (async () => new Response(null, { status })) as typeof fetch;
+        await expect(p.delete('public/a.png')).rejects.toThrow(String(status));
+      }
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
   it('R2BucketStore trả null khi không có tệp', async () => {
     expect(await new R2BucketStore(fakeBucket()).get('nope')).toBeNull();

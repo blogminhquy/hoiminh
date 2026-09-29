@@ -5,6 +5,7 @@ import type { Ctx } from '../context';
 import { conflict, notFound } from '../errors';
 import { requireUser } from '../permissions';
 import { audit } from './audit';
+import { releaseFiles } from './files';
 
 export interface ProfileUpdate {
   name?: string; handle?: string; bio?: string; location?: string; occupation?: string; avatarUrl?: string | null; coverColor?: string;
@@ -30,6 +31,8 @@ export async function updateProfile(ctx: Ctx, input: ProfileUpdate) {
     })
     .where(eq(users.id, userId))
     .returning();
+  // Đổi hoặc gỡ avatar thì tệp cũ trên R2 không còn ai dùng.
+  if (input.avatarUrl !== undefined && current.avatarUrl && input.avatarUrl !== current.avatarUrl) await releaseFiles(ctx, { urls: [current.avatarUrl] }, { ownerUserIds: [userId] });
   await audit(ctx, { action: 'profile.update', resourceType: 'user', resourceId: userId });
   return row!;
 }

@@ -1,10 +1,11 @@
-// Lịch chạy định kỳ: mỗi phút (job hẹn giờ, nhắc sự kiện, hết hạn đơn), 10 phút (xếp hạng), hằng ngày (hold, churn, gói nền tảng).
+// Lịch chạy định kỳ: mỗi phút (job hẹn giờ, nhắc sự kiện, hết hạn đơn), 10 phút (xếp hạng), hằng ngày (hold, churn, gói nền tảng, tệp tải dở).
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { events, scheduledJobs } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
 import { expireEntitlements } from '../services/entitlements';
+import { FILE_DELETE_JOB, sweepAbandonedUploads } from '../services/files';
 import { sendWelcomeDm } from '../services/messaging';
 import { expirePendingOrders } from '../services/payments';
 import { runPlatformBillingCron } from '../services/platform-billing';
@@ -28,6 +29,7 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
     out.commissionsReleased = await releaseDueCommissions(ctx);
     out.churned = await churnExpired(ctx);
     out.entitlementsExpired = await expireEntitlements(ctx);
+    out.abandonedUploads = await sweepAbandonedUploads(ctx);
     const b = await runPlatformBillingCron(ctx);
     out.trialReminded = b.reminded;
     out.workspacesLocked = b.locked;
@@ -37,7 +39,7 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
   });
 }
 
-/** Job hẹn giờ trong bảng scheduled_jobs (tin nhắn chào sau N phút…). */
+/** Job hẹn giờ trong bảng scheduled_jobs (tin nhắn chào sau N phút, xóa tệp trên R2…). */
 export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<number> {
   const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-scheduled');
   const due = await ctx.db.query.scheduledJobs.findMany({ where: and(eq(scheduledJobs.status, 'pending'), lte(scheduledJobs.runAt, ctx.now())), limit: 100 });
@@ -52,6 +54,8 @@ export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<numb
       } else if (j.kind === 'event.remind') {
         const p = j.payload as { eventId: string; label: string };
         await ctx.queue.enqueue('event.remind', p);
+      } else if (j.kind === FILE_DELETE_JOB) {
+        await ctx.media.delete((j.payload as { objectKey: string }).objectKey);
       }
       await ctx.db.update(scheduledJobs).set({ status: 'done', doneAt: ctx.now() }).where(eq(scheduledJobs.id, j.id));
       n++;

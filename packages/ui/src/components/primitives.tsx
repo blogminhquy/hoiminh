@@ -11,11 +11,17 @@ export interface AvatarProps {
   className?: string;
   style?: CSSProperties;
 }
+/** url("…") an toàn: dấu nháy kép, gạch chéo ngược và xuống dòng được mã hóa để không thoát khỏi chuỗi CSS. */
+const cssUrl = (src: string) => `url("${src.replace(/["\\\n\r]/g, encodeURIComponent)}")`;
+
 /** Avatar chữ cái đầu hoặc ảnh, màu theo tên. */
 export function Avatar({ name, src, color, size = 36, className, style }: AvatarProps) {
   const fs = Math.max(10, Math.round(size * 0.36));
+  // Dùng background-image, không dùng `background:` rút gọn: rút gọn đặt lại background-size/position về mặc định,
+  // xóa mất `cover` và `center` của .avatar nên ảnh lớn chỉ hiện góc trên-trái (avatar thành vòng tròn xám).
+  const paint = src ? { backgroundImage: cssUrl(src) } : { backgroundColor: avatarColor(name, color) };
   return (
-    <span className={clsx('avatar', className)} style={{ width: size, height: size, fontSize: fs, background: src ? `url(${src})` : avatarColor(name, color), ...style }} aria-label={name ?? ''}>
+    <span className={clsx('avatar', className)} style={{ width: size, height: size, fontSize: fs, ...paint, ...style }} aria-label={name ?? ''}>
       {src ? '' : initialsOf(name)}
     </span>
   );

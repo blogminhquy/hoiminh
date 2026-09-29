@@ -22,6 +22,7 @@ export interface MediaProvider {
   getUrl(objectKey: string): string;
   /** URL ký có hạn (file riêng: tài liệu khóa học trả phí, tệp số). */
   getSignedUrl(objectKey: string, ttlSeconds?: number): Promise<string>;
+  /** Xóa đối tượng; khóa không còn thì coi như xong, lỗi khác thì ném để người gọi thử lại. */
   delete(objectKey: string): Promise<void>;
 }
 
@@ -59,7 +60,9 @@ export class R2Provider implements MediaProvider {
     return signed.url;
   }
   async delete(objectKey: string): Promise<void> {
-    await this.client.fetch(`${this.endpoint}/${objectKey}`, { method: 'DELETE' });
+    const res = await this.client.fetch(`${this.endpoint}/${objectKey}`, { method: 'DELETE' });
+    // Khóa không còn (404) coi như đã xóa; lỗi khác phải ném ra để job xóa tệp thử lại thay vì im lặng để lại tệp mồ côi.
+    if (!res.ok && res.status !== 404) throw new Error(`R2 xóa ${objectKey} thất bại (${res.status})`);
   }
 }
 

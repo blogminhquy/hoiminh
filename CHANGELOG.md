@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## 1.10.0 - 2026-09-29
+
+Avatar hiện đúng ảnh và bấm được, ảnh nén trước khi đăng, ảnh bài viết không còn bị cắt, và tệp trên R2 được dọn khi ảnh bị gỡ.
+
+### Sửa lỗi
+
+- **Avatar không hiện ảnh.** `Avatar` vẽ ảnh bằng `background: url(...)` rút gọn, làm mất `background-size: cover` và `background-position: center` của `.avatar`. Ảnh lớn (avatar thật là PNG 1254×1254, 2 MB) bị vẽ nguyên cỡ trong vòng tròn 40px và chỉ lộ góc trên-trái, nên thành một vòng tròn xám. Nay dùng `background-image` cộng `no-repeat`, URL đặt trong dấu nháy. Ảnh hưởng mọi nơi có avatar: header, bài viết, bình luận, thành viên, xếp hạng.
+- **Avatar ở khung Quản trị hệ thống không bấm được.** Nay avatar ở cả bốn khung (quản trị hệ thống, hội, chủ hội, trang công khai) là một link dùng chung tới Hồ sơ (`/tai-khoan/ho-so`), có chú thích khi rê chuột. Trước đây ba khung có link nhưng dẫn tới ba nơi khác nhau (Gói và thanh toán, Hội của tôi, Hồ sơ).
+- **Bài chỉ có một ảnh bị cắt và phóng to.** Khung cố định rộng hết thẻ, cao 360px cắt ảnh bằng `object-cover`, nên ảnh vuông mất gần nửa chiều cao. Nay ảnh hiện nguyên vẹn đúng tỷ lệ, cao tối đa 360px, khung có sẵn tỷ lệ nên trang không nhảy khi ảnh tải xong. Bài nhiều ảnh giữ lưới cũ.
+
+### Ảnh
+
+- **Nén ảnh ngay trong trình duyệt trước khi tải lên** (`apps/web/src/lib/image-compress.ts`, gắn vào `api.upload` nên bài viết, bình luận, tin nhắn, ảnh bìa, avatar, logo hội đều qua đó): đổi sang JPEG chất lượng 82%, cạnh dài tối đa 1200px (avatar và logo hội 512px), không phóng to ảnh nhỏ, xoay đúng theo EXIF, PNG trong suốt đổ nền trắng. GIF (giữ chuyển động), tài liệu bài học và tệp số giữ nguyên. Giải mã lỗi thì tải ảnh gốc như cũ; nén xong mà nặng hơn ảnh gốc (và ảnh chưa cần thu nhỏ) thì giữ ảnh gốc. Thử trên trình duyệt: PNG 3000×2000 (8,4 MB) còn JPEG 1200×800 (37 KB). Đây là tối ưu phía người dùng: server vẫn nhận ảnh tối đa 10 MB như trước.
+- **Dọn tệp trên R2 khi ảnh bị gỡ.** Trước đây không có chỗ nào xóa tệp: xóa bài, đổi avatar, hủy ảnh đều để tệp nằm lại R2 mãi. Nay các thao tác sau xóa dòng `files` và xếp việc xóa R2 vào hàng đợi `scheduled_jobs` (loại `file.delete`), cron mỗi phút xóa thật và tự thử lại tối đa 3 lần khi R2 lỗi:
+  - Xóa bài viết và từ chối duyệt bài: ảnh của bài và ảnh trong bình luận của bài.
+  - Xóa bình luận có ảnh.
+  - Đổi hoặc gỡ avatar, logo hội, ảnh bìa hội; đổi ảnh bìa khóa học; xóa khóa học; xóa sản phẩm (ảnh bìa).
+  - `DELETE /v1/files/:id`: chủ tệp bỏ ảnh vừa tải lên mà chưa dùng. Web gọi khi bấm X trên ảnh ở ô soạn bài và khi chọn ảnh khác cho avatar, logo, ảnh bìa trước khi lưu. Tệp đang được dùng thì trả 409 và giữ nguyên.
+  - Cron hằng ngày dọn tệp `pending` quá 24 giờ mà không ai dùng (xin URL tải lên nhưng không bao giờ xác nhận).
+- Tệp chỉ bị xóa khi không còn cột nào trỏ tới (danh sách `FILE_REFERENCES`, có test quét schema để không sót cột mới) và thuộc đúng chủ, nên avatar trỏ vào ảnh của người khác không kéo theo việc xóa ảnh đó. Xem DECISIONS mục 33.
+- `R2Provider.delete` (đường tải thẳng qua S3) trước đây bỏ qua lỗi HTTP; nay ném lỗi (trừ 404) để job xóa thử lại.
+
+### Kỹ thuật
+
+- Thêm vitest cho `packages/ui` và `apps/web` (trước đây hai gói này chưa có test). 57 test mới: bộ nén ảnh (19), khung ảnh (5), link avatar (3), `Avatar` (4), 24 tình huống dọn R2 ở service, 1 luồng HTTP đầy đủ, `R2Provider.delete`.
+- `createTestApp({ r2Bucket })` cho phép test service với R2 giả.
+
+### Chưa làm
+
+- Ảnh đã tải lên từ trước bản này không tự nén hay tự dọn. Avatar đang dùng vẫn nặng như cũ cho tới khi tải lại.
+- Tệp tài liệu bài học và tệp số của sản phẩm không dọn: sản phẩm xóa mềm vẫn cho người đã mua tải (`digitalDownloads`).
+- Tệp lưu trên đĩa khi chạy dev (`.data/files`) không bị xóa vì `LocalMediaProvider.delete` không làm gì. Chỉ ảnh hưởng máy dev.
+- Xóa ảnh bìa khóa học bằng cách chọn màu chưa hoạt động từ trước (web gửi `coverFileId: undefined`), giữ nguyên.
+
 ## 1.9.2 - 2026-09-29
 
 Hoàn tất chuyển sang hai Worker. Từ bản 1.7.0, mọi lần deploy đều dừng vì chưa có Worker `hoiminh-jobs`, nên trang live vẫn ở 1.6.0.
