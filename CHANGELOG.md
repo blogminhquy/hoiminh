@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.9.1 - 2026-09-29
+
+### Bảo mật
+
+- **Email không còn chèn được HTML từ dữ liệu người dùng.** Mọi mẫu email trước đây đưa thẳng tên người dùng, tên hội, tiêu đề và trích đoạn bài, nội dung tin nhắn, lý do từ chối rút tiền vào HTML. Ai đặt tên dạng `<a href="...">` là gửi được link tùy ý trong email mang tên miền hoiminh.com. Giờ mọi giá trị đi qua `escapeHtml`; bản text của email vẫn hiện đúng chữ gốc.
+
+### Sửa lỗi
+
+- Email thử hiện đủ địa chỉ gửi (trước đây mất phần `<no-reply@hoiminh.com>` vì bị hiểu nhầm là thẻ HTML).
+- Mẫu hoàn tiền: "3-7 ngày làm việc".
+
 ## 1.9.0 - 2026-09-28
 
 Chặn spam và dò mật khẩu bằng bộ đếm chung của Cloudflare, bước 4 trong lộ trình chịu tải.
