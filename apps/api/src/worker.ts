@@ -2,8 +2,20 @@
 // File giao diện do Cloudflare trả thẳng (không chạy code, không tính phí request); chỉ các đường dẫn
 // khai báo trong `run_worker_first` của wrangler.toml mới vào đây. Cron và hàng đợi job chạy ở Worker
 // hoiminh-jobs (apps/jobs) để việc nặng không làm chậm người đang dùng.
-import { createWorkerApp, type WorkerBindings } from '@hoiminh/core';
+import { createWorkerApp, pickSharedEnv, type WorkerBindings } from '@hoiminh/core';
+import { WorkerEntrypoint } from 'cloudflare:workers';
 import { createHonoApp } from './app';
+
+/**
+ * Cho hoiminh-jobs đọc secret của Worker này qua service binding, để secret chỉ phải đặt một chỗ.
+ * Entrypoint có tên không nhận request từ Internet: chỉ Worker trong cùng tài khoản khai báo
+ * `[[services]] entrypoint = "SharedEnv"` mới gọi được.
+ */
+export class SharedEnv extends WorkerEntrypoint<WorkerBindings> {
+  strings(): Record<string, string> {
+    return pickSharedEnv(this.env);
+  }
+}
 
 export default {
   async fetch(request: Request, env: WorkerBindings, ctx: ExecutionContext): Promise<Response> {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Chặn deploy khi Worker thiếu secret bắt buộc: API sẽ dừng khởi động (xem assertProductionSecrets),
-# còn hoiminh-jobs thiếu secret thì cron lỗi và job trong hàng đợi dồn lại.
+# Chặn deploy khi Worker thiếu secret bắt buộc: API sẽ dừng khởi động (xem assertProductionSecrets).
+# hoiminh-jobs không cần kiểm tra: nó đọc secret của hoiminh-api qua service binding SharedEnv.
 # Dùng: infra/check-secrets.sh <tên-worker>
 set -euo pipefail
 worker="$1"
