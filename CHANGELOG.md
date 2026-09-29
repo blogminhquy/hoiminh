@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.9.2 - 2026-09-29
+
+Hoàn tất chuyển sang hai Worker. Từ bản 1.7.0, mọi lần deploy đều dừng vì chưa có Worker `hoiminh-jobs`, nên trang live vẫn ở 1.6.0.
+
+### Hạ tầng
+
+- **Secret chỉ đặt một chỗ.** `hoiminh-jobs` đọc secret của `hoiminh-api` qua service binding (entrypoint `SharedEnv`, kênh nội bộ Cloudflare, không nhận request từ Internet). Đổi key ở `hoiminh-api` thì `hoiminh-jobs` dùng theo trong tối đa 5 phút. Token phát hành web không được chia sẻ.
+- **Sửa hai lỗi chuyển đổi làm `hoiminh-jobs` không deploy được:** `hoiminh-api` vẫn giữ 3 lịch cron cũ (wrangler không tự gỡ khi cấu hình bỏ mục này, nay ghi rõ `crons = []`) và vẫn đang nhận hàng đợi (workflow gỡ trước khi deploy, job nằm chờ trong hàng đợi, không mất).
+- Workflow chỉ kiểm tra secret của `hoiminh-api`. Tên miền `hoiminh.com` và `www` tự chuyển từ `hoiminh-web` sang `hoiminh-api` khi deploy, không cần gỡ tay.
+
 ## 1.9.1 - 2026-09-29
 
 ### Bảo mật

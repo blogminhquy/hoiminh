@@ -1,6 +1,7 @@
 # Worker hoiminh-jobs: cron và hàng đợi job của Hội Mình, tách khỏi Worker phục vụ người dùng (hoiminh-api)
 # để việc nặng (giải phóng hoa hồng, gửi email hàng loạt, retry webhook) không làm chậm trang web.
-# Cần cùng bộ secret với hoiminh-api: `wrangler secret put <TÊN>` trong thư mục này.
+# Không cần đặt secret: Worker này đọc secret của hoiminh-api qua binding SHARED_ENV bên dưới.
+# Secret đặt riêng ở đây (nếu có) sẽ được ưu tiên hơn.
 name = "hoiminh-jobs"
 main = "src/worker.ts"
 compatibility_date = "2024-10-01"
@@ -29,6 +30,13 @@ id = "f4c98cf06b33403caab8d1a68e89ab0a"
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "hoiminh-files"
+
+# Secret dùng chung: gọi entrypoint SharedEnv của hoiminh-api (apps/api/src/worker.ts), kênh nội bộ Cloudflare.
+# hoiminh-api phải deploy trước Worker này (workflow deploy đã theo thứ tự đó).
+[[services]]
+binding = "SHARED_ENV"
+service = "hoiminh-api"
+entrypoint = "SharedEnv"
 
 # Job có thể sinh job mới (vd. gửi email sau khi xử lý), nên vẫn cần quyền gửi vào hàng đợi.
 [[queues.producers]]

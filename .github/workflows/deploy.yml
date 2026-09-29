@@ -2,8 +2,9 @@ name: Deploy
 
 # Mỗi lần đẩy lên main: kiểm tra, rồi deploy hai Worker.
 #   hoiminh-api  (apps/api): giao diện + API ở hoiminh.com, www.hoiminh.com, api.hoiminh.com.
-#   hoiminh-jobs (apps/jobs): cron và hàng đợi job. Deploy sau hoiminh-api vì hàng đợi chỉ có một nơi xử lý.
-# Trước khi deploy, kiểm tra cả hai Worker đã có secret bắt buộc; thiếu thì dừng, web đang chạy giữ nguyên.
+#   hoiminh-jobs (apps/jobs): cron và hàng đợi job. Deploy sau hoiminh-api vì đọc secret của hoiminh-api
+#   qua entrypoint SharedEnv (không cần đặt secret riêng), và hàng đợi chỉ có một nơi xử lý.
+# Trước khi deploy, kiểm tra hoiminh-api đã có secret bắt buộc; thiếu thì dừng, web đang chạy giữ nguyên.
 # hoiminh-api có hai chế độ theo biến RELEASE_MODE:
 #   (mặc định) tự động: `wrangler deploy`, bản mới chạy ngay.
 #   manual: `wrangler versions upload`, bản mới chỉ nằm chờ; super admin bấm "Cập nhật" ở /he-thong/phien-ban.
@@ -66,10 +67,8 @@ jobs:
             exit 1
           fi
       - run: pnpm install --frozen-lockfile
-      - name: Kiểm tra secret của hai Worker
-        run: |
-          infra/check-secrets.sh hoiminh-api
-          infra/check-secrets.sh hoiminh-jobs
+      - name: Kiểm tra secret của hoiminh-api
+        run: infra/check-secrets.sh hoiminh-api
       - name: Build giao diện
         env:
           # Cố ý để trống, bỏ qua biến VITE_API_URL cũ của repo: web gọi API cùng tên miền.
@@ -78,6 +77,14 @@ jobs:
         run: pnpm --filter @hoiminh/web build
       - name: Tạo bucket R2 (bỏ qua nếu đã có)
         run: pnpm --filter @hoiminh/api exec wrangler r2 bucket create hoiminh-files || echo "bucket đã có"
+      # Trước khi tách, hoiminh-api tự nhận hàng đợi. wrangler không tự gỡ khi cấu hình không còn khai báo,
+      # mà hàng đợi chỉ có một nơi nhận, nên gỡ ở đây (lần sau chạy lại thì không còn gì để gỡ).
+      # Từ lúc gỡ tới khi hoiminh-jobs deploy xong (vài phút), job nằm chờ trong hàng đợi, không mất.
+      # Cron cũ được gỡ bằng `crons = []` trong apps/api/wrangler.toml khi deploy.
+      - name: Gỡ hàng đợi khỏi hoiminh-api
+        run: |
+          pnpm --filter @hoiminh/api exec wrangler queues consumer remove hoiminh-jobs hoiminh-api \
+            || echo "hoiminh-api không còn nhận hàng đợi, bỏ qua."
       - name: Deploy ngay
         if: vars.RELEASE_MODE != 'manual'
         run: pnpm --filter @hoiminh/api exec wrangler deploy

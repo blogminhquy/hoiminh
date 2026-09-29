@@ -77,11 +77,11 @@ infra           deploy.mjs
 
    Muốn đăng nhập Google thì bật Supabase Auth, điền `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` và đặt `AUTH_PROVIDER=supabase`; khi đó tài khoản tạo bằng `db:admin` hay `db:seed` không đăng nhập được nữa.
 2. **Migration**: `DATABASE_DIRECT_URL=... pnpm db:migrate` (RLS bật tự động; API production nên dùng role `hoiminh_app` như trong `packages/db/migrations/0001_rls.sql`).
-3. **Hai Worker** (xem mục "Hai Worker" bên dưới): `hoiminh-api` (`apps/api`) phục vụ cả giao diện lẫn API, `hoiminh-jobs` (`apps/jobs`) chạy cron và hàng đợi. Cả hai cần cùng bộ secret, đặt bằng `wrangler secret put <TÊN>` trong thư mục của từng Worker (danh sách ở cuối `apps/api/wrangler.toml`). Deploy: build giao diện trước (`pnpm --filter @hoiminh/web build`), rồi `pnpm --filter @hoiminh/api run deploy`, rồi `pnpm --filter @hoiminh/jobs run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
+3. **Hai Worker** (xem mục "Hai Worker" bên dưới): `hoiminh-api` (`apps/api`) phục vụ cả giao diện lẫn API, `hoiminh-jobs` (`apps/jobs`) chạy cron và hàng đợi. Secret chỉ đặt ở `hoiminh-api` bằng `wrangler secret put <TÊN>` trong `apps/api` (danh sách ở cuối `apps/api/wrangler.toml`); `hoiminh-jobs` tự đọc lại qua service binding. Deploy: build giao diện trước (`pnpm --filter @hoiminh/web build`), rồi `pnpm --filter @hoiminh/api run deploy`, rồi `pnpm --filter @hoiminh/jobs run deploy` (phải có `run`, nếu không pnpm hiểu nhầm là lệnh `pnpm deploy` của nó).
 
    **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request; làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `createWorkerApp` (`packages/core/src/worker-app.ts`) dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]` của cả hai Worker.
 4. **R2**: chỉ cần binding `FILES` trong `wrangler.toml` của cả hai Worker (đã khai báo, workflow deploy tự chạy `wrangler r2 bucket create hoiminh-files`). Tệp đi qua API (`PUT /files/upload/<key>` theo URL ký, `GET /files/<key>`) rồi vào bucket, không cần secret. Tùy chọn: gắn domain public cho bucket rồi đặt `R2_PUBLIC_BASE_URL` để ảnh public phát thẳng từ CDN; hoặc điền đủ 4 biến `R2_*` để trình duyệt tải thẳng lên R2 qua S3 (tệp rất lớn).
-5. **Resend**: ở Resend → Domains → thêm `hoiminh.com` và tạo các bản ghi DNS nó yêu cầu (trên Cloudflare DNS), chờ "Verified"; tạo API key rồi nhập ở `/he-thong/ha-tang` (hoặc `wrangler secret put RESEND_API_KEY` cho cả hai Worker). Địa chỉ gửi là `EMAIL_FROM` (mặc định `no-reply@hoiminh.com`, phải cùng tên miền đã xác minh). Kiểm chứng bằng nút **Gửi email thử** ở `/he-thong` (kết quả hiện ngay, mọi email đều ghi ở `/he-thong/nhat-ky` tab Email hệ thống).
+5. **Resend**: ở Resend → Domains → thêm `hoiminh.com` và tạo các bản ghi DNS nó yêu cầu (trên Cloudflare DNS), chờ "Verified"; tạo API key rồi nhập ở `/he-thong/ha-tang` (hoặc `wrangler secret put RESEND_API_KEY` trong `apps/api`). Địa chỉ gửi là `EMAIL_FROM` (mặc định `no-reply@hoiminh.com`, phải cùng tên miền đã xác minh). Kiểm chứng bằng nút **Gửi email thử** ở `/he-thong` (kết quả hiện ngay, mọi email đều ghi ở `/he-thong/nhat-ky` tab Email hệ thống).
 6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`).
 
 Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`.
@@ -98,15 +98,15 @@ Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/hea
 - `api.hoiminh.com` giữ lại cho webhook cổng thanh toán và API key của chủ hội.
 - Tên `hoiminh-api` giữ nguyên để không mất các secret đã đặt, dù giờ nó phục vụ cả web.
 - Nút Cập nhật ở `/he-thong/phien-ban` phát hành `hoiminh-api`, nên web và API luôn lên bản mới cùng lúc.
+- Secret chỉ đặt ở `hoiminh-api`. `hoiminh-jobs` gọi entrypoint `SharedEnv` của `hoiminh-api` (binding `SHARED_ENV`, kênh nội bộ Cloudflare) để lấy secret, cache 5 phút. Secret đặt riêng cho `hoiminh-jobs` (nếu có) được ưu tiên. Vì vậy `hoiminh-api` luôn phải deploy trước.
 
-**Chuyển từ ba Worker cũ sang hai Worker (làm một lần):**
+**Chuyển từ ba Worker cũ sang hai Worker (làm một lần, 1.9.2):** workflow Deploy tự làm hết.
 
-1. Đặt secret bắt buộc cho `hoiminh-api` nếu chưa có: `cd apps/api && npx wrangler secret put AUTH_JWT_SECRET` (chuỗi ngẫu nhiên từ 32 ký tự), tương tự `ENCRYPTION_KEY` (32 byte base64, tạo bằng `openssl rand -base64 32`).
-2. Tạo `hoiminh-jobs` và đặt cùng bộ secret: `cd apps/jobs && npx wrangler secret put AUTH_JWT_SECRET`. Lần đầu wrangler hỏi có tạo Worker `hoiminh-jobs` không, chọn có. Lặp lại cho mọi secret đang có ở `hoiminh-api` (xem bằng `npx wrangler secret list --name hoiminh-api`).
-3. Ngay trước khi deploy: Cloudflare Dashboard, Workers & Pages, `hoiminh-web`, Settings, Domains & Routes, gỡ `hoiminh.com` và `www.hoiminh.com`. Từ lúc gỡ tới lúc deploy xong (vài phút) web không truy cập được.
-4. GitHub, Actions, Deploy, Run workflow. Workflow tự kiểm tra hai Worker đã đủ secret trước khi deploy; thiếu thì dừng và web cũ giữ nguyên.
-5. Kiểm tra `https://hoiminh.com` và `https://api.hoiminh.com/health`, rồi xóa Worker `hoiminh-web`.
-6. Xóa biến `VITE_API_URL` và `DEPLOY_API` trong GitHub, Settings, Variables: không còn dùng.
+1. Gỡ `hoiminh-api` khỏi vai trò nhận hàng đợi `hoiminh-jobs` (job nằm chờ trong hàng đợi, không mất).
+2. Deploy `hoiminh-api`: `crons = []` gỡ 3 lịch cron cũ; tên miền `hoiminh.com` và `www` tự chuyển từ `hoiminh-web` sang (wrangler chạy ngoài terminal thì tự ghi đè tên miền đang gắn Worker khác).
+3. Deploy `hoiminh-jobs`: Worker được tạo mới, nhận cron và hàng đợi, lấy secret từ `hoiminh-api`.
+
+Sau đó, không bắt buộc: xóa Worker `hoiminh-web` (không còn tên miền nào) và biến `VITE_API_URL`, `DEPLOY_API` trong GitHub, Settings, Variables.
 
 ### Tài khoản quản trị đầu tiên
 
