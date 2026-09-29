@@ -3,6 +3,7 @@ import { loadEnv } from '@hoiminh/config';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll, sid } from '@hoiminh/db/seed';
 import type { EmailMessage } from '@hoiminh/email';
+import type { R2BucketLike } from '@hoiminh/media';
 import { createApp, type App } from '../app';
 import type { Ctx } from '../context';
 import { InMemoryQueue } from '../jobs/queue';
@@ -16,15 +17,15 @@ export interface TestApp extends App {
   ids: typeof sid;
 }
 
-/** Tạo app test mới với dữ liệu seed. */
-export async function createTestApp(): Promise<TestApp> {
+/** Tạo app test mới với dữ liệu seed. Truyền `r2Bucket` (fakeBucket) để tệp đi qua R2 giả và kiểm tra được việc xóa. */
+export async function createTestApp(opts: { r2Bucket?: R2BucketLike } = {}): Promise<TestApp> {
   const env = loadEnv({ APP_ENV: 'test', DATABASE_URL: 'pglite://memory', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' });
   const handle = await connect(env.DATABASE_URL);
   await runMigrations(handle);
   await seedAll(handle.db, { encryptionKey: env.ENCRYPTION_KEY, appUrl: env.APP_URL });
   const emails: EmailMessage[] = [];
   const queue = new InMemoryQueue();
-  const app = await createApp({ env, db: handle.db, queue, onEmail: (m) => emails.push(m) });
+  const app = await createApp({ env, db: handle.db, queue, onEmail: (m) => emails.push(m), r2Bucket: opts.r2Bucket });
   const close = app.close;
   const emailsByKey = new Map<string, string>([['admin', 'admin@hoiminh.vn'], ['minhquy', 'minhquy@gmail.com'], ['hoangvu', 'hoangvu@gmail.com'], ['hongkim', 'kimhong.hn@gmail.com'], ['kienbui', 'kienbui@gmail.com'], ['dien', 'ngocdien1221@gmail.com'], ['duy', 'duynguyen@gmail.com'], ['cong', 'congtran@gmail.com'], ['thulan', 'thulan@gmail.com'], ['member1', 'an.nguyen@example.com'], ['member2', 'bao.tran@example.com']]);
   return {

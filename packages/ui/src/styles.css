@@ -59,7 +59,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .nav-item:hover { background: rgba(255,253,249,0.06); color: #FFFDF9; }
 .nav-item.on { background: rgba(255,253,249,0.10); color: #FFFDF9; }
 .nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--side-muted); font-weight: 600; padding: 18px 12px 6px; }
-.avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; overflow: hidden; background-size: cover; background-position: center; }
+.avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFDF9; flex-shrink: 0; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
 .muted { color: var(--ink3); }
 .input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 14px; width: 100%; }
 .input:focus-within { border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }

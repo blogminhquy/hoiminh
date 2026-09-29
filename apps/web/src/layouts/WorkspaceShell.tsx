@@ -1,7 +1,8 @@
 // Khung chủ hội (wsShell trong build.mjs): header với Hội của tôi / Nhà phát triển / Khám phá / Tài khoản, nội dung 1120px giữa.
 import { Bell } from 'lucide-react';
-import { Avatar, Logo, T } from '@hoiminh/ui';
+import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { LoadingBlock } from '@/components/QueryState';
 import { useAuth, useBadges } from '@/lib/auth';
 
@@ -30,7 +31,7 @@ export function WorkspaceShell() {
           <Bell size={20} />
           {badges.data?.unreadNotifications ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}
         </Link>
-        <Link to="/tai-khoan/ho-so" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.ink} size={40} /></Link>
+        <AccountAvatarLink user={user} />
       </header>
       <div className="flex-grow flex justify-center px-4 py-6 md:px-16 md:py-10">
         <div className="w-full flex flex-col gap-6" style={{ maxWidth: 1120 }}>

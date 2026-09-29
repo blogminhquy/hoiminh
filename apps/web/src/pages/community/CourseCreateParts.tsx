@@ -2,6 +2,7 @@
 import { Field, HEX, Input, OptionCard, Select, T, Tag } from '@hoiminh/ui';
 import { Check, Sparkles, Video } from 'lucide-react';
 import { Checklist, CoverPicker, MdEditor, ToggleRow } from '@/components/EditorBits';
+import { api } from '@/lib/api';
 import { money } from '@/lib/format';
 
 export interface CourseForm {
@@ -20,7 +21,7 @@ export function InfoBlock({ f, patch, provider, onCover, uploading }: { f: Cours
     <div className="card p-6 flex flex-col gap-[18px]">
       <div className="font-bold text-[15px]">Thông tin</div>
       <div className="flex gap-5 flex-col md:flex-row">
-        <div className="md:w-[280px] flex-shrink-0"><CoverPicker title={f.title} coverUrl={f.coverUrl} coverColor={f.coverColor} onColor={(c) => patch({ coverColor: c, coverUrl: null, coverFileId: null })} onFile={onCover} uploading={uploading} /></div>
+        <div className="md:w-[280px] flex-shrink-0"><CoverPicker title={f.title} coverUrl={f.coverUrl} coverColor={f.coverColor} onColor={(c) => { if (f.coverFileId) void api.discardUpload(f.coverFileId); patch({ coverColor: c, coverUrl: null, coverFileId: null }); }} onFile={onCover} uploading={uploading} /></div>
         <div className="flex-grow flex flex-col gap-3.5 min-w-0">
           <Field label="Tên khóa học" hint={`${f.title.length}/80 ký tự · hiện trên thẻ và trang bán`}><Input maxLength={80} value={f.title} onChange={(e) => patch({ title: e.target.value })} placeholder="Ví dụ: AI Agent cho chủ shop" /></Field>
           <Field label="Mô tả ngắn" hint="1 câu, hiện dưới tên"><Input maxLength={200} value={f.shortDescription} onChange={(e) => patch({ shortDescription: e.target.value })} placeholder="Khóa này giúp học viên làm được gì?" /></Field>

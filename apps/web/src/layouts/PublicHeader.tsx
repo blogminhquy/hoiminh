@@ -1,6 +1,7 @@
 // Header trang công khai (Khám phá, Giới thiệu hội): logo, Khám phá, Dành cho chủ hội, Đăng nhập / Tạo hội.
-import { Avatar, Logo, T } from '@hoiminh/ui';
+import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink } from 'react-router-dom';
+import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { useAuth } from '@/lib/auth';
 
 export function PublicHeader({ cta }: { cta?: 'join' | 'create' }) {
@@ -17,7 +18,7 @@ export function PublicHeader({ cta }: { cta?: 'join' | 'create' }) {
       <span className="flex-grow" />
       {cta === 'join' && !user && <Link to="/dang-nhap" className="btn btn-ghost">Đăng nhập</Link>}
       {cta !== 'join' && <Link to="/tao-hoi" className="btn btn-primary">Tạo hội của bạn</Link>}
-      {user ? <Link to="/admin" aria-label="Tài khoản"><Avatar name={user.name} src={user.avatarUrl} color={T.ink} size={40} /></Link> : cta === 'join' ? <Link to="/dang-ky" className="btn btn-primary">Tham gia hội</Link> : null}
+      {user ? <AccountAvatarLink user={user} /> : cta === 'join' ? <Link to="/dang-ky" className="btn btn-primary">Tham gia hội</Link> : null}
     </header>
   );
 }

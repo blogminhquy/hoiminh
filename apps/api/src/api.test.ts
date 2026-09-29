@@ -1,7 +1,7 @@
 // Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
-import { createApp, type App } from '@hoiminh/core';
+import { createApp, runCron, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll } from '@hoiminh/db/seed';
 import { fakeBucket } from '@hoiminh/media/testing';
@@ -202,6 +202,48 @@ describe('API', () => {
     const signed = await withR2.ctx.media.getSignedUrl('private/digital_product/x.pdf', 60);
     expect((await h1.request(signed)).status).toBe(200);
     });
+  it('đổi avatar qua HTTP dọn tệp cũ trên R2; DELETE /v1/files/:id chỉ hủy được ảnh chưa dùng của chính mình', async () => {
+    const dbHandle = (app.ctx as { db: unknown }).db as never;
+    const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    const bucket = fakeBucket();
+    const withR2 = await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket });
+    const h = createHonoApp(withR2);
+    const call = (path: string, init: RequestInit = {}, auth: string | null = token) => h.request(path, { ...init, headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${auth}` } : {}), ...(init.headers ?? {}) } });
+    /** Tải một ảnh avatar như trình duyệt: xin URL, PUT, xác nhận. */
+    const uploadAvatar = async () => {
+      const ask = await call('/v1/files/upload-url', { method: 'POST', body: JSON.stringify({ fileName: 'me.jpg', mimeType: 'image/jpeg', sizeBytes: 3, purpose: 'avatar' }) });
+      const r = (await ask.json()) as { fileId: string; upload: { url: string; headers: Record<string, string> } };
+      await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3]) });
+      await call(`/v1/files/${r.fileId}/complete`, { method: 'POST', body: JSON.stringify({ width: 10, height: 10 }) });
+      return { fileId: r.fileId, key: new URL(r.upload.url).pathname.replace('/files/upload/', '') };
+    };
+    const setAvatar = (avatarFileId: string | null) => call('/v1/me', { method: 'PATCH', body: JSON.stringify({ avatarFileId }) });
+
+    const first = await uploadAvatar();
+    expect((await setAvatar(first.fileId)).status).toBe(200);
+    const second = await uploadAvatar();
+    expect((await setAvatar(second.fileId)).status).toBe(200);
+    expect(bucket.objects.has(first.key)).toBe(true); // xếp hàng chờ cron, chưa xóa ngay
+    await runCron(withR2.ctx, 'every_minute');
+    expect(bucket.objects.has(first.key)).toBe(false);
+    expect(bucket.objects.has(second.key)).toBe(true);
+
+    // Hủy ảnh tải dở: chủ tệp được, hủy lần hai thì không còn, tệp đang dùng bị từ chối, người lạ không hủy được.
+    const spare = await uploadAvatar();
+    expect((await call(`/v1/files/${spare.fileId}`, { method: 'DELETE' }, null)).status).toBe(401);
+    expect((await call(`/v1/files/${spare.fileId}`, { method: 'DELETE' })).status).toBe(200);
+    expect((await call(`/v1/files/${spare.fileId}`, { method: 'DELETE' })).status).toBe(404);
+    expect((await call(`/v1/files/${second.fileId}`, { method: 'DELETE' })).status).toBe(409);
+    expect((await call('/v1/files/khong-phai-uuid', { method: 'DELETE' })).status).toBe(404);
+    await runCron(withR2.ctx, 'every_minute');
+    expect(bucket.objects.has(spare.key)).toBe(false);
+    expect(bucket.objects.has(second.key)).toBe(true);
+
+    // Gỡ avatar thì tệp cuối cùng cũng được dọn.
+    expect((await setAvatar(null)).status).toBe(200);
+    await runCron(withR2.ctx, 'every_minute');
+    expect(bucket.objects.size).toBe(0);
+  });
   it('trang mô phỏng thanh toán thoát HTML và không chuyển hướng ra ngoài', async () => {
     const page = await hono.request('/pay/simulator?provider=%3Cscript%3Ealert(1)%3C%2Fscript%3E&orderId=%22%3E%3Cimg&amount=1&return=https%3A%2F%2Fevil.example%2Fx');
     const html = await page.text();

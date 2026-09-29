@@ -34,7 +34,10 @@ export default function Page() {
 
   const upload = useMutation({
     mutationFn: (file: File) => api.upload(file, 'avatar'),
-    onSuccess: (r) => setForm((f) => (f ? { ...f, avatarUrl: r.url, avatarFileId: r.fileId } : f)),
+    onSuccess: (r) => {
+      if (form?.avatarFileId) void api.discardUpload(form.avatarFileId); // ảnh vừa chọn lúc trước mà chưa lưu
+      setForm((f) => (f ? { ...f, avatarUrl: r.url, avatarFileId: r.fileId } : f));
+    },
   });
   const save = useMutation({
     mutationFn: (f: Form) => api.patch('/v1/me', {
@@ -65,7 +68,7 @@ export default function Page() {
       {upload.isError && <div className="text-[13px] px-4 py-3 rounded-[10px]" style={{ background: T.accentSoft, color: T.accentText }}>{errorMessage(upload.error)}</div>}
 
       <div className="card p-6 flex flex-col gap-[18px]">
-        <AvatarCoverBlock name={form.name} avatarUrl={form.avatarUrl} coverColor={form.coverColor} uploading={upload.isPending} onPick={(f) => upload.mutate(f)} onRemove={() => set({ avatarUrl: null, avatarFileId: null })} onCover={(c) => set({ coverColor: c })} />
+        <AvatarCoverBlock name={form.name} avatarUrl={form.avatarUrl} coverColor={form.coverColor} uploading={upload.isPending} onPick={(f) => upload.mutate(f)} onRemove={() => { if (form.avatarFileId) void api.discardUpload(form.avatarFileId); set({ avatarUrl: null, avatarFileId: null }); }} onCover={(c) => set({ coverColor: c })} />
         <div className="grid-2">
           <Field label="Tên hiển thị"><Input value={form.name} maxLength={80} onChange={(e) => set({ name: e.target.value })} /></Field>
           <Field label="Tên người dùng" hint={`Dùng để nhắc đến bạn trong bài viết: @${form.handle || 'ban'}`}>

@@ -70,7 +70,7 @@ function CourseEditor({ slug, communityId, course }: { slug: string; communityId
 
   const onCover = async (file: File) => {
     setUploading(true);
-    try { const r = await api.upload(file, 'cover', { communityId }); patch({ coverFileId: r.fileId, coverUrl: r.url }); } catch (e) { setErr(errorMessage(e)); } finally { setUploading(false); }
+    try { const r = await api.upload(file, 'cover', { communityId }); if (f.coverFileId) void api.discardUpload(f.coverFileId); patch({ coverFileId: r.fileId, coverUrl: r.url }); } catch (e) { setErr(errorMessage(e)); } finally { setUploading(false); }
   };
 
   return (

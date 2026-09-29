@@ -1,9 +1,10 @@
 // Khung quản trị hệ thống (saShell trong build.mjs): sidebar #14110E, nhóm Vận hành / Cấu hình / Giám sát.
 import { BadgeCheck, FileText, House, KeyRound, MessageCircle, Rocket, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
-import { Avatar, Logo, T, Tag } from '@hoiminh/ui';
+import { Logo, T, Tag } from '@hoiminh/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -90,7 +91,7 @@ export function AdminShell() {
           <span className="flex-grow" />
           <span className="hide-mobile"><Tag tone={health.data?.env === 'production' ? 'accent' : 'teal'}>Môi trường: {health.data?.env === 'production' ? 'Production' : (health.data?.env ?? '…')}</Tag></span>
           <Link to="/admin" className="btn btn-ghost btn-sm">Về Hội<span className="hide-mobile">&nbsp;của tôi</span></Link>
-          <Avatar name={user.name} src={user.avatarUrl} color={T.ink} size={40} />
+          <AccountAvatarLink user={user} />
         </header>
         <nav className="admin-mobile-nav gap-1.5 overflow-x-auto px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}`, background: T.surface }}>
           {MOBILE_NAV.map(([to, label]) => (

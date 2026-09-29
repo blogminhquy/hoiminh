@@ -1,4 +1,6 @@
 // API client: gắn Bearer token, tự làm mới phiên khi 401, ném ApiError { code, message }.
+import { compressForUpload, type UploadPurpose } from './image-compress';
+
 export interface ApiErrorShape {
   code: string;
   message: string;
@@ -73,8 +75,14 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body ?? {}),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body ?? {}),
   del: <T>(path: string) => request<T>('DELETE', path),
-  /** Tải tệp: xin URL ký → PUT → xác nhận. Trả về { fileId, url }. */
-  async upload(file: File, purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'comment_image', scope: { communityId?: string | null; workspaceId?: string | null } = {}): Promise<{ fileId: string; url: string | null; width: number | null; height: number | null }> {
+  /**
+   * Bỏ ảnh vừa tải lên mà chưa dùng (bấm X, chọn ảnh khác trước khi lưu) để R2 không giữ tệp mồ côi.
+   * Không ném lỗi: tệp đã được dùng thì server từ chối (409) và giữ nguyên, đó là kết quả đúng.
+   */
+  discardUpload: (fileId: string): Promise<void> => request<unknown>('DELETE', `/v1/files/${fileId}`).then(() => undefined, () => undefined),
+  /** Tải tệp: nén ảnh (JPEG, cạnh dài tối đa 1200px, avatar 512px) → xin URL ký → PUT → xác nhận. Trả về { fileId, url }. */
+  async upload(original: File, purpose: UploadPurpose, scope: { communityId?: string | null; workspaceId?: string | null } = {}): Promise<{ fileId: string; url: string | null; width: number | null; height: number | null }> {
+    const file = await compressForUpload(original, purpose);
     const r = await request<{ fileId: string; upload: { url: string; headers: Record<string, string> }; url: string | null }>('POST', '/v1/files/upload-url', { fileName: file.name, mimeType: file.type || 'application/octet-stream', sizeBytes: file.size, purpose, ...scope });
     const put = await fetch(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: file });
     if (!put.ok) throw new ApiError('internal_error', 'Tải tệp thất bại', put.status);

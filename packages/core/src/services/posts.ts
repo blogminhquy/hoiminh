@@ -1,7 +1,7 @@
 // Bài viết Markdown: bảng tin, tạo với ảnh/bình chọn/nền màu, chi tiết, ghim, sửa, xóa mềm; bình luận và phản ứng ở comments.ts.
 import type { CreatePostInput } from '@hoiminh/contracts';
-import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
-import { communities, communityMembers, communityTiers, files, pollOptions, pollVotes, polls, postImages, posts, reactions, spaces, users } from '@hoiminh/db';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { comments, communities, communityMembers, communityTiers, files, pollOptions, pollVotes, polls, postImages, posts, reactions, spaces, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { notify } from './notifications';
 import { forbidden, invalid, notFound } from '../errors';
@@ -9,6 +9,7 @@ import { canUseStatusBg, excerptOf } from '../lib/markdown';
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess, type CommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { releaseFiles } from './files';
 import { assertWorkspaceUnlocked } from './workspaces';
 
 const authorCols = { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor };
@@ -132,6 +133,7 @@ export async function moderatePost(ctx: Ctx, postId: string, action: 'approve' |
   } else {
     await ctx.db.update(posts).set({ deletedAt: ctx.now() }).where(eq(posts.id, postId));
     await ctx.db.update(spaces).set({ postCount: sql`greatest(${spaces.postCount} - 1, 0)` }).where(eq(spaces.id, post.spaceId));
+    await releasePostMedia(ctx, post);
     await notify(ctx, { userId: post.authorUserId, communityId: post.communityId, kind: 'post.rejected', category: 'post', title: 'Bài viết của bạn không được duyệt', body: reason || post.title || excerptOf(post.contentMd, 80), link: community ? `/${community.slug}/bang-tin` : null, actionLabel: null });
   }
   await audit(ctx, { action: `post.${action}`, resourceType: 'post', resourceId: postId, communityId: post.communityId, metadata: { reason } });
@@ -173,7 +175,20 @@ export async function updatePost(ctx: Ctx, postId: string, input: { title?: stri
   return row!;
 }
 
-/** Xóa mềm bài viết. */
+/**
+ * Gỡ ảnh của bài và ảnh trong bình luận của bài rồi giải phóng tệp trên R2. Gọi sau khi đã đánh dấu xóa bài.
+ * Ảnh vẫn được giữ nếu còn nơi khác dùng (xem releaseFiles).
+ */
+async function releasePostMedia(ctx: Ctx, post: { id: string; authorUserId: string; communityId: string }) {
+  const imgs = await ctx.db.delete(postImages).where(eq(postImages.postId, post.id)).returning({ fileId: postImages.fileId, url: postImages.url });
+  // Đọc trước rồi mới xóa: UPDATE ... RETURNING trả giá trị mới (null), không phải URL cần giải phóng.
+  const withImage = and(eq(comments.targetType, 'post'), eq(comments.targetId, post.id), isNotNull(comments.imageUrl));
+  const cmts = await ctx.db.select({ imageUrl: comments.imageUrl, authorUserId: comments.authorUserId }).from(comments).where(withImage);
+  if (cmts.length) await ctx.db.update(comments).set({ imageUrl: null }).where(withImage);
+  await releaseFiles(ctx, { fileIds: imgs.map((i) => i.fileId), urls: [...imgs.map((i) => i.url), ...cmts.map((c) => c.imageUrl)] }, { ownerUserIds: [post.authorUserId, ...cmts.map((c) => c.authorUserId)], communityId: post.communityId });
+}
+
+/** Xóa mềm bài viết; ảnh của bài bị gỡ và dọn khỏi R2. */
 export async function deletePost(ctx: Ctx, postId: string) {
   const post = await ctx.db.query.posts.findFirst({ where: and(eq(posts.id, postId), isNull(posts.deletedAt)) });
   if (!post) throw notFound();
@@ -181,6 +196,7 @@ export async function deletePost(ctx: Ctx, postId: string) {
   if (!(ctx.actor.type === 'user' && ctx.actor.userId === post.authorUserId) && !access.permissions.has('post.moderate')) throw forbidden();
   await ctx.db.update(posts).set({ deletedAt: ctx.now() }).where(eq(posts.id, postId));
   await ctx.db.update(spaces).set({ postCount: sql`greatest(${spaces.postCount} - 1, 0)` }).where(eq(spaces.id, post.spaceId));
+  await releasePostMedia(ctx, post);
   await audit(ctx, { action: 'post.delete', resourceType: 'post', resourceId: postId, communityId: post.communityId });
 }
 

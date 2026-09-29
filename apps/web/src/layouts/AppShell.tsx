@@ -1,8 +1,9 @@
 // Khung ứng dụng hội (desktop 264px sidebar + header 64px; mobile: header tối + 5 tab dưới). Khớp shell() trong design/build.mjs.
 import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Plus, Search, Settings, Store, Trophy, User, Users, Wallet } from 'lucide-react';
-import { Avatar, Button, CommunityMark, Logo, T } from '@hoiminh/ui';
+import { Button, CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
@@ -94,7 +95,7 @@ function Header({ shell }: { shell: Shell }) {
       <div className="flex items-center gap-2">
         <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
         <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
-        <Link to="/tai-khoan/goi" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.ink} size={40} /></Link>
+        <AccountAvatarLink user={user} />
       </div>
     </header>
   );

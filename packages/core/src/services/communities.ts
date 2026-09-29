@@ -8,6 +8,7 @@ import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { releaseFiles } from './files';
 import { assertWorkspaceUnlocked, ensureWorkspace } from './workspaces';
 
 const DEFAULT_SPACES: Array<[string, string, 'everyone' | 'admins_only' | 'premium', string]> = [['Thông báo', 'thong-bao', 'admins_only', 'accent'], ['Hỏi đáp', 'hoi-dap', 'everyone', 'teal'], ['Chia sẻ', 'chia-se', 'everyone', 'accent'], ['Nhật ký', 'nhat-ky', 'everyone', 'gold'], ['Câu chuyện', 'cau-chuyen', 'premium', 'gold']];
@@ -107,7 +108,11 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
     if (input[k] !== undefined) (patch as Record<string, unknown>)[k] = input[k];
   }
   if (input.name) patch.logoMark = markOf(input.name);
+  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { logoUrl: true, coverUrl: true } });
   const [row] = await ctx.db.update(communities).set(patch).where(eq(communities.id, communityId)).returning();
+  // Đổi hoặc gỡ logo/ảnh bìa thì tệp cũ trên R2 không còn ai dùng.
+  const replaced = [input.logoUrl !== undefined && input.logoUrl !== before?.logoUrl ? before?.logoUrl : null, input.coverUrl !== undefined && input.coverUrl !== before?.coverUrl ? before?.coverUrl : null];
+  await releaseFiles(ctx, { urls: replaced }, { communityId });
   await audit(ctx, { action: 'community.update_general', resourceType: 'community', resourceId: communityId, communityId, metadata: { keys: Object.keys(patch) } });
   return row!;
 }
