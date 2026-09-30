@@ -1,7 +1,7 @@
 // Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
-import { createApp, InMemoryQueue, type App } from '@hoiminh/core';
+import { createApp, type App, type InMemoryQueue } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll } from '@hoiminh/db/seed';
 import { fakeBucket } from '@hoiminh/media/testing';
