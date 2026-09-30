@@ -28,7 +28,7 @@ Bỏ cron mỗi phút bằng cách: mọi việc được ghi vào DB (sổ gố
 | Retry webhook | Queue delay | Giống, nhưng **lỗi HTTP của khách không ném ra consumer** | Tránh nhân hai tầng retry (lịch 5 lần × `max_retries=5` = tới 25 lần) |
 | DLQ | "Alert khi > 0" | Thêm consumer cho `hoiminh-jobs-dlq` | DLQ đã khai báo (`wrangler.toml:50`) nhưng chưa ai đọc |
 | Trạng thái sự kiện | Không nhắc | Tính khi đọc + quét thưa | Cron phút đang đổi `live`/`ended` (`cron.ts:88`) |
-| Job kẹt | Không nhắc | Lease `locked_at` + thu hồi | Job claim `running` rồi Worker chết thì kẹt vĩnh viễn (`cron.ts:48`) |
+| Claim job | Không nhắc | Claim chạy trong chính transaction của job | Claim khóa dòng nên message trùng chạy lần lượt. Job lỗi thì transaction hoàn tác, dòng tự trở về trạng thái cũ: không cần lease, không có "job kẹt" (bản đầu của spec này nhận định sai chỗ này) |
 | Thứ tự làm | Xoá cron rồi theo dõi | Chạy song song 7 ngày rồi mới xoá | Cả hai đường đều idempotent nên chạy song song an toàn |
 
 ## 2. Hiện trạng đã đối chiếu
@@ -107,7 +107,7 @@ Thay đổi `JobMap`:
 
 | Thay đổi | Lý do |
 |---|---|
-| `scheduled_jobs`: thêm `enqueued_at`, `locked_at` (timestamptz, null); `status` thêm `enqueued`, `cancelled` | phân biệt chưa đẩy / đã đẩy / đang chạy; lease |
+| `scheduled_jobs`: thêm `enqueued_at` (timestamptz, null); `status` thêm `enqueued` | phân biệt chưa đẩy / đã đẩy; bộ quét không đẩy lại dồn dập |
 | Bảng mới `job_recipients (job_key text, user_id uuid, created_at, PK(job_key, user_id))` | khử trùng gửi theo từng người |
 | Index `events_active_end_idx` trên `events(ends_at)` `WHERE status IN ('scheduled','live')` | bước quét trạng thái sự kiện |
 | Index `events_scheduled_start_idx` trên `events(starts_at)` `WHERE status = 'scheduled'` | như trên |
@@ -131,16 +131,15 @@ Thêm consumer cho `hoiminh-jobs-dlq` trong `hoiminh-jobs`: log `job.dead_letter
 
 ## 5. Bộ quét thưa `runSweep(ctx)`
 
-Chạy trong cron `*/10 * * * *`, cùng leaderboard. Mỗi bước có giới hạn 200 dòng, tối đa 5 vòng mỗi lần chạy.
+Chạy trong cron `*/10 * * * *`, cùng leaderboard. Mỗi bước duyệt theo con trỏ `(thời điểm, id)`, 200 dòng mỗi trang, tối đa 5 trang (1.000 dòng) mỗi lần chạy; phần còn lại để lần sau. Không lặp lại cùng điều kiện trong một lần chạy vì trạng thái `enqueued` chỉ được ghi sau commit.
 
 | # | Bước | Điều kiện | Hành động |
 |---|---|---|---|
 | 1 | Đẩy job sắp tới hạn | `scheduled_jobs` `pending`, `run_at <= now() + 24h`, `created_at < now() - 1 phút` | enqueue `scheduled.run` với `delaySeconds = max(0, run_at - now)` |
 | 2 | Cứu tin đã mất | `enqueued`, `run_at < now() - 15 phút` | enqueue lại (handler khử trùng); log `sweep.requeue` |
-| 3 | Thu hồi job kẹt | `running`, `locked_at < now() - 5 phút` | nhả lock, về `pending` |
-| 4 | Webhook lọt | `webhook_deliveries` `pending`/`failed`, `next_attempt_at < now() - 5 phút` | enqueue `webhook.deliver` |
-| 5 | Hết hạn đơn | `orders` `pending`, `expires_at < now()` | giữ `expirePendingOrders` |
-| 6 | Trạng thái sự kiện | `scheduled → live → ended` | giữ 2 câu UPDATE hiện có, có index mới |
+| 3 | Webhook lọt | `webhook_deliveries` `pending`/`failed`, `next_attempt_at < now() - 5 phút` | enqueue `webhook.deliver` |
+| 4 | Hết hạn đơn | `orders` `pending`, `expires_at < now()` | giữ `expirePendingOrders` |
+| 5 | Trạng thái sự kiện | `scheduled → live → ended` | giữ 2 câu UPDATE hiện có, có index mới |
 
 Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn có index, thay cho 1.440 lần × khoảng 8 lượt đi về DB.
 
@@ -150,7 +149,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 
 | Job | Khoá khử trùng | Cơ chế |
 |---|---|---|
-| `scheduled.run` | `scheduled_jobs.dedupe_key` (unique) | claim `UPDATE ... SET status='running', locked_at=now(), attempts=attempts+1 WHERE id=? AND status IN ('pending','enqueued')`; 0 dòng thì bỏ qua |
+| `scheduled.run` | `scheduled_jobs.dedupe_key` (unique) | claim `UPDATE ... SET status='running', attempts=attempts+1 WHERE id=? AND status IN ('pending','enqueued')` trong transaction của job (khóa dòng); 0 dòng thì bỏ qua |
 | `webhook.deliver` | `webhook_deliveries.id` | claim `UPDATE ... SET next_attempt_at = now() + 2 phút WHERE id=? AND status IN ('pending','failed') AND (next_attempt_at IS NULL OR next_attempt_at <= now()) RETURNING`; 0 dòng thì bỏ qua. Bên nhận khử trùng bằng header `X-HoiMinh-Delivery` |
 | Nhắc sự kiện | `event-remind:{eventId}:{label}:{floor(startsAt/60000)}` | job cha + lô; từng người claim qua `job_recipients` |
 | `post.broadcast` | `post-broadcast:{postId}` | như trên, lô 100 |
@@ -168,7 +167,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 - `deliver()` thất bại: cập nhật DB như hiện tại (`attempt`, `next_attempt_at`, `status`), rồi `enqueue('webhook.deliver', { deliveryId }, { delaySeconds: BACKOFF_MINUTES[attempt-1] * 60 })`. Lớn nhất 720 phút = 12 giờ, nằm trong giới hạn 24 giờ.
 - Hết lượt (5) thì `exhausted`, không enqueue. Sau 20 lỗi liên tiếp thì webhook `paused` (giữ nguyên).
 - Lỗi HTTP hay timeout của khách là **kết quả nghiệp vụ**, không ném ra consumer. Chỉ lỗi hạ tầng của mình (DB) mới ném để Queue retry.
-- Bỏ `retryDue` khỏi đường cron phút; logic của nó thành bước 4 của bộ quét.
+- Bỏ `retryDue` khỏi đường cron phút; logic của nó thành bước 3 của bộ quét.
 
 ### 7.2 Nhắc sự kiện
 
@@ -182,7 +181,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 
 - Hàm `effectiveOrderStatus(order, now)`: `pending` mà `expiresAt < now` thì coi là `expired`. Dùng trong `orderStatus` (`checkout.ts:111`) và các hành động khách tự khởi tạo: `markProcessing` từ chối đơn quá hạn (`invalidState`).
 - **Không áp cho webhook thanh toán.** `confirmPayment` vẫn nhận thanh toán đến sau hạn và chuyển đơn sang `paid`. Có test khoá hành vi này.
-- **Không tạo job trễ cho từng đơn.** Hết hạn chỉ đổi cờ (không nhả kho, mã giảm giá hay quyền), và đa số đơn bị bỏ dở nên mỗi đơn sẽ tốn một message cộng một lần đọc DB. Bộ quét bước 5 dọn cờ mỗi 10 phút.
+- **Không tạo job trễ cho từng đơn.** Hết hạn chỉ đổi cờ (không nhả kho, mã giảm giá hay quyền), và đa số đơn bị bỏ dở nên mỗi đơn sẽ tốn một message cộng một lần đọc DB. Bộ quét bước 4 dọn cờ mỗi 10 phút.
 - Chấp nhận: các danh sách quản trị đọc cột `status` có thể lệch tối đa 10 phút so với thực tế.
 
 ### 7.4 `scheduled_jobs` chung
@@ -195,7 +194,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 ### 7.5 Trạng thái sự kiện
 
 - `effectiveEventStatus(e, now)`: `cancelled` giữ nguyên; trước `startsAt` là `scheduled`; trong khoảng `startsAt..endsAt` là `live`; sau đó là `ended`.
-- Cột `status` do bộ quét bước 6 cập nhật để lọc và báo cáo. `endEvent` giữ nguyên.
+- Cột `status` do bộ quét bước 5 cập nhật để lọc và báo cáo. `endEvent` giữ nguyên.
 - Lúc soạn spec, tìm `status === 'live'` trong `apps` và `packages` không ra chỗ nào, nên rủi ro thấp. Phase 3 phải grep lại trước khi bỏ cron.
 
 ## 8. Cron sau refactor
@@ -283,7 +282,6 @@ Cũng cập nhật `DECISIONS.md`: mục #18 (welcome DM dùng "cron mỗi phút
 | | tên job lạ | retry, không ack |
 | | message trùng | kết quả nghiệp vụ không đổi |
 | Bộ quét | `pending` ≤ 24 giờ / > 24 giờ | đẩy / không đẩy |
-| | `running` quá lease | thu hồi |
 | | `enqueued` quá hạn 15 phút | đẩy lại |
 | | mất tin do giả lập lỗi Queue | job vẫn chạy trong ≤ 15 phút |
 | Cấu hình | `wrangler.toml` của jobs | đúng hai dòng cron |

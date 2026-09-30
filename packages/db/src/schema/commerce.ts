@@ -1,4 +1,5 @@
 // Thương mại: sản phẩm, combo, trang bán chuẩn, offer, giá, mã giảm, đơn hàng, thanh toán, hoàn tiền, subscription, hóa đơn.
+import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, money, timestamps, ts } from './_helpers';
 import { courses } from './learning';
@@ -150,7 +151,7 @@ export const orders = pgTable(
     expiresAt: ts('expires_at'),
     ...timestamps(),
   },
-  (t) => [uniqueIndex('orders_reference_uq').on(t.reference), index('orders_customer_idx').on(t.customerUserId, t.createdAt), index('orders_community_idx').on(t.communityId, t.createdAt), index('orders_status_idx').on(t.status)],
+  (t) => [uniqueIndex('orders_reference_uq').on(t.reference), index('orders_customer_idx').on(t.customerUserId, t.createdAt), index('orders_community_idx').on(t.communityId, t.createdAt), index('orders_status_idx').on(t.status), index('orders_pending_expiry_idx').on(t.expiresAt).where(sql`${t.status} = 'pending'`)],
 );
 
 export const orderItems = pgTable(

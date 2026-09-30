@@ -47,7 +47,16 @@ binding = "JOBS"
 queue = "hoiminh-jobs"
 max_batch_size = 10
 max_retries = 5
+# Trần số consumer chạy đồng thời: mỗi consumer mở một kết nối Postgres qua Hyperdrive, nghẽn khi đông người là DB.
+# Tăng dần theo số đo (p95 truy vấn, độ sâu hàng đợi), đừng bỏ trống để Queue tự nở tới mức tối đa.
+max_concurrency = 10
 dead_letter_queue = "hoiminh-jobs-dlq"
+
+# Job hết lượt retry: ghi log `job.dead_letter` để cảnh báo và đánh dấu dòng scheduled_jobs là failed.
+[[queues.consumers]]
+queue = "hoiminh-jobs-dlq"
+max_batch_size = 10
+max_retries = 0
 
 [triggers]
 # mỗi phút: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook

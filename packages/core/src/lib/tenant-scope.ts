@@ -13,6 +13,8 @@ import { communities } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { raw } from './db';
 import type { Actor, Ctx } from '../context';
+import { DeferredQueue } from '../jobs/queue';
+import { markScheduledEnqueued } from '../jobs/scheduled-state';
 
 export interface TenantScope {
   userId: string | null;
@@ -74,14 +76,18 @@ function setScopeSql(scope: TenantScope) {
 }
 
 async function runInScope<T>(ctx: Ctx, scope: TenantScope, fn: (scoped: Ctx) => Promise<T>): Promise<T> {
-  // Email trong transaction chỉ được ghi nhận; gửi thật sau khi commit, để không giữ kết nối
-  // database trong lúc chờ Resend, và để thao tác bị hủy thì không gửi email sai.
+  // Email và message hàng đợi trong transaction chỉ được ghi nhận; gửi thật sau khi commit, để không giữ kết nối
+  // database trong lúc chờ Resend, không đẩy vào Queue khi consumer có thể chạy trước commit, và để thao tác
+  // bị hủy thì không gửi gì sai.
   const email = new DeferredSender(ctx.email);
+  const queue = new DeferredQueue(ctx.queue);
+  // Scope lồng nhau: message đi vào DeferredQueue của scope ngoài, scope ngoài mới đẩy thật và đánh dấu enqueued.
+  const nested = ctx.queue instanceof DeferredQueue;
   let result: T;
   try {
     result = await ctx.db.transaction(async (tx) => {
       await tx.execute(setScopeSql(scope));
-      const scoped: Ctx = { ...ctx, db: tx as unknown as Ctx['db'], email };
+      const scoped: Ctx = { ...ctx, db: tx as unknown as Ctx['db'], email, queue };
     // Handler của sự kiện phải chạy trong chính transaction này. Dùng kết nối gốc thì
     // Postgres không thấy biến phiên, còn PGlite (một kết nối) khóa chết chờ transaction.
       scoped.events = { on: ctx.events.on.bind(ctx.events), emit: (name, payload) => ctx.events.emit(name, payload, scoped) };
@@ -90,9 +96,18 @@ async function runInScope<T>(ctx: Ctx, scope: TenantScope, fn: (scoped: Ctx) => 
   } catch (err) {
     const dropped = email.discard();
     if (dropped) ctx.log.warn('email.discarded_on_rollback', { count: dropped });
+    const droppedJobs = queue.discard();
+    if (droppedJobs) ctx.log.warn('queue.discarded_on_rollback', { count: droppedJobs });
     throw err;
   }
   await email.flush((m, err) => ctx.log.error('email.send_failed', { template: m.template, err: String(err) }));
+  // Lỗi đẩy Queue chỉ ghi log: dòng DB (scheduled_jobs, webhook_deliveries) đã commit nên bộ quét sẽ đẩy lại.
+  await queue.flush(
+    (m, err) => ctx.log.error('queue.flush_failed', { name: m.name, err: String(err) }),
+    nested ? undefined : async (m) => {
+      if (m.name === 'scheduled.run') await markScheduledEnqueued(ctx.db, (m.payload as { jobId: string }).jobId, ctx.now());
+    },
+  );
   return result;
 }
 

@@ -11,7 +11,7 @@ import { CloudflareQueue, type Job } from './jobs/queue';
 
 /** Phần env của Worker mà App cần: biến/secret dạng chuỗi, hàng đợi job, Hyperdrive. */
 export interface WorkerBindings {
-  JOBS: { send(body: Job): Promise<void> };
+  JOBS: { send(body: Job, options?: { delaySeconds?: number }): Promise<void> };
   HYPERDRIVE?: { connectionString: string };
   /** Bucket R2 `hoiminh-files` ([[r2_buckets]]); ảnh và tệp đi qua API vào đây, không cần secret. */
   FILES?: R2BucketLike;

@@ -11,6 +11,7 @@ import { sendWelcomeDm } from '../services/messaging';
 import { notify } from '../services/notifications';
 import { deliver } from '../services/webhooks-out';
 import type { Job } from './queue';
+import { runScheduledJob } from './scheduled';
 
 /** Tạo handler cho hàng đợi. */
 export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
@@ -69,6 +70,15 @@ export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
         }
         return;
       }
+      case 'scheduled.run': {
+        const result = await runScheduledJob(ctx, job.payload.jobId);
+        ctx.log.info('scheduled.run', { jobId: job.payload.jobId, result });
+        return;
+      }
+      default:
+        // Tên job chưa biết: thường do hoiminh-api đã deploy bản mới hơn hoiminh-jobs. Ném lỗi để Queue retry
+        // thay vì ack (ack là mất tin); consumer coi đây là lỗi tạm thời cho tới khi bản mới của jobs lên.
+        throw new Error(`job.unknown:${String((job as { name?: unknown }).name)}`);
     }
   });
 }

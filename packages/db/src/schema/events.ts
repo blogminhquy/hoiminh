@@ -1,4 +1,5 @@
 // Sự kiện: chuỗi, buổi, đăng ký, câu hỏi gửi trước, bình chọn câu hỏi, bản ghi xem lại.
+import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps, ts } from './_helpers';
 import { communities } from './tenant';
@@ -51,7 +52,13 @@ export const events = pgTable(
     registrationCount: integer('registration_count').notNull().default(0),
     ...timestamps(),
   },
-  (t) => [index('events_community_time_idx').on(t.communityId, t.startsAt), index('events_series_idx').on(t.seriesId)],
+  (t) => [
+    index('events_community_time_idx').on(t.communityId, t.startsAt),
+    index('events_series_idx').on(t.seriesId),
+    // Bộ quét trạng thái sự kiện chỉ nhìn các buổi còn sống, không quét cả bảng.
+    index('events_active_end_idx').on(t.endsAt).where(sql`${t.status} in ('scheduled','live')`),
+    index('events_scheduled_start_idx').on(t.startsAt).where(sql`${t.status} = 'scheduled'`),
+  ],
 );
 
 export const eventRegistrations = pgTable(

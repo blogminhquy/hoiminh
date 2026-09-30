@@ -1,16 +1,17 @@
 // Lịch chạy định kỳ: mỗi phút (job hẹn giờ, nhắc sự kiện, hết hạn đơn), 10 phút (xếp hạng), hằng ngày (hold, churn, gói nền tảng, tệp tải dở).
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import { events, scheduledJobs } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
 import { expireEntitlements } from '../services/entitlements';
-import { FILE_DELETE_JOB, sweepAbandonedUploads } from '../services/files';
-import { sendWelcomeDm } from '../services/messaging';
+import { sweepAbandonedUploads } from '../services/files';
 import { expirePendingOrders } from '../services/payments';
 import { runPlatformBillingCron } from '../services/platform-billing';
 import { churnExpired } from '../services/subscriptions';
 import { retryDue } from '../services/webhooks-out';
+import { runKind } from './scheduled';
+import { flipEventStatuses, runSweep } from './sweep';
 
 export type CronName = 'every_minute' | 'every_10_minutes' | 'daily';
 
@@ -24,7 +25,14 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
     out.expiredOrders = await expirePendingOrders(ctx);
     out.webhookRetries = await retryDue(ctx);
   }
-  if (name === 'every_10_minutes') out.leaderboard = await snapshotLeaderboards(ctx);
+  if (name === 'every_10_minutes') {
+    out.leaderboard = await snapshotLeaderboards(ctx);
+    // Lưới an toàn của mô hình event-driven: đẩy job hẹn giờ sắp tới hạn, cứu message bị mất, dọn cờ.
+    const sweep = await runSweep(ctx);
+    out.sweepPushed = sweep.pushed;
+    out.sweepRequeued = sweep.requeued;
+    out.sweepWebhooks = sweep.webhookRequeued;
+  }
   if (name === 'daily') {
     out.commissionsReleased = await releaseDueCommissions(ctx);
     out.churned = await churnExpired(ctx);
@@ -48,15 +56,7 @@ export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<numb
     const claimed = await ctx.db.update(scheduledJobs).set({ status: 'running', attempts: j.attempts + 1 }).where(and(eq(scheduledJobs.id, j.id), eq(scheduledJobs.status, 'pending'))).returning({ id: scheduledJobs.id });
     if (!claimed.length) continue;
     try {
-      if (j.kind === 'welcome_dm.send') {
-        const p = j.payload as { communityId: string; userId: string };
-        await sendWelcomeDm(ctx, p.communityId, p.userId);
-      } else if (j.kind === 'event.remind') {
-        const p = j.payload as { eventId: string; label: string };
-        await ctx.queue.enqueue('event.remind', p);
-      } else if (j.kind === FILE_DELETE_JOB) {
-        await ctx.media.delete((j.payload as { objectKey: string }).objectKey);
-      }
+      await runKind(ctx, j);
       await ctx.db.update(scheduledJobs).set({ status: 'done', doneAt: ctx.now() }).where(eq(scheduledJobs.id, j.id));
       n++;
     } catch (err) {
@@ -85,7 +85,6 @@ export async function scheduleEventReminders(appOrCtx: AppContext | Ctx): Promis
     }
   }
   // Buổi đang diễn ra → live, đã qua → ended.
-  await ctx.db.update(events).set({ status: 'live' }).where(and(eq(events.status, 'scheduled'), lte(events.startsAt, ctx.now()), gte(events.endsAt, ctx.now())));
-  await ctx.db.update(events).set({ status: 'ended' }).where(and(sql`${events.status} in ('scheduled','live')`, sql`${events.endsAt} < now()`));
+  await flipEventStatuses(ctx);
   return n;
 }
