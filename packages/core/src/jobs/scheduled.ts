@@ -2,7 +2,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { scheduledJobs } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { FILE_DELETE_JOB } from '../services/files';
+import { FILE_DELETE_JOB } from './kinds';
 import { sendWelcomeDm } from '../services/messaging';
 import { PermanentJobError } from './errors';
 import { runEventReminder } from './event-reminders';

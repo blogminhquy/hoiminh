@@ -1,7 +1,7 @@
 // Test tích hợp HTTP: đăng nhập, khung hội, bảng tin, webhook SePay qua HTTP, lỗi chuẩn, API key.
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
-import { createApp, runCron, type App } from '@hoiminh/core';
+import { createApp, InMemoryQueue, type App } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll } from '@hoiminh/db/seed';
 import { fakeBucket } from '@hoiminh/media/testing';
@@ -217,14 +217,15 @@ describe('API', () => {
       await call(`/v1/files/${r.fileId}/complete`, { method: 'POST', body: JSON.stringify({ width: 10, height: 10 }) });
       return { fileId: r.fileId, key: new URL(r.upload.url).pathname.replace('/files/upload/', '') };
     };
+    const settle = () => (withR2.ctx.queue as InMemoryQueue).drain();
     const setAvatar = (avatarFileId: string | null) => call('/v1/me', { method: 'PATCH', body: JSON.stringify({ avatarFileId }) });
 
     const first = await uploadAvatar();
     expect((await setAvatar(first.fileId)).status).toBe(200);
     const second = await uploadAvatar();
     expect((await setAvatar(second.fileId)).status).toBe(200);
-    expect(bucket.objects.has(first.key)).toBe(true); // xếp hàng chờ cron, chưa xóa ngay
-    await runCron(withR2.ctx, 'every_minute');
+    // Việc xóa R2 vào hàng đợi sau khi request commit; consumer xóa ngay, không chờ cron.
+    await settle();
     expect(bucket.objects.has(first.key)).toBe(false);
     expect(bucket.objects.has(second.key)).toBe(true);
 
@@ -235,13 +236,13 @@ describe('API', () => {
     expect((await call(`/v1/files/${spare.fileId}`, { method: 'DELETE' })).status).toBe(404);
     expect((await call(`/v1/files/${second.fileId}`, { method: 'DELETE' })).status).toBe(409);
     expect((await call('/v1/files/khong-phai-uuid', { method: 'DELETE' })).status).toBe(404);
-    await runCron(withR2.ctx, 'every_minute');
+    await settle();
     expect(bucket.objects.has(spare.key)).toBe(false);
     expect(bucket.objects.has(second.key)).toBe(true);
 
     // Gỡ avatar thì tệp cuối cùng cũng được dọn.
     expect((await setAvatar(null)).status).toBe(200);
-    await runCron(withR2.ctx, 'every_minute');
+    await settle();
     expect(bucket.objects.size).toBe(0);
   });
   it('trang mô phỏng thanh toán thoát HTML và không chuyển hướng ra ngoài', async () => {

@@ -1,5 +1,6 @@
 // Dọn tệp trên R2 khi ảnh bị gỡ: xóa bài, xóa bình luận, đổi avatar/logo/ảnh bìa, hủy ảnh tải lên dở.
-// Việc xóa R2 đi qua hàng đợi scheduled_jobs (ghi cùng transaction với việc gỡ tham chiếu), cron mỗi phút mới xóa thật.
+// Việc xóa R2 đi qua scheduled_jobs (ghi cùng transaction với việc gỡ tham chiếu) và chỉ vào Queue sau khi commit;
+// consumer xóa thật ngay sau đó. Queue lỗi hoặc bỏ cuộc thì bộ quét thưa cứu lại.
 import { fakeBucket, type FakeBucket } from '@hoiminh/media/testing';
 import { comments as commentsTable, files, lessonResources, postImages, productPages, products, scheduledJobs } from '@hoiminh/db';
 import * as schema from '@hoiminh/db';
@@ -7,7 +8,8 @@ import { and, eq, getTableName, is, sql } from 'drizzle-orm';
 import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
-import { runCron, runScheduledJobs } from '../jobs/cron';
+import { runCron } from '../jobs/cron';
+import { runSweep } from '../jobs/sweep';
 import { withTenantScope } from '../lib/tenant-scope';
 import * as comments from '../services/comments';
 import * as communities from '../services/communities';
@@ -42,8 +44,8 @@ async function upload(ctx: Ctx, purpose: 'post_image' | 'avatar' | 'cover' | 'co
 
 const fileRow = (fileId: string) => app.ctx.db.query.files.findFirst({ where: eq(files.id, fileId) });
 const jobFor = (key: string) => app.ctx.db.query.scheduledJobs.findFirst({ where: eq(scheduledJobs.dedupeKey, `${filesSvc.FILE_DELETE_JOB}:${key}`) });
-/** Chạy cron mỗi phút như trên production: đây là lúc R2 thật sự bị xóa. */
-const runJobs = () => runScheduledJobs(app.system());
+/** Chờ hàng đợi xử lý xong: đây là lúc R2 thật sự bị xóa (trên production, consumer làm việc này ngay sau commit). */
+const runJobs = () => app.queue.drain();
 
 async function newPost(ctx: Ctx, images: Uploaded[]) {
   const kd = await app.ids(KD);
@@ -61,11 +63,10 @@ describe('xóa bài viết', () => {
 
     await posts.deletePost(mq, post.id);
 
-    // Ngay sau khi xóa bài: tham chiếu đã gỡ, việc xóa R2 nằm trong hàng đợi, tệp trên R2 chưa mất.
+    // Ngay sau khi xóa bài: tham chiếu đã gỡ và việc xóa R2 đã được ghi vào scheduled_jobs (outbox).
     expect(await app.ctx.db.query.postImages.findMany({ where: eq(postImages.postId, post.id) })).toHaveLength(0);
     expect(await fileRow(a.fileId)).toBeUndefined();
-    expect((await jobFor(a.key))?.status).toBe('pending');
-    expect(bucket.objects.has(a.key)).toBe(true);
+    expect(await jobFor(a.key)).toBeTruthy();
 
     await runJobs();
     expect(bucket.objects.has(a.key)).toBe(false);
@@ -306,31 +307,55 @@ describe('độ tin cậy của việc xóa', () => {
     expect(bucket.objects.has(img.key)).toBe(true);
   });
 
-  it('R2 lỗi thì job được thử lại, không mất', async () => {
+  it('R2 lỗi tạm thời thì Queue tự thử lại, không mất việc', async () => {
     const mq = await app.as('minhquy');
     const img = await upload(mq, 'post_image');
-    await filesSvc.discardUpload(mq, img.fileId);
     const realDelete = bucket.delete.bind(bucket);
     let failures = 1;
+    let calls = 0;
     bucket.delete = async (keys) => {
+      calls++;
       if (failures-- > 0) throw new Error('R2 tạm thời lỗi');
       return realDelete(keys);
     };
     try {
-      await runJobs();
-      const failed = await jobFor(img.key);
-      expect(failed?.status).toBe('pending');
-      expect(failed?.attempts).toBe(1);
-      expect(failed?.lastError).toContain('R2 tạm thời lỗi');
-      expect(bucket.objects.has(img.key)).toBe(true);
-      await app.ctx.db.execute(sql`update scheduled_jobs set run_at = now() - interval '1 minute' where dedupe_key = ${`${filesSvc.FILE_DELETE_JOB}:${img.key}`}`);
-      await runJobs();
+      await filesSvc.discardUpload(mq, img.fileId);
+      await app.queue.drain(8000);
+      expect(calls).toBe(2);
       expect(bucket.objects.has(img.key)).toBe(false);
       expect((await jobFor(img.key))?.status).toBe('done');
     } finally {
       bucket.delete = realDelete;
     }
   });
+
+  it('R2 hỏng lâu: Queue bỏ cuộc nhưng dòng scheduled_jobs còn, bộ quét cứu khi R2 hồi phục', async () => {
+    const mq = await app.as('minhquy');
+    const img = await upload(mq, 'post_image');
+    const realDelete = bucket.delete.bind(bucket);
+    let broken = true;
+    bucket.delete = async (keys) => {
+      if (broken) throw new Error('R2 hỏng');
+      return realDelete(keys);
+    };
+    try {
+      await filesSvc.discardUpload(mq, img.fileId);
+      await app.queue.drain(9000);
+      expect(app.queue.dead.some((j) => j.name === 'scheduled.run')).toBe(true);
+      expect(bucket.objects.has(img.key)).toBe(true);
+      expect((await jobFor(img.key))?.status).not.toBe('done');
+      // R2 hồi phục; dòng đã quá hạn từ lâu mà chưa chạy thì bộ quét đẩy lại.
+      broken = false;
+      await app.ctx.db.execute(sql`update scheduled_jobs set status = 'enqueued', run_at = now() - interval '30 minutes', enqueued_at = now() - interval '30 minutes' where dedupe_key = ${`${filesSvc.FILE_DELETE_JOB}:${img.key}`}`);
+      const swept = await withTenantScope(app.system(), (c) => runSweep(c));
+      expect(swept.requeued).toBeGreaterThanOrEqual(1);
+      await app.queue.drain();
+      expect(bucket.objects.has(img.key)).toBe(false);
+      expect((await jobFor(img.key))?.status).toBe('done');
+    } finally {
+      bucket.delete = realDelete;
+    }
+  }, 30_000);
 
   it('xóa một khóa không còn trên R2 vẫn coi là xong', async () => {
     const mq = await app.as('minhquy');

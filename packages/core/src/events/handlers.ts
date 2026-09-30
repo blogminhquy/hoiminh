@@ -2,8 +2,9 @@
 import { formatMoney } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
-import { communities, communityMembers, courses, orders, posts, products, scheduledJobs, users, workspaces } from '@hoiminh/db';
+import { communities, communityMembers, courses, orders, posts, products, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
+import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
@@ -41,7 +42,8 @@ export function registerHandlers(app: AppContext): void {
     const row = plugin[0] as { enabled: boolean; config: { delayMinutes?: number } } | undefined;
     if (row?.enabled) {
       const delay = Number(row.config?.delayMinutes ?? 2);
-      await c.db.insert(scheduledJobs).values({ kind: 'welcome_dm.send', payload: { communityId: p.communityId, userId: p.userId }, dedupeKey: `welcome_dm:${p.communityId}:${p.userId}`, runAt: new Date(c.now().getTime() + delay * 60_000) }).onConflictDoNothing();
+      // Hẹn bằng delay của Queue (đi sau commit); dòng scheduled_jobs là sổ gốc, bộ quét cứu nếu message bị lọt.
+      await scheduleJob(c, { kind: 'welcome_dm.send', payload: { communityId: p.communityId, userId: p.userId }, dedupeKey: `welcome_dm:${p.communityId}:${p.userId}`, runAt: new Date(c.now().getTime() + delay * 60_000) });
     }
     await c.email.send(templates.welcomeMember(user.email, user.name, community.name, `${c.env.APP_URL}/${community.slug}/bang-tin`));
     const owner = await c.db.query.workspaces.findFirst({ where: eq(workspaces.id, community.workspaceId), columns: { ownerUserId: true } });

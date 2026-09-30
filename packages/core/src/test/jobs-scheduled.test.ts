@@ -6,6 +6,7 @@ import { fakeBucket, type FakeBucket } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import { MAX_DELAY_SECONDS, type EnqueueOptions, type JobMap, type JobName, type JobQueue } from '../jobs/queue';
+import { runScheduledJobs } from '../jobs/cron';
 import { runScheduledJob, scheduleJob } from '../jobs/scheduled';
 import { runSweep } from '../jobs/sweep';
 import { withSystemScope } from '../lib/tenant-scope';
@@ -232,5 +233,36 @@ describe('runSweep', () => {
     // Lần sau chỉ còn 5 dòng chưa được đẩy: 1000 dòng kia đã thành enqueued sau commit.
     const second = await withSystemScope(ctx, (c) => runSweep(c));
     expect(second.pushed).toBe(5);
+  });
+});
+
+// Đường cron dự phòng (chạy song song với Queue tới Phase 6): dòng pending tới hạn vẫn được chạy dù Queue không đẩy được.
+describe('runScheduledJobs (cron dự phòng)', () => {
+  it('chạy dòng pending đã tới hạn, bỏ qua dòng chưa tới hạn và dòng enqueued', async () => {
+    await bucket.put('k/fb1.jpg', new Uint8Array([1]), { httpMetadata: { contentType: 'image/jpeg' } });
+    await bucket.put('k/fb2.jpg', new Uint8Array([1]), { httpMetadata: { contentType: 'image/jpeg' } });
+    await bucket.put('k/fb3.jpg', new Uint8Array([1]), { httpMetadata: { contentType: 'image/jpeg' } });
+    const due = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: { objectKey: 'k/fb1.jpg' }, dedupeKey: 'fb-due', runAt: inMinutes(-1), status: 'pending' }).returning();
+    await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: { objectKey: 'k/fb2.jpg' }, dedupeKey: 'fb-later', runAt: inMinutes(30), status: 'pending' });
+    await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: { objectKey: 'k/fb3.jpg' }, dedupeKey: 'fb-queued', runAt: inMinutes(-1), status: 'enqueued' });
+    expect(await runScheduledJobs(app.system())).toBe(1);
+    expect(bucket.objects.has('k/fb1.jpg')).toBe(false);
+    expect(bucket.objects.has('k/fb2.jpg')).toBe(true);
+    expect(bucket.objects.has('k/fb3.jpg')).toBe(true);
+    expect((await row(due[0]!.id))?.status).toBe('done');
+  });
+
+  it('lỗi thì hẹn lại sau 1 phút, quá 3 lần thì failed', async () => {
+    const [j] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: { objectKey: 'k/fb4.jpg' }, dedupeKey: 'fb-fail', runAt: inMinutes(-1), status: 'pending' }).returning();
+    const failingMedia = { ...app.ctx.media, delete: async () => { throw new Error('R2 lỗi'); } } as typeof app.ctx.media;
+    const ctx: Ctx = { ...app.system(), media: failingMedia };
+    for (let i = 0; i < 3; i++) {
+      await app.ctx.db.execute(sql`update scheduled_jobs set run_at = now() - interval '1 minute' where id = ${j!.id} and status = 'pending'`);
+      await runScheduledJobs(ctx);
+    }
+    const r = await row(j!.id);
+    expect(r?.status).toBe('failed');
+    expect(r?.attempts).toBe(3);
+    expect(r?.lastError).toMatch(/R2 lỗi/);
   });
 });

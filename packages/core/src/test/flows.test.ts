@@ -72,11 +72,10 @@ describe('Luồng 1: đăng ký → xác minh → tham gia hội miễn phí →
     const r = await members.joinCommunity(ctx, 'minhquy', { ref: 'hv8k2', answers: about.joinQuestions.map((q) => ({ questionId: q.id, answer: 'Bán phụ kiện' })) });
     expect(r.member.status).toBe('active');
     expect(r.member.referredByAffiliateId).toBe(await app.ids('affiliate:kd:hoangvu'));
-    // Job chào được hẹn sau 2 phút; ép chạy bằng cách lùi run_at.
-    const { sql } = await import('drizzle-orm');
-    await app.ctx.db.execute(sql`update scheduled_jobs set run_at = now() - interval '1 minute' where kind = 'welcome_dm.send'`);
-    const n = await runScheduledJobs(app.ctx);
-    expect(n).toBeGreaterThanOrEqual(1);
+    // Job chào được hẹn sau 2 phút bằng delay của Queue (không chờ cron); cho chạy ngay thay vì chờ đồng hồ thật.
+    expect(app.queue.delayed.some((d) => d.job.name === 'scheduled.run' && d.job.dedupeKey?.startsWith('welcome_dm:') && Math.abs(d.delaySeconds - 120) <= 5)).toBe(true);
+    expect(app.queue.releaseDelayed()).toBeGreaterThanOrEqual(1);
+    await app.queue.drain();
     const convos = await messaging.listConversations(ctx, {});
     expect(convos.items.some((c) => c.automated)).toBe(true);
     const msgs = await messaging.listMessages(ctx, convos.items[0]!.id, {});

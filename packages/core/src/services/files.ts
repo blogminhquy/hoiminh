@@ -3,9 +3,11 @@
 import { randomToken } from '@hoiminh/config';
 import { validateUpload } from '@hoiminh/media';
 import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
-import { files, scheduledJobs } from '@hoiminh/db';
+import { files } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, conflict, invalid, notFound } from '../errors';
+import { FILE_DELETE_JOB } from '../jobs/kinds';
+import { scheduleJob } from '../jobs/scheduled';
 import { raw } from '../lib/db';
 import { requireUser } from '../permissions';
 
@@ -53,8 +55,7 @@ export async function signedUrl(ctx: Ctx, objectKey: string, ttl = 3600): Promis
 //     Giao dịch bị hủy thì cả hai cùng hủy; cron mỗi phút mới xóa thật trên R2 và tự thử lại khi R2 lỗi.
 // ---------------------------------------------------------------------------------------------
 
-/** Loại job trong scheduled_jobs, payload `{ objectKey }`; cron mỗi phút gọi `ctx.media.delete`. */
-export const FILE_DELETE_JOB = 'file.delete';
+export { FILE_DELETE_JOB };
 
 /**
  * Mọi cột lưu tham chiếu tới tệp đã tải lên. `url`: bản sao của files.url (tài liệu riêng lưu object key);
@@ -100,7 +101,8 @@ async function dropFiles(ctx: Ctx, ids: string[]): Promise<number> {
   if (!ids.length) return 0;
   const removed = await ctx.db.delete(files).where(inArray(files.id, ids)).returning({ objectKey: files.objectKey });
   if (removed.length) {
-    await ctx.db.insert(scheduledJobs).values(removed.map((r) => ({ kind: FILE_DELETE_JOB, payload: { objectKey: r.objectKey }, dedupeKey: `${FILE_DELETE_JOB}:${r.objectKey}`, runAt: ctx.now() }))).onConflictDoNothing();
+    // Ghi cùng transaction với việc gỡ tham chiếu (outbox); R2 chỉ bị xóa sau khi commit, vì message vào Queue sau commit.
+    for (const r of removed) await scheduleJob(ctx, { kind: FILE_DELETE_JOB, payload: { objectKey: r.objectKey }, dedupeKey: `${FILE_DELETE_JOB}:${r.objectKey}`, runAt: ctx.now() });
   }
   return removed.length;
 }
