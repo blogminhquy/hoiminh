@@ -13,6 +13,7 @@ export * from './jobs/scheduled';
 export * from './jobs/fanout';
 export * from './jobs/event-reminders';
 export * from './jobs/broadcast';
+export * from './jobs/cleanup';
 export * from './jobs/sweep';
 export * from './lib/pagination';
 export * from './lib/markdown';

@@ -150,7 +150,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 | Job | Khoá khử trùng | Cơ chế |
 |---|---|---|
 | `scheduled.run` | `scheduled_jobs.dedupe_key` (unique) | claim `UPDATE ... SET status='running', attempts=attempts+1 WHERE id=? AND status IN ('pending','enqueued')` trong transaction của job (khóa dòng); 0 dòng thì bỏ qua |
-| `webhook.deliver` | `webhook_deliveries.id` | claim `UPDATE ... SET next_attempt_at = now() + 2 phút WHERE id=? AND status IN ('pending','failed') AND (next_attempt_at IS NULL OR next_attempt_at <= now()) RETURNING`; 0 dòng thì bỏ qua. Bên nhận khử trùng bằng header `X-HoiMinh-Delivery` |
+| `webhook.deliver` | `webhook_deliveries.id` | khoá dòng `SELECT ... FOR UPDATE SKIP LOCKED` trong transaction của job: message trùng chạy đồng thời thì bỏ qua thay vì cùng POST; bỏ qua cả message tới sớm (`next_attempt_at` còn ở tương lai). Bên nhận khử trùng bằng header `X-HoiMinh-Delivery` |
 | Nhắc sự kiện | `event-remind:{eventId}:{label}:{floor(startsAt/60000)}` | job cha + lô; từng người claim qua `job_recipients` |
 | `post.broadcast` | `post-broadcast:{postId}` | như trên, lô 100 |
 | Hết hạn đơn | không cần | `WHERE status='pending' AND expires_at < now()`, 0 dòng là no-op |
@@ -203,7 +203,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 |---|---|---|
 | `* * * * *` | job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook | **Xoá** |
 | `*/10 * * * *` | snapshot xếp hạng | snapshot xếp hạng + `runSweep` |
-| `0 18 * * *` | hold hoa hồng, churn, entitlement, upload dở, billing | như cũ + dọn `job_recipients` và `scheduled_jobs` `done` quá 30 ngày |
+| `0 18 * * *` | hold hoa hồng, churn, entitlement, upload dở, billing | như cũ + dọn `job_recipients` (30 ngày) và `scheduled_jobs` (`done` 30 ngày, `failed` 90 ngày; không bao giờ xoá `pending`/`enqueued`) |
 
 Đổi kèm: bỏ `'every_minute'` khỏi `CronName`; `worker.ts:28` và `wrangler.toml` cập nhật; `apps/api/src/node.ts` (dev) bỏ interval phút vì `InMemoryQueue` đã có delay. Các test gọi `runCron(..., 'every_minute')` (`api.test.ts:227,238,244`, `flows.test.ts:261`) chuyển sang `runSweep` hoặc `queue.drain()`.
 

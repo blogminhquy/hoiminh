@@ -1,4 +1,5 @@
-// Lịch chạy định kỳ: mỗi phút (job hẹn giờ, nhắc sự kiện, hết hạn đơn), 10 phút (xếp hạng), hằng ngày (hold, churn, gói nền tảng, tệp tải dở).
+// Lịch chạy định kỳ: mỗi phút (đường dự phòng của Queue: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook; gỡ ở Phase 6),
+// 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, dọn bảng job).
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { events, scheduledJobs } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
@@ -10,6 +11,7 @@ import { expirePendingOrders } from '../services/payments';
 import { runPlatformBillingCron } from '../services/platform-billing';
 import { churnExpired } from '../services/subscriptions';
 import { retryDue } from '../services/webhooks-out';
+import { cleanupJobRecords } from './cleanup';
 import { reminderKey, reminderRunAt } from './event-reminders';
 import { runKind } from './scheduled';
 import { flipEventStatuses, runSweep } from './sweep';
@@ -39,6 +41,8 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
     out.churned = await churnExpired(ctx);
     out.entitlementsExpired = await expireEntitlements(ctx);
     out.abandonedUploads = await sweepAbandonedUploads(ctx);
+    const cleaned = await cleanupJobRecords(ctx);
+    out.jobRecordsCleaned = cleaned.recipients + cleaned.jobs;
     const b = await runPlatformBillingCron(ctx);
     out.trialReminded = b.reminded;
     out.workspacesLocked = b.locked;
