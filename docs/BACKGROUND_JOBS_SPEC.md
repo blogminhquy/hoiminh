@@ -179,7 +179,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 
 ### 7.3 Hết hạn đơn
 
-- Hàm `effectiveOrderStatus(order, now)`: `pending` mà `expiresAt < now` thì coi là `expired`. Dùng trong `orderStatus` (`checkout.ts:111`) và các hành động khách tự khởi tạo: `markProcessing` từ chối đơn quá hạn (`invalidState`).
+- Hàm `effectiveOrderStatus(order, now)`: `pending` mà `expiresAt < now` thì coi là `expired`. Dùng trong `orderStatus` (`checkout.ts:111`) và các hành động khách tự khởi tạo: `markProcessing` không ghi nhận gì và trả về trạng thái `expired`: giao diện Checkout đã hiện "Đơn đã hết hạn" từ `status`, còn ném lỗi thì nút chỉ ngừng quay mà không báo gì (mutation không có `onError`). Trạng thái thanh toán chưa xong của đơn hết hạn cũng trả `expired`.
 - **Không áp cho webhook thanh toán.** `confirmPayment` vẫn nhận thanh toán đến sau hạn và chuyển đơn sang `paid`. Có test khoá hành vi này.
 - **Không tạo job trễ cho từng đơn.** Hết hạn chỉ đổi cờ (không nhả kho, mã giảm giá hay quyền), và đa số đơn bị bỏ dở nên mỗi đơn sẽ tốn một message cộng một lần đọc DB. Bộ quét bước 4 dọn cờ mỗi 10 phút.
 - Chấp nhận: các danh sách quản trị đọc cột `status` có thể lệch tối đa 10 phút so với thực tế.
