@@ -6,6 +6,7 @@ import type { Ctx } from '../context';
 import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { scheduleRemindersForEvent } from './event-reminders';
 import { memberTierKey } from './entitlements';
 import { assertWorkspaceUnlocked } from './workspaces';
 
@@ -75,6 +76,8 @@ export async function createEvent(ctx: Ctx, communityId: string, input: CreateEv
       if (space) await tx.insert(posts).values({ communityId, spaceId: space.id, authorUserId: userId, title: `Sự kiện mới: ${input.title}`, contentMd: `${input.descriptionMd}\n\n**Thời gian:** ${start.toLocaleString('vi-VN', { timeZone: input.timezone })}${count > 1 ? ` · lặp ${input.recurrence === 'weekly' ? 'hằng tuần' : 'hằng tháng'}, ${count} buổi` : ''}`, excerpt: input.descriptionMd.slice(0, 200), broadcast: input.broadcastEmail });
     }
   });
+  // Hẹn nhắc ngay khi tạo (thay cho việc cron quét mỗi phút): mỗi buổi của chuỗi một bộ lời nhắc.
+  for (const e of created) await scheduleRemindersForEvent(ctx, e);
   await ctx.events.emit('event.created', { eventId: created[0]!.id, communityId, announce: input.announceOnFeed, broadcast: input.broadcastEmail });
   await audit(ctx, { action: 'event.create', resourceType: 'event', resourceId: created[0]!.id, communityId, metadata: { count } });
   return { event: created[0]!, created: created.length, seriesId };
@@ -91,6 +94,8 @@ export async function updateEvent(ctx: Ctx, eventId: string, input: Partial<Crea
   if (input.endsAt) patch.endsAt = new Date(input.endsAt);
   if (input.meetingUrl !== undefined) { patch.meetingUrl = input.meetingUrl; patch.meetingProvider = meetingProvider(input.meetingUrl); }
   const [row] = await ctx.db.update(events).set(patch).where(eq(events.id, eventId)).returning();
+  // Đổi giờ, đổi nhãn nhắc hoặc trạng thái: hẹn lại. Job cũ không huỷ, tự vô hiệu khi chạy (reminderStale).
+  if (input.startsAt !== undefined || input.reminders !== undefined || input.status !== undefined) await scheduleRemindersForEvent(ctx, row!);
   await audit(ctx, { action: 'event.update', resourceType: 'event', resourceId: eventId, communityId: e.communityId });
   return row!;
 }

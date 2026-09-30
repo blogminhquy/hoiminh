@@ -4,9 +4,13 @@ import { PermanentJobError } from './errors';
 export interface JobMap {
   'email.send': { to: string; template: string; args: unknown[] };
   'webhook.deliver': { deliveryId: string };
+  /** Job cha: chia thành viên thành lô `post.broadcast.batch`. */
   'post.broadcast': { postId: string };
+  'post.broadcast.batch': { postId: string; userIds: string[] };
   'welcome_dm.send': { communityId: string; userId: string };
-  'event.remind': { eventId: string; label: string };
+  /** Job cha: chia người đăng ký thành lô `event.remind.batch`. `runAt` để phát hiện sự kiện đã đổi giờ. */
+  'event.remind': { eventId: string; label: string; runAt?: string };
+  'event.remind.batch': { eventId: string; label: string; jobKey: string; userIds: string[] };
   'leaderboard.snapshot': { communityId: string };
   'course.recount': { courseId: string };
   /** Chạy một dòng scheduled_jobs (welcome DM, xóa tệp, nhắc sự kiện...). */

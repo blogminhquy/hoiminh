@@ -5,6 +5,7 @@ import type { Ctx } from '../context';
 import { FILE_DELETE_JOB } from '../services/files';
 import { sendWelcomeDm } from '../services/messaging';
 import { PermanentJobError } from './errors';
+import { runEventReminder } from './event-reminders';
 import { MAX_DELAY_SECONDS } from './queue';
 
 export interface ScheduleInput {
@@ -38,11 +39,9 @@ export async function runKind(ctx: Ctx, job: { kind: string; payload: Record<str
       await sendWelcomeDm(ctx, p.communityId, p.userId);
       return;
     }
-    case 'event.remind': {
-      const p = job.payload as { eventId: string; label: string };
-      await ctx.queue.enqueue('event.remind', p);
+    case 'event.remind':
+      await runEventReminder(ctx, job.payload as { eventId: string; label: string; runAt?: string });
       return;
-    }
     case FILE_DELETE_JOB:
       await ctx.media.delete((job.payload as { objectKey: string }).objectKey);
       return;

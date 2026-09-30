@@ -10,6 +10,7 @@ import { expirePendingOrders } from '../services/payments';
 import { runPlatformBillingCron } from '../services/platform-billing';
 import { churnExpired } from '../services/subscriptions';
 import { retryDue } from '../services/webhooks-out';
+import { reminderKey, reminderRunAt } from './event-reminders';
 import { runKind } from './scheduled';
 import { flipEventStatuses, runSweep } from './sweep';
 
@@ -66,8 +67,6 @@ export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<numb
   return n;
 }
 
-const REMINDER_OFFSETS: Record<string, number> = { '1d': 24 * 60, '1h': 60, '15m': 15, start: 0 };
-
 /** Đặt job nhắc cho các sự kiện sắp diễn ra (mỗi mốc một lần, dedupe theo eventId + mốc). */
 export async function scheduleEventReminders(appOrCtx: AppContext | Ctx): Promise<number> {
   const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-event-reminders');
@@ -76,11 +75,10 @@ export async function scheduleEventReminders(appOrCtx: AppContext | Ctx): Promis
   let n = 0;
   for (const e of upcoming) {
     for (const label of e.reminders) {
-      const minutes = REMINDER_OFFSETS[label];
-      if (minutes === undefined || e.remindersSent.includes(label)) continue;
-      const runAt = new Date(e.startsAt.getTime() - minutes * 60_000);
-      if (runAt < ctx.now()) continue;
-      const rows = await ctx.db.insert(scheduledJobs).values({ kind: 'event.remind', payload: { eventId: e.id, label }, dedupeKey: `event-remind:${e.id}:${label}`, runAt }).onConflictDoNothing().returning({ id: scheduledJobs.id });
+      const runAt = reminderRunAt(e.startsAt, label);
+      if (!runAt || e.remindersSent.includes(label) || runAt < ctx.now()) continue;
+      // Cùng khóa và payload với scheduleRemindersForEvent (hẹn lúc tạo/sửa) nên không sinh job trùng khi chạy song song.
+      const rows = await ctx.db.insert(scheduledJobs).values({ kind: 'event.remind', payload: { eventId: e.id, label, runAt: runAt.toISOString() }, dedupeKey: reminderKey(e.id, label, e.startsAt), runAt }).onConflictDoNothing().returning({ id: scheduledJobs.id });
       if (rows.length) n++;
     }
   }
