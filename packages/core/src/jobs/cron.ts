@@ -18,38 +18,61 @@ import { flipEventStatuses, runSweep } from './sweep';
 
 export type CronName = 'every_minute' | 'every_10_minutes' | 'daily';
 
-/** Chạy một nhóm cron trong một transaction có biến phiên bypass. Trả về tóm tắt để log. */
+/**
+ * Chạy một nhóm cron. Mỗi bước một transaction riêng: bước này lỗi thì chỉ rollback bước đó, các bước khác vẫn commit.
+ * Quan trọng nhất là bộ quét (lưới an toàn) không được phụ thuộc vào việc chụp xếp hạng hay bước tiền chạy thành công.
+ * Có bước lỗi thì ghi log `cron.step_failed` và ném lỗi đầu tiên sau khi mọi bước đã chạy, để Cloudflare ghi nhận lần chạy lỗi.
+ */
 export async function runCron(app: AppContext, name: CronName): Promise<Record<string, number>> {
-  return withSystemScope(systemCtx(app, `cron-${name}`), async (ctx) => {
   const out: Record<string, number> = {};
+  const failures: unknown[] = [];
+  const step = async (label: string, fn: (ctx: Ctx) => Promise<void>) => {
+    try {
+      await withSystemScope(systemCtx(app, `cron-${name}-${label}`), fn);
+    } catch (err) {
+      failures.push(err);
+      app.log.error('cron.step_failed', { cron: name, step: label, error: err instanceof Error ? { type: err.name, message: err.message } : { message: String(err) } });
+    }
+  };
   if (name === 'every_minute') {
-    out.scheduledJobs = await runScheduledJobs(ctx);
-    out.eventReminders = await scheduleEventReminders(ctx);
-    out.expiredOrders = await expirePendingOrders(ctx);
-    out.webhookRetries = await retryDue(ctx);
+    await step('legacy', async (ctx) => {
+      out.scheduledJobs = await runScheduledJobs(ctx);
+      out.eventReminders = await scheduleEventReminders(ctx);
+      out.expiredOrders = await expirePendingOrders(ctx);
+      out.webhookRetries = await retryDue(ctx);
+    });
   }
   if (name === 'every_10_minutes') {
-    out.leaderboard = await snapshotLeaderboards(ctx);
     // Lưới an toàn của mô hình event-driven: đẩy job hẹn giờ sắp tới hạn, cứu message bị mất, dọn cờ.
-    const sweep = await runSweep(ctx);
-    out.sweepPushed = sweep.pushed;
-    out.sweepRequeued = sweep.requeued;
-    out.sweepWebhooks = sweep.webhookRequeued;
+    await step('sweep', async (ctx) => {
+      const sweep = await runSweep(ctx);
+      out.sweepPushed = sweep.pushed;
+      out.sweepRequeued = sweep.requeued;
+      out.sweepWebhooks = sweep.webhookRequeued;
+    });
+    await step('leaderboard', async (ctx) => {
+      out.leaderboard = await snapshotLeaderboards(ctx);
+    });
   }
   if (name === 'daily') {
-    out.commissionsReleased = await releaseDueCommissions(ctx);
-    out.churned = await churnExpired(ctx);
-    out.entitlementsExpired = await expireEntitlements(ctx);
-    out.abandonedUploads = await sweepAbandonedUploads(ctx);
-    const cleaned = await cleanupJobRecords(ctx);
-    out.jobRecordsCleaned = cleaned.recipients + cleaned.jobs;
-    const b = await runPlatformBillingCron(ctx);
-    out.trialReminded = b.reminded;
-    out.workspacesLocked = b.locked;
+    // Các bước liên quan tới tiền và quyền giữ chung một transaction như trước đây.
+    await step('core', async (ctx) => {
+      out.commissionsReleased = await releaseDueCommissions(ctx);
+      out.churned = await churnExpired(ctx);
+      out.entitlementsExpired = await expireEntitlements(ctx);
+      out.abandonedUploads = await sweepAbandonedUploads(ctx);
+      const b = await runPlatformBillingCron(ctx);
+      out.trialReminded = b.reminded;
+      out.workspacesLocked = b.locked;
+    });
+    await step('cleanup', async (ctx) => {
+      const cleaned = await cleanupJobRecords(ctx);
+      out.jobRecordsCleaned = cleaned.recipients + cleaned.jobs;
+    });
   }
-  ctx.log.info(`cron.${name}`, out);
+  app.log.info(`cron.${name}`, out);
+  if (failures.length) throw failures[0];
   return out;
-  });
 }
 
 /** Job hẹn giờ trong bảng scheduled_jobs (tin nhắn chào sau N phút, xóa tệp trên R2…). */

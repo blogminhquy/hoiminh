@@ -1,6 +1,6 @@
 // Nhắc sự kiện theo hướng event-driven: hẹn ngay khi tạo/sửa sự kiện, tự vô hiệu khi sửa giờ hoặc huỷ,
 // chia lô người nhận và khử trùng từng người để retry không gửi lặp.
-import { and, eq, like } from 'drizzle-orm';
+import { and, eq, like, sql } from 'drizzle-orm';
 import { eventRegistrations, events as eventsTable, jobRecipients, notifications, scheduledJobs } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
@@ -8,6 +8,7 @@ import { runEventReminder, runEventReminderBatch, reminderKey } from '../jobs/ev
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
 import { scheduleEventReminders } from '../jobs/cron';
 import { runScheduledJob } from '../jobs/scheduled';
+import { runSweep } from '../jobs/sweep';
 import { withSystemScope } from '../lib/tenant-scope';
 import * as events from '../services/events';
 import { createTestApp, type TestApp } from './setup';
@@ -149,17 +150,19 @@ describe('sửa hoặc huỷ sự kiện: job cũ tự vô hiệu', () => {
 
 describe('chia lô và khử trùng từng người', () => {
   const FIVE = ['duy', 'cong', 'thulan', 'hoangvu', 'hongkim'];
+  const batchRows = (eventId: string) => app.ctx.db.select().from(scheduledJobs).where(and(eq(scheduledJobs.kind, 'event.remind.batch'), like(scheduledJobs.dedupeKey, `event-remind:${eventId}:%`)));
+  const payloadOf = (r: { payload: unknown }) => r.payload as JobMap['event.remind.batch'];
 
-  it('chia người đăng ký thành các lô theo kích thước, mỗi lô một message', async () => {
+  it('chia người đăng ký thành các lô; mỗi lô là một dòng scheduled_jobs (bền vững) kèm một message', async () => {
     const { id, title } = await newEvent(180, ['1h']);
     await register(id, FIVE);
     const { spy, ctx } = spyCtx();
     expect(await runEventReminder(ctx, { eventId: id, label: '1h' }, { chunkSize: 2 })).toBe('sent');
-    const batches = spy.sent.filter((m) => m.name === 'event.remind.batch');
-    expect(batches.map((b) => (b.payload as { userIds: string[] }).userIds.length)).toEqual([2, 2, 1]);
-    const all = batches.flatMap((b) => (b.payload as { userIds: string[] }).userIds);
-    expect(new Set(all).size).toBe(5);
-    expect(new Set(batches.map((b) => (b.payload as { jobKey: string }).jobKey)).size).toBe(1);
+    const rows = await batchRows(id);
+    expect(rows.map((r) => payloadOf(r).userIds.length).sort()).toEqual([1, 2, 2]);
+    expect(new Set(rows.flatMap((r) => payloadOf(r).userIds)).size).toBe(5);
+    expect(new Set(rows.map((r) => payloadOf(r).jobKey)).size).toBe(1);
+    expect(spy.sent.filter((m) => m.name === 'scheduled.run').map((m) => (m.payload as { jobId: string }).jobId).sort()).toEqual(rows.map((r) => r.id).sort());
     expect(await remindNotes(title)).toHaveLength(0);
   });
 
@@ -167,18 +170,17 @@ describe('chia lô và khử trùng từng người', () => {
     const { id } = await newEvent(180, ['1h']);
     await register(id, ['duy', 'cong']);
     await app.ctx.db.update(eventRegistrations).set({ status: 'cancelled' }).where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, await app.ids('user:cong'))));
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runEventReminder(ctx, { eventId: id, label: '1h' });
-    const ids = spy.sent.flatMap((m) => (m.payload as { userIds: string[] }).userIds);
-    expect(ids).toEqual([await app.ids('user:duy')]);
+    expect((await batchRows(id)).flatMap((r) => payloadOf(r).userIds)).toEqual([await app.ids('user:duy')]);
   });
 
   it('cùng một lô chạy hai lần thì mỗi người chỉ nhận một lần', async () => {
     const { id, title } = await newEvent(180, ['1h']);
     await register(id, FIVE);
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runEventReminder(ctx, { eventId: id, label: '1h' });
-    const batch = spy.sent[0]!.payload as JobMap['event.remind.batch'];
+    const batch = payloadOf((await batchRows(id))[0]!);
     await withSystemScope(app.system(), (c) => runEventReminderBatch(c, batch));
     await withSystemScope(app.system(), (c) => runEventReminderBatch(c, batch));
     expect(await remindNotes(title)).toHaveLength(5);
@@ -188,9 +190,9 @@ describe('chia lô và khử trùng từng người', () => {
   it('lô lỗi giữa chừng: transaction hoàn tác nên không ai bị đánh dấu đã gửi, retry gửi đủ và không lặp', async () => {
     const { id, title } = await newEvent(180, ['1h']);
     await register(id, FIVE);
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runEventReminder(ctx, { eventId: id, label: '1h' });
-    const batch = spy.sent[0]!.payload as JobMap['event.remind.batch'];
+    const batch = payloadOf((await batchRows(id))[0]!);
     await expect(
       withSystemScope(app.system(), async (c) => {
         await runEventReminderBatch(c, batch);
@@ -208,10 +210,29 @@ describe('chia lô và khử trùng từng người', () => {
   it('lô tới sau khi sự kiện đã huỷ thì bỏ qua', async () => {
     const { mq, id, title } = await newEvent(180, ['1h']);
     await register(id, ['duy']);
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runEventReminder(ctx, { eventId: id, label: '1h' });
+    const batch = payloadOf((await batchRows(id))[0]!);
     await events.updateEvent(mq, id, { status: 'cancelled' });
-    await withSystemScope(app.system(), (c) => runEventReminderBatch(c, spy.sent[0]!.payload as JobMap['event.remind.batch']));
+    await withSystemScope(app.system(), (c) => runEventReminderBatch(c, batch));
     expect(await remindNotes(title)).toHaveLength(0);
   });
+
+  it('Queue lỗi ngay sau khi job cha commit: các lô vẫn nằm trong DB và bộ quét đẩy lại, không ai bị bỏ sót', async () => {
+    const { id, title } = await newEvent(180, ['1h']);
+    await register(id, FIVE);
+    const [parent] = await jobsOf(id);
+    const down: JobQueue = { async enqueue() { throw new Error('queue down'); } };
+    const ctx: Ctx = { ...app.system(), queue: down };
+    expect(await withSystemScope(ctx, (c) => runScheduledJob(c, parent!.id))).toBe('done');
+    const rows = await batchRows(id);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.status === 'pending')).toBe(true);
+    expect(await remindNotes(title)).toHaveLength(0);
+    await app.ctx.db.execute(sql`update scheduled_jobs set created_at = now() - interval '5 minutes' where kind = 'event.remind.batch' and dedupe_key like ${`event-remind:${id}:%`}`);
+    await withSystemScope(app.system(), (c) => runSweep(c));
+    await app.queue.drain();
+    expect(await remindNotes(title)).toHaveLength(5);
+  });
 });
+

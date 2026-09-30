@@ -4,32 +4,12 @@ import { scheduledJobs } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { FILE_DELETE_JOB } from './kinds';
 import { sendWelcomeDm } from '../services/messaging';
+import { runPostBroadcast, runPostBroadcastBatch } from './broadcast';
 import { PermanentJobError } from './errors';
-import { runEventReminder } from './event-reminders';
-import { MAX_DELAY_SECONDS } from './queue';
+import { runEventReminder, runEventReminderBatch } from './event-reminders';
+import type { JobMap } from './queue';
 
-export interface ScheduleInput {
-  kind: string;
-  payload: Record<string, unknown>;
-  /** Khóa duy nhất: cùng khóa thì chỉ ghi một dòng và chỉ đẩy một lần. */
-  dedupeKey: string;
-  runAt: Date;
-}
-
-/**
- * Hẹn một job. Ghi dòng `pending` trong transaction hiện tại, rồi đăng ký đẩy `scheduled.run` với delay còn lại.
- * `ctx.queue` trong transaction là DeferredQueue: message chỉ đi sau commit, rồi dòng mới thành `enqueued`.
- * Hẹn xa hơn 24 giờ thì chỉ ghi DB, bộ quét sẽ đẩy khi còn ≤ 24 giờ. Trả về id, hoặc null nếu đã có dòng cùng dedupeKey.
- */
-export async function scheduleJob(ctx: Ctx, input: ScheduleInput): Promise<string | null> {
-  const [row] = await ctx.db.insert(scheduledJobs).values({ ...input, status: 'pending' }).onConflictDoNothing().returning({ id: scheduledJobs.id });
-  if (!row) return null;
-  const delayMs = input.runAt.getTime() - ctx.now().getTime();
-  if (delayMs <= MAX_DELAY_SECONDS * 1000) {
-    await ctx.queue.enqueue('scheduled.run', { jobId: row.id }, { delaySeconds: Math.max(0, Math.ceil(delayMs / 1000)), dedupeKey: input.dedupeKey });
-  }
-  return row.id;
-}
+export { scheduleJob, type ScheduleInput } from './schedule';
 
 /** Thực thi phần việc của một dòng theo `kind`. Kind lạ là lỗi vĩnh viễn. */
 export async function runKind(ctx: Ctx, job: { kind: string; payload: Record<string, unknown> }): Promise<void> {
@@ -40,13 +20,25 @@ export async function runKind(ctx: Ctx, job: { kind: string; payload: Record<str
       return;
     }
     case 'event.remind':
-      await runEventReminder(ctx, job.payload as { eventId: string; label: string; runAt?: string });
+      await runEventReminder(ctx, job.payload as JobMap['event.remind']);
+      return;
+    // Các lô của job gửi hàng loạt cũng là dòng scheduled_jobs: bền vững, bộ quét cứu được nếu Queue lỗi.
+    case 'event.remind.batch':
+      await runEventReminderBatch(ctx, job.payload as JobMap['event.remind.batch']);
+      return;
+    case 'post.broadcast':
+      await runPostBroadcast(ctx, job.payload as JobMap['post.broadcast']);
+      return;
+    case 'post.broadcast.batch':
+      await runPostBroadcastBatch(ctx, job.payload as JobMap['post.broadcast.batch']);
       return;
     case FILE_DELETE_JOB:
       await ctx.media.delete((job.payload as { objectKey: string }).objectKey);
       return;
     default:
-      throw new PermanentJobError(`scheduled_job.unknown_kind:${job.kind}`);
+      // Kind chưa biết thường là do hoiminh-api mới hơn hoiminh-jobs (deploy lệch): coi là lỗi tạm thời để Queue retry
+      // cho tới khi bản jobs mới lên, thay vì đánh dấu failed và mất job. Hết lượt retry thì DLQ đánh dấu failed.
+      throw new Error(`scheduled_job.unknown_kind:${job.kind}`);
   }
 }
 

@@ -9,6 +9,7 @@ import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import { runCron } from '../jobs/cron';
+import { processDeadLetters } from '../jobs/consumer';
 import { runSweep } from '../jobs/sweep';
 import { withTenantScope } from '../lib/tenant-scope';
 import * as comments from '../services/comments';
@@ -329,7 +330,7 @@ describe('độ tin cậy của việc xóa', () => {
     }
   });
 
-  it('R2 hỏng lâu: Queue bỏ cuộc nhưng dòng scheduled_jobs còn, bộ quét cứu khi R2 hồi phục', async () => {
+  it('R2 hỏng lâu: Queue bỏ cuộc thì DLQ đánh dấu failed (cần người xử lý); sửa R2 rồi đặt lại pending thì bộ quét chạy tiếp', async () => {
     const mq = await app.as('minhquy');
     const img = await upload(mq, 'post_image');
     const realDelete = bucket.delete.bind(bucket);
@@ -344,11 +345,15 @@ describe('độ tin cậy của việc xóa', () => {
       expect(app.queue.dead.some((j) => j.name === 'scheduled.run')).toBe(true);
       expect(bucket.objects.has(img.key)).toBe(true);
       expect((await jobFor(img.key))?.status).not.toBe('done');
-      // R2 hồi phục; dòng đã quá hạn từ lâu mà chưa chạy thì bộ quét đẩy lại.
+      // Trên production, consumer DLQ nhận message hết lượt retry và đánh dấu dòng failed (không tự thử lại: cần người xem).
+      const dead = app.queue.dead.find((j) => j.name === 'scheduled.run')!;
+      await processDeadLetters(app.ctx, [{ body: dead, attempts: 6, ack() {}, retry() {} }]);
+      expect((await jobFor(img.key))?.status).toBe('failed');
+      // R2 hồi phục; người vận hành đặt lại pending (xem docs/BACKGROUND_JOBS_ROLLOUT.md) thì bộ quét đẩy chạy tiếp.
       broken = false;
-      await app.ctx.db.execute(sql`update scheduled_jobs set status = 'enqueued', run_at = now() - interval '30 minutes', enqueued_at = now() - interval '30 minutes' where dedupe_key = ${`${filesSvc.FILE_DELETE_JOB}:${img.key}`}`);
+      await app.ctx.db.execute(sql`update scheduled_jobs set status = 'pending', created_at = now() - interval '5 minutes' where dedupe_key = ${`${filesSvc.FILE_DELETE_JOB}:${img.key}`}`);
       const swept = await withTenantScope(app.system(), (c) => runSweep(c));
-      expect(swept.requeued).toBeGreaterThanOrEqual(1);
+      expect(swept.pushed).toBeGreaterThanOrEqual(1);
       await app.queue.drain();
       expect(bucket.objects.has(img.key)).toBe(false);
       expect((await jobFor(img.key))?.status).toBe('done');

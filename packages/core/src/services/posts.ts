@@ -9,6 +9,8 @@ import { canUseStatusBg, excerptOf } from '../lib/markdown';
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess, type CommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { broadcastKey } from '../jobs/broadcast';
+import { scheduleJob } from '../jobs/schedule';
 import { releaseFiles } from './files';
 import { assertWorkspaceUnlocked } from './workspaces';
 
@@ -89,7 +91,8 @@ export async function createPost(ctx: Ctx, communityId: string, input: CreatePos
     await notifyModerators(ctx, communityId, post.id, userId);
   } else {
     await ctx.events.emit('post.created', { postId: post.id, communityId, authorUserId: userId, spaceId: space.id, broadcast: input.broadcastEmail, title: input.title || excerptOf(input.contentMd, 80) });
-    if (input.broadcastEmail) await ctx.queue.enqueue('post.broadcast', { postId: post.id });
+    // Job cha là dòng scheduled_jobs (bền vững), không phải message trần: Queue lỗi sau commit thì bộ quét vẫn đẩy được.
+    if (input.broadcastEmail) await scheduleJob(ctx, { kind: 'post.broadcast', payload: { postId: post.id }, dedupeKey: `${broadcastKey(post.id)}:parent`, runAt: ctx.now() });
   }
   return post;
 }

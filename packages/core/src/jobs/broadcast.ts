@@ -5,10 +5,11 @@ import { communities, notificationPrefs, posts, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { chunk, claimRecipients, FANOUT_CHUNK } from './fanout';
+import { scheduleJob } from './schedule';
 
 export const broadcastKey = (postId: string) => `post-broadcast:${postId}`;
 
-/** Job cha: chia thành viên đang hoạt động của hội thành lô, mỗi lô một message `post.broadcast.batch`. */
+/** Job cha: chia thành viên đang hoạt động của hội thành lô, mỗi lô một dòng scheduled_jobs `post.broadcast.batch`. */
 export async function runPostBroadcast(ctx: Ctx, p: { postId: string }, opts: { chunkSize?: number } = {}): Promise<'sent' | 'stale'> {
   const post = await ctx.db.query.posts.findFirst({ where: eq(posts.id, p.postId) });
   if (!post) return 'stale';
@@ -16,7 +17,8 @@ export async function runPostBroadcast(ctx: Ctx, p: { postId: string }, opts: { 
   if (!community) return 'stale';
   const members = await raw<{ id: string }>(ctx.db, sql`select u.id from community_members m join users u on u.id = m.user_id where m.community_id = ${post.communityId} and m.status in ('active','cancelling') and u.status = 'active' order by u.id`);
   for (const userIds of chunk(members.map((m) => m.id), opts.chunkSize ?? FANOUT_CHUNK)) {
-    await ctx.queue.enqueue('post.broadcast.batch', { postId: post.id, userIds }, { dedupeKey: `${broadcastKey(post.id)}:${userIds[0]}` });
+    // Mỗi lô là một dòng scheduled_jobs: Queue lỗi sau commit thì bộ quét vẫn đẩy được, không thành viên nào bị bỏ sót.
+    await scheduleJob(ctx, { kind: 'post.broadcast.batch', payload: { postId: post.id, userIds }, dedupeKey: `${broadcastKey(post.id)}:${userIds[0]}`, runAt: ctx.now() });
   }
   return 'sent';
 }

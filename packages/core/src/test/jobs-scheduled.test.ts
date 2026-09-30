@@ -5,6 +5,7 @@ import { scheduledJobs, webhookDeliveries, webhooks } from '@hoiminh/db';
 import { fakeBucket, type FakeBucket } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
+import { PermanentJobError } from '../jobs/errors';
 import { MAX_DELAY_SECONDS, type EnqueueOptions, type JobMap, type JobName, type JobQueue } from '../jobs/queue';
 import { runScheduledJobs } from '../jobs/cron';
 import { runScheduledJob, scheduleJob } from '../jobs/scheduled';
@@ -134,12 +135,23 @@ describe('runScheduledJob', () => {
     expect(await runScheduledJob(app.system(), '00000000-0000-4000-8000-000000000000')).toBe('skipped');
   });
 
-  it('kind lạ là lỗi vĩnh viễn: đánh dấu failed và trả failed, không ném (để không quét lại mãi)', async () => {
+  it('kind chưa biết là lỗi tạm thời (deploy lệch phiên bản không làm mất job): ném ra, dòng trở về như cũ để retry', async () => {
     const [j] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'khong.co', payload: {}, dedupeKey: 'rj-4', runAt: new Date(), status: 'enqueued' }).returning();
-    expect(await withSystemScope(app.system(), (c) => runScheduledJob(c, j!.id))).toBe('failed');
+    await expect(withSystemScope(app.system(), (c) => runScheduledJob(c, j!.id))).rejects.toThrow(/khong\.co/);
+    const r = await row(j!.id);
+    expect(r?.status).toBe('enqueued');
+    expect(r?.doneAt).toBeNull();
+  });
+
+  it('handler ném PermanentJobError thì đánh dấu failed và trả failed, không ném (để không quét lại mãi)', async () => {
+    const [j] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'event.remind', payload: { eventId: 'khong-phai-uuid', label: '1h' }, dedupeKey: 'rj-perm', runAt: new Date(), status: 'enqueued' }).returning();
+    // event.remind với payload hỏng: kiểu handler đánh dấu stale chứ không ném, nên dùng PermanentJobError trực tiếp qua ctx.
+    const ctx: Ctx = { ...app.system(), media: { ...app.ctx.media, delete: async () => { throw new PermanentJobError('payload hỏng'); } } as typeof app.ctx.media };
+    await app.ctx.db.update(scheduledJobs).set({ kind: 'file.delete', payload: { objectKey: 'x' } }).where(eq(scheduledJobs.id, j!.id));
+    expect(await withSystemScope(ctx, (c) => runScheduledJob(c, j!.id))).toBe('failed');
     const r = await row(j!.id);
     expect(r?.status).toBe('failed');
-    expect(r?.lastError).toMatch(/khong\.co/);
+    expect(r?.lastError).toMatch(/payload hỏng/);
   });
 
   it('lỗi tạm thời được ném ra và transaction hoàn tác: dòng trở lại như cũ để retry', async () => {
@@ -183,13 +195,15 @@ describe('runSweep', () => {
 
   it('bước 2: dòng enqueued đã quá hạn mà chưa chạy thì đẩy lại ngay', async () => {
     const { spy, ctx } = spyCtx();
-    const [lost] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: {}, dedupeKey: 'sw-lost', runAt: inMinutes(-30), status: 'enqueued', enqueuedAt: inMinutes(-60) }).returning();
-    const [fresh] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: {}, dedupeKey: 'sw-slow', runAt: inMinutes(-30), status: 'enqueued', enqueuedAt: inMinutes(-2) }).returning();
+    const [lost] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: {}, dedupeKey: 'sw-lost', runAt: inMinutes(-60), status: 'enqueued', enqueuedAt: inMinutes(-60) }).returning();
+    const [fresh] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: {}, dedupeKey: 'sw-slow', runAt: inMinutes(-60), status: 'enqueued', enqueuedAt: inMinutes(-20) }).returning();
+    const [notYet] = await app.ctx.db.insert(scheduledJobs).values({ kind: 'file.delete', payload: {}, dedupeKey: 'sw-notyet', runAt: inMinutes(-20), status: 'enqueued', enqueuedAt: inMinutes(-60) }).returning();
     const res = await withSystemScope(ctx, (c) => runSweep(c));
     expect(res.requeued).toBe(1);
     const jobs = spy.sent.filter((m) => m.name === 'scheduled.run').map((m) => (m.payload as { jobId: string }).jobId);
     expect(jobs).toEqual([lost!.id]);
-    expect(jobs).not.toContain(fresh!.id);
+    expect(jobs).not.toContain(fresh!.id); // vừa được đẩy lại 20 phút trước: chưa đến lượt
+    expect(jobs).not.toContain(notYet!.id); // mới quá hạn 20 phút: còn trong chuỗi retry của Queue
     expect(spy.sent.find((m) => m.name === 'scheduled.run')!.opts?.delaySeconds).toBe(0);
   });
 

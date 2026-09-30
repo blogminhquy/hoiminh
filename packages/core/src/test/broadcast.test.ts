@@ -1,9 +1,10 @@
 // Email broadcast bài viết: chia lô, tôn trọng tùy chọn thông báo, và mỗi thành viên chỉ nhận một lần dù job bị giao lại hay retry.
-import { eq, sql } from 'drizzle-orm';
-import { jobRecipients, notificationPrefs, posts as postsTable } from '@hoiminh/db';
+import { and, eq, like, sql } from 'drizzle-orm';
+import { jobRecipients, notificationPrefs, posts as postsTable, scheduledJobs } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import { runPostBroadcast, runPostBroadcastBatch } from '../jobs/broadcast';
+import { runSweep } from '../jobs/sweep';
 import { raw } from '../lib/db';
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
 import { withSystemScope } from '../lib/tenant-scope';
@@ -31,7 +32,14 @@ async function newPost(title: string, broadcastEmail = false) {
   const mq = await app.as('minhquy');
   return posts.createPost(mq, kd, { spaceId: await app.ids('space:kd:thong-bao'), title, contentMd: 'nội dung bài', imageFileIds: [], broadcastEmail });
 }
+async function newPostVia(base: Ctx, title: string) {
+  const mq = { ...(await app.as('minhquy')), queue: base.queue };
+  const spaceId = await app.ids('space:kd:thong-bao');
+  return withSystemScope(mq, (c) => posts.createPost(c, kd, { spaceId, title, contentMd: 'nội dung bài', imageFileIds: [], broadcastEmail: true }));
+}
 const broadcastEmails = (title: string) => app.emails.filter((e) => e.template === 'broadcast_post' && e.subject.includes(title));
+const batchRows = (postId: string) => app.ctx.db.select().from(scheduledJobs).where(and(eq(scheduledJobs.kind, 'post.broadcast.batch'), like(scheduledJobs.dedupeKey, `post-broadcast:${postId}:%`)));
+const batchPayload = (r: { payload: unknown }) => r.payload as JobMap['post.broadcast.batch'];
 const spyCtx = (): { spy: SpyQueue; ctx: Ctx } => {
   const spy = new SpyQueue();
   return { spy, ctx: { ...app.system(), queue: spy } };
@@ -54,11 +62,13 @@ describe('post.broadcast', () => {
     expect(total).toBeGreaterThan(3);
     const { spy, ctx } = spyCtx();
     expect(await runPostBroadcast(ctx, { postId: post.id }, { chunkSize: 3 })).toBe('sent');
-    const batches = spy.sent.filter((m) => m.name === 'post.broadcast.batch');
-    const ids = batches.flatMap((b) => (b.payload as { userIds: string[] }).userIds);
+    const rows = await batchRows(post.id);
+    const ids = rows.flatMap((r) => batchPayload(r).userIds);
     expect(ids).toHaveLength(total);
     expect(new Set(ids).size).toBe(total);
-    expect(Math.max(...batches.map((b) => (b.payload as { userIds: string[] }).userIds.length))).toBeLessThanOrEqual(3);
+    expect(Math.max(...rows.map((r) => batchPayload(r).userIds.length))).toBeLessThanOrEqual(3);
+    // Mỗi lô là một dòng scheduled_jobs (bền vững) kèm một message scheduled.run.
+    expect(spy.sent.filter((m) => m.name === 'scheduled.run')).toHaveLength(rows.length);
     expect(broadcastEmails('Chia lô broadcast')).toHaveLength(0);
   });
 
@@ -67,9 +77,9 @@ describe('post.broadcast', () => {
     const duy = await app.ids('user:duy');
     await app.ctx.db.insert(notificationPrefs).values({ userId: duy, emailDigest: false }).onConflictDoUpdate({ target: notificationPrefs.userId, set: { emailDigest: false } });
     const total = await activeMemberCount();
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runPostBroadcast(ctx, { postId: post.id });
-    for (const m of spy.sent) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, m.payload as JobMap['post.broadcast.batch']));
+    for (const r of await batchRows(post.id)) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, batchPayload(r)));
     const mails = broadcastEmails('Tôn trọng tùy chọn');
     expect(mails).toHaveLength(total - 1);
     expect(mails.some((m) => m.to === 'duynguyen@gmail.com')).toBe(false);
@@ -79,9 +89,10 @@ describe('post.broadcast', () => {
   it('cùng một lô chạy hai lần hoặc retry sau lỗi thì mỗi người chỉ nhận một email', async () => {
     const post = await newPost('Không gửi trùng');
     const total = await activeMemberCount();
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runPostBroadcast(ctx, { postId: post.id });
-    const batch = spy.sent[0]!.payload as JobMap['post.broadcast.batch'];
+    const rows = await batchRows(post.id);
+    const batch = batchPayload(rows[0]!);
     await expect(
       withSystemScope(app.system(), async (c) => {
         await runPostBroadcastBatch(c, batch);
@@ -89,18 +100,19 @@ describe('post.broadcast', () => {
       }),
     ).rejects.toThrow();
     expect(broadcastEmails('Không gửi trùng')).toHaveLength(0);
-    for (const m of spy.sent) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, m.payload as JobMap['post.broadcast.batch']));
-    for (const m of spy.sent) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, m.payload as JobMap['post.broadcast.batch']));
+    for (const r of rows) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, batchPayload(r)));
+    for (const r of rows) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, batchPayload(r)));
     expect(broadcastEmails('Không gửi trùng')).toHaveLength(total);
     expect((await app.ctx.db.select().from(jobRecipients).where(eq(jobRecipients.jobKey, `post-broadcast:${post.id}`))).length).toBe(total);
   });
 
   it('lô tới sau khi bài đã bị xoá thì bỏ qua', async () => {
     const post = await newPost('Bài bị xoá');
-    const { spy, ctx } = spyCtx();
+    const { ctx } = spyCtx();
     await runPostBroadcast(ctx, { postId: post.id });
+    const rows = await batchRows(post.id);
     await app.ctx.db.delete(postsTable).where(eq(postsTable.id, post.id));
-    for (const m of spy.sent) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, m.payload as JobMap['post.broadcast.batch']));
+    for (const r of rows) await withSystemScope(app.system(), (c) => runPostBroadcastBatch(c, batchPayload(r)));
     expect(broadcastEmails('Bài bị xoá')).toHaveLength(0);
   });
 
@@ -109,5 +121,32 @@ describe('post.broadcast', () => {
     await newPost('Đầu cuối broadcast', true);
     await app.queue.drain();
     expect(broadcastEmails('Đầu cuối broadcast')).toHaveLength(total);
+  });
+});
+
+describe('broadcast bền vững khi Queue lỗi', () => {
+  it('đăng bài có broadcastEmail ghi job cha vào scheduled_jobs, không chỉ một message trần', async () => {
+    const post = await newPost('Job cha bền vững', true);
+    const row = await app.ctx.db.query.scheduledJobs.findFirst({ where: eq(scheduledJobs.dedupeKey, `post-broadcast:${post.id}:parent`) });
+    expect(row).toMatchObject({ kind: 'post.broadcast', payload: { postId: post.id } });
+    await app.queue.drain();
+  });
+
+  it('Queue lỗi sau commit: job cha và các lô vẫn ở DB, bộ quét đẩy lại và mọi thành viên vẫn nhận đúng một email', async () => {
+    const total = await activeMemberCount();
+    const down: JobQueue = { async enqueue() { throw new Error('queue down'); } };
+    const post = await newPostVia({ ...app.system(), queue: down }, 'Queue chết lúc đăng');
+    const parent = await app.ctx.db.query.scheduledJobs.findFirst({ where: eq(scheduledJobs.dedupeKey, `post-broadcast:${post.id}:parent`) });
+    expect(parent?.status).toBe('pending');
+    expect(broadcastEmails('Queue chết lúc đăng')).toHaveLength(0);
+    // Bộ quét đẩy job cha; consumer chạy cha, tạo các lô; lần quét sau đẩy các lô.
+    await app.ctx.db.execute(sql`update scheduled_jobs set created_at = now() - interval '5 minutes' where dedupe_key like ${`post-broadcast:${post.id}:%`}`);
+    await withSystemScope(app.system(), (c) => runSweep(c));
+    await app.queue.drain();
+    await app.ctx.db.execute(sql`update scheduled_jobs set created_at = now() - interval '5 minutes' where dedupe_key like ${`post-broadcast:${post.id}:%`}`);
+    await withSystemScope(app.system(), (c) => runSweep(c));
+    await app.queue.drain();
+    expect(broadcastEmails('Queue chết lúc đăng')).toHaveLength(total);
+    expect((await app.ctx.db.query.scheduledJobs.findFirst({ where: eq(scheduledJobs.id, parent!.id) }))?.status).toBe('done');
   });
 });

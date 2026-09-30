@@ -5,6 +5,7 @@ import { webhookDeliveries, webhooks } from '@hoiminh/db';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
+import { runSweep } from '../jobs/sweep';
 import { withSystemScope } from '../lib/tenant-scope';
 import { createWebhook, deliver, dispatch } from '../services/webhooks-out';
 import { createTestApp, type TestApp } from './setup';
@@ -160,11 +161,15 @@ describe('deliver: không giao trùng', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('webhook đã bị tắt thì bỏ qua', async () => {
-    const { deliveryId, ctx } = await setup();
+  it('webhook đã bị tắt thì không POST và delivery kết thúc hẳn (exhausted), không bị quét đẩy lại mãi', async () => {
+    const { deliveryId, spy, ctx } = await setup();
     await app.ctx.db.update(webhooks).set({ status: 'paused' });
     const calls: string[] = [];
     expect(await deliverInScope(ctx, deliveryId, okFetch(calls))).toBe('skipped');
     expect(calls).toHaveLength(0);
+    expect(await delivery(deliveryId)).toMatchObject({ status: 'exhausted', nextAttemptAt: null });
+    expect(spy.sent).toHaveLength(0);
+    const swept = await withSystemScope({ ...app.system(), queue: spy }, (c) => runSweep(c));
+    expect(swept.webhookRequeued).toBe(0);
   });
 });
