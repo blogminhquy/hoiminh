@@ -2,7 +2,7 @@
 // - queue: tiêu thụ hàng đợi hoiminh-jobs (email, webhook ra ngoài, job hẹn giờ...) và hoiminh-jobs-dlq (job hết lượt retry).
 // - scheduled: cron 10 phút (xếp hạng + bộ quét thưa) và 01:00 giờ Việt Nam (xem wrangler.toml). Không còn cron mỗi phút.
 // Secret lấy từ hoiminh-api qua binding SHARED_ENV, nên Worker này không cần đặt secret riêng.
-import { createWorkerApp, processBatch, processDeadLetters, runCron, withSharedEnv, type Job, type SharedEnvSource, type WorkerBindings } from '@hoiminh/core';
+import { createWorkerApp, cronNameFor, processBatch, processDeadLetters, runCron, withSharedEnv, type Job, type SharedEnvSource, type WorkerBindings } from '@hoiminh/core';
 
 type JobsBindings = WorkerBindings & { SHARED_ENV?: SharedEnvSource };
 
@@ -21,8 +21,13 @@ export default {
     }
   },
   async scheduled(event: ScheduledEvent, env: JobsBindings, ctx: ExecutionContext): Promise<void> {
+    const name = cronNameFor(event.cron);
+    if (!name) {
+      // Trigger cũ còn sót sau khi gỡ khỏi wrangler.toml: bỏ qua, không mở kết nối DB.
+      console.warn(`cron.unknown_schedule ${event.cron}`);
+      return;
+    }
     const app = await openApp(env);
-    const name = event.cron === '0 18 * * *' ? 'daily' : 'every_10_minutes';
     ctx.waitUntil(runCron(app.ctx, name).finally(() => app.close().catch(() => undefined)));
   },
 };

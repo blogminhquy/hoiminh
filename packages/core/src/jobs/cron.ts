@@ -13,6 +13,17 @@ import { runSweep } from './sweep';
 
 export type CronName = 'every_10_minutes' | 'daily';
 
+/** Lịch trong `apps/jobs/wrangler.toml` → nhóm việc. Đổi một bên thì phải đổi bên kia (test cron-config kiểm tra). */
+const SCHEDULES: Record<string, CronName> = { '*/10 * * * *': 'every_10_minutes', '0 18 * * *': 'daily' };
+
+/**
+ * Lịch cron của sự kiện `scheduled` → nhóm việc, hoặc null nếu lạ. Lịch lạ là trigger cũ còn sót ở phía Cloudflare sau khi
+ * đã gỡ khỏi wrangler.toml (cập nhật lịch có thể chậm vài phút): phải bỏ qua, không được chạy nhầm bộ quét và xếp hạng mỗi phút.
+ */
+export function cronNameFor(expr: string): CronName | null {
+  return SCHEDULES[expr] ?? null;
+}
+
 /**
  * Chạy một nhóm cron. Mỗi bước một transaction riêng: bước này lỗi thì chỉ rollback bước đó, các bước khác vẫn commit.
  * Quan trọng nhất là bộ quét (lưới an toàn) không được phụ thuộc vào việc chụp xếp hạng hay bước tiền chạy thành công.
