@@ -1,6 +1,6 @@
 // Worker hoiminh-jobs: việc chạy nền, tách khỏi Worker phục vụ người dùng.
 // - queue: tiêu thụ hàng đợi hoiminh-jobs (email, webhook ra ngoài, job hẹn giờ...) và hoiminh-jobs-dlq (job hết lượt retry).
-// - scheduled: cron 10 phút (xếp hạng + bộ quét thưa) và 01:00 giờ Việt Nam (xem wrangler.toml).
+// - scheduled: cron 10 phút (xếp hạng + bộ quét thưa) và 01:00 giờ Việt Nam (xem wrangler.toml). Không còn cron mỗi phút.
 // Secret lấy từ hoiminh-api qua binding SHARED_ENV, nên Worker này không cần đặt secret riêng.
 import { createWorkerApp, processBatch, processDeadLetters, runCron, withSharedEnv, type Job, type SharedEnvSource, type WorkerBindings } from '@hoiminh/core';
 
@@ -22,7 +22,7 @@ export default {
   },
   async scheduled(event: ScheduledEvent, env: JobsBindings, ctx: ExecutionContext): Promise<void> {
     const app = await openApp(env);
-    const name = event.cron === '*/10 * * * *' ? 'every_10_minutes' : event.cron === '0 18 * * *' ? 'daily' : 'every_minute';
+    const name = event.cron === '0 18 * * *' ? 'daily' : 'every_10_minutes';
     ctx.waitUntil(runCron(app.ctx, name).finally(() => app.close().catch(() => undefined)));
   },
 };

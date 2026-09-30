@@ -59,10 +59,10 @@ max_batch_size = 10
 max_retries = 0
 
 [triggers]
-# mỗi phút: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook
-# 10 phút: snapshot xếp hạng cộng sự
-# 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng
-crons = ["* * * * *", "*/10 * * * *", "0 18 * * *"]
+# Không còn cron mỗi phút: việc nền chạy theo sự kiện (Queue, delay ≤ 24 giờ). Cron chỉ là lưới an toàn.
+# 10 phút: snapshot xếp hạng cộng sự + bộ quét thưa (đẩy job hẹn giờ sắp tới hạn, cứu tin mất, dọn cờ hết hạn đơn/trạng thái sự kiện)
+# 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng, dọn bảng job, đối soát nhắc sự kiện
+crons = ["*/10 * * * *", "0 18 * * *"]
 
 [observability]
 enabled = true

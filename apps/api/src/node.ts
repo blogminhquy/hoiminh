@@ -17,11 +17,9 @@ const app = await createApp({ env, migrate: true });
 const hono = createHonoApp(app);
 
 const timers = [
-  setInterval(() => void runCron(app.ctx, 'every_minute').catch((e) => app.ctx.log.error('cron.minute', { e: String(e) })), 60_000),
   setInterval(() => void runCron(app.ctx, 'every_10_minutes').catch((e) => app.ctx.log.error('cron.10m', { e: String(e) })), 10 * 60_000),
   setInterval(() => void runCron(app.ctx, 'daily').catch((e) => app.ctx.log.error('cron.daily', { e: String(e) })), 24 * 3_600_000),
 ];
-setTimeout(() => void runCron(app.ctx, 'every_minute').catch(() => null), 5_000);
 setTimeout(() => void runCron(app.ctx, 'every_10_minutes').catch(() => null), 8_000);
 setTimeout(() => void runCron(app.ctx, 'daily').catch(() => null), 12_000);
 

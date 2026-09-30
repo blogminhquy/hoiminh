@@ -1,22 +1,17 @@
-// Lịch chạy định kỳ: mỗi phút (đường dự phòng của Queue: job hẹn giờ, nhắc sự kiện, hết hạn đơn, retry webhook; gỡ ở Phase 6),
-// 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, dọn bảng job).
-import { and, eq, gte, lte } from 'drizzle-orm';
-import { events, scheduledJobs } from '@hoiminh/db';
+// Lịch chạy định kỳ, chỉ là lưới an toàn của mô hình event-driven (việc chạy nền đi theo sự kiện qua Queue, không quét):
+// 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, dọn bảng job, đối soát nhắc sự kiện).
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
 import { expireEntitlements } from '../services/entitlements';
+import { reconcileEventReminders } from '../services/event-reminders';
 import { sweepAbandonedUploads } from '../services/files';
-import { expirePendingOrders } from '../services/payments';
 import { runPlatformBillingCron } from '../services/platform-billing';
 import { churnExpired } from '../services/subscriptions';
-import { retryDue } from '../services/webhooks-out';
 import { cleanupJobRecords } from './cleanup';
-import { reminderKey, reminderRunAt } from './event-reminders';
-import { runKind } from './scheduled';
-import { flipEventStatuses, runSweep } from './sweep';
+import { runSweep } from './sweep';
 
-export type CronName = 'every_minute' | 'every_10_minutes' | 'daily';
+export type CronName = 'every_10_minutes' | 'daily';
 
 /**
  * Chạy một nhóm cron. Mỗi bước một transaction riêng: bước này lỗi thì chỉ rollback bước đó, các bước khác vẫn commit.
@@ -34,21 +29,14 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
       app.log.error('cron.step_failed', { cron: name, step: label, error: err instanceof Error ? { type: err.name, message: err.message } : { message: String(err) } });
     }
   };
-  if (name === 'every_minute') {
-    await step('legacy', async (ctx) => {
-      out.scheduledJobs = await runScheduledJobs(ctx);
-      out.eventReminders = await scheduleEventReminders(ctx);
-      out.expiredOrders = await expirePendingOrders(ctx);
-      out.webhookRetries = await retryDue(ctx);
-    });
-  }
   if (name === 'every_10_minutes') {
-    // Lưới an toàn của mô hình event-driven: đẩy job hẹn giờ sắp tới hạn, cứu message bị mất, dọn cờ.
+    // Lưới an toàn của mô hình event-driven: đẩy job hẹn giờ sắp tới hạn, cứu message bị mất, dọn cờ hết hạn đơn và trạng thái sự kiện.
     await step('sweep', async (ctx) => {
       const sweep = await runSweep(ctx);
       out.sweepPushed = sweep.pushed;
       out.sweepRequeued = sweep.requeued;
       out.sweepWebhooks = sweep.webhookRequeued;
+      out.ordersExpired = sweep.ordersExpired;
     });
     await step('leaderboard', async (ctx) => {
       out.leaderboard = await snapshotLeaderboards(ctx);
@@ -65,6 +53,10 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
       out.trialReminded = b.reminded;
       out.workspacesLocked = b.locked;
     });
+    // Đối soát: sự kiện sắp diễn ra mà chưa có job nhắc (tạo trước khi có cơ chế hẹn lúc tạo, hoặc hẹn bị lỡ).
+    await step('reconcile', async (ctx) => {
+      out.remindersReconciled = await reconcileEventReminders(ctx);
+    });
     await step('cleanup', async (ctx) => {
       const cleaned = await cleanupJobRecords(ctx);
       out.jobRecordsCleaned = cleaned.recipients + cleaned.jobs;
@@ -73,43 +65,4 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
   app.log.info(`cron.${name}`, out);
   if (failures.length) throw failures[0];
   return out;
-}
-
-/** Job hẹn giờ trong bảng scheduled_jobs (tin nhắn chào sau N phút, xóa tệp trên R2…). */
-export async function runScheduledJobs(appOrCtx: AppContext | Ctx): Promise<number> {
-  const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-scheduled');
-  const due = await ctx.db.query.scheduledJobs.findMany({ where: and(eq(scheduledJobs.status, 'pending'), lte(scheduledJobs.runAt, ctx.now())), limit: 100 });
-  let n = 0;
-  for (const j of due) {
-    const claimed = await ctx.db.update(scheduledJobs).set({ status: 'running', attempts: j.attempts + 1 }).where(and(eq(scheduledJobs.id, j.id), eq(scheduledJobs.status, 'pending'))).returning({ id: scheduledJobs.id });
-    if (!claimed.length) continue;
-    try {
-      await runKind(ctx, j);
-      await ctx.db.update(scheduledJobs).set({ status: 'done', doneAt: ctx.now() }).where(eq(scheduledJobs.id, j.id));
-      n++;
-    } catch (err) {
-      await ctx.db.update(scheduledJobs).set({ status: j.attempts + 1 >= 3 ? 'failed' : 'pending', lastError: String(err), runAt: new Date(ctx.now().getTime() + 60_000) }).where(eq(scheduledJobs.id, j.id));
-    }
-  }
-  return n;
-}
-
-/** Đặt job nhắc cho các sự kiện sắp diễn ra (mỗi mốc một lần, dedupe theo eventId + mốc). */
-export async function scheduleEventReminders(appOrCtx: AppContext | Ctx): Promise<number> {
-  const ctx = 'actor' in appOrCtx ? appOrCtx : systemCtx(appOrCtx, 'cron-event-reminders');
-  const horizon = new Date(ctx.now().getTime() + 25 * 3_600_000);
-  const upcoming = await ctx.db.query.events.findMany({ where: and(eq(events.status, 'scheduled'), gte(events.startsAt, ctx.now()), lte(events.startsAt, horizon)) });
-  let n = 0;
-  for (const e of upcoming) {
-    for (const label of e.reminders) {
-      const runAt = reminderRunAt(e.startsAt, label);
-      if (!runAt || e.remindersSent.includes(label) || runAt < ctx.now()) continue;
-      // Cùng khóa và payload với scheduleRemindersForEvent (hẹn lúc tạo/sửa) nên không sinh job trùng khi chạy song song.
-      const rows = await ctx.db.insert(scheduledJobs).values({ kind: 'event.remind', payload: { eventId: e.id, label, runAt: runAt.toISOString() }, dedupeKey: reminderKey(e.id, label, e.startsAt), runAt }).onConflictDoNothing().returning({ id: scheduledJobs.id });
-      if (rows.length) n++;
-    }
-  }
-  // Buổi đang diễn ra → live, đã qua → ended.
-  await flipEventStatuses(ctx);
-  return n;
 }

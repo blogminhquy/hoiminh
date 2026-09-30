@@ -1,10 +1,12 @@
 // Mỗi bước cron chạy trong transaction riêng: một bước lỗi không kéo các bước khác rollback theo,
 // nhất là bộ quét (lưới an toàn) không được phụ thuộc vào việc chụp xếp hạng chạy thành công.
 import { eq } from 'drizzle-orm';
+import { like } from 'drizzle-orm';
 import { scheduledJobs } from '@hoiminh/db';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
 import { runCron } from '../jobs/cron';
+import * as events from '../services/events';
 import type * as Affiliate from '../services/affiliate';
 import type * as Sweep from '../jobs/sweep';
 import { createTestApp, type TestApp } from './setup';
@@ -84,6 +86,16 @@ describe('cron hằng ngày', () => {
     control.failCommissions = true;
     await expect(runCron(app.ctx, 'daily')).rejects.toThrow('commission boom');
     expect(await app.ctx.db.query.scheduledJobs.findFirst({ where: eq(scheduledJobs.dedupeKey, 'iso-old') })).toBeUndefined();
+  });
+
+  it('bước tiền lỗi cũng không cản đối soát nhắc sự kiện (sự kiện cũ chưa có job nhắc vẫn được hẹn)', async () => {
+    const mq = await app.as('minhquy');
+    const start = at(2 * 86_400_000);
+    const r = await events.createEvent(mq, await app.ids('community:kd'), { title: 'Đối soát khi bước tiền lỗi', descriptionMd: 'md', startsAt: start.toISOString(), endsAt: at(2 * 86_400_000 + 3_600_000).toISOString(), timezone: 'Asia/Ho_Chi_Minh', recurrence: 'none', occurrences: 1, kind: 'online', meetingUrl: 'https://zoom.us/j/1', hostUserIds: [], access: 'all_members', allowQuestions: true, autoPublishRecording: true, reminders: ['1d'], announceOnFeed: false, broadcastEmail: false });
+    await app.ctx.db.delete(scheduledJobs).where(like(scheduledJobs.dedupeKey, `event-remind:${r.event.id}:%`));
+    control.failCommissions = true;
+    await expect(runCron(app.ctx, 'daily')).rejects.toThrow('commission boom');
+    expect(await app.ctx.db.select().from(scheduledJobs).where(like(scheduledJobs.dedupeKey, `event-remind:${r.event.id}:%`))).toHaveLength(1);
   });
 
   it('không lỗi thì báo đủ kết quả các bước', async () => {

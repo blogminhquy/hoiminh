@@ -51,7 +51,7 @@ describe('withSharedEnv', () => {
     expect(await withSharedEnv(env, undefined)).toBe(env);
   });
 
-  it('cache 5 phút: cron mỗi phút không hỏi lại hoiminh-api', async () => {
+  it('cache 5 phút: các lần chạy liên tiếp không hỏi lại hoiminh-api', async () => {
     const s = source({ ENCRYPTION_KEY: 'k1' });
     const t = 1_000_000;
     expect((await withSharedEnv<Record<string, unknown>>({}, s, t)).ENCRYPTION_KEY).toBe('k1');

@@ -6,7 +6,6 @@ import { affiliateCommissions, communityMembers, entitlements, orders, payments 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register, login, verifyEmail, forgotPassword, resetPassword, verifyTwoFactor } from '../auth/service';
 import * as totp from '../auth/totp';
-import { runCron, runScheduledJobs } from '../jobs/cron';
 import { requireCommunityPermission } from '../permissions';
 import * as affiliate from '../services/affiliate';
 import * as checkout from '../services/checkout';
@@ -257,10 +256,8 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
     const detail = await events.getEvent(duy, r.event.id);
     expect(detail.registered).toBe(true);
     expect(detail.meetingUrl).toBeNull(); // chưa tới 15 phút trước giờ
-    await runCron(app.ctx, 'every_minute');
-    const { sql } = await import('drizzle-orm');
-    await app.ctx.db.execute(sql`update scheduled_jobs set run_at = now() - interval '1 minute' where kind = 'event.remind'`);
-    await runScheduledJobs(app.ctx);
+    // Lời nhắc đã được hẹn ngay khi tạo sự kiện (không chờ cron); cho các job hẹn giờ chạy ngay thay vì chờ đồng hồ thật.
+    expect(app.queue.releaseDelayed()).toBeGreaterThanOrEqual(1);
     await app.queue.drain();
     expect(app.emails.some((e) => e.template === 'event_reminder' && e.to === 'duynguyen@gmail.com')).toBe(true);
     const q = await events.askQuestion(duy, r.event.id, 'Câu hỏi gửi trước?');
