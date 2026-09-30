@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.11.1 - 2026-10-01
+
+Lịch cron lạ không còn chạy nhầm bộ quét và xếp hạng. Phát hiện ngay sau khi gỡ cron phút ở 1.11.0.
+
+### Sửa lỗi
+
+- **Trigger cron cũ còn sót chạy nhầm việc nặng.** Sau khi gỡ `* * * * *` khỏi `wrangler.toml`, Cloudflare vẫn bắn trigger cũ thêm vài phút (API báo chỉ còn hai lịch, nhưng scheduler còn giữ bản cũ). `worker.ts` gán mọi lịch khác `0 18 * * *` cho `every_10_minutes`, nên bộ quét và chụp xếp hạng chạy mỗi phút trong lúc đó. Nay `cronNameFor` chỉ nhận đúng `*/10 * * * *` và `0 18 * * *`; lịch lạ chỉ ghi `cron.unknown_schedule` rồi bỏ qua, không mở kết nối DB. Có test đối chiếu với `wrangler.toml`.
+
+### Cần biết khi vận hành
+
+- Lần sau gỡ hoặc đổi một lịch cron, trigger cũ có thể còn bắn thêm vài phút sau deploy (lần này ít nhất 8 phút). Từ 1.11.1 nó vô hại vì bị bỏ qua.
+
 ## 1.11.0 - 2026-10-01
 
 Việc chạy nền chuyển sang theo sự kiện: không còn cron quét mỗi phút, việc hẹn giờ chạy đúng thời điểm bằng hàng đợi, và gửi email hàng loạt không còn gửi lặp khi retry. Thiết kế ở `docs/BACKGROUND_JOBS_SPEC.md`, quyết định ở DECISIONS.md #35.
