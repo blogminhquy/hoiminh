@@ -5,6 +5,7 @@ import { communities, eventRegistrations, events, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { notify } from '../services/notifications';
 import { chunk, claimRecipients, FANOUT_CHUNK } from './fanout';
+import { scheduleJob } from './schedule';
 
 /** Mốc nhắc theo phút trước giờ bắt đầu. */
 export const REMINDER_OFFSETS_MINUTES: Record<string, number> = { '1d': 24 * 60, '1h': 60, '15m': 15, start: 0 };
@@ -39,7 +40,7 @@ export function reminderStale(e: Pick<EventRow, 'status' | 'reminders' | 'starts
   return null;
 }
 
-/** Job cha: chia người đăng ký (chưa huỷ) thành lô, mỗi lô một message `event.remind.batch`. */
+/** Job cha: chia người đăng ký (chưa huỷ) thành lô, mỗi lô một dòng scheduled_jobs `event.remind.batch`. */
 export async function runEventReminder(ctx: Ctx, p: { eventId: string; label: string; runAt?: string }, opts: { chunkSize?: number } = {}): Promise<'sent' | 'stale'> {
   const e = await ctx.db.query.events.findFirst({ where: eq(events.id, p.eventId) });
   const stale = reminderStale(e, p.label, p.runAt);
@@ -50,7 +51,8 @@ export async function runEventReminder(ctx: Ctx, p: { eventId: string; label: st
   const regs = await ctx.db.select({ userId: eventRegistrations.userId }).from(eventRegistrations).where(and(eq(eventRegistrations.eventId, e.id), sql`${eventRegistrations.status} <> 'cancelled'`)).orderBy(asc(eventRegistrations.userId));
   const jobKey = reminderKey(e.id, p.label, e.startsAt);
   for (const userIds of chunk(regs.map((r) => r.userId), opts.chunkSize ?? FANOUT_CHUNK)) {
-    await ctx.queue.enqueue('event.remind.batch', { eventId: e.id, label: p.label, jobKey, userIds }, { dedupeKey: `${jobKey}:${userIds[0]}` });
+    // Mỗi lô là một dòng scheduled_jobs: Queue lỗi sau commit thì bộ quét vẫn đẩy được, không ai bị bỏ sót.
+    await scheduleJob(ctx, { kind: 'event.remind.batch', payload: { eventId: e.id, label: p.label, jobKey, userIds }, dedupeKey: `${jobKey}:${userIds[0]}`, runAt: ctx.now() });
   }
   return 'sent';
 }

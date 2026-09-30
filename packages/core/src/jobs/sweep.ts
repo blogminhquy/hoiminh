@@ -11,8 +11,12 @@ const PAGE = 200;
 const MAX_ROUNDS = 5;
 /** Dòng vừa tạo còn đang trên đường đẩy sau commit; chờ chừng này rồi mới coi là bị lọt. */
 const FRESH_MS = 60_000;
-/** Dòng enqueued quá hạn chừng này mà chưa chạy, và lần đẩy gần nhất cũng đã lâu, thì đẩy lại. */
-const LOST_AFTER_MS = 15 * 60_000;
+/**
+ * Dòng enqueued quá hạn chừng này mà chưa chạy, và lần đẩy gần nhất cũng đã lâu, thì đẩy lại. Đủ dài để không chen vào
+ * chuỗi retry còn đang chạy của Queue (1, 5, 15, 60 phút): mỗi lần đẩy lại là một chuỗi retry mới, đẩy dồn khi một
+ * phụ thuộc (R2, DB) đang chết chỉ làm nó chịu thêm tải.
+ */
+const LOST_AFTER_MS = 30 * 60_000;
 /** Webhook quá hạn retry chừng này mà chưa được giao thì đẩy lại. */
 const WEBHOOK_LATE_MS = 5 * 60_000;
 

@@ -75,6 +75,17 @@ Truy vấn email trùng có thể báo nhầm nếu một sự kiện có hai m�
 
 Thông báo trong ứng dụng (bảng `notifications`, `kind = 'event.reminder'`) không thể trùng theo (sự kiện, mốc, người) vì `job_recipients` có khoá chính `(job_key, user_id)`.
 
+### Việc cần người xử lý
+
+**Job `failed`** (hết chuỗi retry, đã có cảnh báo `job.dead_letter`): đọc `last_error`, sửa nguyên nhân (ví dụ R2 hoặc DB hồi phục), rồi đặt lại để bộ quét đẩy chạy tiếp trong tối đa 10 phút:
+
+```sql
+update scheduled_jobs set status = 'pending', created_at = now() - interval '5 minutes'
+where status = 'failed' and kind = 'file.delete';  -- đổi kind theo job cần chạy lại
+```
+
+**Giới hạn gửi email:** `max_concurrency = 10` cho phép tới 10 lô (mỗi lô 100 email gửi tuần tự) chạy cùng lúc. Nếu tài khoản Resend có giới hạn số request mỗi giây thấp, một phần email của lô lớn sẽ bị từ chối. `ResendSender.send` không ném lỗi mà trả `failed` và ghi vào `email_logs`, nên người đó **không được gửi lại** (đã claim). Sau mỗi đợt gửi lớn, xem `select status, count(*) from email_logs where created_at > now() - interval '1 hour' group by status;`. Nếu thấy nhiều `failed`, hạ `max_concurrency` hoặc chuyển sang API gửi theo lô của Resend. Hành vi "không gửi lại email lỗi" đã có từ trước refactor.
+
 ### Cảnh báo nên đặt
 
 | Điều kiện | Ngưỡng |

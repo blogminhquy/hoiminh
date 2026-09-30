@@ -99,9 +99,9 @@ Thay đổi `JobMap`:
 | Job | Payload | Ghi chú |
 |---|---|---|
 | `scheduled.run` (mới) | `{ jobId }` | chạy một dòng `scheduled_jobs` theo `kind` |
-| `event.remind.batch` (mới) | `{ eventId, label, jobKey, userIds[] }` | một lô ≤ 100 người |
-| `post.broadcast.batch` (mới) | `{ postId, userIds[] }` | một lô ≤ 100 người |
-| `event.remind`, `post.broadcast` | như cũ | thành job cha chia lô; giữ tên tới Phase 6 để tin đang bay không mất |
+| `event.remind.batch` (mới) | `{ eventId, label, jobKey, userIds[] }` | một lô ≤ 100 người; là **dòng `scheduled_jobs`** (bền vững), không phải message trần |
+| `post.broadcast.batch` (mới) | `{ postId, userIds[] }` | một lô ≤ 100 người; cũng là dòng `scheduled_jobs` |
+| `event.remind`, `post.broadcast` | như cũ | thành job cha chia lô. Cả hai nay cũng là dòng `scheduled_jobs` (`post.broadcast` ghi khi đăng bài, khóa `post-broadcast:{postId}:parent`); tên message trần vẫn được xử lý để tin đang bay lúc deploy không mất |
 
 ### 4.3 Migration `0004`
 
@@ -122,12 +122,12 @@ Giữ nguyên: `scheduled_jobs_due_idx (status, run_at)`, `scheduled_jobs_dedupe
 - `max_concurrency = 10` trong `wrangler.toml`. Đây là trần bảo vệ Postgres, tăng dần theo số đo. Mở app một lần cho mỗi batch như hiện tại.
 - Lỗi vĩnh viễn (`PermanentJobError`: payload sai, thực thể mất, trạng thái không hợp lệ): ack, log `job.dropped`, không retry.
 - Lỗi tạm thời (timeout, 429, 5xx, mạng, DB): `msg.retry({ delaySeconds })` theo `msg.attempts`, lịch `[60, 300, 900, 3600]`, hết `max_retries` thì vào DLQ.
-- Tên job không nhận ra: **ném lỗi tạm thời** (không ack). Nhờ vậy khi `hoiminh-api` deploy trước `hoiminh-jobs`, tin của job mới không bị mất.
+- Tên job không nhận ra, và `kind` của dòng `scheduled_jobs` không nhận ra: **ném lỗi tạm thời** (không ack, không đánh dấu failed). Nhờ vậy khi `hoiminh-api` deploy trước `hoiminh-jobs`, tin của job mới không bị mất.
 - Log có cấu trúc cho mỗi job (mục 10).
 
 ### 4.5 DLQ
 
-Thêm consumer cho `hoiminh-jobs-dlq` trong `hoiminh-jobs`: log `job.dead_letter` (tên job, jobId/dedupeKey, lỗi), đánh dấu dòng `scheduled_jobs` tương ứng `failed`, rồi ack. Cảnh báo dựa trên log.
+Thêm consumer cho `hoiminh-jobs-dlq` trong `hoiminh-jobs`: log `job.dead_letter` (tên job, jobId/dedupeKey, lỗi), đánh dấu dòng `scheduled_jobs` tương ứng `failed`, rồi ack. Cảnh báo dựa trên log. **`failed` là trạng thái kết thúc, không tự thử lại**: hết chuỗi retry (khoảng 2,35 giờ) mà phụ thuộc (R2, DB) vẫn hỏng thì cần người xem. Sửa xong thì đặt lại `pending` (xem tài liệu rollout) và bộ quét đẩy chạy tiếp. Tự thử lại mãi sẽ che lỗi thật và dồn tải lên phụ thuộc đang chết.
 
 ## 5. Bộ quét thưa `runSweep(ctx)`
 
@@ -136,14 +136,14 @@ Chạy trong cron `*/10 * * * *`, cùng leaderboard. Mỗi bước duyệt theo 
 | # | Bước | Điều kiện | Hành động |
 |---|---|---|---|
 | 1 | Đẩy job sắp tới hạn | `scheduled_jobs` `pending`, `run_at <= now() + 24h`, `created_at < now() - 1 phút` | enqueue `scheduled.run` với `delaySeconds = max(0, run_at - now)` |
-| 2 | Cứu tin đã mất | `enqueued`, `run_at < now() - 15 phút` | enqueue lại (handler khử trùng); log `sweep.requeue` |
+| 2 | Cứu tin đã mất | `enqueued`, `run_at` và `enqueued_at` đều cũ hơn 30 phút | enqueue lại (handler khử trùng); log `sweep.requeue`. Ngưỡng 30 phút để không chen vào chuỗi retry còn đang chạy của Queue (1, 5, 15, 60 phút) |
 | 3 | Webhook lọt | `webhook_deliveries` `pending`/`failed`, `next_attempt_at < now() - 5 phút` | enqueue `webhook.deliver` |
 | 4 | Hết hạn đơn | `orders` `pending`, `expires_at < now()` | giữ `expirePendingOrders` |
 | 5 | Trạng thái sự kiện | `scheduled → live → ended` | giữ 2 câu UPDATE hiện có, có index mới |
 
 Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn có index, thay cho 1.440 lần × khoảng 8 lượt đi về DB.
 
-**Độ trễ xấu nhất khi Queue mất tin:** tối đa khoảng 15 phút sau giờ hẹn (`run_at` + độ trễ của bước 2 + chu kỳ quét). Chấp nhận được vì đây là đường lỗi của lỗi; đường bình thường đúng từng phút nhờ `delaySeconds`.
+**Độ trễ xấu nhất khi Queue mất tin:** tối đa khoảng 40 phút sau giờ hẹn (`run_at` + độ trễ của bước 2 + chu kỳ quét). Chấp nhận được vì đây là đường lỗi của lỗi; đường bình thường đúng từng phút nhờ `delaySeconds`.
 
 ## 6. Idempotency
 
@@ -175,7 +175,7 @@ Chi phí khi rảnh: 144 lần chạy mỗi ngày, mỗi lần vài truy vấn c
 - Gọi từ `createEvent` (mỗi buổi của chuỗi) và `updateEvent` khi đổi `startsAt`, `reminders` hoặc `status`, cùng transaction với thay đổi.
 - Sửa giờ: `dedupeKey` mới nên sinh job mới; job cũ tự vô hiệu ở bước kiểm tra. **Không huỷ vật lý** job cũ.
 - **Kiểm tra khi chạy (stale check):** sự kiện còn tồn tại, `status = 'scheduled'`, nhãn còn trong `reminders`, và `startsAt - offset` khớp `runAt` của job (lệch ≤ 1 phút). Sai một điều kiện thì ack no-op, log `job.stale`.
-- Chia lô: job cha đọc người đăng ký chưa huỷ theo trang 100 (keyset theo `user_id`), mỗi trang thành một `event.remind.batch`. Mỗi người claim qua `job_recipients`, rồi mới `notify` và gửi email.
+- Chia lô: job cha đọc người đăng ký chưa huỷ theo trang 100 (keyset theo `user_id`), mỗi trang thành một dòng `scheduled_jobs` kind `event.remind.batch` (bền vững: Queue lỗi sau commit thì bộ quét vẫn đẩy được lô, không ai bị bỏ sót). Mỗi người claim qua `job_recipients`, rồi mới `notify` và gửi email.
 
 ### 7.3 Hết hạn đơn
 
@@ -282,8 +282,8 @@ Cũng cập nhật `DECISIONS.md`: mục #18 (welcome DM dùng "cron mỗi phút
 | | tên job lạ | retry, không ack |
 | | message trùng | kết quả nghiệp vụ không đổi |
 | Bộ quét | `pending` ≤ 24 giờ / > 24 giờ | đẩy / không đẩy |
-| | `enqueued` quá hạn 15 phút | đẩy lại |
-| | mất tin do giả lập lỗi Queue | job vẫn chạy trong ≤ 15 phút |
+| | `enqueued` quá hạn 30 phút | đẩy lại |
+| | mất tin do giả lập lỗi Queue | job vẫn chạy trong ≤ 40 phút |
 | Cấu hình | `wrangler.toml` của jobs | đúng hai dòng cron |
 
 Hạ tầng test: `InMemoryQueue` có delay và dùng đồng hồ giả qua `ctx.now()`; chuyển các test đang gọi `runCron(..., 'every_minute')` (mục 8).
@@ -295,7 +295,7 @@ Hạ tầng test: `InMemoryQueue` có delay và dùng đồng hồ giả qua `ct
 3. Đường cron không còn `retryDue`, `scheduleEventReminders` bản quét toàn bảng, `runScheduledJobs`.
 4. Sửa giờ hoặc huỷ sự kiện không tạo lời nhắc sai giờ.
 5. Thanh toán đến sau hạn vẫn cấp quyền.
-6. Mất tin Queue được cứu trong ≤ 15 phút (test giả lập).
+6. Mất tin Queue được cứu trong ≤ 40 phút (test giả lập).
 7. Bảy ngày chạy song song không có email, lời nhắc hay webhook trùng.
 8. Có consumer DLQ và đã thử bắn một cảnh báo thật.
 9. Toàn bộ test hiện có và test mới pass; typecheck của monorepo pass.

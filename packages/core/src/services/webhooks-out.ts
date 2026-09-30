@@ -65,7 +65,12 @@ export async function deliver(ctx: Ctx, deliveryId: string, fetchImpl: typeof fe
   // Chưa tới lần thử kế tiếp: message trùng hoặc đến sớm (bộ quét đẩy lại khi message hẹn giờ còn đang chờ).
   if (d.nextAttemptAt && d.nextAttemptAt.getTime() > ctx.now().getTime() + EARLY_TOLERANCE_MS) return 'skipped';
   const w = await ctx.db.query.webhooks.findFirst({ where: eq(webhooks.id, d.webhookId) });
-  if (!w || w.status !== 'active') return 'skipped';
+  if (!w) return 'skipped';
+  if (w.status !== 'active') {
+    // Webhook đã tạm dừng (20 lỗi liên tiếp): kết thúc hẳn delivery, nếu không bộ quét sẽ đẩy lại mãi.
+    await ctx.db.update(webhookDeliveries).set({ status: 'exhausted', nextAttemptAt: null, responseBody: 'Webhook đã tạm dừng' }).where(eq(webhookDeliveries.id, d.id));
+    return 'skipped';
+  }
   const { secret } = await decryptJson<{ secret: string }>(w.secretEncrypted, ctx.env.ENCRYPTION_KEY);
   const body = JSON.stringify({ id: d.eventId, event: d.eventName, createdAt: d.createdAt.toISOString(), data: d.payload });
   const ts = Math.floor(ctx.now().getTime() / 1000);
