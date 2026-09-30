@@ -1,11 +1,12 @@
 // Sự kiện: danh sách theo tuần, tạo (lặp hằng tuần/tháng), chi tiết, đăng ký, câu hỏi gửi trước + bình chọn, bản ghi.
 import { parseVideoUrl, type CreateEventInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
-import { communityTiers, eventQuestionVotes, eventQuestions, eventRecordings, eventRegistrations, eventSeries, events, posts, spaces, users } from '@hoiminh/db';
+import { communityTiers, eventQuestionVotes, eventQuestions, eventRecordings, eventRegistrations, eventSeries, events, posts, spaces, users, type EventStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { scheduleRemindersForEvent } from './event-reminders';
 import { memberTierKey } from './entitlements';
 import { assertWorkspaceUnlocked } from './workspaces';
 
@@ -15,6 +16,18 @@ function meetingProvider(url: string | null | undefined): string | null {
   if (/meet\.google/.test(url)) return 'google_meet';
   const v = parseVideoUrl(url);
   return v?.provider ?? 'link';
+}
+
+/**
+ * Trạng thái tính từ giờ: đang diễn ra là `live`, quá giờ kết thúc là `ended`. Cột `status` do bộ quét cập nhật
+ * (để lọc và báo cáo) nên có thể cũ vài phút; nơi hiển thị dùng hàm này để luôn đúng. `cancelled`, `draft`, `ended`
+ * do người dùng đặt nên giữ nguyên.
+ */
+export function effectiveEventStatus(e: { status: EventStatus; startsAt: Date; endsAt: Date }, now: Date): EventStatus {
+  if (e.status !== 'scheduled' && e.status !== 'live') return e.status;
+  if (e.endsAt.getTime() < now.getTime()) return 'ended';
+  if (e.status === 'scheduled' && e.startsAt.getTime() <= now.getTime()) return 'live';
+  return e.status;
 }
 
 /** Danh sách sự kiện: sắp tới / của tôi / đã qua, kèm trạng thái đăng ký và lịch tháng. */
@@ -39,7 +52,7 @@ export async function listEvents(ctx: Ctx, communityId: string, q: { filter?: 'u
   const monthEnd = new Date(y!, m!, 1);
   const monthDays = await ctx.db.select({ d: sql<string>`to_char(${events.startsAt} at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')` }).from(events).where(and(eq(events.communityId, communityId), gte(events.startsAt, monthStart), lt(events.startsAt, monthEnd)));
   return {
-    items: rows.map((r) => ({ ...r.e, live: r.e.startsAt <= now && r.e.endsAt >= now, registered: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled'), hosts: r.e.hostUserIds.map((id) => hosts.find((h) => h.id === id)).filter(Boolean), meetingUrl: regs.some((g) => g.eventId === r.e.id) || access.permissions.has('event.manage') ? r.e.meetingUrl : null })),
+    items: rows.map((r) => ({ ...r.e, status: effectiveEventStatus(r.e, now), live: r.e.startsAt <= now && r.e.endsAt >= now, registered: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled'), hosts: r.e.hostUserIds.map((id) => hosts.find((h) => h.id === id)).filter(Boolean), meetingUrl: regs.some((g) => g.eventId === r.e.id) || access.permissions.has('event.manage') ? r.e.meetingUrl : null })),
     pastCount: pastCount?.c ?? 0, recordings, calendarDays: [...new Set(monthDays.map((d) => d.d))], canManage: access.permissions.has('event.manage'),
   };
 }
@@ -75,6 +88,8 @@ export async function createEvent(ctx: Ctx, communityId: string, input: CreateEv
       if (space) await tx.insert(posts).values({ communityId, spaceId: space.id, authorUserId: userId, title: `Sự kiện mới: ${input.title}`, contentMd: `${input.descriptionMd}\n\n**Thời gian:** ${start.toLocaleString('vi-VN', { timeZone: input.timezone })}${count > 1 ? ` · lặp ${input.recurrence === 'weekly' ? 'hằng tuần' : 'hằng tháng'}, ${count} buổi` : ''}`, excerpt: input.descriptionMd.slice(0, 200), broadcast: input.broadcastEmail });
     }
   });
+  // Hẹn nhắc ngay khi tạo (thay cho việc cron quét mỗi phút): mỗi buổi của chuỗi một bộ lời nhắc.
+  for (const e of created) await scheduleRemindersForEvent(ctx, e);
   await ctx.events.emit('event.created', { eventId: created[0]!.id, communityId, announce: input.announceOnFeed, broadcast: input.broadcastEmail });
   await audit(ctx, { action: 'event.create', resourceType: 'event', resourceId: created[0]!.id, communityId, metadata: { count } });
   return { event: created[0]!, created: created.length, seriesId };
@@ -91,6 +106,8 @@ export async function updateEvent(ctx: Ctx, eventId: string, input: Partial<Crea
   if (input.endsAt) patch.endsAt = new Date(input.endsAt);
   if (input.meetingUrl !== undefined) { patch.meetingUrl = input.meetingUrl; patch.meetingProvider = meetingProvider(input.meetingUrl); }
   const [row] = await ctx.db.update(events).set(patch).where(eq(events.id, eventId)).returning();
+  // Đổi giờ, đổi nhãn nhắc hoặc trạng thái: hẹn lại. Job cũ không huỷ, tự vô hiệu khi chạy (reminderStale).
+  if (input.startsAt !== undefined || input.reminders !== undefined || input.status !== undefined) await scheduleRemindersForEvent(ctx, row!);
   await audit(ctx, { action: 'event.update', resourceType: 'event', resourceId: eventId, communityId: e.communityId });
   return row!;
 }
@@ -118,7 +135,7 @@ export async function getEvent(ctx: Ctx, eventId: string) {
   const premiumLocked = e.access === 'premium' && !manage && tierKey !== 'premium' && tierKey !== 'vip';
   const now = ctx.now();
   const showLink = (registered || manage) && e.meetingUrl && (manage || e.startsAt.getTime() - now.getTime() < 15 * 60_000);
-  return { ...e, meetingUrl: showLink ? e.meetingUrl : null, live: e.startsAt <= now && e.endsAt >= now, registered, premiumLocked, questions: questions.map((r) => ({ ...r.q, user: r.user, voted: myVotes.has(r.q.id) })), attendees: attendees.map((a) => a.user), attendeesVisible: manage || tierKey === 'premium' || tierKey === 'vip', series, recordings, hosts, canManage: manage };
+  return { ...e, status: effectiveEventStatus(e, now), meetingUrl: showLink ? e.meetingUrl : null, live: e.startsAt <= now && e.endsAt >= now, registered, premiumLocked, questions: questions.map((r) => ({ ...r.q, user: r.user, voted: myVotes.has(r.q.id) })), attendees: attendees.map((a) => a.user), attendeesVisible: manage || tierKey === 'premium' || tierKey === 'vip', series, recordings, hosts, canManage: manage };
 }
 
 /** Đăng ký / hủy đăng ký. */

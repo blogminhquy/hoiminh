@@ -2,7 +2,7 @@
 import type { CheckoutSession, CreateCheckoutInput } from '@hoiminh/contracts';
 import { formatMoney } from '@hoiminh/contracts';
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, plans, products, providerAccounts, users, workspaces } from '@hoiminh/db';
+import { affiliateAccounts, affiliatePrograms, communities, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, plans, products, providerAccounts, users, workspaces, type OrderStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { AppError, conflict, invalid, notFound } from '../errors';
@@ -107,6 +107,15 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   return { orderId: order.id, paymentId: payment!.id, reference, provider: input.provider, status: 'pending', amountMinor: total, discountMinor: discount, currency: r.currency, instruction: checkout.instruction, summary: { title: r.title, subtitle: r.subtitle, lines: [{ label: r.itemName, amountMinor: r.amountMinor }, { label: 'Giảm giá', amountMinor: -discount }] }, referredBy };
 }
 
+/**
+ * Đơn chờ thanh toán đã quá hạn giữ chỗ thì coi là hết hạn ngay khi đọc, không chờ bộ quét cập nhật cột `status`.
+ * Nhờ vậy đúng/sai nghiệp vụ không phụ thuộc cron. Chỉ áp cho hành động của khách và hiển thị:
+ * webhook thanh toán đến muộn vẫn được nhận (payments.confirmPayment), vì tiền đã vào thì phải cấp quyền.
+ */
+export function effectiveOrderStatus(o: { status: OrderStatus; expiresAt: Date | null }, now: Date): OrderStatus {
+  return o.status === 'pending' && o.expiresAt !== null && o.expiresAt.getTime() < now.getTime() ? 'expired' : o.status;
+}
+
 /** Trạng thái đơn (client poll sau khi "Tôi đã chuyển khoản"). */
 export async function orderStatus(ctx: Ctx, orderId: string) {
   const userId = requireUser(ctx);
@@ -115,12 +124,19 @@ export async function orderStatus(ctx: Ctx, orderId: string) {
   const p = await ctx.db.query.payments.findFirst({ where: eq(payments.orderId, orderId), orderBy: (t, { desc }) => desc(t.createdAt) });
   const meta = o.metadata as { communitySlug?: string; productSlug?: string; cycle?: string; title?: string; kind?: string };
   const nextUrl = o.targetType === 'platform' ? '/admin' : o.targetType === 'product' ? `/${meta.communitySlug}/cua-hang/${meta.productSlug ?? ''}` : `/${meta.communitySlug}/khoa-hoc`;
-  return { orderId: o.id, status: o.status, paidAt: o.paidAt, reference: o.reference, amountMinor: o.totalMinor, currency: o.currency, provider: p?.provider ?? null, paymentStatus: p?.status ?? null, instruction: p?.instruction ?? null, title: meta.title ?? '', nextUrl, expiresAt: o.expiresAt };
+  const status = effectiveOrderStatus(o, ctx.now());
+  // Đơn đã hết hạn thì thanh toán chưa xong của nó cũng hết hạn (giao diện dựa vào paymentStatus để bật/tắt nút).
+  const paymentStatus = status === 'expired' && (p?.status === 'pending' || p?.status === 'processing') ? 'expired' : p?.status ?? null;
+  return { orderId: o.id, status, paidAt: o.paidAt, reference: o.reference, amountMinor: o.totalMinor, currency: o.currency, provider: p?.provider ?? null, paymentStatus, instruction: p?.instruction ?? null, title: meta.title ?? '', nextUrl, expiresAt: o.expiresAt };
 }
 
 /** Khách bấm "Tôi đã chuyển khoản": ghi nhận đang xử lý (không xác nhận tiền). */
 export async function markProcessing(ctx: Ctx, orderId: string) {
   const userId = requireUser(ctx);
+  const o = await ctx.db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.customerUserId, userId)) });
+  if (!o) throw notFound();
+  // Đơn đã quá hạn: không ghi nhận gì, trả về trạng thái hết hạn để giao diện báo ngay (chuyển khoản muộn vẫn tự xác nhận khi tiền về).
+  if (effectiveOrderStatus(o, ctx.now()) === 'expired') return orderStatus(ctx, orderId);
   const p = await ctx.db.query.payments.findFirst({ where: and(eq(payments.orderId, orderId), eq(payments.customerUserId, userId)) });
   if (!p) throw notFound();
   if (p.status === 'pending') await ctx.db.update(payments).set({ status: 'processing', updatedAt: ctx.now() }).where(eq(payments.id, p.id));

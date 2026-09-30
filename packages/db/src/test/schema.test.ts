@@ -37,6 +37,19 @@ describe('schema + seed', () => {
     for (const r of list) expect(r.relrowsecurity, r.relname).toBe(true);
   });
 
+  it('bảng job_recipients có RLS và policy tenant_isolation như các bảng có user_id khác', async () => {
+    const t = await rows<{ relrowsecurity: boolean }>(sql`select relrowsecurity from pg_class where relname = 'job_recipients'`);
+    expect(t[0]?.relrowsecurity).toBe(true);
+    const p = await rows<{ policyname: string }>(sql`select policyname from pg_policies where tablename = 'job_recipients'`);
+    expect(p.map((x) => x.policyname)).toContain('tenant_isolation');
+  });
+
+  it('migration 0004 thêm cột enqueued_at bằng IF NOT EXISTS (cột từng được thêm tay trên Supabase ở migration trước)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const sqlText = readFileSync(new URL('../../migrations/0004_background_jobs.sql', import.meta.url), 'utf8');
+    expect(sqlText).toMatch(/ADD COLUMN IF NOT EXISTS "enqueued_at"/);
+  });
+
   it('seed chạy hai lần không tạo trùng', async () => {
     const a = await seedAll(handle.db, { encryptionKey: '', appUrl: 'http://localhost:5173' });
     const b = await seedAll(handle.db, { encryptionKey: '', appUrl: 'http://localhost:5173' });

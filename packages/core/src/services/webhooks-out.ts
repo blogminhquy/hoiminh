@@ -1,4 +1,4 @@
-// Webhook gửi đi: đăng ký URL theo workspace, ký HMAC-SHA256, giao qua hàng đợi, retry lùi dần 5 lần.
+// Webhook gửi đi: đăng ký URL theo workspace, ký HMAC-SHA256, giao qua hàng đợi, retry lùi dần 5 lần bằng delay của Queue.
 import { decryptJson, encryptJson, hmacHex, randomToken } from '@hoiminh/config';
 import type { WebhookEventName } from '@hoiminh/contracts';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
@@ -9,6 +9,8 @@ import { requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 
 const BACKOFF_MINUTES = [1, 5, 30, 120, 720];
+/** Message hẹn giờ có thể tới sớm chút ít so với `next_attempt_at`; sớm hơn mức này là message trùng. */
+const EARLY_TOLERANCE_MS = 5_000;
 
 export async function createWebhook(ctx: Ctx, workspaceId: string, input: { url: string; events: WebhookEventName[]; description?: string; communityId?: string | null }) {
   await requireWorkspaceRole(ctx, workspaceId, ['owner', 'admin']);
@@ -50,12 +52,25 @@ export async function dispatch(ctx: Ctx, workspaceId: string | null, eventName: 
   return n;
 }
 
-/** Giao một delivery: POST JSON ký X-HoiMinh-Signature = sha256=<hmac(timestamp.body)>. */
+/**
+ * Giao một delivery: POST JSON ký X-HoiMinh-Signature = sha256=<hmac(timestamp.body)>.
+ * Thất bại thì ghi DB rồi tự hẹn lần sau bằng delay của Queue (tối đa 12 giờ, dưới giới hạn 24 giờ); hết lượt thì `exhausted`.
+ * Lỗi HTTP hay lỗi mạng của khách là kết quả nghiệp vụ nên KHÔNG ném ra consumer: chỉ lỗi hạ tầng của mình mới ném
+ * để Queue retry, nếu không hai tầng retry sẽ nhân lên. Bên nhận khử trùng bằng header X-HoiMinh-Delivery.
+ */
 export async function deliver(ctx: Ctx, deliveryId: string, fetchImpl: typeof fetch = fetch): Promise<'delivered' | 'retry' | 'exhausted' | 'skipped'> {
-  const d = await ctx.db.query.webhookDeliveries.findFirst({ where: eq(webhookDeliveries.id, deliveryId) });
+  // Khóa dòng trong transaction của job: message trùng chạy đồng thời thì bỏ qua (SKIP LOCKED) thay vì cùng POST.
+  const [d] = await ctx.db.select().from(webhookDeliveries).where(eq(webhookDeliveries.id, deliveryId)).for('update', { skipLocked: true });
   if (!d || d.status === 'delivered' || d.status === 'exhausted') return 'skipped';
+  // Chưa tới lần thử kế tiếp: message trùng hoặc đến sớm (bộ quét đẩy lại khi message hẹn giờ còn đang chờ).
+  if (d.nextAttemptAt && d.nextAttemptAt.getTime() > ctx.now().getTime() + EARLY_TOLERANCE_MS) return 'skipped';
   const w = await ctx.db.query.webhooks.findFirst({ where: eq(webhooks.id, d.webhookId) });
-  if (!w || w.status !== 'active') return 'skipped';
+  if (!w) return 'skipped';
+  if (w.status !== 'active') {
+    // Webhook đã tạm dừng (20 lỗi liên tiếp): kết thúc hẳn delivery, nếu không bộ quét sẽ đẩy lại mãi.
+    await ctx.db.update(webhookDeliveries).set({ status: 'exhausted', nextAttemptAt: null, responseBody: 'Webhook đã tạm dừng' }).where(eq(webhookDeliveries.id, d.id));
+    return 'skipped';
+  }
   const { secret } = await decryptJson<{ secret: string }>(w.secretEncrypted, ctx.env.ENCRYPTION_KEY);
   const body = JSON.stringify({ id: d.eventId, event: d.eventName, createdAt: d.createdAt.toISOString(), data: d.payload });
   const ts = Math.floor(ctx.now().getTime() / 1000);
@@ -79,10 +94,13 @@ export async function deliver(ctx: Ctx, deliveryId: string, fetchImpl: typeof fe
   const exhausted = attempt >= BACKOFF_MINUTES.length;
   await ctx.db.update(webhookDeliveries).set({ status: exhausted ? 'exhausted' : 'failed', attempt, responseStatus: status || null, responseBody: text, nextAttemptAt: exhausted ? null : new Date(ctx.now().getTime() + BACKOFF_MINUTES[attempt - 1]! * 60_000) }).where(eq(webhookDeliveries.id, d.id));
   await ctx.db.update(webhooks).set({ failureCount: sql`${webhooks.failureCount} + 1`, status: w.failureCount + 1 >= 20 ? 'paused' : 'active' }).where(eq(webhooks.id, w.id));
-  return exhausted ? 'exhausted' : 'retry';
+  if (exhausted) return 'exhausted';
+  // ctx.queue trong transaction là DeferredQueue: message chỉ đi sau commit, và bộ quét cứu nếu bị lọt.
+  await ctx.queue.enqueue('webhook.deliver', { deliveryId: d.id }, { delaySeconds: BACKOFF_MINUTES[attempt - 1]! * 60, dedupeKey: `webhook:${d.id}:${attempt}` });
+  return 'retry';
 }
 
-/** Cron: đưa các delivery thất bại đã đến giờ retry vào hàng đợi. */
+/** Cron mỗi phút (lưới dự phòng trong lúc chạy song song với Queue delay; bộ quét thưa đã thay vai trò này). */
 export async function retryDue(ctx: Ctx): Promise<number> {
   const due = await ctx.db.query.webhookDeliveries.findMany({ where: and(inArray(webhookDeliveries.status, ['failed', 'pending']), lte(webhookDeliveries.nextAttemptAt, ctx.now())), limit: 200 });
   for (const d of due) await ctx.queue.enqueue('webhook.deliver', { deliveryId: d.id });

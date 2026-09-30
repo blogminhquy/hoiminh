@@ -1,5 +1,5 @@
 // Nền tảng: gói, subscription nền tảng, usage, API key, webhook gửi đi, tệp, audit, feature flag, onboarding, job hẹn giờ, email log.
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, money, timestamps, ts } from './_helpers';
 import { communities, workspaces } from './tenant';
 import { users } from './users';
@@ -179,7 +179,11 @@ export const onboardingProgress = pgTable(
   (t) => [uniqueIndex('onboarding_progress_uq').on(t.workspaceId, t.communityId, t.stepKey)],
 );
 
-/** Job hẹn giờ (tin nhắn chào sau N phút, nhắc sự kiện…), cron quét mỗi phút. */
+/**
+ * Job hẹn giờ (tin nhắn chào sau N phút, nhắc sự kiện, xóa tệp R2…): sổ gốc của việc hẹn giờ.
+ * `pending` = mới ghi, chưa chắc đã vào Queue; `enqueued` = đã vào Queue, chờ consumer; `done`/`failed` là kết thúc.
+ * Bộ quét thưa (cron 10 phút) đẩy dòng `pending` sắp tới hạn và cứu dòng `enqueued` bị quá hạn.
+ */
 export const scheduledJobs = pgTable(
   'scheduled_jobs',
   {
@@ -188,13 +192,29 @@ export const scheduledJobs = pgTable(
     payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
     dedupeKey: text('dedupe_key'),
     runAt: ts('run_at').notNull(),
-    status: text('status').$type<'pending' | 'running' | 'done' | 'failed'>().notNull().default('pending'),
+    status: text('status').$type<'pending' | 'enqueued' | 'running' | 'done' | 'failed'>().notNull().default('pending'),
     attempts: integer('attempts').notNull().default(0),
     lastError: text('last_error'),
     createdAt: ts('created_at').notNull().defaultNow(),
+    /** Lần gần nhất message được đẩy vào Queue; bộ quét dựa vào đây để không đẩy lại dồn dập. */
+    enqueuedAt: ts('enqueued_at'),
     doneAt: ts('done_at'),
   },
   (t) => [index('scheduled_jobs_due_idx').on(t.status, t.runAt), uniqueIndex('scheduled_jobs_dedupe_uq').on(t.dedupeKey)],
+);
+
+/**
+ * Người nhận đã được xử lý trong một job gửi hàng loạt (nhắc sự kiện, broadcast bài viết).
+ * Claim trước khi gửi: retry hay message trùng không gửi lại cho người đã claim. Dọn hằng ngày.
+ */
+export const jobRecipients = pgTable(
+  'job_recipients',
+  {
+    jobKey: text('job_key').notNull(),
+    userId: uuid('user_id').notNull(),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.jobKey, t.userId] }), index('job_recipients_created_idx').on(t.createdAt)],
 );
 
 export const emailLogs = pgTable(
