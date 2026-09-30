@@ -52,7 +52,7 @@ export async function signedUrl(ctx: Ctx, objectKey: string, ttl = 3600): Promis
 //     Nhờ vậy avatar trỏ vào ảnh của người khác không kéo theo việc xóa ảnh đó.
 //  3. Tìm tệp bằng khớp đúng `files.url` hoặc `files.id`, không bao giờ tự suy object key từ URL do client gửi.
 //  4. Xóa dòng `files` và đặt việc xóa R2 vào hàng đợi trong CÙNG transaction với việc gỡ tham chiếu.
-//     Giao dịch bị hủy thì cả hai cùng hủy; cron mỗi phút mới xóa thật trên R2 và tự thử lại khi R2 lỗi.
+//     Giao dịch bị hủy thì cả hai cùng hủy; consumer của Queue xóa thật trên R2 ngay sau commit, tự thử lại khi R2 lỗi, và bộ quét cứu nếu Queue bỏ cuộc.
 // ---------------------------------------------------------------------------------------------
 
 export { FILE_DELETE_JOB };

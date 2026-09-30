@@ -1,7 +1,7 @@
 // Webhook gửi đi: đăng ký URL theo workspace, ký HMAC-SHA256, giao qua hàng đợi, retry lùi dần 5 lần bằng delay của Queue.
 import { decryptJson, encryptJson, hmacHex, randomToken } from '@hoiminh/config';
 import type { WebhookEventName } from '@hoiminh/contracts';
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { webhookDeliveries, webhooks } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { notFound } from '../errors';
@@ -93,13 +93,6 @@ export async function deliver(ctx: Ctx, deliveryId: string, fetchImpl: typeof fe
   // ctx.queue trong transaction là DeferredQueue: message chỉ đi sau commit, và bộ quét cứu nếu bị lọt.
   await ctx.queue.enqueue('webhook.deliver', { deliveryId: d.id }, { delaySeconds: BACKOFF_MINUTES[attempt - 1]! * 60, dedupeKey: `webhook:${d.id}:${attempt}` });
   return 'retry';
-}
-
-/** Cron mỗi phút (lưới dự phòng trong lúc chạy song song với Queue delay; bộ quét thưa đã thay vai trò này). */
-export async function retryDue(ctx: Ctx): Promise<number> {
-  const due = await ctx.db.query.webhookDeliveries.findMany({ where: and(inArray(webhookDeliveries.status, ['failed', 'pending']), lte(webhookDeliveries.nextAttemptAt, ctx.now())), limit: 200 });
-  for (const d of due) await ctx.queue.enqueue('webhook.deliver', { deliveryId: d.id });
-  return due.length;
 }
 
 /** Kiểm tra chữ ký ở phía nhận (tiện ích cho khách hàng tích hợp và test). */

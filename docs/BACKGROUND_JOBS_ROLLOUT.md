@@ -102,7 +102,7 @@ Nhánh `claude/jobs-phase6-remove-minute-cron` (chồng lên nhánh Phase 0 tớ
 - `apps/jobs/wrangler.toml`: `crons = ["*/10 * * * *", "0 18 * * *"]`.
 - Gỡ `'every_minute'` khỏi `CronName`, `worker.ts`, `apps/api/src/node.ts`.
 - Gỡ `runScheduledJobs`, `scheduleEventReminders` (bản quét), `retryDue` và phần liên quan của cron.
-- Bộ quét `*/10` thay đúng vai trò của chúng.
+- Bộ quét `*/10` thay đúng vai trò của chúng; cron hằng ngày thêm bước `reconcileEventReminders` (đối soát nhắc cho sự kiện trong 3 ngày tới mà chưa có job). Bước này cần vì sự kiện tạo trước Phase 2 không có job nhắc: trước đây bản quét cũ nhặt chúng, gỡ bản quét mà không đối soát thì các sự kiện đó mất nhắc.
 
 Sau khi merge và deploy, cron `* * * * *` được gỡ khỏi Worker. Kiểm tra trên Cloudflare, Workers, `hoiminh-jobs`, Triggers: chỉ còn hai cron.
 

@@ -6,10 +6,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import { runEventReminder, runEventReminderBatch, reminderKey } from '../jobs/event-reminders';
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
-import { scheduleEventReminders } from '../jobs/cron';
+import { runCron } from '../jobs/cron';
 import { runScheduledJob } from '../jobs/scheduled';
 import { withSystemScope } from '../lib/tenant-scope';
 import * as events from '../services/events';
+import { reconcileEventReminders } from '../services/event-reminders';
 import { createTestApp, type TestApp } from './setup';
 
 class SpyQueue implements JobQueue {
@@ -76,13 +77,6 @@ describe('tạo sự kiện: hẹn nhắc ngay, không chờ cron', () => {
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.status === 'pending')).toBe(true);
     expect(app.queue.delayed.some((d) => rows.some((r) => r.id === (d.job.payload as { jobId?: string }).jobId))).toBe(false);
-  });
-
-  it('cron quét cũ dùng cùng khóa nên không tạo thêm job trùng cho sự kiện đã hẹn', async () => {
-    const { id } = await newEvent(300, ['1h', 'start']);
-    const before = (await jobsOf(id)).length;
-    await scheduleEventReminders(app.ctx);
-    expect((await jobsOf(id)).length).toBe(before);
   });
 });
 
@@ -213,5 +207,40 @@ describe('chia lô và khử trùng từng người', () => {
     await events.updateEvent(mq, id, { status: 'cancelled' });
     await withSystemScope(app.system(), (c) => runEventReminderBatch(c, spy.sent[0]!.payload as JobMap['event.remind.batch']));
     expect(await remindNotes(title)).toHaveLength(0);
+  });
+});
+
+describe('đối soát hằng ngày: sự kiện tạo trước khi có cơ chế hẹn lúc tạo', () => {
+  /** Mô phỏng sự kiện cũ: có sự kiện nhưng chưa có job nhắc nào. */
+  async function legacyEvent(startsInMinutes: number, reminders: Array<'1d' | '1h' | 'start' | '15m'>, status?: 'cancelled') {
+    const e = await newEvent(startsInMinutes, reminders);
+    await app.ctx.db.delete(scheduledJobs).where(like(scheduledJobs.dedupeKey, `event-remind:${e.id}:%`));
+    if (status) await app.ctx.db.update(eventsTable).set({ status }).where(eq(eventsTable.id, e.id));
+    return e;
+  }
+
+  it('hẹn nhắc cho sự kiện trong 3 ngày tới mà chưa có job; chạy lại không tạo thêm', async () => {
+    const e = await legacyEvent(2 * 24 * 60, ['1d', '1h']);
+    expect(await jobsOf(e.id)).toHaveLength(0);
+    const first = await reconcileEventReminders(app.system());
+    expect(first).toBeGreaterThanOrEqual(2);
+    expect((await jobsOf(e.id)).map((r) => (r.payload as { label: string }).label).sort()).toEqual(['1d', '1h']);
+    expect(await reconcileEventReminders(app.system())).toBe(0);
+    expect(await jobsOf(e.id)).toHaveLength(2);
+  });
+
+  it('bỏ qua sự kiện xa hơn 3 ngày và sự kiện đã huỷ', async () => {
+    const far = await legacyEvent(10 * 24 * 60, ['1d']);
+    const cancelled = await legacyEvent(2 * 24 * 60, ['1d'], 'cancelled');
+    await reconcileEventReminders(app.system());
+    expect(await jobsOf(far.id)).toHaveLength(0);
+    expect(await jobsOf(cancelled.id)).toHaveLength(0);
+  });
+
+  it('cron hằng ngày chạy bước đối soát', async () => {
+    const e = await legacyEvent(2 * 24 * 60, ['1d']);
+    const out = await runCron(app.ctx, 'daily');
+    expect(out.remindersReconciled).toBeGreaterThanOrEqual(1);
+    expect(await jobsOf(e.id)).toHaveLength(1);
   });
 });

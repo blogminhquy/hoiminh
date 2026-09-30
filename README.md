@@ -91,7 +91,7 @@ Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/hea
 | Worker | Thư mục | Làm gì | Tên miền |
 |---|---|---|---|
 | `hoiminh-api` | `apps/api` | Giao diện (file tĩnh từ `apps/web/dist`) và API | `hoiminh.com`, `www.hoiminh.com`, `api.hoiminh.com` |
-| `hoiminh-jobs` | `apps/jobs` | Cron (mỗi phút, 10 phút, 01:00 giờ Việt Nam) và hàng đợi `hoiminh-jobs` | không có |
+| `hoiminh-jobs` | `apps/jobs` | Hàng đợi `hoiminh-jobs` (việc nền theo sự kiện, gồm job hẹn giờ) và cron thưa (10 phút, 01:00 giờ Việt Nam) | không có |
 
 - File giao diện do Cloudflare trả thẳng, không chạy code và không tính phí request. Chỉ các đường dẫn trong `run_worker_first` (`/v1/*`, `/webhooks/*`, `/pay/*`, `/r/*`, `/files/*`, `/health`) mới vào Worker. Thêm route API ở tiền tố mới thì phải thêm vào danh sách này.
 - Web gọi API cùng tên miền nên không cần CORS. CORS chỉ mở cho `APP_URL` và bản `www`.

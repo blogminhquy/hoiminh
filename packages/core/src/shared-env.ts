@@ -31,7 +31,7 @@ export interface SharedEnvSource {
   strings(): Promise<Record<string, string>>;
 }
 
-// Secret đổi rất hiếm; cache theo isolate để mỗi phút cron không phải hỏi hoiminh-api.
+// Secret đổi rất hiếm; cache theo isolate để các lần cron và batch Queue liên tiếp không phải hỏi hoiminh-api.
 const CACHE_MS = 5 * 60_000;
 let cache: { at: number; values: Record<string, string> } | null = null;
 
