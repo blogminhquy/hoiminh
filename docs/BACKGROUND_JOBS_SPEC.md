@@ -1,6 +1,6 @@
 # Hội Mình — Spec Background Jobs Event-Driven (v2)
 
-**Trạng thái:** Đề xuất · **Ngày:** 2026-09-30 · **Thay cho:** bản spec đầu (đã đối chiếu với code, các chỗ sai lệch nêu ở mục 1)
+**Trạng thái:** Đã triển khai (Phase 0 tới 6, phát hành 1.11.0) · **Ngày:** 2026-09-30 · **Thay cho:** bản spec đầu (đã đối chiếu với code, các chỗ sai lệch nêu ở mục 1)
 **Phạm vi:** `apps/jobs`, `apps/api`, `packages/core/src/jobs`, các service: webhook ra ngoài, sự kiện, thanh toán/đơn, file, bài viết. Không đổi logic nghiệp vụ.
 
 ## 0. Tóm tắt

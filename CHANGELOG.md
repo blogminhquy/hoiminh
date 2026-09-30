@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 1.11.0 - 2026-10-01
+
+Việc chạy nền chuyển sang theo sự kiện: không còn cron quét mỗi phút, việc hẹn giờ chạy đúng thời điểm bằng hàng đợi, và gửi email hàng loạt không còn gửi lặp khi retry. Thiết kế ở `docs/BACKGROUND_JOBS_SPEC.md`, quyết định ở DECISIONS.md #35.
+
+### Thay đổi
+
+- **Bỏ cron `* * * * *` của `hoiminh-jobs`.** Cron chỉ còn `*/10` (xếp hạng cộng sự và bộ quét thưa) và `0 18 * * *` (hằng ngày). Mỗi bước cron chạy trong transaction riêng: bước này lỗi không rollback bước khác.
+- **Hàng đợi an toàn với transaction.** Message chỉ vào Queue sau khi transaction commit (`DeferredQueue`, cùng kiểu `DeferredSender` của email), rollback thì bỏ. `enqueue` nhận `delaySeconds` (0..86400). Consumer phân loại lỗi (vĩnh viễn thì bỏ, tạm thời thì retry lùi dần 1, 5, 15, 60 phút theo `msg.attempts`), có consumer cho `hoiminh-jobs-dlq`, và `max_concurrency = 10` để không dồn kết nối lên Postgres.
+- **Webhook ra ngoài** thất bại thì tự hẹn lần sau bằng delay của Queue (lịch 1, 5, 30, 120, 720 phút). Khóa dòng `FOR UPDATE SKIP LOCKED` và bỏ qua message đến sớm nên hai message trùng chỉ POST một lần. Webhook đã tạm dừng thì delivery kết thúc hẳn thay vì bị đẩy lại mãi.
+- **Nhắc sự kiện** được hẹn ngay khi tạo hoặc sửa sự kiện. Job cũ tự vô hiệu khi sự kiện bị huỷ, gỡ nhãn nhắc hoặc đổi giờ.
+- **Nhắc sự kiện và email broadcast chia lô 100 người**, khử trùng từng người qua bảng `job_recipients` trong transaction của job. Các lô là dòng `scheduled_jobs` nên Queue lỗi cũng không bỏ sót ai.
+- **Hết hạn đơn và trạng thái sự kiện (live, ended) tính khi đọc**, không chờ cron. Webhook thanh toán đến muộn vẫn được nhận và cấp quyền vì tiền đã vào.
+- **Welcome DM và xóa tệp R2** đi qua `scheduleJob`: job vào Queue sau commit nên R2 được xóa sau vài giây thay vì chờ cron phút (vẫn an toàn vì message chỉ mang id và consumer đọc lại dòng `scheduled_jobs`).
+- **Bộ quét thưa** (cron 10 phút) đẩy job hẹn giờ sắp tới hạn vào Queue, cứu tin bị mất (quá hạn 30 phút) và webhook bị lọt, và dọn cờ hết hạn đơn, trạng thái sự kiện.
+- Cron hằng ngày thêm dọn bảng job (`job_recipients` 30 ngày, `scheduled_jobs` done 30 ngày, failed 90 ngày) và đối soát nhắc cho sự kiện trong 3 ngày tới.
+
+### Sửa lỗi
+
+- Nhắc sự kiện vẫn gửi cho sự kiện đã huỷ.
+- Sửa giờ sự kiện trong vòng 25 giờ trước giờ diễn ra không dời lời nhắc (khóa khử trùng cũ giữ nguyên giờ cũ).
+- Nhắc và broadcast gửi cả danh sách trong một message nên retry gửi lặp cho người đầu danh sách.
+- Đơn quá hạn vẫn hiện `pending` cho tới lần cron kế tiếp, và giao diện Checkout cứ poll tiếp tới lúc đó.
+
+### Kỹ thuật
+
+- Migration `0004_background_jobs` (chỉ thêm): cột `scheduled_jobs.enqueued_at`, bảng `job_recipients` (có RLS), ba index một phần cho `events` và `orders`. Đã áp lên Supabase ngày 2026-09-30; `deploy.yml` không chạy migration nên lần phát hành nào có migration đều phải áp trước.
+- Thêm khoảng 100 test cho `packages/core` (hàng đợi, consumer, job hẹn giờ, bộ quét, webhook ra ngoài, nhắc sự kiện, broadcast, hết hạn đơn, trạng thái sự kiện, dọn bảng, cấu hình cron). Trước đây chưa có test nào cho webhook ra ngoài.
+- Tài liệu: `docs/BACKGROUND_JOBS_SPEC.md`, `docs/BACKGROUND_JOBS_ROLLOUT.md`.
+
+### Cần biết khi vận hành
+
+- Email Resend lỗi không được gửi lại (hành vi có từ trước); `max_concurrency = 10` có thể làm lộ rõ hơn nếu Resend giới hạn tốc độ thấp. Cách kiểm tra nằm trong tài liệu rollout.
+- Job hết lượt retry bị đánh dấu `failed` và không tự chạy lại; hướng dẫn đặt lại `pending` nằm trong tài liệu rollout.
+- Giai đoạn chạy song song 7 ngày giữa cron phút và Queue được bỏ theo quyết định của chủ dự án; production lúc đó còn rỗng (0 sự kiện, 0 đơn, 0 job).
+
 ## 1.10.0 - 2026-09-29
 
 Avatar hiện đúng ảnh và bấm được, ảnh nén trước khi đăng, ảnh bài viết không còn bị cắt, và tệp trên R2 được dọn khi ảnh bị gỡ.

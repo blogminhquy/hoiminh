@@ -2,6 +2,16 @@
 
 Đi kèm [BACKGROUND_JOBS_SPEC.md](BACKGROUND_JOBS_SPEC.md). Phase 0 tới 4 nằm ở nhánh `claude/event-driven-jobs-arch-d60c6b`; Phase 6 nằm ở nhánh riêng `claude/jobs-phase6-remove-minute-cron` và **không được merge trước khi Phase 5 sạch**.
 
+## Nhật ký triển khai
+
+| Thời điểm (UTC) | Việc |
+|---|---|
+| 2026-09-30 | Áp migration `0004` lên Supabase `HoiMinh` (có `OWNER TO hoiminh_app` cho `job_recipients`, vì kết nối là `postgres` còn mọi bảng thuộc `hoiminh_app`) |
+| 2026-09-30 | Deploy `hoiminh-jobs` bằng tay (version `fb98f90d`), có consumer cho `hoiminh-jobs-dlq` |
+| 2026-09-30 16:51 | Merge PR #14 (Phase 0 tới 4, cron phút còn) vào `main`; workflow Deploy thành công |
+| 2026-09-30 17:00 | Kiểm tra trước Phase 6: không job nào quá hạn hay lỗi, không đơn hoặc webhook quá hạn, log không có lỗi |
+| 2026-10-01 | **Chủ dự án quyết định bỏ cổng 7 ngày** (production còn rỗng nên quan sát 7 ngày chứng minh rất ít). Merge Phase 6, gỡ cron phút, phát hành 1.11.0 |
+
 ## 0. Trước khi merge vào `main` (bắt buộc)
 
 Workflow `deploy.yml` tự deploy mỗi lần đẩy lên `main` và **không chạy migration**. Vì vậy:
