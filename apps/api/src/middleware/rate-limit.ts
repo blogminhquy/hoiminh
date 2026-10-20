@@ -7,6 +7,7 @@
 import { AppError } from '@hoiminh/core';
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
+import { ACCESS_COOKIE, readCookie } from '../lib/session-cookie';
 
 /** Hạn mức mỗi nhóm; phải khớp `simple = { limit, period }` của binding cùng tên trong wrangler.toml. */
 export const TIERS = {
@@ -59,8 +60,8 @@ async function sha(text: string): Promise<string> {
 async function caller(c: Context<Env>): Promise<string> {
   const actor = c.get('ctx')?.actor;
   if (actor && (actor.type === 'user' || actor.type === 'api_key')) return `u:${actor.userId}`;
-  const auth = c.req.header('authorization');
-  if (auth) return `t:${await sha(auth)}`;
+  const auth = c.req.header('authorization') || readCookie(c, ACCESS_COOKIE);
+  if (auth) return `t:${await sha(auth.replace(/^Bearer\s+/i, ''))}`;
   return `ip:${clientIp(c)}`;
 }
 

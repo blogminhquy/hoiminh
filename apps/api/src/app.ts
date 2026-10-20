@@ -30,7 +30,7 @@ export function createHonoApp(app: App): Hono<Env> {
   // không đọc được phản hồi kèm cookie của người dùng. Gọi từ máy chủ (API key, MCP) không bị CORS ảnh hưởng.
   const appOrigin = new URL(app.ctx.env.APP_URL);
   const allowed = new Set([appOrigin.origin, `${appOrigin.protocol}//www.${appOrigin.host}`]);
-  h.use('*', cors({ origin: (origin) => (allowed.has(origin) ? origin : null), credentials: true, allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'], exposeHeaders: ['X-Request-Id'] }));
+  h.use('*', cors({ origin: (origin) => (allowed.has(origin) ? origin : null), credentials: true, allowHeaders: ['Authorization', 'Content-Type', 'X-Request-Id', 'X-HM-Auth'], exposeHeaders: ['X-Request-Id'] }));
   // Trước authMiddleware: lượt trúng cache không mở transaction database.
   h.use('/v1/*', publicCache(60));
   // Giới hạn chung, trước authMiddleware: request bị chặn không mở transaction database.

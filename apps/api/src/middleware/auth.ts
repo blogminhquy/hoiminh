@@ -1,19 +1,28 @@
-// Xác thực: Bearer JWT phiên (web) hoặc API key hm_… (tích hợp, MCP). Không có token → anonymous.
-import { apiKeys as apiKeySvc, auth as authSvc, unauthorized, withSystemScope, withTenantScope, type App, type Ctx } from '@hoiminh/core';
+// Xác thực: cookie httpOnly hm_at (web), Bearer JWT (ứng dụng ngoài) hoặc API key hm_… (tích hợp, MCP). Không có → anonymous.
+import { apiKeys as apiKeySvc, auth as authSvc, forbidden, unauthorized, withSystemScope, withTenantScope, type App, type Ctx } from '@hoiminh/core';
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
+import { ACCESS_COOKIE, readCookie, sameOriginWrite } from '../lib/session-cookie';
 
 /** Đường dẫn máy-với-máy: chạy dưới quyền hệ thống thay vì theo actor. */
 const SYSTEM_PATHS = ['/webhooks', '/pay/simulator', '/r', '/files', '/health'];
 
-/** Gắn ctx vào mỗi request; xác thực nếu có Authorization. */
+/** Gắn ctx vào mỗi request; xác thực nếu có Authorization hoặc cookie phiên. */
 export function authMiddleware(app: App): MiddlewareHandler<Env> {
   return async (c, next) => {
     const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
     const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? '';
     const base: Ctx = { ...app.ctx, actor: { type: 'anonymous' }, requestId, ipHash: ip ? await hashIp(ip) : undefined };
+    c.set('app', app);
+    const path = new URL(c.req.url).pathname;
+    const machine = SYSTEM_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
     const header = c.req.header('authorization') ?? '';
-    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    // Bearer (API key, ứng dụng ngoài) được ưu tiên; web dùng cookie httpOnly. Đường máy-với-máy
+    // không cần biết người dùng nên bỏ qua cookie (trang mô phỏng thanh toán gửi form từ chính API).
+    const bearer = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    const fromCookie = !bearer && !machine ? readCookie(c, ACCESS_COOKIE) ?? '' : '';
+    const token = bearer || fromCookie;
+    if (fromCookie && !sameOriginWrite(c)) throw forbidden('Yêu cầu không đến từ trang Hội Mình');
     let ctx = base;
     if (token.startsWith('hm_')) {
       const actor = await apiKeySvc.authenticateApiKey(base, token);
@@ -26,13 +35,10 @@ export function authMiddleware(app: App): MiddlewareHandler<Env> {
         c.set('sessionId', session.sessionId);
       }
     }
-    c.set('app', app);
     c.header('x-request-id', requestId);
     // Mọi truy vấn của request chạy trong một transaction có biến phiên của actor (RLS).
     // Điểm vào máy-với-máy không có actor mà vẫn phải ghi xuyên tenant: webhook cổng
     // thanh toán, trang mô phỏng sandbox, đếm lượt bấm link cộng sự, phát tệp theo URL ký.
-    const path = new URL(c.req.url).pathname;
-    const machine = SYSTEM_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
     const run = machine ? withSystemScope : withTenantScope;
     await run(ctx, async (scoped) => {
       c.set('ctx', scoped);

@@ -12,6 +12,11 @@ export async function login(page: Page, email: string, password = PASSWORD): Pro
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
   await expect(page).not.toHaveURL(/dang-nhap/);
+  // Phiên nằm trong cookie httpOnly: JavaScript không thấy token, chỉ thấy cờ đăng nhập.
+  const seen = await page.evaluate(() => ({ stored: localStorage.getItem('hm_access'), cookies: document.cookie }));
+  expect(seen.stored).toBeNull();
+  expect(seen.cookies).toContain('hm_li=1');
+  expect(seen.cookies).not.toContain('hm_at=');
 }
 
 /** Lấy access token qua API (không qua giao diện) cho các bước chuẩn bị dữ liệu. */
