@@ -188,6 +188,12 @@ Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/ve
 
 Super admin có thể bật/tắt từng cổng và nhập credential trong `/he-thong/thanh-toan` (lưu mã hóa bằng `ENCRYPTION_KEY`). Nội dung chuyển khoản dạng `HM XXXXX`; giao dịch sai nội dung/thiếu mã/lệch tiền hiện ở bảng đối soát để ghép thủ công.
 
+## Khu học tập của người mua lẻ
+
+- Một người có thể chỉ mua khóa học hoặc tài liệu mà không tham gia hội nào. Chỗ học của họ là `/hoc`, chạy ngoài khung hội.
+- `GET /v1/me/library` trả khóa học và tài liệu đã sở hữu, kèm tiến độ và `resumeLessonId`. Danh sách dựng từ entitlement, nên khóa mở nhờ tư cách thành viên (Premium/VIP) nằm ở `/:slug/khoa-hoc`, không ở đây.
+- Mua lẻ không tự thêm người mua vào hội. Hội miễn phí đang mở cửa thì Khu học tập hiện lời mời để họ tự quyết.
+
 ## API, webhook gửi đi, MCP
 
 - REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` (web dùng cookie httpOnly `hm_at` thay cho header, gửi `X-HM-Auth: cookie` khi đăng nhập) hoặc API key `hm_live_…`/`hm_test_…` (tạo ở **Hội của tôi · Nhà phát triển**, `/admin/nha-phat-trien`). Lỗi trả `{ code, message }`.
