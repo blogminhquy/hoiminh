@@ -303,4 +303,82 @@ describe('API', () => {
       expect(toml).toMatch(new RegExp(`name = "${t.binding}"\\s*\\nnamespace_id = "\\d+"\\s*\\nsimple = \\{ limit = ${t.limit}, period = ${t.period} \\}`));
     }
   });
+
+  describe('phiên đăng nhập bằng cookie httpOnly', () => {
+    const web = 'http://localhost:5173';
+    const cookieOf = (res: Response) => res.headers.getSetCookie();
+    const jar = (setCookies: string[]) => setCookies.map((c) => c.split(';')[0] ?? '').filter((c) => !c.endsWith('=')).join('; ');
+    const login = () => hono.request('/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-HM-Auth': 'cookie', Origin: web, 'cf-connecting-ip': '9.9.9.1' }, body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) });
+
+    it('web nhận cookie httpOnly, không thấy token trong JSON', async () => {
+      resetMemoryLimits();
+      const res = await login();
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { accessToken: string; refreshToken: string | null; user: { handle: string } };
+      expect(body.accessToken).toBe('');
+      expect(body.refreshToken).toBeNull();
+      expect(body.user.handle).toBe('minhquy');
+      const set = cookieOf(res);
+      expect(set.find((c) => c.startsWith('hm_at='))).toMatch(/HttpOnly/);
+      expect(set.find((c) => c.startsWith('hm_rt='))).toMatch(/Path=\/v1\/auth;.*HttpOnly/);
+      expect(set.find((c) => c.startsWith('hm_li=1'))).not.toMatch(/HttpOnly/);
+      const me = await hono.request('/v1/me', { headers: { Cookie: jar(set) } });
+      expect(me.status).toBe(200);
+    });
+
+    it('ứng dụng ngoài (không gửi X-HM-Auth) vẫn nhận token trong body, không có cookie', async () => {
+      resetMemoryLimits();
+      const res = await hono.request('/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) });
+      expect(((await res.json()) as { accessToken: string }).accessToken.length).toBeGreaterThan(20);
+      expect(cookieOf(res)).toHaveLength(0);
+    });
+
+    it('request ghi dùng cookie từ trang lạ bị chặn (CSRF), từ chính web thì qua', async () => {
+      resetMemoryLimits();
+      const cookies = jar(cookieOf(await login()));
+      const evil = await hono.request('/v1/me/badges', { method: 'POST', headers: { Cookie: cookies, Origin: 'https://evil.example' } });
+      expect(evil.status).toBe(403);
+      const noOrigin = await hono.request('/v1/auth/logout', { method: 'POST', headers: { Cookie: cookies } });
+      expect(noOrigin.status).toBe(403);
+      const ok = await hono.request('/v1/auth/logout', { method: 'POST', headers: { Cookie: cookies, Origin: web } });
+      expect(ok.status).toBe(200);
+      expect(cookieOf(ok).every((c) => /Max-Age=0/.test(c))).toBe(true);
+    });
+
+    it('làm mới phiên bằng cookie hm_rt, phiên cũ trong localStorage đổi sang cookie được', async () => {
+      resetMemoryLimits();
+      const set = cookieOf(await login());
+      const rt = set.find((c) => c.startsWith('hm_rt='))!.split(';')[0]!;
+      const refreshed = await hono.request('/v1/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-HM-Auth': 'cookie', Cookie: rt, Origin: web }, body: '{}' });
+      expect(refreshed.status).toBe(200);
+      expect(cookieOf(refreshed).some((c) => c.startsWith('hm_at=') && !c.startsWith('hm_at=;'))).toBe(true);
+      // Phiên cũ: refresh token trong body (localStorage) đổi thành cookie.
+      const legacy = (await (await hono.request('/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) })).json()) as { refreshToken: string };
+      const migrated = await hono.request('/v1/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-HM-Auth': 'cookie', Origin: web }, body: JSON.stringify({ refreshToken: legacy.refreshToken }) });
+      expect(migrated.status).toBe(200);
+      expect(cookieOf(migrated).some((c) => c.startsWith('hm_rt=') && /HttpOnly/.test(c))).toBe(true);
+    });
+
+    it('CORS cho phép header X-HM-Auth từ chính web (dev: web và API khác cổng)', async () => {
+      const pre = await hono.request('/v1/auth/login', { method: 'OPTIONS', headers: { Origin: web, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-hm-auth' } });
+      expect(pre.headers.get('access-control-allow-origin')).toBe(web);
+      expect((pre.headers.get('access-control-allow-headers') ?? '').toLowerCase()).toContain('x-hm-auth');
+      expect(pre.headers.get('access-control-allow-credentials')).toBe('true');
+    });
+
+    it('người đăng nhập bằng cookie không nhận bản cache của khách', async () => {
+      resetMemoryLimits();
+      const store = new Map<string, Response>();
+      const g = globalThis as { caches?: unknown };
+      g.caches = { default: { match: async (r: Request) => store.get(r.url)?.clone(), put: async (r: Request, res: Response) => void store.set(r.url, res) } };
+      try {
+        await hono.request('/v1/communities/discover');
+        const cookies = jar(cookieOf(await login()));
+        const mine = await hono.request('/v1/communities/discover', { headers: { Cookie: cookies } });
+        expect(mine.headers.get('x-hm-cache')).toBeNull();
+      } finally {
+        delete g.caches;
+      }
+    });
+  });
 });

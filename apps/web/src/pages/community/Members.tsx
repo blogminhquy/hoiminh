@@ -5,7 +5,7 @@ import { Download, ListFilter, MessageCircle, Plus, Search, Settings } from 'luc
 import { useState } from 'react';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
-import { api, errorMessage, tokens } from '@/lib/api';
+import { api, apiFetch, errorMessage } from '@/lib/api';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate, timeAgo } from '@/lib/format';
 import { Directory, MessageModal, type MemberUser } from './MembersExtra';
@@ -47,7 +47,7 @@ function ManageMembers({ communityId, slug }: { communityId: string; slug: strin
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const res = await fetch(`${api.url}/v1/communities/${communityId}/members/export.csv?status=${status}`, { headers: { Authorization: `Bearer ${tokens.access ?? ''}` } });
+      const res = await apiFetch(`/v1/communities/${communityId}/members/export.csv?status=${status}`);
       if (!res.ok) throw new Error('Không xuất được CSV');
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a');

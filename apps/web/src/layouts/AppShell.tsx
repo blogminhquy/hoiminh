@@ -122,7 +122,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const [invite, setInvite] = useState(false);
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
   const communityId = shell.data?.community.id;
-  useEffect(() => { if (communityId && user) void fetch(`${api.url}/v1/communities/${communityId}/touch`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('hm_access') ?? ''}` } }).catch(() => null); }, [user, communityId]);
+  useEffect(() => { if (communityId && user) void api.post(`/v1/communities/${communityId}/touch`).catch(() => null); }, [user, communityId]);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (!slug) {

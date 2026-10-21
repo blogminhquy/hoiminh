@@ -1,4 +1,4 @@
-// API client: gắn Bearer token, tự làm mới phiên khi 401, ném ApiError { code, message }.
+// API client: gửi kèm cookie phiên, tự làm mới phiên khi 401, ném ApiError { code, message }.
 import { compressForUpload, type UploadPurpose } from './image-compress';
 
 export interface ApiErrorShape {
@@ -14,47 +14,55 @@ export class ApiError extends Error {
 
 // Production: web và API cùng một Worker, gọi cùng tên miền (không cần CORS). Dev: API chạy riêng ở cổng 8787.
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || (import.meta.env.PROD ? '' : 'http://localhost:8787');
-const KEY_ACCESS = 'hm_access';
-const KEY_REFRESH = 'hm_refresh';
+// Phiên đăng nhập nằm trong cookie httpOnly do API đặt: JavaScript không đọc được token, nên mã độc
+// lọt vào trang cũng không lấy cắp được phiên. Header này báo API trả cookie thay vì token trong JSON.
+const AUTH_MODE = { 'X-HM-Auth': 'cookie' } as const;
 
-export const tokens = {
-  get access(): string | null {
-    try { return localStorage.getItem(KEY_ACCESS); } catch { return null; }
-  },
-  get refresh(): string | null {
-    try { return localStorage.getItem(KEY_REFRESH); } catch { return null; }
-  },
-  set(access: string | null, refresh: string | null): void {
-    try {
-      if (access) localStorage.setItem(KEY_ACCESS, access); else localStorage.removeItem(KEY_ACCESS);
-      if (refresh) localStorage.setItem(KEY_REFRESH, refresh); else localStorage.removeItem(KEY_REFRESH);
-    } catch { /* bỏ qua khi không có localStorage */ }
-  },
-};
+/** Có phiên đăng nhập không: đọc cờ `hm_li` (không chứa bí mật), không phải token. */
+export function hasSession(): boolean {
+  try { return /(?:^|;\s*)hm_li=1/.test(document.cookie); } catch { return false; }
+}
+
+// Bản cũ lưu token trong localStorage. Đổi một lần sang cookie rồi xóa, người đang đăng nhập không bị đăng xuất.
+const LEGACY_ACCESS = 'hm_access';
+const LEGACY_REFRESH = 'hm_refresh';
+let migrating: Promise<void> | null = null;
+export function migrateLegacySession(): Promise<void> {
+  if (!migrating) {
+    migrating = (async () => {
+      let rt: string | null = null;
+      try {
+        rt = localStorage.getItem(LEGACY_REFRESH);
+        localStorage.removeItem(LEGACY_ACCESS);
+        localStorage.removeItem(LEGACY_REFRESH);
+      } catch { return; }
+      if (!rt) return;
+      await fetch(`${API_URL}/v1/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...AUTH_MODE }, body: JSON.stringify({ refreshToken: rt }), credentials: 'include' }).catch(() => null);
+    })();
+  }
+  return migrating;
+}
 
 let refreshing: Promise<boolean> | null = null;
 async function tryRefresh(): Promise<boolean> {
   if (!refreshing) {
-    refreshing = (async () => {
-      const rt = tokens.refresh;
-      if (!rt) return false;
-      const res = await fetch(`${API_URL}/v1/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: rt }) });
-      if (!res.ok) { tokens.set(null, null); return false; }
-      const data = (await res.json()) as { accessToken: string; refreshToken: string | null };
-      tokens.set(data.accessToken, data.refreshToken);
-      return true;
-    })().finally(() => { refreshing = null; });
+    refreshing = fetch(`${API_URL}/v1/auth/refresh`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...AUTH_MODE }, body: '{}', credentials: 'include' })
+      .then((res) => res.ok, () => false)
+      .finally(() => { refreshing = null; });
   }
   return refreshing;
 }
 
+/** fetch tới API kèm cookie phiên (tải CSV, gọi không cần đọc JSON). */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${API_URL}${path}`, { ...init, headers: { ...AUTH_MODE, ...(init.headers as Record<string, string> | undefined) }, credentials: 'include' });
+}
+
 async function request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...AUTH_MODE };
   if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
-  const at = tokens.access;
-  if (at) headers.Authorization = `Bearer ${at}`;
   const res = await fetch(`${API_URL}${path}`, { method, headers, body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body), credentials: 'include' });
-  if (res.status === 401 && retry && tokens.refresh && !path.startsWith('/v1/auth/')) {
+  if (res.status === 401 && retry && hasSession() && !path.startsWith('/v1/auth/')) {
     if (await tryRefresh()) return request<T>(method, path, body, false);
   }
   if (res.status === 204) return undefined as T;

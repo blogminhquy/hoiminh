@@ -4,6 +4,7 @@ import { auth, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { rateLimit } from '../middleware/rate-limit';
+import { clearSessionCookies, readCookie, REFRESH_COOKIE, respondSession, wantsCookie } from '../lib/session-cookie';
 
 export const authRoutes = router();
 
@@ -12,30 +13,41 @@ authRoutes.post('/register', rateLimit('auth'), async (c) => {
   const ctx = c.get('ctx');
   const ref = input.ref ?? getCookie(c.req.header('cookie'), 'hm_ref') ?? undefined;
   const session = await auth.register(ctx, c.get('app').auth, { ...input, ref }, { userAgent: c.req.header('user-agent') });
-  return c.json(session, 201);
+  return respondSession(c, session, 201);
 });
 
 authRoutes.post('/login', rateLimit('auth'), async (c) => {
   const input = await parse(loginSchema, await body(c));
   const session = await auth.login(c.get('ctx'), c.get('app').auth, input, { userAgent: c.req.header('user-agent') });
-  return c.json(session);
+  // Tài khoản bật hai lớp: chưa có phiên, chỉ có vé bước hai.
+  return 'twoFactorRequired' in session ? c.json(session) : respondSession(c, session);
 });
 
 /** Bước hai của đăng nhập: vé + mã từ ứng dụng xác thực (hoặc mã dự phòng). */
 authRoutes.post('/2fa', rateLimit('auth'), async (c) => {
   const input = await parse(z.object({ ticket: z.string().min(10), code: z.string().min(6).max(20), remember: z.boolean().optional() }), await body(c));
   const session = await auth.verifyTwoFactor(c.get('ctx'), c.get('app').auth, input.ticket, input.code, input.remember ?? true, { userAgent: c.req.header('user-agent') });
-  return c.json(session);
+  return respondSession(c, session);
 });
 
-authRoutes.post('/refresh', async (c) => {
-  const { refreshToken } = await parse(z.object({ refreshToken: z.string().min(10) }), await body(c));
-  return c.json(await auth.refresh(c.get('ctx'), c.get('app').auth, refreshToken));
+authRoutes.post('/refresh', rateLimit('auth'), async (c) => {
+  // Web gửi token làm mới bằng cookie; ứng dụng ngoài gửi trong body. Body có token thì dùng body
+  // (cũng là đường chuyển phiên cũ trong localStorage sang cookie).
+  const input = await parse(z.object({ refreshToken: z.string().min(10).optional() }), await body(c));
+  const refreshToken = input.refreshToken ?? readCookie(c, REFRESH_COOKIE);
+  if (!refreshToken) throw new AppError('unauthorized', 'Phiên đăng nhập đã hết, hãy đăng nhập lại');
+  try {
+    return respondSession(c, await auth.refresh(c.get('ctx'), c.get('app').auth, refreshToken));
+  } catch (err) {
+    if (wantsCookie(c)) clearSessionCookies(c);
+    throw err;
+  }
 });
 
 authRoutes.post('/logout', async (c) => {
   const sid = c.get('sessionId');
   if (sid) await auth.logout(c.get('ctx'), sid);
+  clearSessionCookies(c);
   return c.json({ ok: true });
 });
 
@@ -52,7 +64,7 @@ authRoutes.post('/google/callback', async (c) => {
   const { accessToken, name } = await parse(z.object({ accessToken: z.string().min(10), name: z.string().optional() }), await body(c));
   const identity = await provider.userFromToken(accessToken);
   if (!identity) throw new AppError('unauthorized', 'Token Google không hợp lệ');
-  return c.json(await auth.loginWithIdentity(c.get('ctx'), provider, { ...identity, name }));
+  return respondSession(c, await auth.loginWithIdentity(c.get('ctx'), provider, { ...identity, name }));
 });
 
 authRoutes.post('/verify-email', async (c) => {
@@ -75,7 +87,7 @@ authRoutes.post('/forgot-password', rateLimit('auth'), async (c) => {
 
 authRoutes.post('/reset-password', async (c) => {
   const input = await parse(resetPasswordSchema, await body(c));
-  return c.json(await auth.resetPassword(c.get('ctx'), c.get('app').auth, input.token, input.password, input.logoutOthers));
+  return respondSession(c, await auth.resetPassword(c.get('ctx'), c.get('app').auth, input.token, input.password, input.logoutOthers));
 });
 
 function getCookie(header: string | undefined, name: string): string | null {

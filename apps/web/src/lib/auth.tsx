@@ -1,8 +1,8 @@
 // Trạng thái đăng nhập toàn app: user hiện tại, hội của tôi, đăng nhập/đăng xuất, badge tin nhắn + thông báo.
 import type { AuthSession, AuthUser } from '@hoiminh/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
-import { api, tokens } from './api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { api, hasSession, migrateLegacySession } from './api';
 
 export interface MyCommunity {
   id: string; name: string; slug: string; logoMark: string; logoColor: string; memberCount: number; status: string; role: string; memberStatus: string; pinned: boolean;
@@ -27,21 +27,25 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
-  const enabled = Boolean(tokens.access);
+  // Chuyển phiên cũ (localStorage) sang cookie trước khi hỏi /v1/me; khách chưa đăng nhập không gọi gì.
+  const [migrated, setMigrated] = useState(false);
+  useEffect(() => { void migrateLegacySession().finally(() => setMigrated(true)); }, []);
+  const [, bump] = useState(0);
+  const enabled = migrated && hasSession();
   const q = useQuery({ queryKey: ['me'], queryFn: () => api.get<MeResponse>('/v1/me'), enabled, retry: false, staleTime: 60_000 });
   const setSession = useCallback((s: AuthSession) => {
-    tokens.set(s.accessToken, s.refreshToken);
+    // API đã đặt cookie phiên; chỉ cần vẽ lại để đọc cờ đăng nhập mới.
+    bump((n) => n + 1);
     qc.setQueryData(['me'], (old: MeResponse | undefined) => ({ user: s.user, profile: old?.profile ?? ({} as MeResponse['profile']), communities: old?.communities ?? [] }));
     void qc.invalidateQueries({ queryKey: ['me'] });
   }, [qc]);
   const logout = useCallback(async () => {
     try { await api.post('/v1/auth/logout'); } catch { /* bỏ qua */ }
-    tokens.set(null, null);
     qc.clear();
     window.location.href = '/dang-nhap';
   }, [qc]);
   const refresh = useCallback(async () => { await qc.invalidateQueries({ queryKey: ['me'] }); }, [qc]);
-  const value = useMemo<AuthContextValue>(() => ({ user: enabled && q.data ? q.data.user : null, profile: q.data?.profile ?? null, communities: q.data?.communities ?? [], loading: enabled && q.isLoading, setSession, logout, refresh }), [enabled, q.data, q.isLoading, setSession, logout, refresh]);
+  const value = useMemo<AuthContextValue>(() => ({ user: enabled && q.data ? q.data.user : null, profile: q.data?.profile ?? null, communities: q.data?.communities ?? [], loading: !migrated || (enabled && q.isLoading), setSession, logout, refresh }), [migrated, enabled, q.data, q.isLoading, setSession, logout, refresh]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

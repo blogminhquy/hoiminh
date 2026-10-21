@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 1.12.0 - 2026-10-20
+
+Đăng nhập chuyển sang cookie httpOnly: token phiên không còn nằm trong localStorage, nên mã độc lọt vào trang (XSS) không lấy cắp được phiên để dùng ở nơi khác.
+
+### Bảo mật
+
+- **Cookie phiên httpOnly**: `hm_at` (token truy cập, Path=/) và `hm_rt` (token làm mới, chỉ gửi kèm `/v1/auth`), `SameSite=Lax`, `Secure` trên https. Thêm cờ `hm_li=1` không chứa bí mật để web biết có nên hỏi `/v1/me`; khách chưa đăng nhập không gọi gì thêm.
+- **Chống CSRF**: request ghi (POST/PUT/PATCH/DELETE) dùng cookie phải có Origin (hoặc Referer) là chính web hoặc tên miền API, nếu không trả 403. Đây là lớp thứ hai sau SameSite=Lax.
+- Web gửi `X-HM-Auth: cookie` nên nhận cookie và JSON không chứa token. Ứng dụng khác (API key, MCP, app sau này) không gửi header đó nên vẫn nhận token trong body và gọi bằng `Authorization: Bearer` như cũ.
+- **Người đang đăng nhập không bị đăng xuất**: lần mở web đầu tiên sau khi cập nhật, phiên cũ trong localStorage được đổi sang cookie rồi xóa khỏi localStorage.
+- Cache trang công khai và bộ giới hạn số lần gọi nhận ra người đăng nhập bằng cookie (trước đây chỉ nhìn header `Authorization`, nếu không sửa thì người đăng nhập sẽ nhận nhầm bản cache của khách).
+- Đường máy-với-máy (webhook, trang mô phỏng, link cộng sự, tệp) bỏ qua cookie phiên.
+
+### Kiểm tra
+
+- 6 test API (cookie httpOnly, token trong body cho ứng dụng ngoài, CSRF, làm mới bằng cookie và đổi phiên cũ, cache, CORS), 3 test web, và e2e kiểm sau mỗi lần đăng nhập rằng JavaScript không thấy token.
+
 ## 1.11.1 - 2026-10-01
 
 Lịch cron lạ không còn chạy nhầm bộ quét và xếp hạng. Phát hiện ngay sau khi gỡ cron phút ở 1.11.0.
