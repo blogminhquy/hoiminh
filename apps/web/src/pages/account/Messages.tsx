@@ -8,6 +8,7 @@ import { LoadingBlock, QueryState } from '@/components/QueryState';
 import { Avatar } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { usePollInterval } from '@/lib/realtime';
 import { Bubble, ConvoRow, DayDivider, MemberPanel, type Conversation, type Message, type Panel, type Person } from './MessagesParts';
 
 interface ConvoList { items: Conversation[]; unreadConversations: number }
@@ -19,7 +20,8 @@ function ThreadView({ id, meId, onArchived }: { id: string; meId: string; onArch
   const [text, setText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
-  const q = useQuery({ queryKey: ['thread', id], queryFn: () => api.get<Thread>(`/v1/me/conversations/${id}/messages`), refetchInterval: 15_000 });
+  const refetchInterval = usePollInterval(15_000);
+  const q = useQuery({ queryKey: ['thread', id], queryFn: () => api.get<Thread>(`/v1/me/conversations/${id}/messages`), refetchInterval });
   const send = useMutation({
     mutationFn: (p: { body: string; imageFileId?: string }) => api.post(`/v1/me/messages`, { conversationId: id, body: p.body, imageFileId: p.imageFileId }),
     onSuccess: () => { setText(''); void qc.invalidateQueries({ queryKey: ['thread', id] }); void qc.invalidateQueries({ queryKey: ['conversations'] }); void qc.invalidateQueries({ queryKey: ['badges'] }); },
@@ -61,7 +63,8 @@ export default function Page() {
   const [sp, setSp] = useSearchParams();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
-  const q = useQuery({ queryKey: ['conversations', filter, search], queryFn: () => api.get<ConvoList>(`/v1/me/conversations?filter=${filter}${search ? `&q=${encodeURIComponent(search)}` : ''}`), refetchInterval: 15_000 });
+  const refetchInterval = usePollInterval(15_000);
+  const q = useQuery({ queryKey: ['conversations', filter, search], queryFn: () => api.get<ConvoList>(`/v1/me/conversations?filter=${filter}${search ? `&q=${encodeURIComponent(search)}` : ''}`), refetchInterval });
   const selected = sp.get('c') ?? q.data?.items[0]?.id ?? null;
   const select = (id: string | null) => setSp(id ? { c: id } : {});
   return (

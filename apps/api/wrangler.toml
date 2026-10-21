@@ -85,6 +85,16 @@ simple = { limit = 1200, period = 60 }
 [triggers]
 crons = []
 
+# Durable Object giữ WebSocket thời gian thực, mỗi người dùng một hub (apps/api/src/realtime-hub.ts).
+# Migration tạo class: chỉ áp được bằng `wrangler deploy`, không qua `wrangler versions upload` (RELEASE_MODE=manual).
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeHub"
+
+[[migrations]]
+tag = "v1-realtime"
+new_sqlite_classes = ["RealtimeHub"]
+
 [observability]
 enabled = true
 

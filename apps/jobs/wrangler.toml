@@ -64,5 +64,12 @@ max_retries = 0
 # 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng, dọn bảng job, đối soát nhắc sự kiện
 crons = ["*/10 * * * *", "0 18 * * *"]
 
+# Thông báo tạo từ cron và job (nhắc sự kiện, hoa hồng...) cũng được đẩy tới trình duyệt ngay.
+# Class RealtimeHub nằm ở Worker hoiminh-api, nên phải deploy hoiminh-api trước.
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeHub"
+script_name = "hoiminh-api"
+
 [observability]
 enabled = true
