@@ -28,6 +28,11 @@ export function useShell(): Shell {
   return s;
 }
 
+/** Khung hội nếu đang ở trong AppShell, null khi trang chạy ngoài khung hội (ví dụ Khu học tập /hoc). */
+export function useOptionalShell(): Shell | null {
+  return useContext(ShellContext);
+}
+
 /** Người xem có quyền không. */
 export function useCan(): (permission: string) => boolean {
   const s = useShell();

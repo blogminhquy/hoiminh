@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.14.0 - 2026-10-21
+
+Khu học tập cho người mua lẻ và link phòng họp sự kiện, chuyển từ PR #1 (phần còn giá trị) sang nền mới.
+
+### Tính năng
+
+- **Khu học tập `/hoc`.** Người chỉ mua khóa học hoặc tài liệu mà không tham gia hội nào giờ có chỗ học riêng: danh sách khóa và tài liệu đã sở hữu (mua lẻ, combo, gói, được tặng), tiến độ, nút học tiếp. API `GET /v1/me/library`. Bài học `/hoc/bai/:id` dùng chung trang với `/:slug/bai/:id`.
+- **Mua lẻ không còn tự thêm vào hội.** Trước đây người mua bị đưa vào hội làm thành viên Tiêu chuẩn chỉ để có chỗ học, làm lệch số thành viên. Nay hội miễn phí đang mở cửa chỉ hiện lời mời để họ tự chọn.
+- Sau khi thanh toán, người không phải thành viên được đưa về `/hoc` (trang trạng thái đơn, email, thông báo). Trang gốc `/` đưa người có 0 hội vào `/hoc`; người có 0 hội vẫn xem được hóa đơn ở `/tai-khoan/goi`.
+- **Link phòng họp hiện ngay khi đăng ký sự kiện**, bỏ cửa "15 phút trước giờ" (danh sách sự kiện vốn đã trả link ngay, nên cửa này chỉ làm người đăng ký sớm tưởng lỗi). Link tùy chọn hiện nhãn "Phòng họp riêng".
+
+### Sửa lỗi
+
+- Danh sách sự kiện trả link phòng họp cho cả người **đã hủy** đăng ký. Nay chỉ người đang đăng ký và chủ hội thấy.
+
 ## 1.13.0 - 2026-10-21
 
 Tin nhắn và thông báo thời gian thực bằng Durable Objects, thay cho việc mỗi trình duyệt hỏi máy chủ mỗi 15 giây.

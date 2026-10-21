@@ -255,7 +255,8 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
     await events.registerEvent(duy, r.event.id, true);
     const detail = await events.getEvent(duy, r.event.id);
     expect(detail.registered).toBe(true);
-    expect(detail.meetingUrl).toBeNull(); // chưa tới 15 phút trước giờ
+    expect(detail.meetingUrl).toBe('https://zoom.us/j/123'); // đăng ký xong là thấy link ngay
+    expect(detail.meetingProvider).toBe('zoom');
     // Lời nhắc đã được hẹn ngay khi tạo sự kiện (không chờ cron); cho các job hẹn giờ chạy ngay thay vì chờ đồng hồ thật.
     expect(app.queue.releaseDelayed()).toBeGreaterThanOrEqual(1);
     await app.queue.drain();

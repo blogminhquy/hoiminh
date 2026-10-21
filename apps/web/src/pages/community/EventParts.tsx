@@ -9,7 +9,7 @@ import { fmtTime } from '@/lib/format';
 export interface Host { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }
 export interface EventItem { id: string; title: string; startsAt: string; endsAt: string; kind: 'online' | 'offline' | 'hybrid'; meetingProvider: string | null; meetingUrl: string | null; location: string | null; access: string; registrationCount: number; status: string; coverColor: string; live: boolean; registered: boolean; hosts: Host[]; seriesId: string | null; seriesIndex: number | null }
 
-export const PROVIDER_LABEL: Record<string, string> = { zoom: 'Zoom', google_meet: 'Google Meet', youtube: 'YouTube Live', facebook: 'Facebook Live', other: 'Trực tuyến' };
+export const PROVIDER_LABEL: Record<string, string> = { zoom: 'Zoom', google_meet: 'Google Meet', youtube: 'YouTube Live', facebook: 'Facebook Live', link: 'Phòng họp riêng', other: 'Trực tuyến' };
 export function placeLabel(e: { kind: string; meetingProvider: string | null; location: string | null }): string {
   if (e.kind === 'offline') return `Trực tiếp${e.location ? ` · ${e.location}` : ''}`;
   const online = PROVIDER_LABEL[e.meetingProvider ?? 'other'] ?? 'Trực tuyến';
