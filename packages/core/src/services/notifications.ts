@@ -32,6 +32,8 @@ export async function notify(ctx: Ctx, input: NotifyInput): Promise<void> {
     userId: input.userId, communityId: input.communityId ?? null, kind: input.kind, category: input.category ?? 'all', title: input.title, body: input.body ?? '',
     actorUserId: input.actorUserId ?? null, link: input.link ?? null, actionLabel: input.actionLabel ?? null, data: input.data ?? {},
   });
+  // Đẩy tín hiệu là phụ: lỗi không được làm hỏng việc tạo thông báo.
+  await ctx.realtime?.publish([input.userId], { type: 'notification' }).catch((err) => ctx.log.warn('realtime.publish_failed', { err: String(err) }));
 }
 
 /** Danh sách thông báo của tôi, lọc theo nhóm, phân trang cursor. */

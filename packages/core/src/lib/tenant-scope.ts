@@ -9,6 +9,7 @@
 // kiện cần để bật được.
 import { sql } from 'drizzle-orm';
 import { DeferredSender } from '@hoiminh/email';
+import { DeferredRealtime } from '../realtime';
 import { communities } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { raw } from './db';
@@ -81,19 +82,23 @@ async function runInScope<T>(ctx: Ctx, scope: TenantScope, fn: (scoped: Ctx) => 
   // bị hủy thì không gửi gì sai.
   const email = new DeferredSender(ctx.email);
   const queue = new DeferredQueue(ctx.queue);
+  // Sự kiện thời gian thực (tin nhắn, thông báo mới) cũng chỉ đẩy sau commit. Scope lồng nhau thì
+  // ctx.realtime đã là DeferredRealtime của scope ngoài, nên sự kiện chờ tới lần commit cuối.
+  const realtime = ctx.realtime ? new DeferredRealtime(ctx.realtime) : undefined;
   // Scope lồng nhau: message đi vào DeferredQueue của scope ngoài, scope ngoài mới đẩy thật và đánh dấu enqueued.
   const nested = ctx.queue instanceof DeferredQueue;
   let result: T;
   try {
     result = await ctx.db.transaction(async (tx) => {
       await tx.execute(setScopeSql(scope));
-      const scoped: Ctx = { ...ctx, db: tx as unknown as Ctx['db'], email, queue };
+      const scoped: Ctx = { ...ctx, db: tx as unknown as Ctx['db'], email, queue, ...(realtime ? { realtime } : {}) };
     // Handler của sự kiện phải chạy trong chính transaction này. Dùng kết nối gốc thì
     // Postgres không thấy biến phiên, còn PGlite (một kết nối) khóa chết chờ transaction.
       scoped.events = { on: ctx.events.on.bind(ctx.events), emit: (name, payload) => ctx.events.emit(name, payload, scoped) };
       return fn(scoped);
     });
   } catch (err) {
+    realtime?.discard();
     const dropped = email.discard();
     if (dropped) ctx.log.warn('email.discarded_on_rollback', { count: dropped });
     const droppedJobs = queue.discard();
@@ -108,6 +113,7 @@ async function runInScope<T>(ctx: Ctx, scope: TenantScope, fn: (scoped: Ctx) => 
       if (m.name === 'scheduled.run') await markScheduledEnqueued(ctx.db, (m.payload as { jobId: string }).jobId, ctx.now());
     },
   );
+  await realtime?.flush((err) => ctx.log.warn('realtime.publish_failed', { err: String(err) }));
   return result;
 }
 

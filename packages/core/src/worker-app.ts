@@ -8,6 +8,7 @@ import { loadEnv } from '@hoiminh/config';
 import type { R2BucketLike } from '@hoiminh/media';
 import { createApp, type App } from './app';
 import { CloudflareQueue, type Job } from './jobs/queue';
+import { durableObjectRealtime, type HubNamespace } from './realtime';
 
 /** Phần env của Worker mà App cần: biến/secret dạng chuỗi, hàng đợi job, Hyperdrive. */
 export interface WorkerBindings {
@@ -15,6 +16,8 @@ export interface WorkerBindings {
   HYPERDRIVE?: { connectionString: string };
   /** Bucket R2 `hoiminh-files` ([[r2_buckets]]); ảnh và tệp đi qua API vào đây, không cần secret. */
   FILES?: R2BucketLike;
+  /** Durable Object RealtimeHub (class trong hoiminh-api); hoiminh-jobs trỏ sang qua script_name. */
+  REALTIME?: HubNamespace;
   [key: string]: unknown;
 }
 
@@ -23,5 +26,5 @@ export async function createWorkerApp(env: WorkerBindings): Promise<App> {
   for (const [k, v] of Object.entries(env)) if (typeof v === 'string') raw[k] = v;
   // Hyperdrive gộp kết nối phía Cloudflare; không có binding thì dùng thẳng DATABASE_URL (pooler Supabase).
   if (env.HYPERDRIVE?.connectionString) raw.DATABASE_URL = env.HYPERDRIVE.connectionString;
-  return createApp({ env: loadEnv(raw), queue: new CloudflareQueue(env.JOBS), migrate: false, r2Bucket: env.FILES ?? null });
+  return createApp({ env: loadEnv(raw), queue: new CloudflareQueue(env.JOBS), migrate: false, r2Bucket: env.FILES ?? null, realtime: env.REALTIME ? durableObjectRealtime(env.REALTIME) : null });
 }

@@ -8,6 +8,7 @@ import { fakeBucket } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
 import { resetMemoryLimits, TIERS } from './middleware/rate-limit';
+import { MAX_SOCKETS, RealtimeHub } from './realtime-hub';
 
 let app: App;
 let hono: ReturnType<typeof createHonoApp>;
@@ -379,6 +380,67 @@ describe('API', () => {
       } finally {
         delete g.caches;
       }
+    });
+  });
+
+  describe('kênh thời gian thực', () => {
+    const web = 'http://localhost:5173';
+    const loginCookie = async () => {
+      resetMemoryLimits();
+      const res = await hono.request('/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-HM-Auth': 'cookie', Origin: web }, body: JSON.stringify({ email: 'minhquy@gmail.com', password: 'hoiminh123' }) });
+      lastUserId = ((await res.json()) as { user: { id: string } }).user.id;
+      return res.headers.getSetCookie().map((c) => c.split(';')[0] ?? '').filter((c) => !c.endsWith('=')).join('; ');
+    };
+    let lastUserId = '';
+    const ws = { Upgrade: 'websocket', Connection: 'Upgrade' };
+
+    it('chưa đăng nhập 401, thiếu Upgrade 426, trang lạ 403, máy chủ không có Durable Object 501', async () => {
+      expect((await hono.request('/v1/realtime', { headers: ws })).status).toBe(401);
+      const cookies = await loginCookie();
+      expect((await hono.request('/v1/realtime', { headers: { Cookie: cookies, Origin: web } })).status).toBe(426);
+      expect((await hono.request('/v1/realtime', { headers: { ...ws, Cookie: cookies, Origin: 'https://evil.example' } })).status).toBe(403);
+      expect((await hono.request('/v1/realtime', { headers: { ...ws, Cookie: cookies, Origin: web } })).status).toBe(501);
+    });
+
+    it('chuyển kết nối sang hub của đúng người dùng', async () => {
+      const cookies = await loginCookie();
+      const seen: string[] = [];
+      const env = { REALTIME: { idFromName: (n: string) => n, get: (id: unknown) => ({ fetch: async () => { seen.push(String(id)); return new Response('hub', { status: 200 }); } }) } };
+      const res = await hono.request('/v1/realtime', { headers: { ...ws, Cookie: cookies, Origin: web } }, env);
+      expect(await res.text()).toBe('hub');
+      expect(seen).toEqual([lastUserId]);
+    });
+  });
+
+  describe('RealtimeHub (Durable Object)', () => {
+    class FakeSocket {
+      sent: string[] = [];
+      closed: number | null = null;
+      send(m: string) { this.sent.push(m); }
+      close(code: number) { this.closed = code; }
+    }
+    function hub() {
+      const sockets: FakeSocket[] = [];
+      const state = { acceptWebSocket: (s: WebSocket) => void sockets.push(s as unknown as FakeSocket), getWebSockets: () => sockets as unknown as WebSocket[] };
+      const runtime = { pair: () => ({ client: new FakeSocket() as unknown as WebSocket, server: new FakeSocket() as unknown as WebSocket }), upgrade: () => new Response(null, { status: 200 }) };
+      return { h: new RealtimeHub(state, undefined, runtime), sockets };
+    }
+    const upgrade = () => new Request('https://hub/v1/realtime', { headers: { Upgrade: 'websocket' } });
+
+    it('nhận kết nối và phát sự kiện tới mọi tab', async () => {
+      const { h, sockets } = hub();
+      await h.fetch(upgrade());
+      await h.fetch(upgrade());
+      const res = await h.fetch(new Request('https://hub/publish', { method: 'POST', body: '{"type":"notification"}' }));
+      expect(await res.json()).toEqual({ sent: 2 });
+      expect(sockets.every((s) => s.sent[0] === '{"type":"notification"}')).toBe(true);
+    });
+
+    it('quá số kết nối tối đa thì đóng kết nối cũ nhất; không phải WebSocket thì 426', async () => {
+      const { h, sockets } = hub();
+      for (let i = 0; i < MAX_SOCKETS + 1; i++) await h.fetch(upgrade());
+      expect(sockets[0]!.closed).toBe(1013);
+      expect((await h.fetch(new Request('https://hub/v1/realtime'))).status).toBe(426);
     });
   });
 });

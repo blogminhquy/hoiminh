@@ -6,6 +6,9 @@ import { createWorkerApp, pickSharedEnv, type WorkerBindings } from '@hoiminh/co
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { createHonoApp } from './app';
 
+/** Durable Object giữ WebSocket thời gian thực của từng người dùng (binding REALTIME). */
+export { RealtimeHub } from './realtime-hub';
+
 /**
  * Cho hoiminh-jobs đọc secret của Worker này qua service binding, để secret chỉ phải đặt một chỗ.
  * Entrypoint có tên không nhận request từ Internet: chỉ Worker trong cùng tài khoản khai báo

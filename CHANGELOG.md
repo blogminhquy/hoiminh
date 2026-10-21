@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.13.0 - 2026-10-21
+
+Tin nhắn và thông báo thời gian thực bằng Durable Objects, thay cho việc mỗi trình duyệt hỏi máy chủ mỗi 15 giây.
+
+### Hiệu năng
+
+- **Bỏ polling 15 giây.** Trước đây mỗi người mở web hỏi số chưa đọc mỗi 15 giây, mở trang tin nhắn thì thêm danh sách hội thoại và nội dung hội thoại, cũng mỗi 15 giây. Đông người thì đây là tải database lớn nhất. Nay chỉ hỏi định kỳ khi kênh thời gian thực bị mất.
+- **Durable Object `RealtimeHub`**, mỗi người dùng một hub (`idFromName(userId)`), giữ WebSocket của mọi tab và thiết bị (tối đa 20, quá thì đóng kết nối cũ nhất). Dùng WebSocket Hibernation nên kết nối im lặng không tốn phí chạy; ping 30 giây được Cloudflare tự trả "pong" mà không đánh thức hub.
+- Có tin nhắn mới (`message.sent`) hay thông báo mới (`notify`) thì đẩy sự kiện tới hub của người nhận, **sau khi transaction commit** (giống email và hàng đợi): thao tác bị hủy thì không báo, nhiều thông báo cho cùng người trong một transaction chỉ báo một lần. Sự kiện chỉ nói "có gì mới ở đâu", không mang nội dung.
+- `hoiminh-jobs` cũng đẩy được (binding trỏ sang class của `hoiminh-api`), nên thông báo từ cron (nhắc sự kiện, hoa hồng) hiện ngay.
+
+### Bảo mật
+
+- `/v1/realtime` cần đăng nhập (cookie phiên), chỉ nhận Origin của chính web (chặn cross-site WebSocket hijacking), mỗi người chỉ vào được hub của mình.
+
+### Triển khai
+
+- Lần đầu có Durable Object phải deploy bằng `wrangler deploy` (migration `v1-realtime`), không qua `wrangler versions upload`. Nếu đang để `RELEASE_MODE=manual` thì tạm bỏ biến đó cho lần deploy này.
+- Chạy dev bằng Node (không có Durable Object): `/v1/realtime` trả 501, web tự quay về hỏi định kỳ như trước.
+
 ## 1.12.0 - 2026-10-20
 
 Đăng nhập chuyển sang cookie httpOnly: token phiên không còn nằm trong localStorage, nên mã độc lọt vào trang (XSS) không lấy cắp được phiên để dùng ở nơi khác.

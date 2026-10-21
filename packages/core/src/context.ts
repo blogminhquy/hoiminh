@@ -7,6 +7,7 @@ import type { PaymentRouter } from '@hoiminh/payments';
 import type { InfraValues } from './lib/infra-settings';
 import type { EventBus } from './events/bus';
 import type { JobQueue } from './jobs/queue';
+import type { RealtimePublisher } from './realtime';
 
 export interface Logger {
   debug(msg: string, meta?: Record<string, unknown>): void;
@@ -28,6 +29,8 @@ export interface AppContext {
   now: () => Date;
   /** Khóa hạ tầng lưu ở Hệ thống · Hạ tầng; không có khi ngữ cảnh không dựng từ createApp. */
   infra?: InfraRuntime;
+  /** Đẩy sự kiện tới trình duyệt (Durable Object trên Cloudflare); không có thì web tự hỏi định kỳ. */
+  realtime?: RealtimePublisher;
 }
 
 /** Áp khóa hạ tầng mới vào App đang chạy (env + bộ gửi email) mà không cần khởi động lại. */

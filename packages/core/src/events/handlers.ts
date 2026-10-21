@@ -200,6 +200,8 @@ export function registerHandlers(app: AppContext): void {
 
   bus.on('message.sent', async (p, ev) => {
     const c = ctx(ev);
+    // Người nhận thấy tin ngay; người gửi cũng nhận để các tab/thiết bị khác của họ đồng bộ.
+    await c.realtime?.publish([...p.recipientUserIds, p.senderUserId], { type: 'message', conversationId: p.conversationId }).catch((err) => c.log.warn('realtime.publish_failed', { err: String(err) }));
     const sender = await userOf(c, p.senderUserId);
     for (const rid of p.recipientUserIds) {
       const r = await userOf(c, rid);

@@ -17,6 +17,7 @@ import { contentRoutes } from './routes/content';
 import { eventRoutes } from './routes/events';
 import { learningRoutes } from './routes/learning';
 import { meRoutes } from './routes/me';
+import { realtimeRoutes } from './routes/realtime';
 import { memberRoutes } from './routes/members';
 import { payerRoutes, refRoutes } from './routes/payer';
 import { localFilesRoutes, platformRoutes } from './routes/platform';
@@ -53,6 +54,7 @@ export function createHonoApp(app: App): Hono<Env> {
 
   h.route('/v1/auth', authRoutes);
   h.route('/v1/me', meRoutes);
+  h.route('/v1/realtime', realtimeRoutes);
   h.route('/v1/communities', communityRoutes);
   h.route('/v1/communities', memberRoutes);
   h.route('/v1', contentRoutes);

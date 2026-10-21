@@ -171,7 +171,7 @@ Bật phát hành thủ công (admin bấm mới lên bản mới):
 
 1. Tạo token Cloudflare chỉ có quyền **Workers Scripts: Edit**.
 2. `cd apps/api && wrangler secret put CF_RELEASE_API_TOKEN` và `wrangler secret put CF_RELEASE_ACCOUNT_ID` (Worker được phát hành mặc định là `hoiminh-api`, đổi bằng `CF_RELEASE_WEB_SCRIPT`).
-3. GitHub, Settings, Variables: đặt `RELEASE_MODE=manual`. Từ đó `deploy.yml` chạy `wrangler versions upload --tag v<phiên bản>-<commit>` thay cho `wrangler deploy`.
+3. GitHub, Settings, Variables: đặt `RELEASE_MODE=manual`. Từ đó `deploy.yml` chạy `wrangler versions upload --tag v<phiên bản>-<commit>` thay cho `wrangler deploy`. Riêng bản nào thêm hoặc đổi Durable Object (`[[migrations]]` trong `apps/api/wrangler.toml`) thì phải deploy bằng `wrangler deploy`: tạm bỏ `RELEASE_MODE` cho lần đó.
 
 Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
 

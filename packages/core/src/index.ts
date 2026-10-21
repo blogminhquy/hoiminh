@@ -53,4 +53,5 @@ export * as shell from './services/shell';
 export { audit } from './services/audit';
 export { createApp, type App, type CreateAppOptions } from './app';
 export { createWorkerApp, type WorkerBindings } from './worker-app';
+export { DeferredRealtime, durableObjectRealtime, type HubNamespace, type RealtimeEvent, type RealtimePublisher } from './realtime';
 export { pickSharedEnv, mergeSharedEnv, withSharedEnv, resetSharedEnvCache, type SharedEnvSource } from './shared-env';

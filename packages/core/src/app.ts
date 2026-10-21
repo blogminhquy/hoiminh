@@ -12,6 +12,7 @@ import { registerHandlers } from './events/handlers';
 import { createJobHandler } from './jobs/handlers';
 import { InMemoryQueue, type JobQueue } from './jobs/queue';
 import { loadInfra, mergeInfraEnv } from './lib/infra-settings';
+import type { RealtimePublisher } from './realtime';
 
 export interface CreateAppOptions {
   env: Env;
@@ -22,6 +23,8 @@ export interface CreateAppOptions {
   onEmail?: (m: EmailMessage) => void;
   /** Binding R2 của Worker (`FILES`): có nó thì tệp lên R2 mà không cần secret R2_*. */
   r2Bucket?: R2BucketLike | null;
+  /** Bộ đẩy sự kiện thời gian thực (Durable Object `REALTIME` của Worker). */
+  realtime?: RealtimePublisher | null;
 }
 
 export interface App {
@@ -68,7 +71,7 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
       switchable.use(makeSender());
     },
   };
-  const ctx: AppContext = { db, env, email, media, payments, events, queue, log, now: () => new Date(), infra };
+  const ctx: AppContext = { db, env, email, media, payments, events, queue, log, now: () => new Date(), infra, ...(opts.realtime ? { realtime: opts.realtime } : {}) };
   if (queue instanceof InMemoryQueue) queue.setHandler(createJobHandler(ctx));
   registerHandlers(ctx);
   const auth: AuthProvider = env.AUTH_PROVIDER === 'supabase' && env.SUPABASE_URL

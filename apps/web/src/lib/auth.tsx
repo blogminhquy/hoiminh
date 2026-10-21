@@ -3,6 +3,7 @@ import type { AuthSession, AuthUser } from '@hoiminh/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, hasSession, migrateLegacySession } from './api';
+import { usePollInterval, useRealtime } from './realtime';
 
 export interface MyCommunity {
   id: string; name: string; slug: string; logoMark: string; logoColor: string; memberCount: number; status: string; role: string; memberStatus: string; pinned: boolean;
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [, bump] = useState(0);
   const enabled = migrated && hasSession();
   const q = useQuery({ queryKey: ['me'], queryFn: () => api.get<MeResponse>('/v1/me'), enabled, retry: false, staleTime: 60_000 });
+  useRealtime(Boolean(enabled && q.data));
   const setSession = useCallback((s: AuthSession) => {
     // API đã đặt cookie phiên; chỉ cần vẽ lại để đọc cờ đăng nhập mới.
     bump((n) => n + 1);
@@ -55,10 +57,11 @@ export function useAuth(): AuthContextValue {
   return v;
 }
 
-/** Badge tin nhắn/thông báo, làm mới mỗi 15 giây (polling). */
+/** Badge tin nhắn/thông báo: cập nhật qua kênh thời gian thực; mất kênh thì hỏi lại mỗi 15 giây. */
 export function useBadges() {
   const { user } = useAuth();
-  return useQuery({ queryKey: ['badges'], queryFn: () => api.get<{ unreadNotifications: number; unreadMessages: number }>('/v1/me/badges'), enabled: Boolean(user), refetchInterval: 15_000, staleTime: 10_000 });
+  const refetchInterval = usePollInterval(15_000);
+  return useQuery({ queryKey: ['badges'], queryFn: () => api.get<{ unreadNotifications: number; unreadMessages: number }>('/v1/me/badges'), enabled: Boolean(user), refetchInterval, staleTime: 10_000 });
 }
 
 /** Hội "hiện tại" để render tin nhắn/thông báo/tài khoản trong khung hội. */
