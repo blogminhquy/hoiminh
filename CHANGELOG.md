@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 1.15.0 - 2026-11-09
+
+Đợt 1 của việc làm lại trải nghiệm thành viên trên điện thoại: giao diện "Sáng và rõ", chữ dễ đọc, hết tràn ngang, bài học và đăng bài gọn lại.
+
+### Giao diện
+
+- **Bảng màu và bộ chữ mới.** Nền sáng, ngọc đậm là màu chính, cam chỉ dùng cho thứ cần chú ý, vàng cho Premium; một bộ chữ Be Vietnam Pro thay cho Montserrat và Open Sans. Giao diện tối đổi theo. Mọi cặp chữ trên nền đạt tương phản từ 4,5 (trước: nút chính 3,91, chữ mờ 3,34).
+- **Chữ trên điện thoại.** Nội dung 16px, không chữ nào dưới 14px, nút và ô nhập cao từ 44px. Đo trên 22 màn hình của thành viên: phần chữ nhỏ hơn 14px giảm từ 31 đến 79% xuống còn 0 đến 3%.
+- Hàng chip lọc ở Bảng tin, Khóa học, Cửa hàng là một hàng vuốt ngang trên điện thoại, không còn chiếm hai hàng.
+
+### Bài học
+
+- **Điện thoại: video lên đầu.** Trước đây phải cuộn qua cả danh sách bài mới tới video. Nay giáo trình thu thành dòng "Danh sách bài", bấm mới mở. Nút "Xong bài, sang bài tiếp" ghim ở đáy màn hình.
+
+### Đăng bài
+
+- **Khung soạn gọn lại**: ô viết, nút Ảnh, nút Đăng. Chuyên mục được chọn sẵn (mục đang xem, mục đăng lần trước, hoặc "Chia sẻ") và vẫn đổi được. Tiêu đề, nền màu, video, bình chọn, link và gửi email nằm sau nút "Thêm".
+- Bỏ ba thứ không có tác dụng: chip "Mọi thành viên" (không bấm được), nút "Nhắc tên" (chỉ chèn ký tự @), nút "Đính kèm" (trùng nút Ảnh).
+
+### Sửa lỗi
+
+- **Ba trang tràn ngang trên điện thoại**: Thành viên (rộng 1.031px trên màn 390px), Tài khoản / Gói và thanh toán, Tài khoản / Cộng sự. Nội dung bị cắt và thanh tab trôi khỏi màn hình.
+- Trang Khóa học ghi "đang học 0" ngay trên thẻ Học tiếp: khóa Premium đang học phần miễn phí bị xếp vào "Chưa mở". Nay đếm theo tiến độ thật.
+- Số bài bị lặp ("1.2 1.2 Ba con số") khi tên bài đã tự có số.
+- Xếp hạng cộng sự trên điện thoại hiện hạng 2 trước hạng 1.
+- Giao diện tối: ảnh đại diện ở đầu trang là chữ trắng trên nền trắng.
+
 ## 1.14.1 - 2026-11-09
 
 Đưa bản mới lên Cloudflare nhanh hơn và biết chắc trang thật đã chạy đúng bản đó.

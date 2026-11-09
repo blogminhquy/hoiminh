@@ -50,7 +50,7 @@ export default function Page() {
           </>
         ) : (
           <>
-            <span className="inline-block w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: T.accent }} />
+            <span className="inline-block w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: T.primary }} />
             <h2 className="serif m-0 text-[24px] font-extrabold">Đang đăng nhập…</h2>
             <div className="muted text-[13px]">Đang xác nhận tài khoản Google của bạn với Hội Mình.</div>
           </>

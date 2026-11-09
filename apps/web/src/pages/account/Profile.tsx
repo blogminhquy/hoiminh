@@ -36,7 +36,7 @@ export default function Page() {
           <div className="two-col">
             <div className="main flex flex-col gap-4">
               <div className="card overflow-hidden">
-                <div style={{ height: 120, background: u.coverColor ?? T.accent }} />
+                <div style={{ height: 120, background: u.coverColor ?? T.primary }} />
                 <div className="px-6 pb-5 flex flex-col gap-3.5">
                   <div className="flex items-end gap-4 flex-wrap" style={{ marginTop: -40 }}>
                     <span className="inline-flex rounded-full" style={{ border: `4px solid ${T.surface}` }}><Avatar name={u.name} src={u.avatarUrl} color={u.coverColor ?? T.accent} size={96} /></span>

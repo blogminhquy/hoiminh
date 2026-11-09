@@ -36,7 +36,7 @@ export function CheckoutFrame({ backTo, children }: { backTo: string; children: 
 
 export function ProviderOption({ p, on, onClick, disabled }: { p: (typeof PROVIDERS)[number]; on: boolean; onClick?: () => void; disabled?: boolean }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-left w-full" style={{ border: `1.5px solid ${on ? T.accent : T.line2}`, background: on ? T.accentSoft : T.surface, opacity: disabled ? 0.5 : 1 }}>
+    <button type="button" disabled={disabled} onClick={onClick} className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-left w-full" style={{ border: `1.5px solid ${on ? T.primary : T.line2}`, background: on ? T.primarySoft : T.surface, opacity: disabled ? 0.5 : 1 }}>
       <Radio on={on} />
       <span className="w-9 h-[26px] rounded-md inline-flex items-center justify-center text-[9px] font-extrabold serif flex-shrink-0" style={{ background: p.bg, color: T.invertInk }}>{p.logo}</span>
       <span className="flex-grow"><span className="block font-semibold text-[14px]">{p.name}</span><span className="block muted text-[12px]">{p.desc}</span></span>

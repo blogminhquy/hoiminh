@@ -15,7 +15,7 @@ interface ProductList { items: ProductLite[] }
 
 function CycleCard({ on, title, sub, badge, onClick }: { on: boolean; title: string; sub: string; badge?: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex-1 p-3.5 rounded-xl text-left relative" style={{ border: `1.5px solid ${on ? T.accent : T.line2}`, background: on ? T.accentSoft : T.surface }}>
+    <button type="button" onClick={onClick} className="flex-1 p-3.5 rounded-xl text-left relative" style={{ border: `1.5px solid ${on ? T.primary : T.line2}`, background: on ? T.primarySoft : T.surface }}>
       {badge && <span className="tag absolute -top-2.5 right-3" style={{ background: T.ink, color: T.surface }}>{badge}</span>}
       <span className="flex items-center gap-2"><Radio on={on} /><span className="font-semibold">{title}</span></span>
       <span className="block pl-[26px] text-[13px]" style={{ color: T.ink2 }}>{sub}</span>
@@ -70,8 +70,8 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
               {benefits.map((b) => <div key={b} className="flex items-center gap-2"><span style={{ color: T.teal }}><Check size={14} /></span>{b}</div>)}
             </div>
             <div className="flex gap-2 pt-2" style={{ borderTop: `1px solid ${T.line}` }}>
-              <div className="input flex-grow" style={{ height: 40 }}><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="flex-grow" /></div>
-              <Button onClick={() => setApplied(coupon.trim() || null)}>{applied ? 'Đã áp dụng' : 'Áp dụng'}</Button>
+              <div className="input flex-1 min-w-0" style={{ width: 'auto' }}><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="flex-grow" /></div>
+              <Button className="flex-shrink-0" onClick={() => setApplied(coupon.trim() || null)}>{applied ? 'Đã áp dụng' : 'Áp dụng'}</Button>
             </div>
             <Totals lines={[{ label: line, amountMinor: amount }, { label: 'Giảm giá', amountMinor: 0 }]} total={amount} referredBy={null} />
             {applied && <div className="muted text-[12px]">Mã {applied} sẽ được kiểm tra khi tạo đơn.</div>}

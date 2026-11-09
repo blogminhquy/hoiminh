@@ -23,6 +23,9 @@ function state(c: CourseItem): 'lock' | 'draft' | 'done' | 'learning' | 'new' {
   return c.percent > 0 ? 'learning' : 'new';
 }
 
+/** Đang học dở: đã có tiến độ và chưa xong, kể cả khóa Premium mà người dùng đang học phần miễn phí. */
+const inProgress = (c: CourseItem) => c.status !== 'draft' && c.percent > 0 && !(c.completed || c.percent === 100);
+
 function CourseCard({ c, slug }: { c: CourseItem; slug: string }) {
   const s = state(c);
   const to = `/${slug}/khoa-hoc/${c.id}`;
@@ -61,8 +64,8 @@ export default function Page() {
   const [filter, setFilter] = useState<Filter>('all');
   const q = useQuery({ queryKey: ['courses', shell.community.id], queryFn: () => api.get<CourseList>(`/v1/communities/${shell.community.id}/courses`) });
   const items = q.data?.items ?? [];
-  const counts = { all: items.length, learning: items.filter((c) => state(c) === 'learning').length, done: items.filter((c) => state(c) === 'done').length, locked: items.filter((c) => state(c) === 'lock').length };
-  const shown = items.filter((c) => filter === 'all' || (filter === 'learning' && state(c) === 'learning') || (filter === 'done' && state(c) === 'done') || (filter === 'locked' && state(c) === 'lock'));
+  const counts = { all: items.length, learning: items.filter(inProgress).length, done: items.filter((c) => state(c) === 'done').length, locked: items.filter((c) => state(c) === 'lock' && !inProgress(c)).length };
+  const shown = items.filter((c) => filter === 'all' || (filter === 'learning' && inProgress(c)) || (filter === 'done' && state(c) === 'done') || (filter === 'locked' && state(c) === 'lock' && !inProgress(c)));
   const cont = q.data?.continue ?? null;
   return (
     <div className="flex flex-col gap-4">
@@ -72,7 +75,7 @@ export default function Page() {
           <div className="muted text-[13px]">{counts.all} khóa · bạn đã hoàn thành {counts.done}, đang học {counts.learning}</div>
         </div>
         <span className="flex-grow" />
-        <div className="flex gap-2 flex-wrap">
+        <div className="chip-row">
           <Chip on={filter === 'all'} onClick={() => setFilter('all')}>Tất cả · {counts.all}</Chip>
           <Chip on={filter === 'learning'} onClick={() => setFilter('learning')}>Đang học · {counts.learning}</Chip>
           <Chip on={filter === 'done'} onClick={() => setFilter('done')}>Hoàn thành · {counts.done}</Chip>

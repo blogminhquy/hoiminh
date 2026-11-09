@@ -1,23 +1,42 @@
-// Modal "Tạo bài viết": chuyên mục bắt buộc, Markdown, nền cho status ngắn, ảnh/video/bình chọn/link, gửi email cho thành viên.
+// Modal "Tạo bài viết", bản gọn: một ô viết, nút ảnh, nút Đăng. Chuyên mục tự chọn sẵn (vẫn đổi được);
+// tiêu đề, nền status, video, bình chọn, link và gửi email nằm sau nút "Thêm".
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Modal, T, Toggle } from '@hoiminh/ui';
-import { AtSign, BarChart3, Check, ChevronDown, Image as ImageIcon, Link as LinkIcon, Mail, Paperclip, Users, Video } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { BarChart3, ChevronDown, ChevronUp, Image as ImageIcon, Link as LinkIcon, Mail, Video } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StatusBox } from '@/components/post/PostCard';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useCan, useShell } from '@/lib/community';
+import { isPremium, useCan, useShell } from '@/lib/community';
 import { BgStrip, ImagePicker, LinkInput, PollEditor, STATUS_MAX, VideoInput, useFilePicker, type PickedImage, type PollDraft } from './ComposerParts';
 
-interface Space { id: string; name: string; colorKey: string; postPermission: string }
-interface FeedMeta { spaces: Space[]; access: { canBroadcast: boolean } }
+export interface ComposerSpace { id: string; name: string; colorKey: string; postPermission: string }
+interface FeedMeta { spaces: ComposerSpace[]; access: { canBroadcast: boolean } }
+
+const lastSpaceKey = (communityId: string) => `hm_last_space_${communityId}`;
+function readLastSpace(communityId: string): string {
+  try { return localStorage.getItem(lastSpaceKey(communityId)) ?? ''; } catch { return ''; }
+}
+function rememberSpace(communityId: string, spaceId: string): void {
+  try { localStorage.setItem(lastSpaceKey(communityId), spaceId); } catch { /* chế độ riêng tư: lần sau chọn lại theo mặc định */ }
+}
+
+/**
+ * Chuyên mục chọn sẵn khi mở khung soạn, chỉ trong các chuyên mục người này đăng được:
+ * mục đang lọc ở bảng tin → mục đăng lần trước → "Chia sẻ" → mục đầu tiên.
+ */
+export function pickDefaultSpace(spaces: ComposerSpace[], opts: { preferred?: string; last?: string; canModerate: boolean; premium: boolean }): string {
+  const allowed = spaces.filter((s) => opts.canModerate || s.postPermission === 'everyone' || (s.postPermission === 'premium' && opts.premium));
+  const has = (id?: string) => (id && allowed.some((s) => s.id === id) ? id : '');
+  return has(opts.preferred) || has(opts.last) || allowed.find((s) => s.name.trim().toLowerCase() === 'chia sẻ')?.id || allowed[0]?.id || '';
+}
 
 const Tool = ({ icon, label, on, onClick }: { icon: ReactNode; label: string; on?: boolean; onClick?: () => void }) => (
-  <button type="button" aria-label={label} title={label} onClick={onClick} className="w-9 h-9 rounded-[9px] inline-flex items-center justify-center" style={{ background: on ? T.accentSoft : 'transparent', color: on ? T.accentText : T.ink2 }}>{icon}</button>
+  <button type="button" aria-pressed={on} onClick={onClick} className="chip" style={on ? { background: T.primarySoft, color: T.primaryText, borderColor: T.primarySoft } : undefined}>{icon}{label}</button>
 );
 
-export function Composer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onClose: () => void; defaultSpaceId?: string }) {
   const shell = useShell();
   const can = useCan();
   const { user } = useAuth();
@@ -25,7 +44,7 @@ export function Composer({ open, onClose }: { open: boolean; onClose: () => void
   const navigate = useNavigate();
   const cid = shell.community.id;
   const meta = useQuery({ queryKey: ['feed', cid, 'meta'], queryFn: () => api.get<FeedMeta>(`/v1/communities/${cid}/feed?limit=1`), enabled: open, staleTime: 60_000 });
-  const spaces = meta.data?.spaces ?? [];
+  const spaces = useMemo(() => meta.data?.spaces ?? [], [meta.data]);
   const canBroadcast = can('post.broadcast') || Boolean(meta.data?.access.canBroadcast);
 
   const [spaceId, setSpaceId] = useState('');
@@ -37,87 +56,93 @@ export function Composer({ open, onClose }: { open: boolean; onClose: () => void
   const [poll, setPoll] = useState<PollDraft | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [broadcast, setBroadcast] = useState(false);
+  const [more, setMore] = useState(false);
   const picker = useFilePicker();
+
+  // Chọn sẵn chuyên mục khi mở khung (hoặc khi danh sách chuyên mục vừa tải xong); người dùng đã tự chọn thì giữ.
+  const premium = isPremium(shell);
+  const canModerate = can('post.moderate');
+  useEffect(() => {
+    if (!open || spaces.length === 0) return;
+    setSpaceId((cur) => (cur && spaces.some((s) => s.id === cur) ? cur : pickDefaultSpace(spaces, { preferred: defaultSpaceId, last: readLastSpace(cid), canModerate, premium })));
+  }, [open, spaces, defaultSpaceId, cid, canModerate, premium]);
 
   const len = content.trim().length;
   const eligible = len <= STATUS_MAX && !title.trim() && images.length === 0 && !/!\[/.test(content);
   const showBg = eligible && Boolean(bgKey);
 
-  const reset = () => { setTitle(''); setContent(''); setBgKey(null); setImages([]); setVideo({ open: false, url: null }); setPoll(null); setLink(null); setBroadcast(false); };
+  const reset = () => { setSpaceId(''); setTitle(''); setContent(''); setBgKey(null); setImages([]); setVideo({ open: false, url: null }); setPoll(null); setLink(null); setBroadcast(false); setMore(false); };
   const create = useMutation({
     mutationFn: () => api.post<{ id: string }>(`/v1/communities/${cid}/posts`, {
       spaceId, title: title.trim(), contentMd: content.trim(), statusBgKey: showBg ? bgKey : null,
       imageFileIds: images.map((i) => i.fileId), videoUrl: video.url, linkUrl: link?.trim() || null, broadcastEmail: broadcast && canBroadcast,
       poll: poll && poll.question.trim() ? { question: poll.question.trim(), options: poll.options.map((o) => o.trim()).filter(Boolean), multipleChoice: poll.multipleChoice } : null,
     }),
-    onSuccess: (p) => { void qc.invalidateQueries({ queryKey: ['feed'] }); reset(); onClose(); navigate(`/${shell.community.slug}/bai-viet/${p.id}`); },
+    onSuccess: (p) => { rememberSpace(cid, spaceId); void qc.invalidateQueries({ queryKey: ['feed'] }); reset(); onClose(); navigate(`/${shell.community.slug}/bai-viet/${p.id}`); },
   });
   const valid = Boolean(spaceId) && len > 0 && (!poll || (poll.question.trim() && poll.options.filter((o) => o.trim()).length >= 2));
+  const spaceName = spaces.find((s) => s.id === spaceId)?.name;
 
   return (
-    <Modal open={open} onClose={onClose} title="Tạo bài viết" width={680}>
+    <Modal open={open} onClose={onClose} title="Tạo bài viết" width={620}>
       <div className="px-5 py-4 flex flex-col gap-3.5">
         <div className="flex items-center gap-3">
           <Avatar name={user?.name} src={user?.avatarUrl} size={44} />
-          <div>
-            <div className="font-semibold">{user?.name}</div>
-            <div className="flex gap-1.5 mt-1 flex-wrap">
-              <label className="chip relative" style={{ height: 26, fontSize: 12, background: T.bg, borderColor: spaceId ? T.line2 : T.accent }}>
-                {spaces.find((s) => s.id === spaceId)?.name ?? 'Chọn chuyên mục'} <ChevronDown size={12} />
-                <select aria-label="Chuyên mục" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full">
-                  <option value="">Chọn chuyên mục</option>
-                  {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </label>
-              <span className="chip" style={{ height: 26, fontSize: 12, background: T.bg }}><Users size={12} /> Mọi thành viên <ChevronDown size={12} /></span>
-            </div>
+          <div className="min-w-0">
+            <div className="font-semibold truncate">{user?.name}</div>
+            <label className="chip relative mt-1" style={{ height: 30, fontSize: 13, background: T.primarySoft, color: T.primaryText, borderColor: T.primarySoft }}>
+              <span className="sr-only">Đăng vào chuyên mục</span>
+              {spaceName ?? (meta.isLoading ? 'Đang tải…' : 'Chọn chuyên mục')} <ChevronDown size={14} />
+              <select aria-label="Chuyên mục" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full">
+                {!spaceId && <option value="">Chọn chuyên mục</option>}
+                {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
           </div>
         </div>
 
-        {showBg ? (
+        {showBg && (
           <div className="relative">
-            <StatusBox text={content || 'Viết gì đó…'} bgKey={bgKey} height={300} fontSize={30} />
-            <BgStrip overlay bgKey={bgKey} onPick={setBgKey} onToggle={() => setBgKey(null)} onClear={() => setBgKey(null)} onImage={picker.open} />
-          </div>
-        ) : eligible ? (
-          <BgStrip bgKey={bgKey} onPick={setBgKey} onToggle={() => setBgKey(bgKey ? null : 'dat')} onClear={() => setBgKey(null)} onImage={picker.open} />
-        ) : null}
-        <span className="input textarea" style={{ borderRadius: 12 }}>
-          <textarea rows={showBg ? 2 : 6} placeholder="Chia sẻ điều gì đó với cộng đồng… (hỗ trợ Markdown)" value={content} onChange={(e) => setContent(e.target.value)} />
-        </span>
-        {eligible && (
-          <div className="flex items-center gap-2 text-[12px]" style={{ color: T.ink3 }}>
-            <Check size={14} />
-            <span>Nền dùng được vì bài ngắn hơn {STATUS_MAX} ký tự và chưa có ảnh · <strong style={{ color: T.ink2 }}>{len}/{STATUS_MAX}</strong>. Thêm ảnh hoặc viết dài hơn thì nền tự tắt.</span>
+            <StatusBox text={content || 'Viết gì đó…'} bgKey={bgKey} height={260} fontSize={28} />
           </div>
         )}
-        <span className="input"><input placeholder="Tiêu đề (tùy chọn)" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} /></span>
+        <span className="input textarea" style={{ borderRadius: 12 }}>
+          <textarea autoFocus rows={showBg ? 2 : 5} aria-label="Nội dung bài viết" placeholder="Bạn muốn chia sẻ gì?" value={content} onChange={(e) => setContent(e.target.value)} style={{ fontSize: 16 }} />
+        </span>
 
         <ImagePicker images={images} onChange={setImages} communityId={cid} inputRef={picker.ref} />
-        {video.open && <VideoInput value={video.url} onChange={(u) => setVideo({ open: true, url: u })} onClose={() => setVideo({ open: false, url: null })} />}
-        {poll && <PollEditor poll={poll} onChange={setPoll} onClose={() => setPoll(null)} />}
-        {link !== null && <LinkInput value={link} onChange={setLink} onClose={() => setLink(null)} />}
 
-        <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl" style={{ border: `1px solid ${T.line2}` }}>
-          <span className="text-[13px] font-semibold flex-grow">Thêm vào bài viết</span>
-          <Tool icon={<ImageIcon size={20} />} label="Ảnh" on={images.length > 0} onClick={picker.open} />
-          <Tool icon={<Video size={20} />} label="Video" on={video.open} onClick={() => setVideo((v) => ({ open: !v.open, url: v.open ? null : v.url }))} />
-          <Tool icon={<BarChart3 size={20} />} label="Bình chọn" on={Boolean(poll)} onClick={() => setPoll(poll ? null : { question: '', options: ['', ''], multipleChoice: false })} />
-          <Tool icon={<LinkIcon size={20} />} label="Link" on={link !== null} onClick={() => setLink(link === null ? '' : null)} />
-          <Tool icon={<AtSign size={20} />} label="Nhắc tên" onClick={() => setContent((c) => `${c}@`)} />
-          <Tool icon={<Paperclip size={20} />} label="Đính kèm" onClick={picker.open} />
-        </div>
+        {more && (
+          <div className="flex flex-col gap-3 p-3 rounded-xl" style={{ background: T.bg }}>
+            <span className="input"><input aria-label="Tiêu đề" placeholder="Tiêu đề (không bắt buộc)" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} /></span>
+            <div className="flex gap-2 flex-wrap">
+              <Tool icon={<Video size={16} />} label="Video" on={video.open} onClick={() => setVideo((v) => ({ open: !v.open, url: v.open ? null : v.url }))} />
+              <Tool icon={<BarChart3 size={16} />} label="Bình chọn" on={Boolean(poll)} onClick={() => setPoll(poll ? null : { question: '', options: ['', ''], multipleChoice: false })} />
+              <Tool icon={<LinkIcon size={16} />} label="Link" on={link !== null} onClick={() => setLink(link === null ? '' : null)} />
+            </div>
+            {video.open && <VideoInput value={video.url} onChange={(u) => setVideo({ open: true, url: u })} onClose={() => setVideo({ open: false, url: null })} />}
+            {poll && <PollEditor poll={poll} onChange={setPoll} onClose={() => setPoll(null)} />}
+            {link !== null && <LinkInput value={link} onChange={setLink} onClose={() => setLink(null)} />}
+            {eligible && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-semibold" style={{ color: T.ink2 }}>Nền màu cho bài ngắn (dưới {STATUS_MAX} ký tự, không ảnh)</span>
+                <BgStrip bgKey={bgKey} onPick={setBgKey} onToggle={() => setBgKey(bgKey ? null : 'dat')} onClear={() => setBgKey(null)} onImage={picker.open} />
+              </div>
+            )}
+            {canBroadcast && (
+              <label className="flex items-center gap-2.5 text-[13px]" style={{ color: T.ink2 }}>
+                <Mail size={16} /><span className="flex-grow">Gửi email cho tất cả thành viên</span>
+                <Toggle on={broadcast} onChange={setBroadcast} label="Gửi email" />
+              </label>
+            )}
+          </div>
+        )}
 
         {create.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(create.error)}</span>}
-        <div className="flex items-center gap-2.5 pt-1.5 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
-          {canBroadcast && (
-            <>
-              <span className="text-[13px] inline-flex items-center gap-2" style={{ color: T.ink2 }}><Mail size={16} /> Gửi email cho tất cả thành viên</span>
-              <Toggle on={broadcast} onChange={setBroadcast} label="Gửi email" />
-            </>
-          )}
+        <div className="flex items-center gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
+          <Button icon={<ImageIcon size={18} />} onClick={picker.open}>Ảnh</Button>
+          <Button aria-expanded={more} onClick={() => setMore((v) => !v)}>Thêm {more ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</Button>
           <span className="flex-grow" />
-          <Button size="sm" onClick={onClose}>Hủy</Button>
           <Button variant="primary" loading={create.isPending} disabled={!valid} onClick={() => create.mutate()}>Đăng bài</Button>
         </div>
       </div>

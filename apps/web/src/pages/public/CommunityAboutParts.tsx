@@ -75,7 +75,7 @@ export function AboutHero({ d }: { d: AboutPage }) {
             {c.introVideoUrl && i === 0 && (
               playing && parse.isError
                 ? <a href={c.introVideoUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Mở video</a>
-                : <button type="button" aria-label="Phát video giới thiệu" onClick={play} className="rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.accent, color: T.invertInk }}>{playing && parse.isPending ? <span className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Play size={30} />}</button>
+                : <button type="button" aria-label="Phát video giới thiệu" onClick={play} className="rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.primary, color: T.onPrimary }}>{playing && parse.isPending ? <span className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Play size={30} />}</button>
             )}
           </>
         )}

@@ -19,9 +19,9 @@ function ThemeItem() {
     try { localStorage.setItem(THEME_KEY, next); } catch { /* chế độ riêng tư: vẫn đổi cho phiên này */ }
   };
   return (
-    <div className="settings-nav-item flex flex-col gap-2" style={{ cursor: 'default' }}>
+    <div className="settings-nav-item flex flex-row items-center min-[901px]:flex-col min-[901px]:items-start gap-2" style={{ cursor: 'default' }}>
       <span>Giao diện</span>
-      <div className="flex gap-1.5" role="radiogroup" aria-label="Giao diện">
+      <div className="flex gap-1.5 flex-shrink-0" role="radiogroup" aria-label="Giao diện">
         {CHOICES.map(({ key, label, icon: Icon }) => (
           <button key={key} type="button" role="radio" aria-checked={theme === key} onClick={() => pick(key)} className={`chip${theme === key ? ' on' : ''}`} style={{ height: 28, fontSize: 12, padding: '0 10px' }}>
             <Icon size={13} />{label}

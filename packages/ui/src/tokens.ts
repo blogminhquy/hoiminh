@@ -1,31 +1,35 @@
-// Token thiết kế lấy nguyên từ design/build.mjs: bảng màu giấy ấm, nhấn cam đất và xanh ngọc, 8 nền status.
+// Token thiết kế, hướng "Sáng và rõ" (1.15.0): nền sáng, ngọc đậm là màu chính (primary), cam là màu cần chú ý
+// (accent: lỗi, chấm báo, đang diễn ra), vàng cho Premium và cấp độ. 8 nền status giữ từ design/build.mjs.
 //
 // HEX = giá trị thật của giao diện sáng. Chỉ dùng khi màu phải là một chuỗi màu thật:
 // giá trị lưu vào database (coverColor của hội, khóa học, sự kiện) và thuộc tính SVG
 // (fill/stroke không hiểu var()).
 export const HEX = {
-  bg: '#F7F3EC',
-  surface: '#FFFDF9',
-  ink: '#1F1B17',
-  ink2: '#5C554D',
-  ink3: '#8C8478',
-  line: '#E8E1D6',
-  line2: '#E3DCD0',
-  accent: '#D4593A',
-  accentSoft: '#FBE9E2',
-  accentText: '#9C3A21',
-  teal: '#0E8E96',
+  bg: '#F3F6F4',
+  surface: '#FFFFFF',
+  ink: '#0F1F1D',
+  ink2: '#34423F',
+  ink3: '#56635F',
+  line: '#DCE3E1',
+  line2: '#CBD5D2',
+  primary: '#0B6F75',
+  primarySoft: '#DDF1F1',
+  primaryText: '#0B5C61',
+  accent: '#C2410C',
+  accentSoft: '#FFEDD5',
+  accentText: '#9A3412',
+  teal: '#0B6F75',
   tealSoft: '#DDF1F1',
-  tealText: '#0B6F75',
-  side: '#25201B',
-  sideDark: '#14110E',
-  sideText: '#CFC6B8',
-  sideMuted: '#8C8478',
-  gold: '#C89B3C',
-  goldSoft: '#F8EFD9',
-  goldText: '#8A6A1E',
+  tealText: '#0B5C61',
+  side: '#0C3A3E',
+  sideDark: '#082B2E',
+  sideText: '#BFE3E1',
+  sideMuted: '#8DBAB8',
+  gold: '#F5B841',
+  goldSoft: '#FBF0D2',
+  goldText: '#7A5C14',
   goldDark: '#5C4A16',
-  player: '#171310',
+  player: '#0A1413',
 } as const;
 
 /**
@@ -41,6 +45,13 @@ export const T = {
   ink3: 'var(--ink3)',
   line: 'var(--line)',
   line2: 'var(--line2)',
+  /** Màu chính: nút chính, mục đang chọn, liên kết nổi bật. */
+  primary: 'var(--primary)',
+  primarySoft: 'var(--primary-soft)',
+  primaryText: 'var(--primary-text)',
+  /** Chữ đặt trên nền primary. */
+  onPrimary: 'var(--on-primary)',
+  /** Màu cần chú ý: lỗi, chấm báo, đang diễn ra. Không dùng cho nút chính. */
   accent: 'var(--accent)',
   accentSoft: 'var(--accent-soft)',
   accentText: 'var(--accent-text)',
@@ -83,8 +94,8 @@ export function readTheme(): ThemeChoice {
   }
 }
 
-export const FONT_DISPLAY = "Montserrat, 'Segoe UI', Arial, sans-serif";
-export const FONT_SANS = "'Open Sans', 'Segoe UI', system-ui, sans-serif";
+export const FONT_DISPLAY = "'Be Vietnam Pro', 'Segoe UI', system-ui, Arial, sans-serif";
+export const FONT_SANS = "'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif";
 
 /** 8 nền màu cho status ngắn (< 130 ký tự, không ảnh). */
 export const STATUS_BGS = [

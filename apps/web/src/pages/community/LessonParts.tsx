@@ -23,17 +23,23 @@ export function durLabel(l: LessonLite): string {
 
 function Mark({ state }: { state: LessonState }) {
   if (state === 'done') return <span className="w-[22px] h-[22px] rounded-full inline-flex items-center justify-center flex-shrink-0" style={{ background: T.teal, color: '#fff' }}><Check size={14} /></span>;
-  if (state === 'now') return <span className="w-[22px] h-[22px] rounded-full inline-flex items-center justify-center flex-shrink-0" style={{ border: `2px solid ${T.accent}` }}><span className="w-2 h-2 rounded-full" style={{ background: T.accent }} /></span>;
+  if (state === 'now') return <span className="w-[22px] h-[22px] rounded-full inline-flex items-center justify-center flex-shrink-0" style={{ border: `2px solid ${T.primary}` }}><span className="w-2 h-2 rounded-full" style={{ background: T.primary }} /></span>;
   if (state === 'lock') return <span className="w-[22px] h-[22px] inline-flex items-center justify-center flex-shrink-0" style={{ color: T.ink3 }}><Lock size={16} /></span>;
   return <span className="w-[22px] h-[22px] rounded-full inline-block flex-shrink-0" style={{ border: `1.5px solid ${T.line2}` }} />;
+}
+
+/** Ghép số thứ tự vào tên bài. Tên đã tự mở đầu bằng số ("1.2 Ba con số...") thì giữ nguyên, không thành "1.2 1.2". */
+export function lessonLabel(title: string, index?: string): string {
+  if (!index || /^\s*(\d+[.-]\d+([.-]\d+)*|\d+[.):])\s/.test(title)) return title;
+  return `${index} ${title}`;
 }
 
 export function LessonRow({ lesson, state, to, index }: { lesson: LessonLite; state: LessonState; to: string; index?: string }) {
   const on = state === 'now';
   return (
-    <Link to={to} className="flex items-center gap-3 px-3 py-2.5 rounded-[10px]" style={{ background: on ? T.accentSoft : 'transparent', color: state === 'lock' ? T.ink3 : T.ink }}>
+    <Link to={to} className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] min-h-[44px]" style={{ background: on ? T.primarySoft : 'transparent', color: state === 'lock' ? T.ink3 : T.ink }}>
       <Mark state={state} />
-      <span className="flex-grow text-[14px] min-w-0 truncate" style={{ fontWeight: on ? 600 : 400 }}>{index ? `${index} ` : ''}{lesson.title}</span>
+      <span className="flex-grow text-[14px] min-w-0 truncate" style={{ fontWeight: on ? 600 : 400 }}>{lessonLabel(lesson.title, index)}</span>
       <span className="muted text-[12px] flex-shrink-0">{durLabel(lesson)}</span>
     </Link>
   );

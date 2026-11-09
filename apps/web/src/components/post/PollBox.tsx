@@ -31,7 +31,7 @@ export function PollBox({ poll, disabled }: { poll: Poll; disabled?: boolean }) 
         const p = poll.totalVotes ? Math.round((o.voteCount / poll.totalVotes) * 100) : 0;
         const on = picked.includes(o.id);
         return (
-          <button key={o.id} type="button" disabled={disabled || closed} onClick={() => toggle(o.id)} className="relative overflow-hidden rounded-[10px] text-left px-3 py-2 text-[13px]" style={{ background: T.surface, border: `1.5px solid ${on ? T.accent : T.line2}` }}>
+          <button key={o.id} type="button" disabled={disabled || closed} onClick={() => toggle(o.id)} className="relative overflow-hidden rounded-[10px] text-left px-3 py-2 text-[13px]" style={{ background: T.surface, border: `1.5px solid ${on ? T.primary : T.line2}` }}>
             {(voted || closed) && <span className="absolute inset-y-0 left-0" style={{ width: `${p}%`, background: T.tealSoft }} />}
             <span className="relative flex items-center gap-2">
               <span className="flex-grow">{o.label}</span>

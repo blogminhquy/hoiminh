@@ -106,7 +106,7 @@ function MobileTabs({ slug }: { slug: string }) {
   return (
     <nav className="mobile-tabs">
       {items.map(([to, icon, label]) => (
-        <NavLink key={to} to={to} className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold" style={({ isActive }) => ({ color: isActive ? T.accent : T.ink3 })}>{icon}{label}</NavLink>
+        <NavLink key={to} to={to} className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold" style={({ isActive }) => ({ color: isActive ? T.primary : T.ink3 })}>{icon}{label}</NavLink>
       ))}
     </nav>
   );
@@ -152,7 +152,8 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
             <Outlet />
           </div>
         </div>
-        <MobileTabs slug={data.community.slug} />
+        {/* Trang bài học có nút hoàn thành ghim ở đáy (.lesson-bar), nên ẩn thanh tab để hai thanh không chồng nhau. */}
+        {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs slug={data.community.slug} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
       </div>
     </ShellProvider>

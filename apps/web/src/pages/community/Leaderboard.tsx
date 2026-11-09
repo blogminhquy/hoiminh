@@ -16,9 +16,9 @@ type Period = 'month' | 'quarter' | 'all';
 const now = new Date();
 const PERIODS: Array<[Period, string]> = [['month', `Tháng ${now.getMonth() + 1}`], ['quarter', `Quý ${Math.floor(now.getMonth() / 3) + 1}`], ['all', 'Từ đầu']];
 
-function Podium({ r, first, showMoney }: { r: Row; first?: boolean; showMoney: boolean }) {
+function Podium({ r, first, showMoney, order = '' }: { r: Row; first?: boolean; showMoney: boolean; order?: string }) {
   return (
-    <div className={`card flex-1 p-5 flex flex-col items-center gap-2 text-center${first ? ' card-invert' : ''}`}>
+    <div className={`card flex-1 p-5 flex flex-col items-center gap-2 text-center${first ? ' card-invert' : ''} ${order}`}>
       <div className="w-8 h-8 rounded-full flex items-center justify-center font-extrabold serif" style={{ background: first ? T.gold : T.bg, color: first ? T.ink : T.ink2 }}>{r.rank}</div>
       <Avatar name={r.user.name} src={r.user.avatarUrl} color={r.user.coverColor ?? T.ink} size={56} />
       <div className="font-bold text-[16px]">{r.user.name}</div>
@@ -61,9 +61,10 @@ export default function Page() {
               return (
                 <>
                   <div className="flex gap-4 flex-col sm:flex-row sm:items-end">
-                    {b && <Podium r={b} showMoney={d.program.showMoney} />}
-                    {a && <Podium r={a} first showMoney={d.program.showMoney} />}
-                    {c && <Podium r={c} showMoney={d.program.showMoney} />}
+                    {/* Máy tính: bục 2-1-3. Điện thoại xếp dọc nên phải theo đúng thứ hạng 1-2-3. */}
+                    {b && <Podium r={b} order="order-2 sm:order-1" showMoney={d.program.showMoney} />}
+                    {a && <Podium r={a} first order="order-1 sm:order-2" showMoney={d.program.showMoney} />}
+                    {c && <Podium r={c} order="order-3" showMoney={d.program.showMoney} />}
                   </div>
                   {rest.length > 0 && (
                     <div className="card overflow-hidden table-scroll">
@@ -88,7 +89,7 @@ export default function Page() {
       </div>
       <aside className="rail flex flex-col gap-4">
         <div className="card p-[18px] flex flex-col gap-2.5">
-          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.accent }}><LinkIcon size={16} />Link của bạn</div>
+          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.primaryText }}><LinkIcon size={16} />Link của bạn</div>
           {q.data?.me ? (
             <>
               <div className="input text-[13px]" style={{ height: 40, color: T.ink }}><span className="flex-grow truncate">{q.data.me.link.replace(/^https?:\/\//, '')}</span><button type="button" aria-label="Sao chép" onClick={() => copy(q.data?.me?.link ?? '')} style={{ color: copied ? T.teal : T.ink3 }}>{copied ? <Check size={16} /> : <Copy size={16} />}</button></div>
