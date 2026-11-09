@@ -37,7 +37,7 @@ Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền v�
 |---|---|
 | `pnpm dev` | API (Node, tsx watch) + web (Vite) |
 | `pnpm typecheck` · `pnpm lint` · `pnpm test` | kiểm tra kiểu, ESLint, Vitest (db, core, payments, email, media, api, mcp) |
-| `pnpm test:e2e` | Playwright 7 luồng nghiệp vụ (tự khởi động API + web với DB riêng `.data/e2e`) |
+| `pnpm test:e2e` | Playwright các luồng nghiệp vụ, gồm luồng thành viên trên điện thoại 390px (tự khởi động API + web với DB riêng `.data/e2e`) |
 | `pnpm check` | typecheck + lint + test |
 | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` · `pnpm db:generate` | migration, seed, reset PGlite, sinh migration từ schema |
 | `pnpm db:admin <email> <mật khẩu> [tên]` | tạo (hoặc nâng) một tài khoản thành quản trị hệ thống — dùng khi database mới chưa có ai |

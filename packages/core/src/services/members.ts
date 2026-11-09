@@ -1,7 +1,7 @@
 // Thành viên: tham gia, bộ lọc quản trị, modal 4 tab, đổi vai trò/gói, xóa, chặn, hủy đăng ký, mời, xuất CSV.
 import type { MemberStatus } from '@hoiminh/contracts';
-import { and, asc, desc, eq, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
-import { affiliateAccounts, communities, communityInvites, communityJoinQuestions, communityMembers, communityTiers, courseProgress, courses, entitlements, memberJoinAnswers, orders, payments, subscriptions, users } from '@hoiminh/db';
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { affiliateAccounts, comments, communities, communityInvites, communityJoinQuestions, communityMembers, communityTiers, courseProgress, courses, entitlements, lessonProgress, memberJoinAnswers, orders, payments, posts, subscriptions, users } from '@hoiminh/db';
 import { randomToken } from '@hoiminh/config';
 import { templates } from '@hoiminh/email';
 import type { Ctx } from '../context';
@@ -207,6 +207,33 @@ export async function memberDirectory(ctx: Ctx, communityId: string, q: { q?: st
 export async function touchActivity(ctx: Ctx, communityId: string, userId: string): Promise<void> {
   await ctx.db.update(communityMembers).set({ lastActiveAt: ctx.now() }).where(and(eq(communityMembers.communityId, communityId), eq(communityMembers.userId, userId), or(isNull(communityMembers.lastActiveAt), lt(communityMembers.lastActiveAt, new Date(ctx.now().getTime() - 10 * 60_000)))!));
   await ctx.db.update(users).set({ lastSeenAt: ctx.now() }).where(and(eq(users.id, userId), or(isNull(users.lastSeenAt), lt(users.lastSeenAt, new Date(ctx.now().getTime() - 10 * 60_000)))!));
+}
+
+/** 00:00 hôm nay theo giờ Việt Nam (UTC+7, không có giờ mùa hè), trả về dạng thời điểm UTC. */
+export function startOfVietnamDay(now: Date): Date {
+  const offset = 7 * 3_600_000;
+  return new Date(Math.floor((now.getTime() + offset) / 86_400_000) * 86_400_000 - offset);
+}
+
+/**
+ * Việc người xem đã làm hôm nay (ngày theo giờ Việt Nam) trong hội này, cho trang "Hôm nay":
+ * số bài học đã xong, số bình luận và số bài đã đăng. Chỉ đếm, không trả nội dung.
+ */
+export async function todayActivity(ctx: Ctx, communityId: string) {
+  const userId = requireUser(ctx);
+  const access = await resolveCommunityAccess(ctx, communityId);
+  if (!access.permissions.has('member.read')) throw forbidden();
+  const since = startOfVietnamDay(ctx.now());
+  const count = sql<number>`count(*)::int`;
+  const [lessonRows, commentRows, postRows] = await Promise.all([
+    ctx.db.select({ c: count }).from(lessonProgress).innerJoin(courses, eq(courses.id, lessonProgress.courseId))
+      .where(and(eq(lessonProgress.userId, userId), eq(courses.communityId, communityId), eq(lessonProgress.completed, true), gte(lessonProgress.completedAt, since))),
+    ctx.db.select({ c: count }).from(comments)
+      .where(and(eq(comments.authorUserId, userId), eq(comments.communityId, communityId), isNull(comments.deletedAt), gte(comments.createdAt, since))),
+    ctx.db.select({ c: count }).from(posts)
+      .where(and(eq(posts.authorUserId, userId), eq(posts.communityId, communityId), isNull(posts.deletedAt), gte(posts.createdAt, since))),
+  ]);
+  return { since: since.toISOString(), lessonsDone: lessonRows[0]?.c ?? 0, comments: commentRows[0]?.c ?? 0, posts: postRows[0]?.c ?? 0 };
 }
 
 export { conflict };

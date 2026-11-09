@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 1.16.0 - 2026-11-09
+
+Đợt 2 của trải nghiệm thành viên trên điện thoại: điều hướng gọn lại và trang Hôm nay.
+
+### Tính năng
+
+- **Trang Hôm nay** (`/:slug/hom-nay`), trang đích sau đăng nhập. Ba việc nhỏ trong ngày (ghé hội, học một bài, sự kiện hôm nay hoặc góp ý một bài) với dấu đã xong lấy từ dữ liệu thật; tiến độ khóa đang học nói bằng lời ("còn 4 bài, khoảng 30 phút là xong phần 1"); sự kiện sắp tới; bài đang được bàn luận. API mới `GET /v1/communities/:id/today` đếm bài học xong, bình luận và bài đăng trong ngày theo giờ Việt Nam.
+- **Thanh dưới mới trên điện thoại**: Hôm nay, Học, nút viết bài, Hội, Tôi. Nhóm Hội có hàng tab con Bảng tin, Sự kiện, Thành viên, Xếp hạng; nhóm Học có Khóa học, Cửa hàng. Trước đây Sự kiện, Thành viên và Xếp hạng không có lối vào trên điện thoại.
+- **Tìm kiếm trên điện thoại**: nút kính lúp ở đầu trang mở ô tìm trong bảng tin (trước đây ô tìm bị ẩn).
+- **Trang Tôi** trên điện thoại là danh sách mục lớn: hồ sơ, thông báo, tin nhắn, khóa đã mua, cộng sự, gói và thanh toán, hội của tôi, giao diện. Các trang con có lối quay lại.
+- **Nút Đăng xuất.** Trước đây không màn nào có.
+
+### Sửa lỗi
+
+- Ô tìm kiếm ghi "Tìm bài viết, khóa học, thành viên" nhưng chỉ lọc bài của bảng tin. Nay ghi đúng "Tìm trong bảng tin".
+- Khu học tập (`/hoc`) của người đang ở trong hội mà chưa mua lẻ gì là một trang trống dù họ đang học khóa theo gói. Nay chỉ đường sang khóa học của từng hội. Đầu trang ở đây cũng không còn tràn ngang trên điện thoại.
+- Giờ sự kiện dùng gạch nối thường ("20:00 - 21:30").
+
 ## 1.15.0 - 2026-11-09
 
 Đợt 1 của việc làm lại trải nghiệm thành viên trên điện thoại: giao diện "Sáng và rõ", chữ dễ đọc, hết tràn ngang, bài học và đăng bài gọn lại.

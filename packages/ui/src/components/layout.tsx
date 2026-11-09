@@ -81,14 +81,15 @@ export function DateBlock({ date, tone = 'neutral', size = 56 }: { date: Date; t
   );
 }
 
-export function Logo({ size = 26, light, className }: { size?: number; light?: boolean; className?: string }) {
+/** `markOnlyOnMobile`: điện thoại chỉ hiện hai chấm, bỏ chữ "Hội Mình" để đầu trang hẹp không tràn. */
+export function Logo({ size = 26, light, className, markOnlyOnMobile }: { size?: number; light?: boolean; className?: string; markOnlyOnMobile?: boolean }) {
   return (
     <span className={clsx('inline-flex items-center gap-2 serif font-extrabold whitespace-nowrap', className)} style={{ fontSize: Math.round(size * 0.8), color: light ? T.surface : T.ink }}>
       <svg width={size} height={size} viewBox="0 0 26 26" fill="none" aria-hidden="true">
         <circle cx="9" cy="13" r="7" fill={T.gold} />
         <circle cx="17" cy="13" r="7" fill={T.primary} fillOpacity="0.9" />
       </svg>
-      Hội Mình
+      <span className={markOnlyOnMobile ? 'hide-mobile' : undefined}>Hội Mình</span>
     </span>
   );
 }

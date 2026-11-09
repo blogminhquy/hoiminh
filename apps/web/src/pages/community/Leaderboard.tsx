@@ -46,7 +46,7 @@ export default function Page() {
     <div className="two-col">
       <div className="main flex flex-col gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="serif m-0 text-[28px] font-extrabold">Xếp hạng cộng sự</h1>
+          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Xếp hạng cộng sự</h1>
           <div className="flex gap-2 md:ml-3">{PERIODS.map(([k, l]) => <Chip key={k} on={period === k} onClick={() => setPeriod(k)}>{l}</Chip>)}</div>
           <span className="flex-grow" />
           {q.data?.computedAt && <span className="muted text-[13px]">Cập nhật {timeAgo(q.data.computedAt)}</span>}

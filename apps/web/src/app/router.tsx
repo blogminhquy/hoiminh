@@ -1,6 +1,6 @@
 // Bảng route: công khai, chủ hội (/admin), hội (/:slug/...), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
-import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Outlet, type RouteObject } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
@@ -60,7 +60,7 @@ const accountRoutes: RouteObject = {
     {
       element: page(() => import('@/pages/account/AccountLayout')),
       children: [
-        { path: '/tai-khoan', element: <Navigate to="/tai-khoan/goi" replace /> },
+        { path: '/tai-khoan', element: page(() => import('@/pages/account/AccountHome')) },
         { path: '/tai-khoan/ho-so', element: page(() => import('@/pages/account/ProfileEdit')) },
         { path: '/tai-khoan/goi', element: page(() => import('@/pages/account/AccountBilling')) },
         { path: '/tai-khoan/cong-su', element: page(() => import('@/pages/account/AffiliateWallet')) },
@@ -78,6 +78,7 @@ const communityRoutes: RouteObject = {
     {
       element: <AppShell />,
       children: [
+        { path: 'hom-nay', element: page(() => import('@/pages/community/Today')) },
         { path: 'bang-tin', element: page(() => import('@/pages/community/Feed')) },
         { path: 'bang-tin/moi', element: page(() => import('@/pages/community/Feed')) },
         { path: 'bai-viet/:postId', element: page(() => import('@/pages/community/PostDetail')) },

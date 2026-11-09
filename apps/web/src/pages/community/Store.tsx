@@ -59,7 +59,7 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-end gap-4 flex-wrap">
-        <div><h1 className="serif m-0 text-[28px] font-bold">Cửa hàng</h1><div className="muted text-[13px]">Sản phẩm số · truy cập trọn đời</div></div>
+        <div><h1 className="serif m-0 text-[28px] font-bold page-title">Cửa hàng</h1><div className="muted text-[13px]">Sản phẩm số · truy cập trọn đời</div></div>
         <span className="flex-grow" />
         <div className="chip-row">
           <Chip on={kind === 'all'} onClick={() => setKind('all')}>Tất cả · {total}</Chip>

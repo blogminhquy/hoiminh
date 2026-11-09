@@ -15,7 +15,7 @@ export function placeLabel(e: { kind: string; meetingProvider: string | null; lo
   const online = PROVIDER_LABEL[e.meetingProvider ?? 'other'] ?? 'Trực tuyến';
   return e.kind === 'hybrid' ? `${online} + tại chỗ` : online;
 }
-export function timeRange(a: string, b: string): string { return `${fmtTime(a)} – ${fmtTime(b)}`; }
+export function timeRange(a: string, b: string): string { return `${fmtTime(a)} - ${fmtTime(b)}`; }
 
 export function useRegister(eventId: string) {
   const qc = useQueryClient();

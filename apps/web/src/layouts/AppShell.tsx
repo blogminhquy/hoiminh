@@ -1,5 +1,7 @@
-// Khung ứng dụng hội (desktop 264px sidebar + header 64px; mobile: header tối + 5 tab dưới). Khớp shell() trong design/build.mjs.
-import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Plus, Search, Settings, Store, Trophy, User, Users, Wallet } from 'lucide-react';
+// Khung ứng dụng hội. Máy tính: sidebar 264px + header 64px. Điện thoại: header gọn có tìm kiếm, thanh dưới 4 mục
+// (Hôm nay, Học, Hội, Tôi) với nút viết bài ở giữa, và hàng tab con cho nhóm Hội (Bảng tin, Sự kiện, Thành viên,
+// Xếp hạng) và nhóm Học (Khóa học, Cửa hàng).
+import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { Button, CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -43,6 +45,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
       </div>
       <div className="nav-group">Cộng đồng</div>
       <div className="flex flex-col gap-0.5">
+        <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />
         {tabs.feed !== false && <NavItem to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
         {tabs.members !== false && <NavItem to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
         {tabs.events !== false && <NavItem to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
@@ -79,35 +82,88 @@ function Header({ shell }: { shell: Shell }) {
   const badges = useBadges();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const [searching, setSearching] = useState(false);
+  const slug = shell.community.slug;
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
+  const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
+  const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
   return (
-    <header className="app-header flex items-center gap-4 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-      <Link to="/kham-pha" className="hide-mobile"><Logo size={26} /></Link>
-      <Link to={`/${shell.community.slug}/bang-tin`} className="only-mobile inline-flex items-center gap-2 min-w-0">
-        <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
-        <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
-      </Link>
-      <form className="input search ml-6" style={{ width: 420 }} onSubmit={(e) => { e.preventDefault(); navigate(`/${shell.community.slug}/bang-tin?q=${encodeURIComponent(q)}`); }}>
-        <Search size={18} style={{ color: T.ink3 }} />
-        <input placeholder="Tìm bài viết, khóa học, thành viên…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </form>
-      <span className="flex-grow" />
-      <div className="flex items-center gap-2">
-        <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
-        <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
-        <AccountAvatarLink user={user} />
-      </div>
-    </header>
+    <>
+      <header className="app-header flex items-center gap-2 md:gap-4 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
+        <Link to="/kham-pha" className="hide-mobile"><Logo size={26} /></Link>
+        <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center gap-2 min-w-0 flex-1">
+          <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
+          <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+        </Link>
+        <form className="input search ml-6" style={{ width: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <Search size={18} style={{ color: T.ink3 }} />
+          <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
+        </form>
+        <span className="hidden md:block flex-grow" />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button type="button" aria-label="Tìm kiếm" aria-expanded={searching} onClick={() => setSearching((v) => !v)} className="md:hidden relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}>{searching ? <X size={20} /> : <Search size={20} />}</button>
+          <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
+          <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
+          <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
+        </div>
+      </header>
+      {searching && (
+        <form className="md:hidden px-4 py-2.5" style={{ background: T.surface, borderBottom: `1px solid ${T.line}` }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <label className="input"><Search size={18} style={{ color: T.ink3 }} />
+            <input autoFocus type="search" enterKeyHint="search" placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
+          </label>
+        </form>
+      )}
+    </>
   );
 }
 
-function MobileTabs({ slug }: { slug: string }) {
-  const items = [[`/${slug}/bang-tin`, <House size={22} key="h" />, 'Bảng tin'], [`/${slug}/khoa-hoc`, <BookOpen size={22} key="b" />, 'Khóa học'], [`/${slug}/cua-hang`, <Store size={22} key="s" />, 'Cửa hàng'], ['/tin-nhan', <MessageCircle size={22} key="m" />, 'Tin nhắn'], ['/tai-khoan/goi', <User size={22} key="u" />, 'Tôi']] as const;
+/** Đường dẫn đang mở thuộc nhóm nào trên thanh dưới. Trang tài khoản, tin nhắn, thông báo thuộc "Tôi". */
+export function mobileSection(pathname: string, slug: string): 'today' | 'learn' | 'community' | 'me' | null {
+  const base = `/${slug}/`;
+  if (!pathname.startsWith(base)) return /^\/(tai-khoan|tin-nhan|thong-bao|u\/|hoc)/.test(pathname) ? 'me' : null;
+  const rest = pathname.slice(base.length);
+  if (rest.startsWith('hom-nay')) return 'today';
+  if (/^(khoa-hoc|bai\/|cua-hang)/.test(rest)) return 'learn';
+  if (/^(bang-tin|bai-viet|su-kien|thanh-vien|xep-hang)/.test(rest)) return 'community';
+  return null;
+}
+
+/** Hàng tab con trên điện thoại: chỉ hiện ở các trang danh sách của nhóm Hội và nhóm Học. */
+function MobileSectionTabs({ shell }: { shell: Shell }) {
+  const { pathname } = useLocation();
+  const s = shell.community.slug;
+  const tabs = shell.community.tabs;
+  const groups: Array<Array<[string, string, boolean]>> = [
+    [[`/${s}/bang-tin`, 'Bảng tin', tabs.feed !== false], [`/${s}/su-kien`, 'Sự kiện', tabs.events !== false], [`/${s}/thanh-vien`, 'Thành viên', tabs.members !== false], [`/${s}/xep-hang`, 'Xếp hạng', tabs.affiliate !== false]],
+    [[`/${s}/khoa-hoc`, 'Khóa học', tabs.courses !== false], [`/${s}/cua-hang`, 'Cửa hàng', tabs.store !== false]],
+  ];
+  const group = groups.find((g) => g.some(([to]) => pathname === to || pathname === `${to}/moi`))?.filter(([, , on]) => on);
+  if (!group || group.length < 2) return null;
   return (
-    <nav className="mobile-tabs">
-      {items.map(([to, icon, label]) => (
-        <NavLink key={to} to={to} className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold" style={({ isActive }) => ({ color: isActive ? T.primary : T.ink3 })}>{icon}{label}</NavLink>
-      ))}
+    <nav className="md:hidden section-tabs" aria-label="Mục con">
+      {group.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'on' : '')}>{label}</NavLink>)}
+    </nav>
+  );
+}
+
+function MobileTabs({ shell }: { shell: Shell }) {
+  const { pathname } = useLocation();
+  const slug = shell.community.slug;
+  const t = shell.community.tabs;
+  const active = mobileSection(pathname, slug);
+  const learnTo = t.courses !== false ? `/${slug}/khoa-hoc` : `/${slug}/cua-hang`;
+  const communityTo = t.feed !== false ? `/${slug}/bang-tin` : t.events !== false ? `/${slug}/su-kien` : `/${slug}/thanh-vien`;
+  const item = (key: string, to: string, icon: ReactNode, label: string) => (
+    <Link key={key} to={to} aria-current={active === key ? 'page' : undefined} className={`mobile-tab${active === key ? ' on' : ''}`}>{icon}{label}</Link>
+  );
+  return (
+    <nav className="mobile-tabs" aria-label="Điều hướng chính">
+      {item('today', `/${slug}/hom-nay`, <Sun size={22} />, 'Hôm nay')}
+      {(t.courses !== false || t.store !== false) && item('learn', learnTo, <BookOpen size={22} />, 'Học')}
+      {t.feed !== false && <Link to={`/${slug}/bang-tin/moi`} aria-label="Viết bài mới" className="mobile-tab-plus"><Plus size={26} /></Link>}
+      {item('community', communityTo, <Users size={22} />, 'Hội')}
+      {item('me', '/tai-khoan', <User size={22} />, 'Tôi')}
     </nav>
   );
 }
@@ -149,11 +205,12 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
         <div className="flex-grow flex flex-col min-w-0">
           <Header shell={data} />
           <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
+            <MobileSectionTabs shell={data} />
             <Outlet />
           </div>
         </div>
         {/* Trang bài học có nút hoàn thành ghim ở đáy (.lesson-bar), nên ẩn thanh tab để hai thanh không chồng nhau. */}
-        {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs slug={data.community.slug} />}
+        {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs shell={data} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
       </div>
     </ShellProvider>

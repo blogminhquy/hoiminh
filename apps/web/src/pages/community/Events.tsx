@@ -44,7 +44,7 @@ export default function Page() {
     <div className="two-col">
       <div className="main flex flex-col gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="serif m-0 text-[28px] font-extrabold">Sự kiện</h1>
+          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Sự kiện</h1>
           <div className="flex gap-2 md:ml-3"><Chip on={filter === 'upcoming'} onClick={() => setFilter('upcoming')}>Sắp tới</Chip><Chip on={filter === 'mine'} onClick={() => setFilter('mine')}>Của tôi</Chip><Chip on={filter === 'past'} onClick={() => setFilter('past')}>Đã qua{q.data ? ` · ${q.data.pastCount}` : ''}</Chip></div>
           <span className="flex-grow" />
           {q.data?.canManage && <Link to={`/${slug}/su-kien/moi`} className="btn btn-primary btn-sm" style={{ height: 36 }}><Plus size={16} />Tạo sự kiện</Link>}

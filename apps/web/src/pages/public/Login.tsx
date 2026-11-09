@@ -10,12 +10,12 @@ import { api } from '@/lib/api';
 import { useAuth, type MyCommunity } from '@/lib/auth';
 import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider } from './AuthParts';
 
-/** Đích sau đăng nhập: ?next → /admin nếu là chủ hội → bảng tin hội đầu tiên → Khám phá. */
+/** Đích sau đăng nhập: ?next → /admin nếu là chủ hội → trang Hôm nay của hội đầu tiên → Khám phá. */
 function landingFor(next: string | null, communities: MyCommunity[]): string {
   if (next && next.startsWith('/')) return next;
   if (communities.some((c) => c.role === 'owner')) return '/admin';
   const first = communities[0];
-  if (first) return `/${first.slug}/bang-tin`;
+  if (first) return `/${first.slug}/hom-nay`;
   return '/kham-pha';
 }
 
