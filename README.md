@@ -42,7 +42,9 @@ Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền v�
 | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` · `pnpm db:generate` | migration, seed, reset PGlite, sinh migration từ schema |
 | `pnpm db:admin <email> <mật khẩu> [tên]` | tạo (hoặc nâng) một tài khoản thành quản trị hệ thống — dùng khi database mới chưa có ai |
 | `pnpm build` | build tất cả (web → `apps/web/dist`) |
-| `pnpm deploy` | migrate Supabase → deploy Worker API → deploy Worker web (xem dưới) |
+| `pnpm deploy` | deploy tay: migrate Supabase → build giao diện → deploy `hoiminh-api` → deploy `hoiminh-jobs` → hỏi trang live (xem dưới) |
+| `pnpm deploy:check` | hỏi trang live: `/health` có `ok` không, đang chạy bản nào |
+| `pnpm dev:jobs` | chạy Worker `hoiminh-jobs` bằng wrangler (cần Postgres local cho Hyperdrive); `pnpm dev` không cần tới nó |
 
 ## Cấu trúc
 
@@ -82,7 +84,7 @@ infra           deploy.mjs
    **Kết nối database trên Workers phải qua Hyperdrive.** Workers không cho dùng lại socket đã mở ở request khác, nên không được cache kết nối Postgres giữa các request; làm vậy thì API hỏng ngắt quãng (`Cannot perform I/O on behalf of a different request`). `createWorkerApp` (`packages/core/src/worker-app.ts`) dựng App mới mỗi request và lấy chuỗi kết nối từ binding `HYPERDRIVE`; Hyperdrive giữ pool phía Cloudflare nên bắt tay gần như không tốn gì. Tạo config: `wrangler hyperdrive create <tên> --connection-string="<kết nối trực tiếp cổng 5432>"` rồi điền `id` vào `[[hyperdrive]]` của cả hai Worker.
 4. **R2**: chỉ cần binding `FILES` trong `wrangler.toml` của cả hai Worker (đã khai báo, workflow deploy tự chạy `wrangler r2 bucket create hoiminh-files`). Tệp đi qua API (`PUT /files/upload/<key>` theo URL ký, `GET /files/<key>`) rồi vào bucket, không cần secret. Tùy chọn: gắn domain public cho bucket rồi đặt `R2_PUBLIC_BASE_URL` để ảnh public phát thẳng từ CDN; hoặc điền đủ 4 biến `R2_*` để trình duyệt tải thẳng lên R2 qua S3 (tệp rất lớn).
 5. **Resend**: ở Resend → Domains → thêm `hoiminh.com` và tạo các bản ghi DNS nó yêu cầu (trên Cloudflare DNS), chờ "Verified"; tạo API key rồi nhập ở `/he-thong/ha-tang` (hoặc `wrangler secret put RESEND_API_KEY` trong `apps/api`). Địa chỉ gửi là `EMAIL_FROM` (mặc định `no-reply@hoiminh.com`, phải cùng tên miền đã xác minh). Kiểm chứng bằng nút **Gửi email thử** ở `/he-thong` (kết quả hiện ngay, mọi email đều ghi ở `/he-thong/nhat-ky` tab Email hệ thống).
-6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`).
+6. Hoặc chạy tất cả: `node infra/deploy.mjs` (bỏ bước bằng `--skip-migrate`, `--skip-jobs`, `--skip-verify`). Bước cuối hỏi trang live xem đã chạy đúng bản vừa đẩy chưa.
 
 Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`.
 
@@ -134,7 +136,21 @@ Bật trong lúc có người theo dõi log: nếu một đường chạy nào �
 
 ## Tự động deploy khi đẩy lên GitHub
 
-`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`: kiểm tra (typecheck, lint, test), kiểm tra hai Worker đã đủ secret bắt buộc (`infra/check-secrets.sh`), build giao diện, deploy `hoiminh-api`, rồi deploy `hoiminh-jobs`. Bấm **Actions, Deploy, Run workflow** để deploy lại bằng tay.
+`.github/workflows/deploy.yml` chạy mỗi khi có commit mới trên `main`, mất khoảng 3 đến 4 phút:
+
+1. **Kiểm tra**: typecheck, lint, test chạy song song trên ba máy. Một việc đỏ là dừng, trang live giữ nguyên.
+2. **Đưa lên Cloudflare**: kiểm tra `hoiminh-api` đã đủ secret bắt buộc (`infra/check-secrets.sh`), áp migration (xem dưới), build giao diện, deploy `hoiminh-api`, rồi deploy `hoiminh-jobs`.
+3. **Hỏi trang live** (`infra/verify-live.mjs`): `/health` phải báo `ok` đúng số phiên bản và `/version.json` phải đúng commit vừa đẩy, hỏi lại mỗi 5 giây trong tối đa 2 phút. Không khớp thì lần chạy báo đỏ.
+
+Kết quả viết bằng tiếng Việt ở trang tóm tắt của lần chạy (**Actions, Deploy**, bấm vào lần chạy): bản nào đã lên, hoặc dừng ở bước nào và trang live đang ra sao. Bấm **Actions, Deploy, Run workflow** để deploy lại bằng tay. Muốn tự hỏi trang live bất cứ lúc nào: `pnpm deploy:check`.
+
+**Migration.** Đặt secret `DATABASE_DIRECT_URL` (kết nối trực tiếp Supabase, cổng 5432, role `hoiminh_app`) thì workflow tự chạy `pnpm db:migrate` trước khi deploy:
+
+```bash
+gh secret set DATABASE_DIRECT_URL --repo blogminhquy/hoiminh
+```
+
+Chưa đặt thì workflow không đụng tới database; bản nào kèm migration mới sẽ có cảnh báo vàng nhắc áp tay bằng `DATABASE_DIRECT_URL=... pnpm db:migrate`. Migration phải tương thích với bản đang chạy, vì nó được áp trước khi code mới lên.
 
 Cần đúng một secret do người dùng tự tạo (Claude/CLI không tạo được API token thay bạn):
 

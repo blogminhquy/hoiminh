@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.14.1 - 2026-11-09
+
+Đưa bản mới lên Cloudflare nhanh hơn và biết chắc trang thật đã chạy đúng bản đó.
+
+### Deploy
+
+- **Kiểm tra song song.** Typecheck, lint và test trước đây chạy nối tiếp trên một máy (gần 4 phút trong tổng 5 phút mỗi lần deploy). Nay chạy song song trên ba máy, cả ba xanh mới deploy. Hai Worker deploy trong cùng một job nên chỉ cài thư viện một lần.
+- **Hỏi thẳng trang live sau khi deploy** (`infra/verify-live.mjs`): `/health` phải báo `ok` đúng số phiên bản, `/version.json` phải đúng commit vừa đẩy; hỏi lại mỗi 5 giây, tối đa 2 phút. Không khớp thì lần deploy báo đỏ thay vì xanh. Trước đây wrangler báo xong là coi như xong, nên từng có 4 lần deploy hỏng liên tiếp mà trang vẫn ở bản cũ.
+- **Tóm tắt bằng tiếng Việt** ở trang của mỗi lần chạy: bản nào đã lên, hoặc dừng ở bước nào và trang live đang ra sao, kèm chỗ bấm Cập nhật hay Quay lui.
+- **Migration.** Có secret `DATABASE_DIRECT_URL` trong GitHub thì workflow tự áp migration trước khi deploy. Chưa có thì cảnh báo rõ khi bản đang đẩy kèm migration mới, thay vì im lặng.
+- `pnpm deploy` (deploy tay) in từng bước và cũng hỏi trang live ở cuối; thêm `--skip-verify`. Lệnh mới `pnpm deploy:check` chỉ hỏi trang live.
+
+### Sửa lỗi
+
+- `pnpm dev` dừng ngay trên máy sạch vì kéo theo `hoiminh-jobs` (wrangler đòi chuỗi kết nối Postgres cho Hyperdrive), trái với README. Nay `pnpm dev` chỉ chạy API và web như mô tả (API bản Node tự chạy cron); cần thử Worker jobs thì `pnpm dev:jobs`.
+
 ## 1.14.0 - 2026-10-21
 
 Khu học tập cho người mua lẻ và link phòng họp sự kiện, chuyển từ PR #1 (phần còn giá trị) sang nền mới.

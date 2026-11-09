@@ -1,13 +1,17 @@
 name: Deploy
 
-# Mỗi lần đẩy lên main: kiểm tra, rồi deploy hai Worker.
+# Mỗi lần đẩy lên main: kiểm tra, deploy hai Worker, rồi hỏi trang live xem đã chạy đúng bản mới chưa.
 #   hoiminh-api  (apps/api): giao diện + API ở hoiminh.com, www.hoiminh.com, api.hoiminh.com.
 #   hoiminh-jobs (apps/jobs): cron và hàng đợi job. Deploy sau hoiminh-api vì đọc secret của hoiminh-api
 #   qua entrypoint SharedEnv (không cần đặt secret riêng), và hàng đợi chỉ có một nơi xử lý.
+# Ba việc kiểm tra (typecheck, lint, test) chạy song song trên ba máy; cả ba xanh mới deploy.
 # Trước khi deploy, kiểm tra hoiminh-api đã có secret bắt buộc; thiếu thì dừng, web đang chạy giữ nguyên.
+# Migration: có secret DATABASE_DIRECT_URL thì tự áp trước khi deploy; chưa có thì chỉ cảnh báo khi bản này
+# kèm migration mới (áp tay bằng `pnpm db:migrate` như trước).
 # hoiminh-api có hai chế độ theo biến RELEASE_MODE:
 #   (mặc định) tự động: `wrangler deploy`, bản mới chạy ngay.
 #   manual: `wrangler versions upload`, bản mới chỉ nằm chờ; super admin bấm "Cập nhật" ở /he-thong/phien-ban.
+# Kết quả viết bằng tiếng Việt ở trang tóm tắt của lần chạy (Actions, Deploy, bấm vào lần chạy).
 # Có thể chạy tay ở tab Actions, Deploy, Run workflow.
 on:
   push:
@@ -28,8 +32,13 @@ env:
 
 jobs:
   check:
-    name: Kiểm tra
+    name: Kiểm tra (${{ matrix.task }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        task: [typecheck, lint, test]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,19 +49,23 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
+      - run: pnpm ${{ matrix.task }}
 
-  app:
-    name: Worker hoiminh-api (web + API)
+  deploy:
+    name: Đưa lên Cloudflare
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.com' }}
+      RELEASE_MODE: ${{ vars.RELEASE_MODE }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Cần commit liền trước để biết bản này có kèm migration mới không.
+          fetch-depth: 2
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -61,58 +74,129 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - name: Kiểm tra token Cloudflare
+        id: token
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo "::error::Thiếu secret CLOUDFLARE_API_TOKEN. Tạo token ở Cloudflare (My Profile, API Tokens, Edit Cloudflare Workers) rồi đặt ở GitHub, Settings, Secrets and variables, Actions."
             exit 1
           fi
       - run: pnpm install --frozen-lockfile
+      - name: Đọc phiên bản
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
       - name: Kiểm tra secret của hoiminh-api
+        id: secrets
         run: infra/check-secrets.sh hoiminh-api
+      - name: Migration database
+        id: migrate
+        env:
+          DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- packages/db/migrations 2>/dev/null || true)
+          if [ -n "$DATABASE_DIRECT_URL" ]; then
+            pnpm db:migrate
+            echo "note=Đã tự áp migration lên database." >> "$GITHUB_OUTPUT"
+          elif [ -n "$CHANGED" ]; then
+            echo "::warning::Bản này kèm migration mới mà chưa có secret DATABASE_DIRECT_URL nên không tự áp được. Nếu chưa áp tay thì chạy: DATABASE_DIRECT_URL=... pnpm db:migrate"
+            echo "note=Bản này kèm migration mới, CHƯA tự áp (chưa có secret DATABASE_DIRECT_URL). Nếu chưa áp tay thì chạy pnpm db:migrate." >> "$GITHUB_OUTPUT"
+          else
+            echo "Bản này không có migration mới."
+            echo "note=Không có migration mới." >> "$GITHUB_OUTPUT"
+          fi
       - name: Build giao diện
+        id: build
         env:
           # Cố ý để trống, bỏ qua biến VITE_API_URL cũ của repo: web gọi API cùng tên miền.
           VITE_API_URL: ''
-          VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://hoiminh.com' }}
+          VITE_APP_URL: ${{ env.APP_URL }}
         run: pnpm --filter @hoiminh/web build
       - name: Tạo bucket R2 (bỏ qua nếu đã có)
         run: pnpm --filter @hoiminh/api exec wrangler r2 bucket create hoiminh-files || echo "bucket đã có"
       # Trước khi tách, hoiminh-api tự nhận hàng đợi. wrangler không tự gỡ khi cấu hình không còn khai báo,
       # mà hàng đợi chỉ có một nơi nhận, nên gỡ ở đây (lần sau chạy lại thì không còn gì để gỡ).
-      # Từ lúc gỡ tới khi hoiminh-jobs deploy xong (vài phút), job nằm chờ trong hàng đợi, không mất.
+      # Từ lúc gỡ tới khi hoiminh-jobs deploy xong (vài chục giây), job nằm chờ trong hàng đợi, không mất.
       # Cron cũ được gỡ bằng `crons = []` trong apps/api/wrangler.toml khi deploy.
       - name: Gỡ hàng đợi khỏi hoiminh-api
         run: |
           pnpm --filter @hoiminh/api exec wrangler queues consumer remove hoiminh-jobs hoiminh-api \
             || echo "hoiminh-api không còn nhận hàng đợi, bỏ qua."
-      - name: Deploy ngay
-        if: vars.RELEASE_MODE != 'manual'
+      - name: Deploy hoiminh-api ngay
+        id: api
+        if: env.RELEASE_MODE != 'manual'
         run: pnpm --filter @hoiminh/api exec wrangler deploy
-      - name: Tải bản mới lên, chờ admin phát hành
-        if: vars.RELEASE_MODE == 'manual'
+      - name: Tải bản mới của hoiminh-api lên, chờ admin phát hành
+        id: upload
+        if: env.RELEASE_MODE == 'manual'
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}-${GITHUB_SHA::7}"
+          TAG="v${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.short }}"
           MSG=$(printf '%s' "${COMMIT_MSG:-Chạy tay từ GitHub Actions}" | head -n1 | cut -c1-100)
           pnpm --filter @hoiminh/api exec wrangler versions upload --tag "$TAG" --message "$MSG"
-
-  jobs:
-    name: Worker hoiminh-jobs (cron + hàng đợi)
-    needs: app
-    runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @hoiminh/jobs exec wrangler deploy
+      - name: Deploy hoiminh-jobs
+        id: jobs
+        run: pnpm --filter @hoiminh/jobs exec wrangler deploy
+      # Không tin "wrangler báo xong": hỏi thẳng trang live. Chế độ tự động thì phải đúng phiên bản và commit;
+      # chế độ manual thì bản mới chưa chạy, chỉ cần trang đang chạy vẫn khỏe.
+      - name: Kiểm tra trang live
+        id: verify
+        run: |
+          if [ "$RELEASE_MODE" = "manual" ]; then
+            node infra/verify-live.mjs --url "$APP_URL" --timeout 30
+          else
+            node infra/verify-live.mjs --url "$APP_URL" --version "${{ steps.meta.outputs.version }}" --commit "$GITHUB_SHA" --timeout 120
+          fi
+      - name: Tóm tắt
+        if: always()
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SHORT: ${{ steps.meta.outputs.short }}
+          MIGRATE_NOTE: ${{ steps.migrate.outputs.note }}
+          O_TOKEN: ${{ steps.token.outcome }}
+          O_SECRETS: ${{ steps.secrets.outcome }}
+          O_MIGRATE: ${{ steps.migrate.outcome }}
+          O_BUILD: ${{ steps.build.outcome }}
+          O_API: ${{ steps.api.outcome }}
+          O_UPLOAD: ${{ steps.upload.outcome }}
+          O_JOBS: ${{ steps.jobs.outcome }}
+          O_VERIFY: ${{ steps.verify.outcome }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            if [ "$JOB_STATUS" = "success" ] && [ "$RELEASE_MODE" = "manual" ]; then
+              echo "## Bản $VERSION ($SHORT) đã tải lên, chờ phát hành"
+              echo ""
+              echo "Trang live vẫn chạy bản cũ và đang khỏe. Mở $APP_URL/he-thong/phien-ban rồi bấm **Cập nhật** để đưa bản này lên cho mọi người."
+            elif [ "$JOB_STATUS" = "success" ]; then
+              echo "## Đã lên Cloudflare: bản $VERSION ($SHORT)"
+              echo ""
+              echo "$APP_URL đang chạy đúng bản này, database nối được."
+            elif [ "$O_JOBS" = "failure" ] && [ "$RELEASE_MODE" = "manual" ]; then
+              echo "## Bản $VERSION ($SHORT) đã tải lên nhưng phần chạy nền chưa cập nhật"
+              echo ""
+              echo "Giao diện và API bản mới đang chờ phát hành, trang live vẫn chạy bản cũ. Deploy hoiminh-jobs bị lỗi: chạy lại lần deploy này trước khi bấm **Cập nhật**."
+            elif [ "$O_JOBS" = "failure" ]; then
+              echo "## Bản $VERSION ($SHORT) mới lên một nửa"
+              echo ""
+              echo "Giao diện và API đã chạy bản mới, phần chạy nền (hoiminh-jobs) còn bản cũ. Chạy lại lần deploy này."
+            elif [ "$O_VERIFY" = "failure" ]; then
+              echo "## Đã deploy bản $VERSION ($SHORT) nhưng trang live chưa khớp"
+              echo ""
+              echo "Trang live chưa trả về đúng bản mới sau khi chờ. Mở $APP_URL/he-thong/phien-ban để xem bản đang chạy, bấm **Quay lui** nếu trang lỗi. Chi tiết ở bước \"Kiểm tra trang live\"."
+            else
+              echo "## Chưa lên được bản ${VERSION:-mới} (${SHORT:-$GITHUB_SHA})"
+              echo ""
+              if [ "$O_TOKEN" = "failure" ]; then echo "Dừng ở: thiếu secret CLOUDFLARE_API_TOKEN trong GitHub. Trang live giữ nguyên bản cũ.";
+              elif [ "$O_SECRETS" = "failure" ]; then echo "Dừng ở: Worker hoiminh-api thiếu secret bắt buộc. Trang live giữ nguyên bản cũ.";
+              elif [ "$O_MIGRATE" = "failure" ]; then echo "Dừng ở: áp migration lên database. Trang live giữ nguyên bản cũ.";
+              elif [ "$O_BUILD" = "failure" ]; then echo "Dừng ở: build giao diện. Trang live giữ nguyên bản cũ.";
+              elif [ "$O_API" = "failure" ] || [ "$O_UPLOAD" = "failure" ]; then echo "Dừng ở: đưa hoiminh-api lên Cloudflare. Trang live giữ nguyên bản cũ.";
+              else echo "Dừng ở một bước chuẩn bị. Xem chi tiết ở các bước bên trên."; fi
+            fi
+            echo ""
+            if [ -n "$MIGRATE_NOTE" ]; then echo "- Database: $MIGRATE_NOTE"; fi
+            echo "- Commit: [$SHORT]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA)"
+          } >> "$GITHUB_STEP_SUMMARY"
