@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.19.0 - 2026-11-10
+
+Đợt C của việc gom phần quản trị: ô lệnh "Bạn muốn làm gì?" và khu quản trị hệ thống gom từ 11 mục về 5 nhóm.
+
+### Tính năng
+
+- **Ô lệnh "Bạn muốn làm gì?"** cho chủ hội, quản trị hội và quản trị hệ thống. Mở bằng ô ở đầu trang hoặc Ctrl K (Cmd K trên máy Mac), trên điện thoại là nút kính lúp. Gõ vài chữ không cần dấu ("moi thanh vien", "rut tien", "hoa hong"), bấm Enter là tới đúng màn. Danh sách gồm việc làm ngay (viết bài, mời thành viên, tạo khóa học, tạo sự kiện, trả hoa hồng, rút tiền, hoàn tiền), nơi đi tới và từng mục cài đặt, lọc theo quyền của người xem và theo tab hội đang bật. Gõ tên người hay từ khóa thì có thêm dòng "Tìm thành viên" và "Tìm trong bảng tin". Ô lệnh chỉ dẫn đường, không dùng AI.
+- **Khu quản trị hệ thống còn 5 nhóm**: Tổng quan, Hội và người dùng (Hội, Người dùng, Bị báo cáo), Tiền (Thanh toán và đối soát, Cộng sự nền tảng), Gói và tính năng (Gói nền tảng, Tính năng), Hệ thống (Hạ tầng và khóa, Phiên bản, Nhật ký). Nhóm có nhiều trang thì có hàng tab con. Mọi đường dẫn cũ giữ nguyên.
+- Ô lệnh của quản trị hệ thống tìm được hội và người dùng theo tên hoặc email, thay ô tìm nhanh cũ (vốn không có trên điện thoại).
+
+### Thay đổi
+
+- Người quản lý hội: ô "Tìm trong bảng tin" ở đầu trang thành ô lệnh; tìm trong bảng tin là một dòng trong ô lệnh. Thành viên thường giữ ô tìm như cũ.
+- Tab Tính năng không còn hiện 3 cờ của tính năng chưa xây (tin nhắn thời gian thực, phát trực tiếp, điểm và cấp độ): bật hay tắt chưa đổi gì nên dễ gây hiểu nhầm. Trang Gói nền tảng bỏ bảng cờ bị lặp, thay bằng một dòng tóm tắt và lối sang tab Tính năng.
+- `/thanh-vien?q=...` mở danh sách thành viên đã lọc sẵn. Danh sách Hội và Người dùng của quản trị hệ thống nhận từ khóa mới ngay cả khi đang đứng ở trang đó.
+
+### Sửa lỗi
+
+- Trang Cộng sự nền tảng tràn ngang ở khổ 820px.
+
 ## 1.18.0 - 2026-11-10
 
 Đợt B của việc gom phần quản trị: chủ hội mở app là thấy Bàn điều khiển, phần quản lý gom từ 15 mục ở hai khung về 4 chỗ (Bàn điều khiển, Tiền, Cộng sự, Cài đặt).

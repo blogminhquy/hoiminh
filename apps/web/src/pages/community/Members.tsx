@@ -2,7 +2,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Avatar, Button, Chip, Empty, ErrorBox, Select, T, Tag } from '@hoiminh/ui';
 import { Download, ListFilter, MessageCircle, Plus, Search, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
@@ -26,12 +26,14 @@ export default function Page() {
 }
 
 function ManageMembers({ communityId, slug }: { communityId: string; slug: string }) {
-  const [q, setQ] = useState('');
   const [filter, setFilter] = useState({ tierKey: '', role: '', source: '' });
   const [filterOpen, setFilterOpen] = useState(false);
   // ?moi=1: mở sẵn khung mời (mục "Mời thành viên" ở Cài đặt và ô lệnh dẫn tới đây).
   // ?trang-thai=pending: mở thẳng danh sách chờ duyệt (việc "Cần xử lý" trên Bàn điều khiển dẫn tới đây).
   const [search] = useSearchParams();
+  // ?q=...: ô lệnh "Tìm thành viên" dẫn tới đây với từ khóa điền sẵn.
+  const [q, setQ] = useState(search.get('q') ?? '');
+  useEffect(() => { const next = search.get('q'); if (next !== null) setQ(next); }, [search]);
   const wanted = search.get('trang-thai');
   const [status, setStatus] = useState(STATUSES.some(([k]) => k === wanted) ? wanted! : 'active');
   const [invite, setInvite] = useState(search.get('moi') === '1');

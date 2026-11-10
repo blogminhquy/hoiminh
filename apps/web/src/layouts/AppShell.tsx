@@ -1,12 +1,14 @@
 // Khung ứng dụng hội. Máy tính: sidebar 264px + header 64px. Điện thoại: header gọn có tìm kiếm, thanh dưới 4 mục
 // (Hôm nay, Học, Hội, Tôi) với nút viết bài ở giữa, và hàng tab con cho nhóm Hội (Bảng tin, Sự kiện, Thành viên,
 // Xếp hạng) và nhóm Học (Khóa học, Cửa hàng). Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"),
-// thanh bên có thêm nhóm Quản lý (Tiền, Cộng sự, Cài đặt), trên điện thoại ba trang đó thuộc tab Quản lý.
+// thanh bên có thêm nhóm Quản lý (Tiền, Cộng sự, Cài đặt), trên điện thoại ba trang đó thuộc tab Quản lý,
+// và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
 import { Bell, BookOpen, Calendar, ChevronDown, FileText, Handshake, House, LayoutDashboard, Lock, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
@@ -14,6 +16,7 @@ import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { canManage, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
+import { OwnerCommandPalette } from './OwnerCommand';
 import { PublicHeader } from './PublicHeader';
 
 function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
@@ -84,7 +87,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
   );
 }
 
-function Header({ shell }: { shell: Shell }) {
+function Header({ shell, onCommand }: { shell: Shell; onCommand: () => void }) {
   const { user, communities } = useAuth();
   const badges = useBadges();
   const navigate = useNavigate();
@@ -93,7 +96,8 @@ function Header({ shell }: { shell: Shell }) {
   const [switching, setSwitching] = useState(false);
   const slug = shell.community.slug;
   // Điện thoại không có thanh bên: người có từ hai hội (hoặc đang quản lý hội) chạm tên hội ở đầu trang để chuyển hội.
-  const canSwitch = communities.length > 1 || canManage(shell);
+  const manage = canManage(shell);
+  const canSwitch = communities.length > 1 || manage;
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
   const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
   const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
@@ -116,13 +120,20 @@ function Header({ shell }: { shell: Shell }) {
             <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
           </Link>
         )}
-        <form className="input search ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
-          <Search size={18} style={{ color: T.ink3 }} />
-          <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
-        </form>
+        {/* Người quản lý có ô lệnh (làm việc, đi tới, cài đặt, tìm); thành viên giữ ô tìm trong bảng tin. */}
+        {manage ? (
+          <span className="hidden md:flex ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }}><CommandButton onOpen={onCommand} /></span>
+        ) : (
+          <form className="input search ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+            <Search size={18} style={{ color: T.ink3 }} />
+            <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
+          </form>
+        )}
         <span className="hidden md:block flex-grow" />
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button type="button" aria-label="Tìm kiếm" aria-expanded={searching} onClick={() => setSearching((v) => !v)} className="md:hidden relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}>{searching ? <X size={20} /> : <Search size={20} />}</button>
+          {manage
+            ? <span className="md:hidden"><CommandButton compact onOpen={onCommand} /></span>
+            : <button type="button" aria-label="Tìm kiếm" aria-expanded={searching} onClick={() => setSearching((v) => !v)} className="md:hidden relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}>{searching ? <X size={20} /> : <Search size={20} />}</button>}
           <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
           <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
           <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
@@ -197,6 +208,9 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const slug = params.slug ?? preferredCommunitySlug(communities);
   const shell = useShellQuery(slug);
   const [invite, setInvite] = useState(false);
+  const [command, setCommand] = useState(false);
+  const toggleCommand = useCallback(() => setCommand((v) => !v), []);
+  useCommandHotkey(toggleCommand, Boolean(shell.data && canManage(shell.data)));
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
   const communityId = shell.data?.community.id;
   useEffect(() => { if (communityId && user) void api.post(`/v1/communities/${communityId}/touch`).catch(() => null); }, [user, communityId]);
@@ -224,7 +238,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
       <div className="flex min-h-screen" style={{ background: T.bg }}>
         <Sidebar shell={data} onInvite={() => setInvite(true)} />
         <div className="flex-grow flex flex-col min-w-0">
-          <Header shell={data} />
+          <Header shell={data} onCommand={() => setCommand(true)} />
           <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
             <MobileSectionTabs shell={data} />
             <Outlet />
@@ -232,6 +246,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
         </div>
         {/* Trang bài học có nút hoàn thành ghim ở đáy (.lesson-bar), nên ẩn thanh tab để hai thanh không chồng nhau. */}
         {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs shell={data} />}
+        {canManage(data) && <OwnerCommandPalette shell={data} open={command} onClose={() => setCommand(false)} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
       </div>
     </ShellProvider>

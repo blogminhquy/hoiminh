@@ -49,7 +49,7 @@ export default function Page() {
       <LedgerNotice who="Quản trị viên có quyền affiliates:manage" />
       <QueryState q={q} rows={5}>
         {(d) => (
-          <div className="flex gap-4 flex-col md:flex-row">
+          <div className="flex gap-4 flex-col lg:flex-row">
             <div className="flex-[1.5_1_0] flex flex-col gap-3 min-w-0">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <WalletBox label="Chờ chuyển" value={money(d.stats.awaitingTransferMinor)} hint={`${d.stats.awaitingCount} yêu cầu`} strong />

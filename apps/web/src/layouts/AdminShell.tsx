@@ -1,44 +1,31 @@
-// Khung quản trị hệ thống (saShell trong build.mjs): sidebar màu sideDark, nhóm Vận hành / Cấu hình / Giám sát.
-import { BadgeCheck, FileText, House, KeyRound, MessageCircle, Rocket, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
+// Khung quản trị hệ thống: sidebar màu sideDark với 5 nhóm (Tổng quan, Hội và người dùng, Tiền, Gói và tính năng,
+// Hệ thống), hàng tab con trên nội dung, và ô lệnh "Bạn muốn làm gì?" (Ctrl K) thay ô tìm nhanh cũ.
+import { BadgeCheck, House, KeyRound, Search, Users, Wallet } from 'lucide-react';
 import { Logo, T, Tag } from '@hoiminh/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
-import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { CommandButton, CommandPalette, useCommandHotkey, type PaletteItem } from '@/components/CommandPalette';
 import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { adminCommands } from '@/lib/commands';
 import { useVersionStatus } from '@/lib/version';
 
-/** Ô tìm nhanh: Enter đưa tới danh sách Hội hoặc Người dùng kèm từ khóa (đoán theo có dấu @ hay không). */
-function AdminSearch() {
-  const navigate = useNavigate();
-  const [q, setQ] = useState('');
-  const go = () => {
-    const term = q.trim();
-    if (!term) return;
-    const to = term.includes('@') ? '/he-thong/nguoi-dung' : '/he-thong/hoi';
-    navigate(`${to}?q=${encodeURIComponent(term)}`);
-  };
-  return (
-    <form className="input search hidden md:flex" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); go(); }}>
-      <Search size={18} style={{ color: T.ink3 }} />
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm hội, người dùng, giao dịch, email…" className="flex-grow min-w-0" />
-    </form>
-  );
-}
-
-/** Trên mobile thanh bên bị ẩn, nên hiện hàng chip cuộn ngang thay thế. */
-const MOBILE_NAV: [string, string][] = [
-  ['/he-thong', 'Tổng quan'], ['/he-thong/hoi', 'Hội'], ['/he-thong/nguoi-dung', 'Người dùng'], ['/he-thong/thanh-toan', 'Thanh toán'],
-  ['/he-thong/goi', 'Gói'], ['/he-thong/cong-su', 'Cộng sự'], ['/he-thong/tinh-nang', 'Tính năng'], ['/he-thong/ha-tang', 'Hạ tầng'], ['/he-thong/phien-ban', 'Phiên bản'],
-  ['/he-thong/nhat-ky', 'Nhật ký'], ['/he-thong/ho-tro', 'Hỗ trợ'],
+/** Năm nhóm của khu quản trị (trước là 11 mục). Nhóm có hơn một trang thì hiện hàng tab con ngay trên nội dung. Đường dẫn giữ nguyên. */
+interface AdminGroup { key: string; label: string; icon: ReactNode; tabs: Array<{ label: string; to: string }> }
+const GROUPS: AdminGroup[] = [
+  { key: 'tong-quan', label: 'Tổng quan', icon: <House size={20} />, tabs: [{ label: 'Tổng quan', to: '/he-thong' }] },
+  { key: 'hoi', label: 'Hội và người dùng', icon: <Users size={20} />, tabs: [{ label: 'Hội', to: '/he-thong/hoi' }, { label: 'Người dùng', to: '/he-thong/nguoi-dung' }, { label: 'Bị báo cáo', to: '/he-thong/ho-tro' }] },
+  { key: 'tien', label: 'Tiền', icon: <Wallet size={20} />, tabs: [{ label: 'Thanh toán và đối soát', to: '/he-thong/thanh-toan' }, { label: 'Cộng sự nền tảng', to: '/he-thong/cong-su' }] },
+  { key: 'goi', label: 'Gói và tính năng', icon: <BadgeCheck size={20} />, tabs: [{ label: 'Gói nền tảng', to: '/he-thong/goi' }, { label: 'Tính năng', to: '/he-thong/tinh-nang' }] },
+  { key: 'he-thong', label: 'Hệ thống', icon: <KeyRound size={20} />, tabs: [{ label: 'Hạ tầng và khóa', to: '/he-thong/ha-tang' }, { label: 'Phiên bản', to: '/he-thong/phien-ban' }, { label: 'Nhật ký', to: '/he-thong/nhat-ky' }] },
 ];
-
-function Item({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
-  return (
-    <NavLink to={to} end={end} className={({ isActive }) => `nav-item${isActive ? ' on' : ''}`}>{icon}<span className="flex-grow">{label}</span>{extra}</NavLink>
-  );
+/** Nhóm chứa đường dẫn đang mở. */
+export function adminGroupOf(pathname: string): AdminGroup {
+  const path = pathname.replace(/\/+$/, '') || '/he-thong';
+  return GROUPS.find((g) => g.tabs.some((t) => t.to !== '/he-thong' && (path === t.to || path.startsWith(`${t.to}/`)))) ?? GROUPS[0]!;
 }
 
 export function AdminShell() {
@@ -47,10 +34,21 @@ export function AdminShell() {
   const { updateAvailable } = useVersionStatus();
   const health = useQuery({ queryKey: ['health'], queryFn: () => fetch(`${api.url}/health`).then((r) => r.json() as Promise<{ status: string; env: string }>), staleTime: 60_000 });
   const todo = useQuery({ queryKey: ['admin', 'overview', 30], queryFn: () => api.get<{ todo: { unmatched: number } }>('/v1/admin/overview?days=30'), enabled: Boolean(user?.isSuperAdmin), staleTime: 60_000 });
+  const [command, setCommand] = useState(false);
+  const toggleCommand = useCallback(() => setCommand((v) => !v), []);
+  useCommandHotkey(toggleCommand, Boolean(user?.isSuperAdmin));
+  const commands = useMemo(() => adminCommands(), []);
+  // Gõ tên hội hoặc email: hai dòng cuối dẫn tới danh sách Hội, Người dùng đã lọc sẵn.
+  const extra = useCallback((q: string): PaletteItem[] => (q.length < 2 ? [] : [
+    { id: 'find-community', group: 'Tìm', label: `Tìm hội "${q}"`, to: `/he-thong/hoi?q=${encodeURIComponent(q)}`, icon: <Search size={18} /> },
+    { id: 'find-user', group: 'Tìm', label: `Tìm người dùng "${q}"`, hint: 'Theo tên hoặc email', to: `/he-thong/nguoi-dung?q=${encodeURIComponent(q)}`, icon: <Search size={18} /> },
+  ]), []);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (!user?.isSuperAdmin) return <Navigate to="/admin" replace />;
   const unmatched = todo.data?.todo.unmatched ?? 0;
+  const group = adminGroupOf(location.pathname);
+  const badge = (g: AdminGroup) => (g.key === 'tien' && unmatched ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{unmatched}</span> : g.key === 'he-thong' && updateAvailable ? <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: T.accent }} /> : null);
   return (
     <div className="flex min-h-screen" style={{ background: T.bg }}>
       <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.sideDark, color: T.sideText, padding: '16px 12px' }}>
@@ -58,26 +56,9 @@ export function AdminShell() {
           <svg width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill={T.gold} /><circle cx="17" cy="13" r="7" fill={T.teal} fillOpacity="0.85" /></svg>
           <div className="flex-grow"><div className="serif font-bold text-[14px]" style={{ color: T.invertInk }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>
         </div>
-        <div className="nav-group">Vận hành</div>
-        <div className="flex flex-col gap-0.5">
-          <Item to="/he-thong" end icon={<House size={20} />} label="Tổng quan" />
-          <Item to="/he-thong/hoi" icon={<Users size={20} />} label="Hội" />
-          <Item to="/he-thong/nguoi-dung" icon={<User size={20} />} label="Người dùng" />
-          <Item to="/he-thong/thanh-toan" icon={<Wallet size={20} />} label="Thanh toán" extra={unmatched ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{unmatched}</span> : undefined} />
-        </div>
-        <div className="nav-group">Cấu hình</div>
-        <div className="flex flex-col gap-0.5">
-          <Item to="/he-thong/goi" icon={<BadgeCheck size={20} />} label="Gói nền tảng" />
-          <Item to="/he-thong/cong-su" icon={<Trophy size={20} />} label="Cộng sự nền tảng" />
-          <Item to="/he-thong/tinh-nang" icon={<Settings size={20} />} label="Tính năng và giới hạn" />
-          <Item to="/he-thong/ha-tang" icon={<KeyRound size={20} />} label="Hạ tầng và khóa" />
-          <Item to="/he-thong/phien-ban" icon={<Rocket size={20} />} label="Phiên bản" extra={updateAvailable ? <span className="w-2 h-2 rounded-full" style={{ background: T.accent }} /> : undefined} />
-        </div>
-        <div className="nav-group">Giám sát</div>
-        <div className="flex flex-col gap-0.5">
-          <Item to="/he-thong/nhat-ky" icon={<FileText size={20} />} label="Nhật ký và webhook" />
-          <Item to="/he-thong/ho-tro" icon={<MessageCircle size={20} />} label="Hỗ trợ và khiếu nại" />
-        </div>
+        <nav className="flex flex-col gap-0.5 pt-3" aria-label="Quản trị hệ thống">
+          {GROUPS.map((g) => <Link key={g.key} to={g.tabs[0]!.to} aria-current={group.key === g.key ? 'page' : undefined} className={`nav-item${group.key === g.key ? ' on' : ''}`}>{g.icon}<span className="flex-grow">{g.label}</span>{badge(g)}</Link>)}
+        </nav>
         <div className="flex-grow" />
         <div className="p-3 rounded-[10px] text-[12px] flex items-center gap-2" style={{ background: 'rgba(255,253,249,0.06)', color: T.sideText }}>
           <span className="w-2 h-2 rounded-full" style={{ background: health.data?.status === 'ok' ? T.teal : T.accent }} />
@@ -87,23 +68,27 @@ export function AdminShell() {
       <div className="flex-grow flex flex-col min-w-0">
         <header className="flex items-center gap-4 px-4 md:px-8" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
           <span className="only-mobile"><Logo size={22} /></span>
-          <AdminSearch />
+          <span className="hidden md:flex" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }}><CommandButton onOpen={() => setCommand(true)} /></span>
           <span className="flex-grow" />
+          <span className="md:hidden"><CommandButton compact onOpen={() => setCommand(true)} /></span>
           <span className="hide-mobile"><Tag tone={health.data?.env === 'production' ? 'accent' : 'teal'}>Môi trường: {health.data?.env === 'production' ? 'Production' : (health.data?.env ?? '…')}</Tag></span>
           <Link to="/admin" className="btn btn-ghost btn-sm">Về Hội<span className="hide-mobile">&nbsp;của tôi</span></Link>
           <AccountAvatarLink user={user} />
         </header>
-        <nav className="admin-mobile-nav gap-1.5 overflow-x-auto px-4 py-2.5" style={{ borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-          {MOBILE_NAV.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === '/he-thong'} className={({ isActive }) => `chip flex-shrink-0${isActive ? ' on' : ''}`}>
-              {label}{to === '/he-thong/phien-ban' && updateAvailable ? <span className="w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}
-            </NavLink>
-          ))}
+        {/* Điện thoại không có thanh bên: 5 nhóm thành một hàng chip. */}
+        <nav className="admin-mobile-nav gap-1.5 overflow-x-auto px-4 py-2.5" aria-label="Nhóm quản trị" style={{ borderBottom: `1px solid ${T.line}`, background: T.surface }}>
+          {GROUPS.map((g) => <Link key={g.key} to={g.tabs[0]!.to} aria-current={group.key === g.key ? 'page' : undefined} className={`chip flex-shrink-0${group.key === g.key ? ' on' : ''}`}>{g.label}{badge(g)}</Link>)}
         </nav>
         <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
+          {group.tabs.length > 1 && (
+            <nav className="section-tabs admin-tabs" aria-label={group.label}>
+              {group.tabs.map((t) => <NavLink key={t.to} to={t.to} className={({ isActive }) => (isActive ? 'on' : '')}>{t.label}</NavLink>)}
+            </nav>
+          )}
           <Outlet />
         </div>
       </div>
+      <CommandPalette open={command} onClose={() => setCommand(false)} commands={commands} extra={extra} placeholder="Gõ nơi muốn tới, tên hội hoặc email người dùng" />
     </div>
   );
 }
