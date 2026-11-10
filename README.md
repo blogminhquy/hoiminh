@@ -88,7 +88,7 @@ infra           deploy.mjs
 
 Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`. Thêm `-i` để xem header `cf-placement`: `remote-SIN` nghĩa là Worker đang chạy cạnh database ở Singapore (xem `[placement]` trong `apps/api/wrangler.toml`), còn `latencyMs` là thời gian Worker hỏi database một câu.
 
-Ảnh tải lên được chuyển sang WebP: trình duyệt nén trước, ảnh nào tới máy chủ còn là JPEG hoặc PNG thì binding `IMAGES` (Cloudflare Images, khai báo trong `apps/api/wrangler.toml`) chuyển nốt. Không cần bật gì thêm: gói Images miễn phí cho 5.000 lượt chuyển đổi mỗi tháng, hết lượt thì ảnh lưu nguyên dạng JPEG. Kiểm: tải một ảnh từ iPhone, đường dẫn ảnh phải kết thúc bằng `.webp`.
+Ảnh tải lên được chuyển sang WebP ngay trên máy người dùng: Chrome, Edge, Firefox, Android dùng canvas của trình duyệt; Safari (iPhone, máy Mac) không tự xuất được WebP nên web tải thêm bộ mã hóa WebAssembly (`apps/web/src/lib/webp-encoder.ts`, khoảng 130 KB khi nén, chỉ Safari tải). Cả hai cách đều không tốn lượt chuyển đổi nào của Cloudflare. Ảnh nào tới máy chủ vẫn còn là JPEG hoặc PNG (bộ mã hóa không tải được, client cũ) thì binding `IMAGES` (Cloudflare Images, khai báo trong `apps/api/wrangler.toml`) chuyển nốt: đây là lưới an toàn, gói Images miễn phí cho 5.000 lượt mỗi tháng, hết lượt thì ảnh lưu nguyên dạng JPEG. Kiểm: tải một ảnh từ iPhone, đường dẫn ảnh phải kết thúc bằng `.webp`; trong tab Network của Safari phải thấy tệp `webp_enc` được tải và tệp gửi lên có kiểu `image/webp`.
 
 ### Hai Worker
 
