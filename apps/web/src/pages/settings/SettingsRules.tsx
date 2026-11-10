@@ -3,7 +3,7 @@
 // email gửi đi có nút kích hoạt.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Empty, Modal, Select, T, Tag, Textarea, Toggle } from '@hoiminh/ui';
-import { BookOpen, Mail, Pencil, Plus, Trash2, Users, X } from 'lucide-react';
+import { BookOpen, CircleCheck, CircleMinus, CircleX, Clock, Mail, Pencil, Plus, Trash2, Undo2, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
@@ -13,6 +13,7 @@ import { timeAgo } from '@/lib/format';
 import { normalizeTag, RESULT_LABEL, TRIGGER_LABEL, type Rule, type RuleAction, type RuleOptions, type RuleRun, type TagRow } from './automation-shared';
 
 const DEFAULT_EMAIL = { subject: 'Chào {{name}}, quyền truy cập của bạn đã sẵn sàng', body: 'Chào {{name}},\n\nCảm ơn bạn đã đặt mua. Bấm nút bên dưới để vào xem ngay.\n\nCần hỗ trợ, bạn trả lời email này nhé.' };
+const ACTION_ICON: Record<RuleAction['type'], ReactNode> = { grant_membership: <Users size={18} />, grant_course: <BookOpen size={18} />, send_email: <Mail size={18} /> };
 interface Draft { id: string | null; name: string; tag: string; actions: RuleAction[]; revokeOnTagRemoved: boolean }
 const EMPTY: Draft = { id: null, name: '', tag: '', actions: [], revokeOnTagRemoved: true };
 
@@ -108,18 +109,31 @@ function RuleModal({ draft, options, tags, onClose }: { draft: Draft; options: R
   );
 }
 
+const RESULT_ICON: Record<string, { icon: ReactNode; color: string }> = {
+  done: { icon: <CircleCheck size={18} />, color: T.teal },
+  pending: { icon: <Clock size={18} />, color: T.goldText },
+  skipped: { icon: <CircleMinus size={18} />, color: T.ink3 },
+  failed: { icon: <CircleX size={18} />, color: T.accentText },
+  revoked: { icon: <Undo2 size={18} />, color: T.ink2 },
+};
+
 function Runs() {
   const shell = useShell();
   const q = useQuery({ queryKey: ['automation-runs', shell.community.id], queryFn: () => api.get<RuleRun[]>(`/v1/communities/${shell.community.id}/automation/runs`), refetchInterval: 10_000 });
   return (
-    <section className="card flex flex-col" style={{ padding: '18px 20px' }} aria-label="Nhật ký chạy">
-      <div className="font-semibold text-[17px] mb-1">Nhật ký chạy gần đây</div>
+    <section className="card overflow-hidden" aria-label="Nhật ký chạy">
+      <div className="px-5 py-3 th">Nhật ký chạy gần đây</div>
       <QueryState q={q} rows={1}>
-        {(runs) => runs.length === 0 ? <div className="muted text-[14px]">Chưa có lượt chạy nào.</div> : (
+        {(runs) => runs.length === 0 ? <div className="muted text-[14px] px-5 pb-4">Chưa có lượt chạy nào.</div> : (
           <>{runs.slice(0, 12).map((r) => (
-            <div key={r.id} className="py-2.5 flex flex-col gap-1" style={{ borderTop: `1px solid ${T.line}` }}>
-              <div className="flex items-center gap-2 flex-wrap text-[15px]"><Tag tone={r.trigger === 'tag_added' ? 'teal' : 'neutral'}>{TRIGGER_LABEL[r.trigger]}</Tag><span className="font-semibold break-all">{r.email}</span><span className="muted text-[14px]">{r.rule} · {timeAgo(r.createdAt)}</span></div>
-              {r.results.map((x, i) => <div key={i} className="text-[14px]" style={{ color: x.status === 'failed' ? T.accentText : T.ink2 }}>{RESULT_LABEL[x.status] ?? x.status}: {x.detail}</div>)}
+            <div key={r.id} className="px-5 py-3 flex flex-col gap-1.5" style={{ borderTop: `1px solid ${T.line}` }}>
+              <div className="flex items-center gap-2"><Tag tone={r.trigger === 'tag_added' ? 'teal' : 'neutral'}>{TRIGGER_LABEL[r.trigger]}</Tag><span className="flex-grow" /><span className="muted text-[13px] whitespace-nowrap">{timeAgo(r.createdAt)}</span></div>
+              <div className="font-semibold text-[15px] break-all">{r.email}</div>
+              <div className="muted text-[14px]">{r.rule}</div>
+              {r.results.map((x, i) => {
+                const st = RESULT_ICON[x.status] ?? RESULT_ICON.skipped!;
+                return <div key={i} className="flex items-start gap-2 text-[14px]" style={{ color: x.status === 'failed' ? T.accentText : T.ink2 }}><span className="flex-shrink-0 mt-px" style={{ color: st.color }} role="img" aria-label={RESULT_LABEL[x.status] ?? x.status} title={RESULT_LABEL[x.status] ?? x.status}>{st.icon}</span><span>{x.detail}</span></div>;
+              })}
             </div>
           ))}</>
         )}
@@ -145,7 +159,7 @@ export default function Page() {
       <div className="flex items-start gap-3 flex-wrap">
         <div className="flex-grow" style={{ minWidth: 220 }}>
           <h1 className="serif m-0 text-[28px] font-extrabold">Quy tắc tự động</h1>
-          <div className="muted text-[15px]">Gắn thẻ là việc tự chạy: cho vào hội, mở khóa học, gửi email. Thẻ đến từ <Link to={`${settings}/nguon-dong-bo`} className="font-semibold">Nguồn đồng bộ</Link> hoặc gắn tay ở <Link to={`${settings}/lien-he`} className="font-semibold">Liên hệ và thẻ</Link>.</div>
+          <div className="muted text-[15px]">Gắn thẻ là việc tự chạy. Thẻ đến từ <Link to={`${settings}/nguon-dong-bo`} className="font-semibold">Nguồn đồng bộ</Link> hoặc gắn tay ở <Link to={`${settings}/lien-he`} className="font-semibold">Liên hệ và thẻ</Link>.</div>
         </div>
         <Button variant="primary" icon={<Plus size={18} />} disabled={!options.data} onClick={() => setDraft(EMPTY)}>Quy tắc mới</Button>
       </div>
@@ -154,20 +168,28 @@ export default function Page() {
         {(list) => list.length === 0
           ? <Empty title="Chưa có quy tắc nào" hint='Ví dụ: KHI gắn thẻ "paid" THÌ mở khóa học và gửi email hướng dẫn.' />
           : <>{list.map((r) => (
-            <section key={r.id} className="card flex flex-col gap-2.5" style={{ padding: '16px 20px' }} aria-label={`Quy tắc ${r.name}`}>
-              <div className="flex items-center gap-3">
-                <div className="flex-grow min-w-0"><div className="font-semibold text-[17px] truncate">{r.name}</div><div className="muted text-[14px]">{r.runCount > 0 ? `Đã chạy ${r.runCount} lần${r.lastRunAt ? `, gần nhất ${timeAgo(r.lastRunAt)}` : ''}` : 'Chưa chạy lần nào'}</div></div>
-                <span className="text-[14px] font-semibold whitespace-nowrap" style={{ color: r.enabled ? T.teal : T.ink3 }}>{r.enabled ? 'Đang bật' : 'Đang tắt'}</span>
+            <section key={r.id} className="card overflow-hidden" aria-label={`Quy tắc ${r.name}`}>
+              <div className="flex items-center gap-3 px-5 py-3.5">
+                <div className="flex-grow min-w-0 font-semibold text-[17px]" style={{ overflowWrap: 'anywhere', opacity: r.enabled ? 1 : 0.6 }}>{r.name}</div>
                 <Toggle on={r.enabled} disabled={toggle.isPending} label={`Bật quy tắc ${r.name}`} onChange={(enabled) => toggle.mutate({ id: r.id, enabled })} />
               </div>
-              <div className="text-[15px] flex flex-col gap-1" style={{ lineHeight: 1.6 }}>
-                <div><span className="muted">KHI gắn thẻ</span> <Tag tone="gold">{r.tag}</Tag></div>
-                {r.summary.map((line, i) => <div key={i}><span className="muted">{i === 0 ? 'THÌ' : 'VÀ'}</span> {line}</div>)}
-                {r.revokeOnTagRemoved && <div className="muted text-[14px]">Gỡ thẻ thì thu hồi quyền đã cấp.</div>}
+              <div className="rule-row" style={{ borderTop: `1px solid ${T.line}` }}>
+                <span className="th">Khi</span>
+                <div className="flex items-center gap-2 flex-wrap text-[15px]"><span className="muted">gắn thẻ</span><Tag tone="gold">{r.tag}</Tag></div>
               </div>
-              <div className="flex gap-2">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDraft({ id: r.id, name: r.name, tag: r.tag, actions: r.actions, revokeOnTagRemoved: r.revokeOnTagRemoved })}><Pencil size={14} />Sửa</button>
-                <button type="button" className="btn btn-ghost btn-sm" disabled={remove.isPending} onClick={() => { if (window.confirm(`Xóa quy tắc "${r.name}"? Quyền đã cấp cho khách vẫn giữ nguyên.`)) remove.mutate(r.id); }}><Trash2 size={14} />Xóa</button>
+              <div className="rule-row" style={{ borderTop: `1px solid ${T.line}` }}>
+                <span className="th">Thì</span>
+                <div className="flex flex-col gap-2 text-[15px] min-w-0">
+                  {r.summary.map((line, i) => <div key={i} className="flex items-start gap-2.5"><span className="flex-shrink-0 mt-0.5" style={{ color: T.teal }}>{ACTION_ICON[r.actions[i]?.type ?? 'send_email']}</span><span style={{ overflowWrap: 'anywhere' }}>{line}</span></div>)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-5 py-2.5" style={{ borderTop: `1px solid ${T.line}`, background: T.bg }}>
+                <div className="flex-grow min-w-0 muted text-[13px] flex flex-col gap-0.5">
+                  <span>{r.runCount > 0 ? `Đã chạy ${r.runCount} lần${r.lastRunAt ? ` · ${timeAgo(r.lastRunAt)}` : ''}` : 'Chưa chạy lần nào'}</span>
+                  {r.revokeOnTagRemoved && <span className="flex items-center gap-1.5"><Undo2 size={14} className="flex-shrink-0" />Gỡ thẻ thì thu hồi</span>}
+                </div>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" aria-label={`Sửa quy tắc ${r.name}`} title="Sửa" onClick={() => setDraft({ id: r.id, name: r.name, tag: r.tag, actions: r.actions, revokeOnTagRemoved: r.revokeOnTagRemoved })}><Pencil size={16} /></button>
+                <button type="button" className="btn btn-ghost btn-sm btn-icon" aria-label={`Xóa quy tắc ${r.name}`} title="Xóa" disabled={remove.isPending} onClick={() => { if (window.confirm(`Xóa quy tắc "${r.name}"? Quyền đã cấp cho khách vẫn giữ nguyên.`)) remove.mutate(r.id); }}><Trash2 size={16} /></button>
               </div>
             </section>
           ))}</>}

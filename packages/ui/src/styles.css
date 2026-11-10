@@ -57,6 +57,11 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .btn-gold { background: var(--gold); color: #1F1B17; }
 .btn-soft { background: var(--primary-soft); color: var(--primary-text); }
 .btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 9px; }
+/* Nút chỉ có icon (sửa, xóa, sao chép): vuông, luôn kèm aria-label. */
+.btn-icon { width: 40px; height: 40px; padding: 0 !important; flex-shrink: 0; }
+/* Một dòng "nhãn bên trái, nội dung bên phải" trong thẻ quy tắc và thẻ nguồn. */
+.rule-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 20px; }
+.rule-row > .th { padding-top: 3px; }
 .btn-lg { height: 50px; padding: 0 26px; font-size: 16px; border-radius: 12px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); font-size: 14px; font-weight: 500; color: var(--ink2); white-space: nowrap; cursor: pointer; }
 .chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }

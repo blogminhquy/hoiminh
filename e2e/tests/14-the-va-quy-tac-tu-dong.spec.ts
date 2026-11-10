@@ -26,7 +26,7 @@ test.describe.serial('thẻ và quy tắc tự động', () => {
     await page.getByRole('button', { name: 'Tạo nguồn' }).click();
     const card = page.getByRole('region', { name: 'Nguồn Landing khóa Facebook Ads' });
     await expect(card.getByText('Chưa nhận lượt nào').first()).toBeVisible();
-    inboundUrl = (await card.getByLabel('Địa chỉ nhận').innerText()).trim();
+    inboundUrl = (await card.getByLabel('Địa chỉ nhận', { exact: true }).innerText()).trim();
     expect(inboundUrl).toMatch(/\/webhooks\/in\/[a-f0-9]{40}$/);
 
     await tabs.getByRole('link', { name: 'Quy tắc tự động', exact: true }).click();
@@ -43,7 +43,9 @@ test.describe.serial('thẻ và quy tắc tự động', () => {
     const rule = page.getByRole('region', { name: 'Quy tắc Mua khóa Facebook Ads' });
     await expect(rule.getByText('paid_fbads')).toBeVisible();
     await expect(rule.getByText(`Mở khóa học ${COURSE}`)).toBeVisible();
-    await expect(rule.getByText('Đang bật')).toBeVisible();
+    await expect(rule.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+    // Nút sửa và xóa chỉ còn icon nhưng vẫn có tên cho trình đọc màn hình.
+    await expect(rule.getByRole('button', { name: 'Sửa quy tắc Mua khóa Facebook Ads' })).toBeVisible();
 
     // Landing bắn đơn về: form thường, tên trường kiểu Webcake.
     const res = await request.post(inboundUrl, { form: { full_name: 'Khách Landing', phone_number: '0900123456', email: customer, tag: 'paid_fbads' } });
@@ -73,7 +75,8 @@ test.describe.serial('thẻ và quy tắc tự động', () => {
     await page.goto('/minhquy/cai-dat/quy-tac');
     const log = page.getByRole('region', { name: 'Nhật ký chạy' });
     await expect(log.getByText(customer, { exact: true })).toBeVisible();
-    await expect(log.getByText(/Chờ kích hoạt: Giữ theo email/)).toBeVisible();
+    await expect(log.getByText(/Giữ theo email, chờ khách bấm link kích hoạt/)).toBeVisible();
+    await expect(log.getByRole('img', { name: 'Chờ kích hoạt' })).toBeVisible();
   });
 
   test('khách bấm link kích hoạt trên điện thoại, đặt mật khẩu là vào học được; gỡ thẻ thì mất quyền', async ({ browser, request }) => {

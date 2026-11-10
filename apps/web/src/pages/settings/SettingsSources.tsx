@@ -23,7 +23,7 @@ function CopyBox({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-[10px] px-3 py-2.5" style={{ background: T.bg }}>
       <code className="flex-grow min-w-0 text-[14px] break-all" aria-label={label}>{value}</code>
-      <button type="button" className="btn btn-ghost btn-sm flex-shrink-0" onClick={() => void copy()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Đã chép' : 'Sao chép'}</button>
+      <button type="button" className="btn btn-ghost btn-sm btn-icon" aria-label={copied ? 'Đã sao chép' : `Sao chép ${label.toLowerCase()}`} title="Sao chép" onClick={() => void copy()}>{copied ? <Check size={16} style={{ color: T.teal }} /> : <Copy size={16} />}</button>
     </div>
   );
 }
@@ -64,17 +64,15 @@ function Events({ source }: { source: Source }) {
             </div>
             <div className="flex flex-col">
               {events.slice(0, 8).map((e) => (
-                <div key={e.id} className="flex flex-col gap-1 py-2.5" style={{ borderTop: `1px solid ${T.line}` }}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Tag tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Tag>
-                    <span className="font-semibold text-[15px] break-all">{e.email ?? 'Không có email'}</span>
-                    <span className="muted text-[13px]">{timeAgo(e.createdAt)}</span>
-                    <span className="flex-grow" />
-                    <button type="button" className="btn btn-ghost btn-sm" disabled={redo.isPending} onClick={() => redo.mutate(e.id)}><RefreshCw size={14} />Xử lý lại</button>
+                <div key={e.id} className="flex flex-col gap-1.5 py-3" style={{ borderTop: `1px solid ${T.line}` }}>
+                  <div className="flex items-center gap-2"><Tag tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Tag><span className="flex-grow" /><span className="muted text-[13px] whitespace-nowrap">{timeAgo(e.createdAt)}</span></div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[15px] break-all flex-grow min-w-0">{e.email ?? 'Không có email'}</span>
+                    <button type="button" className="btn btn-ghost btn-sm flex-shrink-0" disabled={redo.isPending} onClick={() => redo.mutate(e.id)}><RefreshCw size={14} />Xử lý lại</button>
                   </div>
                   <div className="text-[14px]" style={{ color: T.ink2 }}>{e.detail}</div>
                   <details className="text-[14px]">
-                    <summary className="muted cursor-pointer">Xem dữ liệu nhận được ({Object.keys(e.fields).length} trường)</summary>
+                    <summary className="muted cursor-pointer">Dữ liệu nhận được ({Object.keys(e.fields).length} trường)</summary>
                     <div className="mt-1.5 rounded-[10px] px-3 py-2 flex flex-col gap-0.5 overflow-x-auto" style={{ background: T.bg }}>
                       {Object.entries(e.fields).map(([k, v]) => <div key={k} className="whitespace-nowrap"><code>{k}</code>: {v}</div>)}
                     </div>
@@ -102,34 +100,37 @@ function SourceCard({ source }: { source: Source }) {
   const remove = useMutation({ mutationFn: () => api.del(base), onSuccess: done });
   const parsed = splitTags(defaults);
   const defaultsDirty = parsed.join(',') !== source.mapping.defaultTags.join(',');
+  const row = { borderTop: `1px solid ${T.line}` };
   return (
-    <section className="card flex flex-col gap-3.5" style={{ padding: '18px 20px' }} aria-label={`Nguồn ${source.name}`}>
-      <div className="flex items-center gap-3">
+    <section className="card overflow-hidden" aria-label={`Nguồn ${source.name}`}>
+      <div className="flex items-center gap-3 px-5 py-3.5">
         <div className="flex-grow min-w-0">
-          <div className="font-semibold text-[17px] truncate">{source.name}</div>
-          <div className="muted text-[14px]">{source.receivedCount > 0 ? `Đã nhận ${source.receivedCount} lượt, gần nhất ${source.lastReceivedAt ? timeAgo(source.lastReceivedAt) : ''}` : 'Chưa nhận lượt nào'}</div>
+          <div className="font-semibold text-[17px]" style={{ overflowWrap: 'anywhere', opacity: source.status === 'active' ? 1 : 0.6 }}>{source.name}</div>
+          <div className="muted text-[13px]">{source.receivedCount > 0 ? `Đã nhận ${source.receivedCount} lượt${source.lastReceivedAt ? ` · ${timeAgo(source.lastReceivedAt)}` : ''}` : 'Chưa nhận lượt nào'}</div>
         </div>
-        <span className="text-[14px] font-semibold whitespace-nowrap" style={{ color: source.status === 'active' ? T.teal : T.ink3 }}>{source.status === 'active' ? 'Đang nhận' : 'Tạm dừng'}</span>
         <Toggle on={source.status === 'active'} disabled={patch.isPending} label={`Bật nhận dữ liệu cho ${source.name}`} onChange={(on) => patch.mutate({ status: on ? 'active' : 'paused' })} />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[14px] font-semibold">Địa chỉ nhận (dán vào phần Webhook của form đặt hàng)</span>
+      <div className="px-5 py-3.5 flex flex-col gap-1.5" style={row}>
+        <span className="th">Địa chỉ nhận</span>
         <CopyBox value={source.url} label="Địa chỉ nhận" />
+        <span className="muted text-[13px]">Dán vào phần Webhook của form đặt hàng.</span>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[14px] font-semibold">Thẻ luôn gắn cho mọi đơn từ nguồn này (không bắt buộc)</span>
+      <div className="px-5 py-3.5 flex flex-col gap-1.5" style={row}>
+        <span className="th">Thẻ luôn gắn</span>
         <div className="flex gap-2 items-center">
           <label className="input flex-grow"><input value={defaults} onChange={(e) => setDefaults(e.target.value)} placeholder="Ví dụ: order_placed" aria-label="Thẻ luôn gắn" /></label>
           {defaultsDirty && <Button size="sm" variant="dark" loading={patch.isPending} onClick={() => patch.mutate({ mapping: { defaultTags: parsed } })}>Lưu</Button>}
         </div>
-        <span className="muted text-[13px]">Dùng khi landing không truyền được trường tag. Nhiều thẻ thì cách nhau bằng dấu phẩy.{parsed.length > 0 && defaultsDirty ? ` Sẽ lưu: ${parsed.join(', ')}` : ''}</span>
+        <span className="muted text-[13px]">Không bắt buộc. Dùng khi landing không truyền được trường tag.{parsed.length > 0 && defaultsDirty ? ` Sẽ lưu: ${parsed.join(', ')}` : ''}</span>
       </div>
-      <button type="button" className="flex items-center gap-1.5 font-semibold text-[15px] self-start" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}Lượt nhận gần đây và ghép trường</button>
-      {open && <Events source={source} />}
-      <div className="flex gap-2 flex-wrap pt-1" style={{ borderTop: `1px solid ${T.line}` }}>
-        <button type="button" className="btn btn-ghost btn-sm mt-3" disabled={rotate.isPending} onClick={() => { if (window.confirm('Đổi địa chỉ nhận? Địa chỉ cũ ngừng hoạt động ngay, bạn cần dán địa chỉ mới vào landing.')) rotate.mutate(); }}><RefreshCw size={14} />Đổi địa chỉ</button>
-        <button type="button" className="btn btn-ghost btn-sm mt-3" disabled={remove.isPending} onClick={() => { if (window.confirm(`Xóa nguồn "${source.name}"? Liên hệ và thẻ đã nhận vẫn được giữ.`)) remove.mutate(); }}><Trash2 size={14} />Xóa nguồn</button>
-        {(patch.isError || rotate.isError || remove.isError) && <span className="text-[14px] mt-3 self-center" style={{ color: T.accentText }}>{errorMessage(patch.error ?? rotate.error ?? remove.error)}</span>}
+      <div className="px-5 py-3 flex flex-col gap-3" style={row}>
+        <button type="button" className="flex items-center gap-2 font-semibold text-[15px] w-full text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}><span className="flex-grow">Lượt nhận gần đây và ghép trường</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
+        {open && <Events source={source} />}
+      </div>
+      <div className="flex items-center gap-2 px-5 py-2.5" style={{ ...row, background: T.bg }}>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={rotate.isPending} onClick={() => { if (window.confirm('Đổi địa chỉ nhận? Địa chỉ cũ ngừng hoạt động ngay, bạn cần dán địa chỉ mới vào landing.')) rotate.mutate(); }}><RefreshCw size={14} />Đổi địa chỉ</button>
+        <span className="flex-grow min-w-0 text-[13px]" style={{ color: T.accentText }}>{patch.isError || rotate.isError || remove.isError ? errorMessage(patch.error ?? rotate.error ?? remove.error) : ''}</span>
+        <button type="button" className="btn btn-ghost btn-sm btn-icon" aria-label={`Xóa nguồn ${source.name}`} title="Xóa nguồn" disabled={remove.isPending} onClick={() => { if (window.confirm(`Xóa nguồn "${source.name}"? Liên hệ và thẻ đã nhận vẫn được giữ.`)) remove.mutate(); }}><Trash2 size={16} /></button>
       </div>
     </section>
   );
