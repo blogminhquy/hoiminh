@@ -202,6 +202,8 @@ test('bài học YouTube trên điện thoại: nút đủ to, không tràn ngan
   expect(m.height).toBeLessThan(110);
   // Trong hàng ngang, ô "Tự động" ghi gọn là "Auto" để bảy mức vừa cả màn hình 360px.
   await expect(menu.getByRole('menuitemradio').first()).toHaveText('Auto', { useInnerText: true });
+  // Đo sau khi phông chữ tải xong. Hàng được thiết kế dư khoảng 10% bề rộng ở 360px, vì chữ trên mỗi máy rộng hẹp khác nhau đôi chút.
+  await page.evaluate(() => document.fonts.ready);
   await page.setViewportSize({ width: 360, height: 780 });
   expect(await menu.locator('.ytl-menu-grid').evaluate((el) => el.scrollWidth <= el.clientWidth), 'hàng không phải vuốt ngang ở 360px').toBe(true);
   await page.setViewportSize({ width: 390, height: 780 });

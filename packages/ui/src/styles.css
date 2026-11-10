@@ -396,11 +396,12 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   /* Điện thoại: bỏ nút lùi, tới 10 giây và thanh âm lượng (đã có thanh tua và nút âm lượng của máy) để các nút còn lại đủ to. */
   .ytl-wide { display: none; }
   /* Trình phát trên điện thoại chỉ cao khoảng 200px: các mức chất lượng, tốc độ xếp một hàng ngang cho gọn; mức đang chọn tô vàng thay cho dấu tích. Màn hình hẹp không đủ chỗ thì hàng vuốt ngang được. */
-  .ytl-menu { left: 4px; right: 4px; bottom: 4px; min-width: 0; max-height: calc(100% - 8px); padding: 6px 4px; }
-  .ytl-menu-head { min-height: 36px; margin-bottom: 2px; }
-  .ytl-menu-grid { flex-direction: row; gap: 2px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .ytl-menu { left: 2px; right: 2px; bottom: 4px; min-width: 0; max-width: none; max-height: calc(100% - 8px); padding: 6px 3px; }
+  .ytl-menu-head { min-height: 36px; margin-bottom: 4px; }
+  /* Một dải liền, các ô sát nhau không có khe: khe và bề rộng tối thiểu của ô ăn hết chỗ dư ở màn hình 360px, mà chữ trên mỗi máy rộng hẹp khác nhau đôi chút. */
+  .ytl-menu-grid { flex-direction: row; gap: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
   .ytl-menu-grid::-webkit-scrollbar { display: none; }
-  .ytl-menu-grid .ytl-menu-item { flex: 1 0 auto; width: auto; min-width: 40px; justify-content: center; padding: 0 2px; font-size: 14px; background: rgba(255, 255, 255, 0.08); }
+  .ytl-menu-grid .ytl-menu-item { flex: 1 0 auto; width: auto; min-width: 0; justify-content: center; padding: 0 2px; font-size: 14px; }
   /* Bảy mức phải vừa một hàng ở màn hình 360px, nên ô "Tự động" ghi gọn là "Auto". */
   .ytl-menu-grid .ytl-long { display: none; }
   .ytl-menu-grid .ytl-short { display: inline; }
