@@ -20,6 +20,15 @@ Bài viết trên Bảng tin mở trong khung bật lên kiểu Facebook, và c�
 - Các chỗ bấm trên thẻ bài vẫn là link thật: bấm giữa hoặc Ctrl bấm vẫn mở trang riêng ở tab mới.
 - API `POST /v1/reactions/toggle` nhận thêm `reaction` (một trong sáu loại); bảng tin, bài viết và bình luận trả thêm `myReaction` và `reactionCounts`. Không cần migration: cột `reactions.reaction` đã có sẵn. Lượt thích cũ được tính là Thích.
 
+## 1.21.3 - 2026-11-10
+
+Sửa logo khó nhìn ở giao diện tối.
+
+### Sửa lỗi
+
+- **Chữ "Hội Mình" trên nền tối**: ở giao diện tối, chữ cạnh logo trên các trang Tạo hội (Chọn cách thanh toán...) và cột trái trang Đăng nhập, Đăng ký bị tối gần bằng màu nền nên gần như không đọc được. Nguyên nhân: logo dùng màu `surface`, mà `surface` ở giao diện tối là màu tối. Nay dùng màu chữ sáng dành cho nền tối (`invertInk`), rõ ở cả hai giao diện.
+- Thêm kiểm thử cho màu chữ của logo (`packages/ui/src/components/layout.test.tsx`).
+
 ## 1.21.2 - 2026-11-10
 
 Cơ sở dữ liệu chuyển từ Seoul về Singapore để gần người dùng Việt Nam hơn.
