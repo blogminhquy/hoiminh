@@ -12,7 +12,7 @@ export interface WorkspaceHome {
   workspace: { id: string; name: string; slug: string; planKey: string; status: string; trialEndsAt: string | null; contentLockedAt: string | null; ownerUserId: string } | null;
   platformSubscription: { id: string; planKey: string; status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'; billingCycle: 'monthly' | 'yearly'; currentPeriodStart: string; currentPeriodEnd: string; cancelAtPeriodEnd: boolean } | null;
   owned: Array<{ id: string; workspaceId: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; pricingMode: string; memberCount: number; paidMemberCount: number; revenue30Minor: number }>;
-  joined: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; role: string; tier: { key: string; name: string } | null; nextRenewalAt: string | null }>;
+  joined: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; role: string; tier: { key: string; name: string } | null; nextRenewalAt: string | null }>;
   team: Array<{ id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; role: string }>;
   totals: { communities: number; members: number };
 }
@@ -57,7 +57,7 @@ export function JoinedCard({ items }: { items: WorkspaceHome['joined'] }) {
       {items.length === 0 && <div className="muted text-[13px]">Bạn chưa tham gia hội nào khác.</div>}
       {items.map((j) => (
         <Link key={j.id} to={`/${j.slug}/hom-nay`} className="flex items-center gap-3 py-2.5" style={{ borderTop: `1px solid ${T.line}`, color: T.ink }}>
-          <CommunityMark mark={j.logoMark} color={j.logoColor} size={36} radius={10} />
+          <CommunityMark mark={j.logoMark} color={j.logoColor} url={j.logoUrl} size={36} radius={10} />
           <div className="flex-grow min-w-0"><div className="font-semibold truncate">{j.name}</div><div className="muted text-[12px]">{sub(j)}</div></div>
           <span className="tag" style={{ background: T.bg, color: T.ink2 }}>{j.role === 'member' ? 'Thành viên' : j.role === 'moderator' ? 'Điều hành' : 'Quản trị'}</span>
         </Link>

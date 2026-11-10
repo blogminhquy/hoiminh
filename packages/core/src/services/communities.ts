@@ -1,8 +1,8 @@
 // Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/cộng sự, khám phá.
-import { RESERVED_SLUGS } from '@hoiminh/config';
-import type { CreateCommunityInput, UpdatePricingInput } from '@hoiminh/contracts';
+import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
+import { ABOUT_MEDIA_MAX, parseVideoUrl, type CreateCommunityInput, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
-import { affiliatePrograms, communities, communityJoinQuestions, communityMembers, communityPlugins, communityTiers, courses, offers, prices, spaces, users, workspaces } from '@hoiminh/db';
+import { affiliatePrograms, communities, communityJoinQuestions, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
@@ -117,6 +117,52 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
   return row!;
 }
 
+/**
+ * Cài đặt · Chung: bộ ảnh và video của trang giới thiệu. Client gửi đủ cả danh sách theo thứ tự muốn hiện;
+ * ảnh bị bỏ khỏi danh sách thì tệp trên R2 được dọn.
+ */
+export async function updateAboutMedia(ctx: Ctx, communityId: string, input: UpdateAboutMediaInput): Promise<CommunityAboutMedia[]> {
+  await requireCommunityPermission(ctx, communityId, 'settings.manage');
+  const actorUserId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
+  if (input.items.length > ABOUT_MEDIA_MAX) throw invalid(`Tối đa ${ABOUT_MEDIA_MAX} ảnh và video`);
+  const c = await getCommunityById(ctx, communityId);
+  const before = c.aboutMedia ?? [];
+  const keptByFile = new Map(before.filter((m) => m.fileId).map((m) => [m.fileId!, m]));
+  const imageIds = [...new Set(input.items.flatMap((i) => (i.kind === 'image' ? [i.fileId] : [])))];
+  const rows = imageIds.length ? await ctx.db.select({ id: files.id, url: files.url, mimeType: files.mimeType, visibility: files.visibility, status: files.status, communityId: files.communityId, ownerUserId: files.ownerUserId }).from(files).where(inArray(files.id, imageIds)) : [];
+  const fileById = new Map(rows.map((f) => [f.id, f]));
+  const next: CommunityAboutMedia[] = [];
+  const seen = new Set<string>();
+  for (const item of input.items) {
+    if (item.kind === 'video') {
+      const embed = parseVideoUrl(item.url);
+      if (!embed) throw invalid('Link video không nhận diện được. Dùng link YouTube, Vimeo, Loom, TikTok, Facebook hoặc Bunny.');
+      if (seen.has(`v:${embed.provider}:${embed.externalId}`)) continue;
+      seen.add(`v:${embed.provider}:${embed.externalId}`);
+      const same = before.find((m) => m.kind === 'video' && m.url === item.url);
+      next.push({ id: same?.id ?? randomToken(8), kind: 'video', url: item.url, fileId: null });
+      continue;
+    }
+    if (seen.has(item.fileId)) continue;
+    seen.add(item.fileId);
+    // Ảnh đã nằm trong bộ thì giữ nguyên, chỉ đổi vị trí.
+    const kept = keptByFile.get(item.fileId);
+    if (kept) { next.push(kept); continue; }
+    // Ảnh mới phải là ảnh công khai đã tải xong, do chính người này tải lên hoặc tải cho đúng hội này.
+    const f = fileById.get(item.fileId);
+    const usable = f && f.url && f.visibility === 'public' && f.status === 'ready' && f.mimeType.startsWith('image/');
+    const owned = f && (f.communityId === communityId || (actorUserId !== null && f.ownerUserId === actorUserId));
+    if (!usable || !owned) throw invalid('Có ảnh chưa tải lên xong hoặc không dùng được, hãy tải lại ảnh đó');
+    next.push({ id: randomToken(8), kind: 'image', url: f.url!, fileId: f.id });
+  }
+  const removed = before.filter((m) => m.fileId && !next.some((n) => n.fileId === m.fileId)).map((m) => m.fileId);
+  await ctx.db.update(communities).set({ aboutMedia: next, updatedAt: ctx.now() }).where(eq(communities.id, communityId));
+  // Gỡ tham chiếu xong mới dọn tệp (cùng transaction của request, xem releaseFiles).
+  await releaseFiles(ctx, { fileIds: removed }, { communityId, ownerUserIds: [actorUserId] });
+  await audit(ctx, { action: 'community.update_about_media', resourceType: 'community', resourceId: communityId, communityId, metadata: { images: next.filter((m) => m.kind === 'image').length, videos: next.filter((m) => m.kind === 'video').length } });
+  return next;
+}
+
 /** Cài đặt · Giá và gói: đổi pricing mode, tier, cách thanh toán, đóng cổng, xếp thành viên trả phí cũ (mục 187). */
 export async function updatePricing(ctx: Ctx, communityId: string, input: UpdatePricingInput) {
   const access = await requireCommunityPermission(ctx, communityId, 'billing.manage');
@@ -223,7 +269,7 @@ export async function discover(ctx: Ctx, q: { category?: string; search?: string
     .where(and(...conds))
     .orderBy(desc(sql`(select count(*) from posts p where p.community_id = ${communities.id} and p.created_at > now() - interval '7 days')`), desc(communities.memberCount))
     .limit(q.limit ?? 24);
-  return rows.map((r) => ({ id: r.c.id, name: r.c.name, slug: r.c.slug, shortDescription: r.c.shortDescription, category: r.c.category, logoMark: r.c.logoMark, logoColor: r.c.logoColor, coverColor: r.c.coverColor, coverUrl: r.c.coverUrl, memberCount: r.c.memberCount, pricingMode: r.c.pricingMode, priceLabel: priceLabel(r.c.pricingMode, r.premium), activity7d: r.activity }));
+  return rows.map((r) => ({ id: r.c.id, name: r.c.name, slug: r.c.slug, shortDescription: r.c.shortDescription, category: r.c.category, logoMark: r.c.logoMark, logoColor: r.c.logoColor, logoUrl: r.c.logoUrl, coverColor: r.c.coverColor, coverUrl: r.c.coverUrl, memberCount: r.c.memberCount, pricingMode: r.c.pricingMode, priceLabel: priceLabel(r.c.pricingMode, r.premium), activity7d: r.activity }));
 }
 
 function priceLabel(mode: string, premium: typeof communityTiers.$inferSelect | null): string {

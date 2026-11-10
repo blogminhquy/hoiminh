@@ -46,7 +46,7 @@ export async function myCommunities(ctx: Ctx) {
   if (ctx.actor.type !== 'user') return [];
   const userId = ctx.actor.userId;
   const rows = await ctx.db
-    .select({ c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, memberCount: communities.memberCount, status: communities.status }, m: { role: communityMembers.role, status: communityMembers.status }, pref: userCommunityPrefs })
+    .select({ c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, logoUrl: communities.logoUrl, memberCount: communities.memberCount, status: communities.status }, m: { role: communityMembers.role, status: communityMembers.status }, pref: userCommunityPrefs })
     .from(communityMembers)
     .innerJoin(communities, eq(communities.id, communityMembers.communityId))
     .leftJoin(userCommunityPrefs, and(eq(userCommunityPrefs.communityId, communities.id), eq(userCommunityPrefs.userId, userId)))
