@@ -33,6 +33,8 @@ export const envSchema = z.object({
   ENCRYPTION_KEY_VERSION: z.coerce.number().int().default(1),
 
   RESEND_API_KEY: z.string().default(''),
+  /** Tùy chọn: API key của YouTube Data API v3, để lấy mô tả và thời lượng video chắc chắn khi nhập bài từ link. */
+  YOUTUBE_API_KEY: z.string().default(''),
   EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
 
   R2_ACCOUNT_ID: z.string().default(''),

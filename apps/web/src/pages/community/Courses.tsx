@@ -1,4 +1,5 @@
 // Thư viện khóa học: chip lọc, khối "Học tiếp", lưới thẻ khóa với % tiến độ và nhãn Premium/Nháp/Hoàn thành.
+// Bìa thẻ theo tỷ lệ 16:9 để ảnh bìa hiện trọn; chỉ bìa màu (chưa có ảnh) mới in tên khóa lên bìa.
 import { useQuery } from '@tanstack/react-query';
 import { BadgeCheck, Lock, Play, Plus } from 'lucide-react';
 import { Chip, Prog, T } from '@hoiminh/ui';
@@ -33,8 +34,8 @@ function CourseCard({ c, slug }: { c: CourseItem; slug: string }) {
   const continueTo = c.lastLessonId ? `/${slug}/bai/${c.lastLessonId}` : to;
   return (
     <div className="card overflow-hidden flex flex-col">
-      <Link to={to} className="relative h-[160px] flex items-end p-4" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-        <span className="serif text-[22px] font-extrabold leading-[1.15] max-w-[240px]" style={{ color: T.invertInk }}>{c.title}</span>
+      <Link to={to} aria-label={c.title} className="relative flex items-end p-4" style={{ aspectRatio: '16 / 9', background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
+        {!c.coverUrl && <span className="serif text-[22px] font-extrabold leading-[1.15] max-w-[240px]" style={{ color: T.invertInk }}>{c.title}</span>}
         {s === 'lock' && <span className="tag absolute top-3 right-3" style={{ background: T.goldSoft, color: T.goldText }}><Lock size={11} /> Premium</span>}
         {s === 'draft' && <span className="tag absolute top-3 left-3" style={{ background: T.bg, color: T.ink3 }}>Nháp</span>}
         {s === 'done' && <span className="tag absolute top-3 right-3" style={{ background: T.tealSoft, color: T.tealText }}><BadgeCheck size={11} /> Hoàn thành</span>}

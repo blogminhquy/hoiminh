@@ -146,6 +146,18 @@ describe('API', () => {
       expect(['purchase', 'bundle', 'subscription', 'granted']).toContain(c.source);
     }
   });
+  it('/v1/video/meta: cần đăng nhập; link không phải YouTube thì chỉ nhận diện, không gọi ra ngoài', async () => {
+    const send = (url: string, auth?: string) => json('/v1/video/meta', { method: 'POST', auth, body: JSON.stringify({ url }) });
+    expect((await send('https://vimeo.com/123456789')).status).toBe(401);
+
+    const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'thulan@gmail.com', password: 'hoiminh123' }) });
+    const t = (await login.json()).accessToken;
+    const vimeo = await send('https://vimeo.com/123456789', t);
+    expect(vimeo.status).toBe(200);
+    expect(await vimeo.json()).toMatchObject({ embed: { provider: 'vimeo', externalId: '123456789' }, meta: null });
+    expect(await (await send('https://example.com/video', t)).json()).toEqual({ embed: null, meta: null });
+    expect((await json('/v1/video/meta', { method: 'POST', auth: t, body: JSON.stringify({}) })).status).toBe(422);
+  });
   it('tải tài liệu số: người sở hữu lấy được link, người ngoài bị chặn 403', async () => {
     const products = await json(`/v1/communities/${communityId}/products`, { auth: token });
     const digital = (await products.json()).items.find((p: Loose) => p.kind === 'digital');

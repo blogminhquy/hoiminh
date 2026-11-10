@@ -1,4 +1,6 @@
 // Chi tiết khóa học: bìa, tiến độ, tab Nội dung/Tài liệu/Thảo luận/Về khóa học, module gập/mở, rail tiến độ và giảng viên.
+// Bìa nằm trên cùng, nút quay lại nổi trên bìa. Có ảnh bìa thì ảnh hiện trọn 16:9, tên khóa nằm dưới ảnh;
+// chưa có ảnh (bìa màu) thì tên khóa in trên nền màu.
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronLeft, ChevronRight, Check, MessageCircle, Pencil, Play, Settings } from 'lucide-react';
 import { Prog, T } from '@hoiminh/ui';
@@ -57,17 +59,29 @@ function Body({ c, slug }: { c: Course; slug: string }) {
   const startTo = c.progress?.lastLessonId ? `/${slug}/bai/${c.progress.lastLessonId}` : firstLesson ? `/${slug}/bai/${firstLesson.id}` : `/${slug}/khoa-hoc/${c.id}/soan`;
   const tabs: Array<[Tab, string]> = [['content', 'Nội dung'], ['resources', `Tài liệu · ${c.resources.length}`], ['discussion', `Thảo luận · ${c.discussions.length}`], ['about', 'Về khóa học']];
   const remaining = fmtDuration(Math.round(c.totalDurationSeconds * (1 - pct / 100)), true);
+  const kind = `Khóa học · ${accessLabel[c.accessMode] ?? c.accessMode}`;
+  const meta = [`${c.modules.length} module`, `${c.lessonCount} bài`, fmtDuration(c.totalDurationSeconds, true), c.owner?.name].filter(Boolean).join(' · ');
   return (
     <>
       <div className="card overflow-hidden">
-        <div className="h-[220px] flex items-end p-6 relative" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-          <span className="tag absolute top-5 left-6" style={{ background: 'rgba(255,253,249,0.2)', color: T.invertInk, height: 26, padding: '0 10px' }}>Khóa học · {accessLabel[c.accessMode] ?? c.accessMode}</span>
-          <div style={{ color: T.invertInk }}>
-            <div className="serif text-[34px] font-extrabold leading-[1.1]">{c.title}</div>
-            <div className="text-[14px] mt-1.5 opacity-85">{c.modules.length} module · {c.lessonCount} bài · {fmtDuration(c.totalDurationSeconds, true)}{c.owner ? ` · ${c.owner.name}` : ''}</div>
-          </div>
+        <div className="relative flex items-end p-5 md:p-6" style={c.coverUrl ? { aspectRatio: '16 / 9', background: `url(${c.coverUrl}) center/cover` } : { minHeight: 220, paddingTop: 68, background: c.coverColor }}>
+          <Link to={`/${slug}/khoa-hoc`} className="course-back absolute top-3.5 left-3.5 md:top-4 md:left-4"><ChevronLeft size={18} /> Khóa học</Link>
+          {!c.coverUrl && (
+            <div style={{ color: T.invertInk }}>
+              <span className="tag" style={{ background: 'rgba(255,253,249,0.2)', color: T.invertInk }}>{kind}</span>
+              <h1 className="serif m-0 mt-2.5 text-[26px] md:text-[34px] font-extrabold leading-[1.1]">{c.title}</h1>
+              <div className="text-[14px] mt-1.5 opacity-85">{meta}</div>
+            </div>
+          )}
         </div>
-        <div className="px-6 py-5 flex items-center gap-5 flex-wrap">
+        {c.coverUrl && (
+          <div className="px-5 md:px-6 pt-5 flex flex-col items-start gap-2">
+            <span className="tag" style={{ background: T.bg, color: T.ink2 }}>{kind}</span>
+            <h1 className="serif m-0 text-[24px] md:text-[30px] font-extrabold leading-[1.15]">{c.title}</h1>
+            <div className="muted text-[14px]">{meta}</div>
+          </div>
+        )}
+        <div className="px-5 md:px-6 py-5 flex items-center gap-5 flex-wrap">
           <div className="flex-grow flex flex-col gap-2 min-w-[200px]">
             <div className="flex items-center gap-x-2.5 flex-wrap text-[13px]"><span className="font-semibold whitespace-nowrap">Tiến độ {pct}%</span><span className="muted">· {c.progress?.completedLessons ?? 0}/{c.lessonCount} bài{remaining && pct < 100 ? ` · còn khoảng ${remaining}` : ''}</span></div>
             <Prog value={pct} height={8} />
@@ -126,7 +140,8 @@ export default function Page() {
   return (
     <div className="two-col">
       <div className="main" style={{ gap: 20 }}>
-        <Link to={`/${slug}/khoa-hoc`} className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: T.ink3 }}><ChevronLeft size={16} /> Khóa học</Link>
+        {/* Khi khóa đã tải xong, nút quay lại nằm trên bìa (trong Body). Đang tải hoặc lỗi thì vẫn cần một lối quay lại. */}
+        {!c && <Link to={`/${slug}/khoa-hoc`} className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: T.ink3 }}><ChevronLeft size={16} /> Khóa học</Link>}
         <QueryState q={q} rows={2}>{(d) => <Body c={d} slug={slug} />}</QueryState>
       </div>
       {c && (
