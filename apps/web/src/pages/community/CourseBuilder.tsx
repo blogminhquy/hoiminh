@@ -23,6 +23,8 @@ export default function Page() {
   const [selected, setSelected] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [openModule, setOpenModule] = useState<string | null>(null);
+  // Tăng lên khi bài đang mở vừa được đổi tên hàng loạt, để khung soạn nạp lại thay vì giữ bản nháp cũ.
+  const [formRev, setFormRev] = useState(0);
   const publish = useMutation({
     mutationFn: (status: 'published' | 'draft') => api.patch(`/v1/courses/${courseId}`, { status }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['course', courseId] }); void qc.invalidateQueries({ queryKey: ['courses'] }); },
@@ -55,10 +57,10 @@ export default function Page() {
             </div>
             {publish.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(publish.error)}</div>}
             <div className="flex gap-5 flex-col md:flex-row">
-              <Outline courseId={c.id} modules={c.modules} selected={selected} onSelect={setSelected} onOpenImport={() => setImportOpen(true)} onModuleOpen={setOpenModule} />
+              <Outline courseId={c.id} modules={c.modules} selected={selected} onSelect={setSelected} onOpenImport={() => setImportOpen(true)} onModuleOpen={setOpenModule} onLessonsRenamed={(ids) => { if (selected && ids.includes(selected)) setFormRev((n) => n + 1); }} />
               <div className="card flex-grow min-w-0 flex flex-col overflow-hidden" style={{ padding: 0 }}>
                 {selected && pos ? (
-                  <LessonForm key={selected} courseId={c.id} lessonId={selected} communityId={shell.community.id} moduleIndex={pos.mi} lessonIndex={pos.li} previewUrl={`/${slug}/bai/${selected}`} />
+                  <LessonForm key={`${selected}:${formRev}`} courseId={c.id} lessonId={selected} communityId={shell.community.id} moduleIndex={pos.mi} lessonIndex={pos.li} previewUrl={`/${slug}/bai/${selected}`} />
                 ) : (
                   <div className="p-8 text-center muted text-[13px]">Thêm module và bài học ở cột bên trái, hoặc nhập nhanh từ danh sách link YouTube.</div>
                 )}
