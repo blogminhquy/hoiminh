@@ -8,7 +8,7 @@ import { audit } from './audit';
 import { releaseFiles } from './files';
 
 export interface ProfileUpdate {
-  name?: string; handle?: string; bio?: string; location?: string; occupation?: string; avatarUrl?: string | null; coverColor?: string;
+  name?: string; handle?: string; bio?: string; location?: string; occupation?: string; avatarUrl?: string | null; coverUrl?: string | null; coverColor?: string;
   links?: Array<{ kind: string; label: string; url: string }>; privacy?: Partial<{ publicProfile: boolean; showProgress: boolean; showCommunities: boolean; allowMessages: boolean }>;
   timezone?: string; locale?: string;
 }
@@ -26,13 +26,14 @@ export async function updateProfile(ctx: Ctx, input: ProfileUpdate) {
     .update(users)
     .set({
       name: input.name ?? current.name, handle: input.handle ?? current.handle, bio: input.bio ?? current.bio, location: input.location ?? current.location, occupation: input.occupation ?? current.occupation,
-      avatarUrl: input.avatarUrl === undefined ? current.avatarUrl : input.avatarUrl, coverColor: input.coverColor ?? current.coverColor, links: input.links ?? current.links,
+      avatarUrl: input.avatarUrl === undefined ? current.avatarUrl : input.avatarUrl, coverUrl: input.coverUrl === undefined ? current.coverUrl : input.coverUrl, coverColor: input.coverColor ?? current.coverColor, links: input.links ?? current.links,
       privacy: { ...current.privacy, ...(input.privacy ?? {}) }, timezone: input.timezone ?? current.timezone, locale: input.locale ?? current.locale, updatedAt: ctx.now(),
     })
     .where(eq(users.id, userId))
     .returning();
-  // Đổi hoặc gỡ avatar thì tệp cũ trên R2 không còn ai dùng.
-  if (input.avatarUrl !== undefined && current.avatarUrl && input.avatarUrl !== current.avatarUrl) await releaseFiles(ctx, { urls: [current.avatarUrl] }, { ownerUserIds: [userId] });
+  // Đổi hoặc gỡ avatar, ảnh bìa thì tệp cũ trên R2 không còn ai dùng.
+  const replaced = [input.avatarUrl !== undefined && input.avatarUrl !== current.avatarUrl ? current.avatarUrl : null, input.coverUrl !== undefined && input.coverUrl !== current.coverUrl ? current.coverUrl : null];
+  await releaseFiles(ctx, { urls: replaced }, { ownerUserIds: [userId] });
   await audit(ctx, { action: 'profile.update', resourceType: 'user', resourceId: userId });
   return row!;
 }
@@ -53,7 +54,7 @@ export async function publicProfile(ctx: Ctx, handle: string) {
   const recentPosts = await ctx.db.query.posts.findMany({ where: and(eq(posts.authorUserId, user.id), sql`${posts.deletedAt} is null`), orderBy: desc(posts.createdAt), limit: 10, with: {} });
   const privacy = user.privacy;
   return {
-    user: { id: user.id, name: user.name, handle: user.handle, avatarUrl: user.avatarUrl, coverColor: user.coverColor, bio: user.bio, location: user.location, occupation: user.occupation, links: user.links, createdAt: user.createdAt, lastSeenAt: user.lastSeenAt, privacy, isSelf },
+    user: { id: user.id, name: user.name, handle: user.handle, avatarUrl: user.avatarUrl, coverColor: user.coverColor, coverUrl: user.coverUrl, bio: user.bio, location: user.location, occupation: user.occupation, links: user.links, createdAt: user.createdAt, lastSeenAt: user.lastSeenAt, privacy, isSelf },
     stats: { posts: postStats?.c ?? 0, comments: commentStats?.c ?? 0, coursesCompleted: progress.filter((p) => p.p.percent === 100).length, coursesTotal: progress.length, communities: memberships.length, referrals: ranks[0]?.s.referralsCount ?? 0 },
     memberships: privacy.showCommunities || isSelf ? memberships.map((m) => ({ ...m.community, role: m.m.role, tier: m.tier, level: m.m.level, joinedAt: m.m.joinedAt })) : [],
     progress: privacy.showProgress || isSelf ? progress.map((p) => ({ courseId: p.course.id, title: p.course.title, percent: p.p.percent, completedAt: p.p.completedAt })) : [],

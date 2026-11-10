@@ -24,6 +24,8 @@ export const users = pgTable(
     handle: text('handle').notNull(),
     avatarUrl: text('avatar_url'),
     coverColor: text('cover_color').default('#D4593A'),
+    /** Ảnh bìa hồ sơ (bản sao files.url). Chưa có ảnh thì hồ sơ hiện nền màu `coverColor`. */
+    coverUrl: text('cover_url'),
     bio: text('bio').notNull().default(''),
     location: text('location').notNull().default(''),
     occupation: text('occupation').notNull().default(''),

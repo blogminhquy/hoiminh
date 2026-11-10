@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 1.29.0 - 2026-11-10
+
+Kéo thả để xếp ảnh trang giới thiệu, ảnh bìa hồ sơ kiểu Facebook, và mọi ô chọn (dropdown) dùng danh sách riêng theo màu chủ đề.
+
+### Tính năng
+
+- **Ảnh bìa hồ sơ.** Tài khoản, Hồ sơ: ảnh bìa nằm ngang ở đầu trang, ảnh đại diện tròn đè lên mép dưới, như trang cá nhân Facebook. Bấm "Chỉnh sửa ảnh bìa" ngay trên ảnh để tải ảnh lên, gỡ ảnh hoặc chọn màu nền dùng khi không có ảnh. Nút máy ảnh trên ảnh đại diện để đổi ảnh đại diện. Trước đây hồ sơ chỉ chọn được màu nền, không tải ảnh bìa được. Trang hồ sơ công khai hiện ảnh bìa này.
+- **Kéo thả để đổi thứ tự ảnh và video trang giới thiệu** (Cài đặt, Hội, Thông tin). Nhấn giữ một ảnh nhỏ rồi kéo tới chỗ mới; dùng được bằng chuột lẫn ngón tay, vuốt để cuộn trang thì không bị tính là kéo. Bàn phím: Shift cùng phím mũi tên trái, phải. Hai nút "Lên trước", "Ra sau" được bỏ; "Đổi ảnh" (hoặc "Sửa link") và "Xóa" chuyển lên góc khung to.
+
+### Thay đổi
+
+- **Mọi ô chọn dùng danh sách do app tự vẽ**, theo màu chủ đề ở cả giao diện sáng lẫn tối: nền thẻ, mục đang chọn tô màu ngọc kèm dấu tích, mỗi dòng cao 42px cho dễ bấm trên điện thoại. Danh sách tự mở lên trên khi gần đáy màn hình và không bị thẻ hay khung bật lên cắt mất. Bàn phím: mũi tên, Home, End, Enter, Esc, gõ chữ cái đầu để nhảy tới mục (không cần gõ dấu). Áp dụng cho 29 chỗ, gồm cả đổi vai trò và gói ở trang Thành viên, chọn chuyên mục khi viết bài, chọn gói ở Giá và gói.
+- **Thông báo, "Theo cộng đồng":** tên hội hiện đủ (dài thì xuống dòng), ô chọn mức thông báo nằm riêng một dòng bên dưới; ba lựa chọn ghi rõ là "Tất cả thông báo", "Chỉ khi nhắc đến tôi", "Tắt thông báo".
+
+### Sửa lỗi
+
+- **Giao diện tối: danh sách của ô chọn hiện nền trắng chữ nhạt, gần như không đọc được.** Danh sách gốc của trình duyệt không theo màu của app; nay đã thay bằng danh sách riêng.
+- **Hồ sơ, "Liên kết": ô nhập địa chỉ bị đẩy ra ngoài thẻ**, vì ô chọn loại liên kết chiếm hết bề ngang. Nay ô chọn rộng cố định 140px, ô địa chỉ lấy phần còn lại; màn hình hẹp thì ô địa chỉ xuống dòng dưới.
+
+### Kỹ thuật
+
+- Migration `0008_user_cover.sql`: thêm cột `users.cover_url` (text, cho phép rỗng). Chỉ thêm cột. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy**, vì mọi truy vấn lấy người dùng đều đọc cột này.
+- `PATCH /v1/me` nhận thêm `coverFileId` (id tệp, hoặc null để gỡ). Đổi hoặc gỡ ảnh bìa thì tệp cũ trên R2 được dọn; `FILE_REFERENCES` có thêm `users.cover_url`.
+- `Select` trong `@hoiminh/ui` giữ nguyên cách dùng (`value`, `defaultValue`, `onChange` đọc `e.target.value`, các thẻ `<option>` con) nên các trang không phải sửa. Trong `style`, ô chuẩn chỉ nhận phần bề ngang; `variant="chip"` cho ô dạng viên thuốc.
+- Kéo thả viết bằng pointer events trong `apps/web/src/lib/use-drag-sort.ts`, không thêm thư viện.
+
 ## 1.27.0 - 2026-11-10
 
 Chủ hội tự sửa được ảnh và video của trang giới thiệu, ảnh bìa ở thẻ hội, và logo vuông hiện ở mọi nơi có tên hội.

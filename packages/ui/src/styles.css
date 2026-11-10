@@ -84,6 +84,24 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .input input, .input textarea, .input select { flex-grow: 1; min-width: 0; background: transparent; border: 0; outline: 0; height: 100%; color: var(--ink); }
 .input input::placeholder, .input textarea::placeholder { color: var(--ink3); }
 .input.textarea { height: auto; align-items: flex-start; padding: 10px 14px; }
+/* Ô chọn (Select): nút bấm mở danh sách do app tự vẽ, theo màu chủ đề ở cả giao diện sáng lẫn tối. */
+.select-trigger { cursor: pointer; text-align: left; font-family: inherit; }
+.select-trigger.input { font-size: 15px; }
+.select-trigger:focus-visible, .select-trigger[aria-expanded='true'] { outline: 0; border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }
+.select-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+.select-value { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-chevron { flex-shrink: 0; color: var(--ink3); transition: transform 0.15s; }
+.select-trigger.chip .select-chevron { color: inherit; }
+.select-trigger[aria-expanded='true'] .select-chevron { transform: rotate(180deg); }
+.select-pop { position: fixed; z-index: 1000; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line2); box-shadow: 0 12px 32px rgba(8, 24, 23, 0.24); overflow-y: auto; overscroll-behavior: contain; animation: select-pop-in 0.12s ease-out; }
+.select-option { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 10px; border-radius: 8px; font-size: 15px; line-height: 1.35; color: var(--ink); cursor: pointer; user-select: none; }
+.select-option[data-active='true'] { background: var(--bg); }
+.select-option[aria-selected='true'] { background: var(--primary-soft); color: var(--primary-text); font-weight: 600; }
+.select-option[aria-selected='true'][data-active='true'] { box-shadow: inset 0 0 0 1px var(--line2); }
+.select-option[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
+.select-option-label { flex-grow: 1; min-width: 0; overflow-wrap: anywhere; }
+.select-check { flex-shrink: 0; }
+@keyframes select-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .input.textarea textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
 .th { font-size: 13px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.05em; }
 .row { display: flex; align-items: center; }

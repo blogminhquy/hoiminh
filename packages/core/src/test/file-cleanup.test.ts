@@ -138,6 +138,28 @@ describe('đổi hoặc gỡ ảnh', () => {
     expect(await fileRow(newAv.fileId)).toBeTruthy();
   });
 
+  it('đổi ảnh bìa hồ sơ: tệp cũ bị xóa, avatar không bị đụng tới; gỡ ảnh bìa thì xóa tệp', async () => {
+    const cong = await app.as('cong');
+    const av = await upload(cong, 'avatar');
+    const cover1 = await upload(cong, 'cover');
+    await users.updateProfile(cong, { avatarUrl: av.url, coverUrl: cover1.url });
+    expect((await users.publicProfile(app.anon(), 'cong-tran')).user.coverUrl).toBe(cover1.url);
+    const cover2 = await upload(cong, 'cover');
+    await users.updateProfile(cong, { coverUrl: cover2.url });
+    await runJobs();
+    expect(bucket.objects.has(cover1.key)).toBe(false);
+    expect(bucket.objects.has(cover2.key)).toBe(true);
+    expect(bucket.objects.has(av.key)).toBe(true);
+    // Lưu hồ sơ mà không đụng tới ảnh bìa thì ảnh vẫn còn.
+    await users.updateProfile(cong, { bio: 'đổi giới thiệu' });
+    await runJobs();
+    expect(bucket.objects.has(cover2.key)).toBe(true);
+    await users.updateProfile(cong, { coverUrl: null, avatarUrl: null });
+    await runJobs();
+    expect(bucket.objects.has(cover2.key)).toBe(false);
+    expect((await users.publicProfile(app.anon(), 'cong-tran')).user.coverUrl).toBeNull();
+  });
+
   it('gỡ avatar thì xóa tệp; lưu lại đúng avatar đang dùng thì không xóa', async () => {
     const cong = await app.as('cong');
     const av = await upload(cong, 'avatar');

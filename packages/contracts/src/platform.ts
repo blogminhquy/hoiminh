@@ -56,6 +56,8 @@ export const updateProfileSchema = z.object({
   location: z.string().max(80).optional(),
   occupation: z.string().max(80).optional(),
   avatarFileId: idSchema.nullable().optional(),
+  /** Ảnh bìa hồ sơ: id tệp vừa tải lên, hoặc null để gỡ ảnh và quay về nền màu. */
+  coverFileId: idSchema.nullable().optional(),
   coverColor: z.string().max(16).optional(),
   links: z.array(z.object({ kind: z.string().max(20), label: z.string().max(40), url: z.string().max(200) })).max(6).optional(),
   privacy: z

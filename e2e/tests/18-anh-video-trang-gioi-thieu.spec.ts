@@ -1,4 +1,4 @@
-// Cài đặt · Chung: chủ hội tải logo vuông, ảnh bìa, rồi thêm, xếp lại, sửa và xóa ảnh, video của trang giới thiệu.
+// Cài đặt · Chung: chủ hội tải logo vuông, ảnh bìa, rồi thêm, kéo thả để xếp lại, sửa và xóa ảnh, video của trang giới thiệu.
 // Người lạ mở link hội thấy đúng bộ ảnh và video đó, ảnh bìa ở thẻ hội, và không thấy nút sửa.
 import { devices, expect, test, type Page } from '@playwright/test';
 import { API, USERS, login } from '../helpers';
@@ -65,16 +65,33 @@ test('chủ hội sửa logo, ảnh bìa, ảnh và video trang giới thiệu; 
   await expect(card.getByText('3/12')).toBeVisible();
   await expect(link).toHaveCount(0);
 
-  // Video vừa thêm đang được chọn: đưa lên đầu (khung to đi theo nó), sửa link, rồi chọn ảnh cuối và xóa.
-  await card.getByRole('button', { name: 'Đưa video số 3 lên trước' }).click();
-  await card.getByRole('button', { name: 'Đưa video số 2 lên trước' }).click();
-  await expect(card.getByRole('button', { name: 'Sửa link video số 1' })).toBeEnabled();
+  // Đổi thứ tự bằng kéo thả: kéo video (đang ở cuối) thả vào ô đầu tiên. Khung to đi theo video vừa kéo.
+  const thumb = (name: string) => card.getByRole('button', { name: `Chọn ${name}`, exact: true });
+  const from = (await thumb('video số 3').boundingBox())!;
+  const to = (await thumb('ảnh số 1').boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 - 20, from.y + from.height / 2, { steps: 4 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(thumb('video số 1')).toHaveAttribute('aria-current', 'true');
+  await expect(thumb('ảnh số 3')).toBeVisible();
+  // Bấm thường (không kéo) vẫn là chọn ảnh, không làm đổi thứ tự.
+  await thumb('ảnh số 2').click();
+  await expect(card.getByRole('img', { name: 'Xem trước ảnh số 2' })).toBeVisible();
+  await expect(thumb('video số 1')).toBeVisible();
+  // Bàn phím: Shift + mũi tên đưa mục đang đứng sang bên cạnh.
+  await thumb('ảnh số 2').press('Shift+ArrowRight');
+  await expect(thumb('ảnh số 3')).toHaveAttribute('aria-current', 'true');
+
+  // Sửa link video, rồi xóa ảnh cuối bằng hai nút trên khung to.
+  await thumb('video số 1').click();
   await card.getByRole('button', { name: 'Sửa link video số 1' }).click();
   await expect(link).toHaveValue('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
   await link.fill('https://youtu.be/dQw4w9WgXcQ');
   await card.getByRole('button', { name: 'Cập nhật link' }).click();
   await expect(link).toHaveCount(0);
-  await card.getByRole('button', { name: 'Chọn ảnh số 3' }).click();
+  await thumb('ảnh số 3').click();
   await card.getByRole('button', { name: 'Xóa ảnh số 3' }).click();
   await expect(card.getByText('2/12')).toBeVisible();
   await expect(page.locator('#anh-video [aria-label^="Chọn "]')).toHaveCount(2);

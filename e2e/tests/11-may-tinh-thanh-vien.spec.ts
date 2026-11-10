@@ -34,7 +34,7 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
 
   await side.getByRole('link', { name: 'Viết bài' }).click();
   await expect(page.getByRole('dialog').getByText('Tạo bài viết')).toBeVisible();
-  await expect(page.getByRole('dialog').getByLabel('Chuyên mục')).not.toHaveValue('');
+  await expect(page.getByRole('dialog').getByLabel('Chuyên mục')).not.toHaveText(/Chọn chuyên mục|Đang tải/);
   // Nền màu cho bài ngắn: ô đầu là "Không nền", sau đó 8 màu; chọn màu nào thì ô đó được đánh dấu.
   await page.getByRole('dialog').getByRole('button', { name: /^Thêm/ }).click();
   const bgs = page.getByRole('dialog').getByRole('radiogroup', { name: 'Nền màu' });
