@@ -280,7 +280,9 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 /* Bảng chuyển hội: thả xuống từ đầu thanh bên (máy tính) hoặc từ tên hội ở đầu trang (điện thoại). */
 /* Menu trượt từ bên trái trên điện thoại (MobileDrawer trong AppShell). Nằm trên thanh dưới (30), dưới các khung bật lên (40). */
 .app-drawer-backdrop { position: fixed; inset: 0; z-index: 38; background: rgba(8, 24, 23, 0.5); animation: drawer-fade 0.16s ease-out; }
-.app-drawer { width: min(312px, 86vw); height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3); animation: drawer-in 0.2s ease-out; }
+.app-drawer { width: min(312px, 86vw); height: 100%; overflow: hidden; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3); animation: drawer-in 0.2s ease-out; }
+/* Danh sách mục của thanh bên và menu trượt: tự cuộn, thanh cuộn mảnh trên nền tối. Nút Viết bài nằm ngoài vùng này nên luôn thấy. */
+.side-scroll { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.22) transparent; }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
 /* Trong menu trượt, bảng chuyển hội rộng đúng bằng khối tên hội (không rộng theo chữ, kẻo tràn mép menu). */

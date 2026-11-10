@@ -29,14 +29,23 @@ function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode;
   );
 }
 
-/** Các mục điều hướng của hội và hai nút cuối. Dùng chung cho thanh bên (máy tính) và menu trượt (điện thoại). */
-function SidebarNav({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
+/**
+ * Các mục điều hướng của hội và hai nút cuối. Dùng chung cho thanh bên (máy tính) và menu trượt (điện thoại).
+ * Danh sách mục tự cuộn khi màn hình thấp, còn nút "Viết bài" luôn ghim ở đáy. `pinInvite`: ghim cả nút
+ * "Mời thành viên" (máy tính); menu điện thoại để nút đó cuộn theo danh sách cho đỡ chiếm chỗ.
+ */
+function SidebarNav({ shell, onInvite, pinInvite }: { shell: Shell; onInvite: () => void; pinInvite?: boolean }) {
   const s = shell.community.slug;
   const perms = shell.viewer.permissions;
   const manage = canManage(shell);
   const tabs = shell.community.tabs;
+  const canPost = tabs.feed !== false;
+  const invite = <button type="button" className="btn w-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} onClick={onInvite}><Plus size={18} />Mời thành viên</button>;
+  // Hội tắt Bảng tin thì không có nút Viết bài: nút Mời thành viên lên chỗ ghim.
+  const inviteInFoot = pinInvite || !canPost;
   return (
     <>
+      <div className="side-scroll flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="flex flex-col gap-0.5 pt-3">
         {manage ? <NavItem to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
       </div>
@@ -67,10 +76,11 @@ function SidebarNav({ shell, onInvite }: { shell: Shell; onInvite: () => void })
           </div>
         </>
       )}
-      <div className="flex-grow" style={{ minHeight: 16 }} />
-      <div className="flex flex-col gap-2">
-        {tabs.feed !== false && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full"><Pencil size={18} />Viết bài</Link>}
-        <button type="button" className="btn w-full" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} onClick={onInvite}><Plus size={18} />Mời thành viên</button>
+      {!inviteInFoot && <div className="pt-4 pb-1">{invite}</div>}
+      </div>
+      <div className="flex flex-col gap-2 pt-3 flex-shrink-0">
+        {canPost && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full"><Pencil size={18} />Viết bài</Link>}
+        {inviteInFoot && invite}
       </div>
     </>
   );
@@ -83,7 +93,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
       <div className="flex items-center px-2 flex-shrink-0" style={{ height: 48, borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
         <Link to="/kham-pha" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
       </div>
-      <SidebarNav shell={shell} onInvite={onInvite} />
+      <SidebarNav shell={shell} onInvite={onInvite} pinInvite />
     </aside>
   );
 }

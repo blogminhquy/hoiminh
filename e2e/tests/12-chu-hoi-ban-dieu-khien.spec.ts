@@ -55,6 +55,12 @@ test.describe('điện thoại', () => {
     await page.getByRole('button', { name: 'Mở menu' }).click();
     const drawer = page.getByRole('dialog', { name: 'Menu hội' });
     for (const label of ['Bàn điều khiển', 'Tiền', 'Cộng sự', 'Cài đặt']) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
+    // Menu của chủ hội dài hơn màn hình: danh sách mục cuộn được, còn nút Viết bài ghim ở đáy nên luôn thấy.
+    const write = drawer.getByRole('link', { name: 'Viết bài' });
+    await expect(write).toBeInViewport({ ratio: 1 });
+    await drawer.getByRole('link', { name: 'Cài đặt', exact: true }).scrollIntoViewIfNeeded();
+    await expect(write).toBeInViewport({ ratio: 1 });
+    await expect(drawer.getByRole('button', { name: 'Mời thành viên' })).toBeVisible();
     await drawer.getByRole('button', { name: /chuyển hội$/ }).click();
     const menu = page.getByRole('menu');
     await expect(menu.getByRole('menuitem', { name: /Tất cả hội/ })).toBeVisible();
