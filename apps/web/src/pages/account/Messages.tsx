@@ -14,9 +14,10 @@ import { ThreadView } from './MessagesThread';
 interface ConvoList { items: Conversation[]; unreadConversations: number }
 type Filter = 'all' | 'unread' | 'automated';
 
-const MOBILE = '(max-width: 767px)';
+/** Dưới bề rộng này (điện thoại, máy tính bảng dọc) mỗi lúc chỉ hiện một màn: danh sách hoặc khung chat. Khớp với styles.css. */
+const MOBILE = '(max-width: 1023px)';
 /** Từ bề rộng này bảng thông tin đứng thành cột thứ ba; hẹp hơn thì nó trượt đè lên khung chat, nên mặc định đóng. */
-const WIDE = '(min-width: 1280px)';
+const WIDE = '(min-width: 1536px)';
 
 function useMedia(query: string): boolean {
   return useSyncExternalStore((l) => { const m = window.matchMedia(query); m.addEventListener('change', l); return () => m.removeEventListener('change', l); }, () => window.matchMedia(query).matches, () => false);
@@ -57,7 +58,7 @@ export default function Page() {
   const [info, setInfo] = useState(() => window.matchMedia(WIDE).matches);
   const mobile = useMedia(MOBILE);
   const wide = useMedia(WIDE);
-  // Thu hẹp cửa sổ xuống dưới 1280px thì bảng thông tin sẽ đè lên khung chat: tự đóng lại, cần thì bấm mở.
+  // Thu hẹp cửa sổ xuống dưới 1536px thì bảng thông tin sẽ đè lên khung chat: tự đóng lại, cần thì bấm mở.
   useEffect(() => { if (!wide) setInfo(false); }, [wide]);
   const frame = useRef<HTMLDivElement>(null);
   const refetchInterval = usePollInterval(15_000);

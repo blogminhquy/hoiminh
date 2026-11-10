@@ -19,7 +19,8 @@ async function expectFillsScreen(page: Page): Promise<void> {
 }
 
 test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả cảm xúc, thu hồi, ghim', async ({ page, request }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  // 1600px: đủ rộng để bảng thông tin đứng thành cột thứ ba (từ 1536px); hẹp hơn thì bảng trượt đè lên khung chat và mặc định đóng.
+  await page.setViewportSize({ width: 1600, height: 900 });
   // Dùng tài khoản thành viên, không dùng chủ hội: các test ngay trước đã đăng nhập chủ hội nhiều lần, thêm một lần nữa
   // trong cùng phút là chạm hạn mức 10 lần đăng nhập mỗi phút cho một email và bị giữ lại ở trang đăng nhập.
   // Thành viên mới chỉ có hội thoại với chủ hội, nên nhờ Hoàng Vũ nhắn một tin để có hội thoại thứ hai (thử ghim).
@@ -58,11 +59,28 @@ test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả 
   await input.press('Enter');
   await expect(thread.locator('.chat-row.mine .chat-quote').last()).toContainText('Chào Công, chào mừng bạn');
 
-  // Thả cảm xúc: rê vào nút thích để chọn; cảm xúc của mình hiện ngay trên tin.
+  // Hàng dưới bong bóng: giờ gửi luôn hiện; rê vào tin thì hiện nút thao tác cạnh giờ và thanh cảm xúc ở đầu bên kia.
+  // Không còn nút thích ở góc bong bóng.
+  await expect(theirs.locator('.chat-meta .chat-time')).toHaveText(/^\d{2}:\d{2}$/);
+  await expect(theirs.getByRole('button', { name: 'Thả cảm xúc ❤️' })).toBeHidden();
   await theirs.hover();
-  await theirs.locator('.chat-react-btn').hover();
+  await expect(theirs.getByRole('button', { name: /Thích tin nhắn này/ })).toHaveCount(0);
+  const metaBox = (await theirs.locator('.chat-meta').boundingBox())!;
+  const bubbleBox = (await theirs.locator('.chat-bubble').boundingBox())!;
+  const replyBox = (await theirs.getByRole('button', { name: 'Trả lời' }).boundingBox())!;
+  const barBox = (await theirs.locator('.chat-react-bar').boundingBox())!;
+  expect(metaBox.y).toBeGreaterThanOrEqual(bubbleBox.y + bubbleBox.height);
+  expect(replyBox.x).toBeLessThan(barBox.x);
+  // Thả cảm xúc: bấm thẳng vào biểu tượng trên thanh; cảm xúc đã thả hiện cạnh giờ gửi, bấm lại để gỡ.
   await theirs.getByRole('button', { name: 'Thả cảm xúc ❤️' }).click();
-  await expect(theirs.getByRole('button', { name: 'Gỡ cảm xúc của bạn' }).first()).toHaveText('❤️');
+  await expect(theirs.locator('.chat-react-sum')).toHaveText('❤️');
+  await theirs.hover();
+  await expect(theirs.getByRole('button', { name: 'Thả cảm xúc ❤️' })).toHaveAttribute('aria-pressed', 'true');
+  await theirs.getByRole('button', { name: 'Gỡ cảm xúc của bạn' }).click();
+  await expect(theirs.locator('.chat-react-sum')).toHaveCount(0);
+  await theirs.hover();
+  await theirs.getByRole('button', { name: 'Thả cảm xúc 👍' }).click();
+  await expect(theirs.locator('.chat-react-sum')).toHaveText('👍');
 
   // Thu hồi tin vừa gửi: hai bên chỉ còn thấy "Tin nhắn đã được thu hồi", danh sách cũng không lộ nội dung.
   page.once('dialog', (d) => void d.accept());

@@ -1,9 +1,9 @@
-// Mảnh màn Tin nhắn (kiểu Zalo): dòng hội thoại có menu ghim/lưu trữ, bong bóng tin với trả lời, cảm xúc, thu hồi,
+// Mảnh màn Tin nhắn (kiểu Zalo): dòng hội thoại có menu ghim/lưu trữ, bong bóng tin kèm hàng giờ gửi và thao tác bên dưới,
 // và bảng "Thông tin hội thoại" bên phải (thao tác nhanh, thông tin thành viên, ảnh, link đã gửi).
 import { MESSAGE_REACTIONS, type MessageReaction } from '@hoiminh/contracts';
 import { Avatar, T, money } from '@hoiminh/ui';
-import { Archive, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Link2, MoreHorizontal, Pin, PinOff, Reply, Settings, Sparkles, ThumbsUp, Undo2, User, Users, X } from 'lucide-react';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Archive, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Link2, MoreHorizontal, Pin, PinOff, Quote, Settings, Sparkles, Undo2, User, Users, X } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { linkParts, reactionSummary } from '@/lib/chat';
 import { fmtDate, fmtTime, timeAgo } from '@/lib/format';
@@ -72,20 +72,10 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-/** Đặt thanh chọn cảm xúc ngay trên nút thích nhưng luôn nằm trọn trong khung chat (tin sát mép trái hay phải đều không bị cắt). */
-function placeReactionBar(pick: HTMLElement): void {
-  const bar = pick.querySelector<HTMLElement>('.chat-react-bar');
-  const box = pick.closest('.chat-scroll')?.getBoundingClientRect();
-  if (!bar || !box) return;
-  const r = pick.getBoundingClientRect();
-  const left = Math.min(Math.max(r.left + r.width / 2 - bar.offsetWidth / 2, box.left + 8), box.right - bar.offsetWidth - 8);
-  bar.style.left = `${Math.round(left - r.left)}px`;
-}
-
 export interface MessageItemProps {
   m: Message; mine: boolean; myId: string; other: Person;
-  /** Tin đầu / cuối của một cụm tin liền nhau cùng người gửi. */
-  first: boolean; last: boolean;
+  /** Tin đầu của một cụm tin liền nhau cùng người gửi (hiện ảnh đại diện). */
+  first: boolean;
   /** Dòng trạng thái dưới tin cuối cùng của mình: Đang gửi, Đã gửi, Đã xem. */
   status: string | null; flash: boolean;
   /** Màn cảm ứng không có rê chuột: chạm vào tin để hiện thao tác, chạm lần nữa để ẩn. */
@@ -93,7 +83,7 @@ export interface MessageItemProps {
   onReply: () => void; onReact: (emoji: MessageReaction | null) => void; onRecall: () => void; onJump: (id: string) => void; onImageLoad: () => void;
 }
 
-export function MessageItem({ m, mine, myId, other, first, last, status, flash, active, onActivate, onReply, onReact, onRecall, onJump, onImageLoad }: MessageItemProps) {
+export function MessageItem({ m, mine, myId, other, first, status, flash, active, onActivate, onReply, onReact, onRecall, onJump, onImageLoad }: MessageItemProps) {
   const [copied, setCopied] = useState(false);
   const myReaction = m.reactions[myId] as MessageReaction | undefined;
   const sum = reactionSummary(m.reactions);
@@ -102,11 +92,8 @@ export function MessageItem({ m, mine, myId, other, first, last, status, flash, 
   const big = !m.recalled && !m.imageUrl && !m.replyTo && EMOJI_ONLY.test(m.body);
   const copy = () => { void navigator.clipboard?.writeText(m.body).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
   const react = (e: MessageReaction | null) => (ev: { currentTarget: HTMLElement }) => { ev.currentTarget.blur(); onReact(e); };
-  // Màn cảm ứng: chạm vào tin là thanh cảm xúc hiện ra, nên phải đặt chỗ ngay lúc đó (không có sự kiện rê chuột).
-  const pickRef = useRef<HTMLSpanElement>(null);
-  useLayoutEffect(() => { if (active && pickRef.current) placeReactionBar(pickRef.current); }, [active]);
   return (
-    <div id={`msg-${m.id}`} className={`chat-row${mine ? ' mine' : ''}${first ? ' first' : ''}${sum.total ? ' reacted' : ''}${flash ? ' flash' : ''}${active ? ' active' : ''}`} onClick={onActivate}>
+    <div id={`msg-${m.id}`} className={`chat-row${mine ? ' mine' : ''}${first ? ' first' : ''}${flash ? ' flash' : ''}${active ? ' active' : ''}`} onClick={onActivate}>
       {!mine && <span className="chat-avatar">{first && <Avatar name={other.name} src={other.avatarUrl} color={other.coverColor ?? T.ink} size={36} />}</span>}
       <div className="chat-body">
         {m.automated && first && <span className="tag" style={{ background: T.surface, color: T.ink3, border: `1px solid ${T.line}` }}><Sparkles size={12} />Tin nhắn chào tự động</span>}
@@ -123,29 +110,27 @@ export function MessageItem({ m, mine, myId, other, first, last, status, flash, 
               {m.body && <RichText text={m.body} />}
             </>
           )}
-          {last && <span className="chat-time">{fmtTime(m.createdAt)}</span>}
+        </div>
+        {/* Hàng dưới bong bóng: giờ gửi, trạng thái, cảm xúc đã thả; rê chuột (hoặc chạm vào tin) thì hiện thêm nút thao tác và thanh cảm xúc. */}
+        <div className="chat-meta">
+          <span className="chat-time">{fmtTime(m.createdAt)}</span>
+          {status && <span className="chat-status">{status !== 'Đang gửi' && <CheckCheck size={14} />}{status}</span>}
+          {sum.total > 0 && <span className="chat-react-sum" aria-label={`${sum.total} lượt cảm xúc`}>{sum.emojis.slice(0, 3).join(' ')}{sum.total > 1 && <b>{sum.total}</b>}</span>}
           {canAct && (
-            <span className="chat-react">
-              {sum.total > 0 && !(sum.total === 1 && myReaction) && <span className="chat-react-sum" aria-label={`${sum.total} lượt cảm xúc`}>{sum.emojis.slice(0, 3).join(' ')}{sum.total > 1 && <b>{sum.total}</b>}</span>}
-              <span className="chat-react-pick" ref={pickRef} onMouseEnter={(e) => placeReactionBar(e.currentTarget)} onFocus={(e) => placeReactionBar(e.currentTarget)}>
-                <button type="button" className={`chat-react-btn${myReaction ? ' has' : ''}`} aria-label={myReaction ? 'Gỡ cảm xúc của bạn' : 'Thích tin nhắn này'} onClick={react(myReaction ? null : '👍')}>{myReaction ?? <ThumbsUp size={14} />}</button>
-                <span className="chat-react-bar" role="group" aria-label="Chọn cảm xúc">
-                  {MESSAGE_REACTIONS.map((e) => <button key={e} type="button" aria-label={`Thả cảm xúc ${e}`} aria-pressed={myReaction === e} onClick={react(myReaction === e ? null : e)}>{e}</button>)}
-                  {myReaction && <button type="button" aria-label="Gỡ cảm xúc của bạn" onClick={react(null)}><X size={16} /></button>}
-                </span>
+            <>
+              <span className="chat-actions">
+                <button type="button" aria-label="Trả lời" title="Trả lời" onClick={onReply}><Quote size={16} /></button>
+                {m.body && <button type="button" aria-label="Sao chép nội dung" title={copied ? 'Đã sao chép' : 'Sao chép'} onClick={copy}>{copied ? <Check size={16} /> : <Copy size={16} />}</button>}
+                {canRecall && <button type="button" aria-label="Thu hồi tin nhắn" title="Thu hồi" onClick={onRecall}><Undo2 size={16} /></button>}
               </span>
-            </span>
+              <span className="chat-react-bar" role="group" aria-label="Chọn cảm xúc">
+                {MESSAGE_REACTIONS.map((e) => <button key={e} type="button" aria-label={`Thả cảm xúc ${e}`} aria-pressed={myReaction === e} onClick={react(myReaction === e ? null : e)}>{e}</button>)}
+                {myReaction && <button type="button" className="clear" aria-label="Gỡ cảm xúc của bạn" title="Gỡ cảm xúc" onClick={react(null)}><X size={16} /></button>}
+              </span>
+            </>
           )}
         </div>
-        {status && <span className="chat-status">{status !== 'Đang gửi' && <CheckCheck size={14} />}{status}</span>}
       </div>
-      {canAct && (
-        <div className="chat-actions">
-          <button type="button" aria-label="Trả lời" title="Trả lời" onClick={onReply}><Reply size={16} /></button>
-          {m.body && <button type="button" aria-label="Sao chép nội dung" title={copied ? 'Đã sao chép' : 'Sao chép'} onClick={copy}>{copied ? <Check size={16} /> : <Copy size={16} />}</button>}
-          {canRecall && <button type="button" aria-label="Thu hồi tin nhắn" title="Thu hồi" onClick={onRecall}><Undo2 size={16} /></button>}
-        </div>
-      )}
     </div>
   );
 }

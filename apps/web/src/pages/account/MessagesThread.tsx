@@ -105,6 +105,11 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
     setText(text.slice(0, at) + ch + text.slice(el ? el.selectionEnd : at));
     requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(at + ch.length, at + ch.length); });
   };
+  // Chạm (bấm) vào tin để hiện thao tác; thao tác hiện ra có thể làm tin cao thêm, nên đưa cả tin vào tầm nhìn.
+  const activate = (messageId: string) => {
+    setActive((v) => (v === messageId ? null : messageId));
+    requestAnimationFrame(() => document.getElementById(`msg-${messageId}`)?.scrollIntoView({ block: 'nearest' }));
+  };
   const startReply = (m: Message) => { setReplyTo(m); inputRef.current?.focus(); };
   const jumpTo = (messageId: string) => { const el = document.getElementById(`msg-${messageId}`); if (!el) return; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); setFlash(messageId); };
   const onRecall = (m: Message) => { if (window.confirm('Thu hồi tin nhắn này? Cả hai bên sẽ không còn xem được nội dung.')) recall.mutate(m.id); };
@@ -131,12 +136,11 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
           {d.items.length === 0 && <div className="chat-empty">Chưa có tin nhắn nào. Gửi lời chào tới {firstName} nhé.</div>}
           {d.items.map((m, i) => {
             const prev = d.items[i - 1];
-            const next = d.items[i + 1];
             const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
             return (
               <div key={m.id} className="chat-item">
                 {newDay && <DayDivider date={m.createdAt} />}
-                <MessageItem m={m} mine={m.senderUserId === meId} myId={meId} other={other} first={newDay || !sameGroup(prev, m)} last={!sameGroup(m, next)} status={m === last ? lastStatus : null} flash={flash === m.id} active={active === m.id} onActivate={() => setActive((v) => (v === m.id ? null : m.id))}
+                <MessageItem m={m} mine={m.senderUserId === meId} myId={meId} other={other} first={newDay || !sameGroup(prev, m)} status={m === last ? lastStatus : null} flash={flash === m.id} active={active === m.id} onActivate={() => activate(m.id)}
                   onReply={() => startReply(m)} onReact={(e) => react.mutate({ messageId: m.id, emoji: e })} onRecall={() => onRecall(m)} onJump={jumpTo} onImageLoad={() => { if (stick.current) toBottom(); }} />
               </div>
             );
