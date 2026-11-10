@@ -43,7 +43,7 @@ export function LearnerShell() {
     <LearnerModeContext.Provider value>
       <div className="flex flex-col min-h-screen" style={{ background: T.bg }}>
         <header className="flex items-center gap-3 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-          <Link to="/hoc" aria-label="Hội Mình"><Logo size={26} /></Link>
+          <Link to="/hoc" aria-label="Hội Mình"><Logo size={26} markOnlyOnMobile /></Link>
           <nav className="flex items-center gap-1 ml-3 md:ml-6" aria-label="Khu học tập">
             <Tab to="/hoc" icon={<GraduationCap size={18} />} label="Khu học tập" />
             <Tab to="/tai-khoan/goi" icon={<Receipt size={18} />} label="Đơn hàng" />
@@ -52,7 +52,7 @@ export function LearnerShell() {
           <div className="flex items-center gap-2">
             <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><MessageCircle size={20} />{badges.data?.unreadMessages ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}</Link>
             <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><Bell size={20} />{badges.data?.unreadNotifications ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}</Link>
-            <Link to="/tai-khoan/ho-so" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.ink} size={40} /></Link>
+            <Link to="/tai-khoan/ho-so" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.side} size={40} /></Link>
           </div>
         </header>
         <div className="flex-grow w-full mx-auto" style={{ maxWidth: 1120, padding: '28px 16px 48px' }}>

@@ -1,4 +1,5 @@
-// Hệ thống · Gói nền tảng (saPlansMain) và Tính năng: thẻ gói duy nhất với 3 ô tháng/năm/dùng thử (sửa giá), cộng sự nền tảng, feature flags.
+// Hệ thống · Gói nền tảng và Tính năng (hai tab của nhóm "Gói và tính năng"): thẻ gói duy nhất với 3 ô tháng/năm/dùng thử
+// (sửa giá), cộng sự nền tảng; tab Tính năng bật tắt các cờ có tác dụng thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Field, Input, T, Toggle, money } from '@hoiminh/ui';
 import { Check, Plus } from 'lucide-react';
@@ -16,7 +17,9 @@ const FEATURES = ['Không giới hạn hội, thành viên, khóa học, video, 
 // Khóa phải khớp `featureFlags` trong seed và hằng FLAG ở packages/core.
 const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời gian thực', go_live: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng cộng sự', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI', gamification: 'Điểm và cấp độ hoạt động', paypal: 'Cổng PayPal' };
 /** Cờ đang chặn đường chạy thật (không chỉ hiển thị): ghi rõ tắt thì mất gì. */
-const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán', realtime_chat: 'chưa có tác dụng: tính năng thuộc V2, chưa xây', go_live: 'chưa có tác dụng: tính năng thuộc V2, chưa xây', gamification: 'chưa có tác dụng: tính năng thuộc V2, chưa xây' };
+const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
+/** Cờ của tính năng chưa xây (thuộc V2): bật hay tắt chưa đổi gì, nên không hiện để khỏi gây hiểu nhầm. */
+const NO_EFFECT = new Set(['realtime_chat', 'go_live', 'gamification']);
 
 function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const qc = useQueryClient();
@@ -34,8 +37,7 @@ function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
 
 export default function Page() {
   const qc = useQueryClient();
-  // Cùng một trang phục vụ hai mục nav: /he-thong/goi (gói, cộng sự nền tảng) và /he-thong/tinh-nang (cờ tính năng).
-  // Trước đây hai mục dẫn tới màn giống hệt nhau.
+  // Cùng một trang phục vụ hai tab: /he-thong/goi (gói, cộng sự nền tảng) và /he-thong/tinh-nang (cờ tính năng).
   const featuresView = useLocation().pathname.endsWith('/tinh-nang');
   const [edit, setEdit] = useState(false);
   const stats = useQuery({ queryKey: ['admin', 'plans'], queryFn: () => api.get<Stats>('/v1/admin/plans') });
@@ -46,12 +48,13 @@ export default function Page() {
   if (featuresView) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Tính năng và giới hạn</h1><div className="muted text-[13px]">Cờ tính năng bật/tắt cho toàn nền tảng. Giới hạn theo gói chưa có vì mới có một gói: xem <Link to="/he-thong/goi" style={{ color: T.teal }}>Gói nền tảng</Link>.</div></div></div>
+        <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Tính năng</h1><div className="muted text-[13px]">Bật tắt tính năng cho toàn nền tảng. Mỗi dòng ghi rõ tắt thì mất gì.</div></div></div>
         <div className="card flex flex-col gap-2.5" style={{ padding: '18px 20px', maxWidth: 720 }}>
           <span className="font-semibold">Tính năng đang bật theo giai đoạn</span>
           <QueryState q={flags} rows={3} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có cờ tính năng' }}>
-            {(list) => <>{list.map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
+            {(list) => <>{list.filter((f) => !NO_EFFECT.has(f.key)).map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
           </QueryState>
+          <div className="muted text-[13px] pt-2" style={{ borderTop: `1px solid ${T.line}` }}>Không hiện 3 cờ của tính năng chưa xây (tin nhắn thời gian thực, phát trực tiếp, điểm và cấp độ): bật hay tắt chưa đổi gì.</div>
         </div>
       </div>
     );
@@ -87,10 +90,11 @@ export default function Page() {
           <div className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">Đã trả cho cộng sự nền tảng tháng này</span><span className="font-semibold">{money(aff.data?.stats.paidThisMonthMinor ?? 0)}</span></div>
         </div>
         <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
-          <span className="font-semibold">Tính năng đang bật theo giai đoạn</span>
-          <QueryState q={flags} rows={3} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có cờ tính năng' }}>
-            {(list) => <>{list.map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
+          <span className="font-semibold">Tính năng</span>
+          <QueryState q={flags} rows={1}>
+            {(list) => { const real = list.filter((f) => !NO_EFFECT.has(f.key)); return <div className="text-[13px]">{real.filter((f) => f.enabled).length} trên {real.length} tính năng đang bật cho mọi hội.</div>; }}
           </QueryState>
+          <Link to="/he-thong/tinh-nang" className="btn btn-ghost btn-sm self-start">Bật tắt tính năng</Link>
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 // Bảng tin của hội: chip chuyên mục, composer thu gọn, danh sách bài, rail thông tin hội / Premium / sự kiện sắp tới.
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Avatar, Button, Chip, DateBlock, STATUS_BGS, T, money } from '@hoiminh/ui';
-import { BarChart3, ChevronDown, Image as ImageIcon, Link as LinkIcon, Sparkles, Video, X } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { Avatar, Button, Chip, DateBlock, T, money } from '@hoiminh/ui';
+import { Image as ImageIcon, Sparkles, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PostCard, type FeedPost } from '@/components/post/PostCard';
 import { LoadingBlock } from '@/components/QueryState';
@@ -16,29 +16,15 @@ import { SITE_HOST } from '@/lib/site';
 
 interface FeedPage { items: FeedPost[]; nextCursor: string | null; spaces: Array<{ id: string; name: string; colorKey: string }>; access: { role: string; canBroadcast: boolean; canModerate: boolean } }
 
-const IconBtn = ({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) => (
-  <button type="button" aria-label={label} onClick={onClick} className="w-9 h-9 flex items-center justify-center rounded-lg" style={{ color: T.ink2 }}>{icon}</button>
-);
-
+/** Ô mời viết bài: một dòng, chạm vào là mở khung soạn (chuyên mục đã chọn sẵn ở đó). */
 function MiniComposer({ onOpen }: { onOpen: () => void }) {
   const { user } = useAuth();
   return (
-    <div className="card px-5 py-4 flex flex-col gap-3">
-      <button type="button" className="flex items-center gap-3 text-left w-full" onClick={onOpen}>
-        <Avatar name={user?.name} src={user?.avatarUrl} size={40} />
-        <span className="flex-grow text-[15px]" style={{ color: T.ink3 }}>Chia sẻ điều gì đó với cộng đồng…</span>
-        <span className="w-8 h-8 rounded-[9px] inline-flex items-center justify-center serif font-extrabold text-[13px] flex-shrink-0" style={{ background: STATUS_BGS[0].css, color: STATUS_BGS[0].fg }}>Aa</span>
-      </button>
-      <div className="flex items-center gap-1 flex-wrap">
-        <IconBtn icon={<ImageIcon size={20} />} label="Ảnh" onClick={onOpen} />
-        <IconBtn icon={<LinkIcon size={20} />} label="Link" onClick={onOpen} />
-        <IconBtn icon={<Video size={20} />} label="Video" onClick={onOpen} />
-        <IconBtn icon={<BarChart3 size={20} />} label="Bình chọn" onClick={onOpen} />
-        <span className="flex-grow" />
-        <Chip onClick={onOpen}>Chọn chuyên mục <ChevronDown size={14} /></Chip>
-        <Button variant="dark" size="sm" className="ml-2" style={{ height: 36 }} onClick={onOpen}>Đăng bài</Button>
-      </div>
-    </div>
+    <button type="button" className="card px-4 py-3 flex items-center gap-3 text-left w-full" onClick={onOpen} aria-label="Viết bài mới">
+      <Avatar name={user?.name} src={user?.avatarUrl} size={40} />
+      <span className="flex-grow text-[15px]" style={{ color: T.ink3 }}>Bạn muốn chia sẻ gì?</span>
+      <span className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: T.primarySoft, color: T.primaryText }}><ImageIcon size={20} /></span>
+    </button>
   );
 }
 
@@ -114,7 +100,7 @@ export default function Page() {
       <div className="main">
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <h1 className="serif m-0 text-[28px] font-bold page-title">Bảng tin</h1>
-          <div className="flex gap-2 flex-wrap">
+          <div className="chip-row">
             <Chip on={!spaceId} onClick={() => setSpaceId('')}>Tất cả</Chip>
             {spaces.map((s) => <Chip key={s.id} on={spaceId === s.id} onClick={() => setSpaceId(s.id)}>{s.name}</Chip>)}
           </div>
@@ -135,7 +121,7 @@ export default function Page() {
         )}
       </div>
       <Rail shell={shell} />
-      <Composer open={composing} onClose={() => navigate(`/${slug}/bang-tin`)} />
+      <Composer open={composing} onClose={() => navigate(`/${slug}/bang-tin`)} defaultSpaceId={spaceId} />
     </div>
   );
 }

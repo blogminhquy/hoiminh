@@ -24,7 +24,7 @@ export function AvatarCoverBlock({ name, avatarUrl, coverColor, uploading, onPic
   const fileRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex gap-5 items-center flex-wrap">
-      <Avatar name={name} src={avatarUrl} color={T.ink} size={88} />
+      <Avatar name={name} src={avatarUrl} color={T.side} size={88} />
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Ảnh đại diện</span>
         <div className="flex gap-2">

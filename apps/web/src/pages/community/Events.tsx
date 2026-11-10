@@ -44,7 +44,7 @@ export default function Page() {
     <div className="two-col">
       <div className="main flex flex-col gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="serif m-0 text-[28px] font-extrabold">Sự kiện</h1>
+          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Sự kiện</h1>
           <div className="flex gap-2 md:ml-3"><Chip on={filter === 'upcoming'} onClick={() => setFilter('upcoming')}>Sắp tới</Chip><Chip on={filter === 'mine'} onClick={() => setFilter('mine')}>Của tôi</Chip><Chip on={filter === 'past'} onClick={() => setFilter('past')}>Đã qua{q.data ? ` · ${q.data.pastCount}` : ''}</Chip></div>
           <span className="flex-grow" />
           {q.data?.canManage && <Link to={`/${slug}/su-kien/moi`} className="btn btn-primary btn-sm" style={{ height: 36 }}><Plus size={16} />Tạo sự kiện</Link>}
@@ -69,7 +69,7 @@ export default function Page() {
           {(q.data?.recordings ?? []).length === 0 && <div className="muted text-[13px]">Chưa có bản ghi.</div>}
           {(q.data?.recordings ?? []).slice(0, 3).map((r) => (
             <a key={r.id} href={r.videoUrl} target="_blank" rel="noreferrer" className="flex gap-3 items-center" style={{ color: T.ink }}>
-              <div className="w-[72px] h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#171310', color: T.invertInk }}><Play size={16} /></div>
+              <div className="w-[72px] h-11 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: T.player, color: T.invertInk }}><Play size={16} /></div>
               <div className="min-w-0"><div className="text-[13px] font-medium truncate">{r.title}</div><div className="muted text-[12px]">{fmtDate(r.publishedAt).slice(0, 5)}{r.durationSeconds ? ` · ${fmtDuration(r.durationSeconds, true)}` : ''}</div></div>
             </a>
           ))}

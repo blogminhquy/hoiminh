@@ -65,7 +65,7 @@ export function Done({ slug, name }: { slug: string; name: string }) {
       <div className="muted text-[14px]">Đường dẫn hội: <strong style={{ color: T.ink }}>{SITE_HOST}/{slug}</strong>. Hội đang ở trạng thái nháp cho tới khi bạn đăng bài đầu tiên hoặc mở cổng trong Cài đặt.</div>
       <div className="flex gap-2 flex-wrap justify-center pt-2">
         <Link to={`/${slug}/cai-dat`} className="btn btn-ghost">Cài đặt hội</Link>
-        <Link to={`/${slug}/bang-tin`} className="btn btn-primary">Vào hội</Link>
+        <Link to={`/${slug}/hom-nay`} className="btn btn-primary">Vào hội</Link>
       </div>
     </div>
   );

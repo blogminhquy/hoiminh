@@ -1,5 +1,149 @@
 # CHANGELOG
 
+## 1.19.0 - 2026-11-10
+
+Đợt C của việc gom phần quản trị: ô lệnh "Bạn muốn làm gì?" và khu quản trị hệ thống gom từ 11 mục về 5 nhóm.
+
+### Tính năng
+
+- **Ô lệnh "Bạn muốn làm gì?"** cho chủ hội, quản trị hội và quản trị hệ thống. Mở bằng ô ở đầu trang hoặc Ctrl K (Cmd K trên máy Mac), trên điện thoại là nút kính lúp. Gõ vài chữ không cần dấu ("moi thanh vien", "rut tien", "hoa hong"), bấm Enter là tới đúng màn. Danh sách gồm việc làm ngay (viết bài, mời thành viên, tạo khóa học, tạo sự kiện, trả hoa hồng, rút tiền, hoàn tiền), nơi đi tới và từng mục cài đặt, lọc theo quyền của người xem và theo tab hội đang bật. Gõ tên người hay từ khóa thì có thêm dòng "Tìm thành viên" và "Tìm trong bảng tin". Ô lệnh chỉ dẫn đường, không dùng AI.
+- **Khu quản trị hệ thống còn 5 nhóm**: Tổng quan, Hội và người dùng (Hội, Người dùng, Bị báo cáo), Tiền (Thanh toán và đối soát, Cộng sự nền tảng), Gói và tính năng (Gói nền tảng, Tính năng), Hệ thống (Hạ tầng và khóa, Phiên bản, Nhật ký). Nhóm có nhiều trang thì có hàng tab con. Mọi đường dẫn cũ giữ nguyên.
+- Ô lệnh của quản trị hệ thống tìm được hội và người dùng theo tên hoặc email, thay ô tìm nhanh cũ (vốn không có trên điện thoại).
+
+### Thay đổi
+
+- Người quản lý hội: ô "Tìm trong bảng tin" ở đầu trang thành ô lệnh; tìm trong bảng tin là một dòng trong ô lệnh. Thành viên thường giữ ô tìm như cũ.
+- Tab Tính năng không còn hiện 3 cờ của tính năng chưa xây (tin nhắn thời gian thực, phát trực tiếp, điểm và cấp độ): bật hay tắt chưa đổi gì nên dễ gây hiểu nhầm. Trang Gói nền tảng bỏ bảng cờ bị lặp, thay bằng một dòng tóm tắt và lối sang tab Tính năng.
+- `/thanh-vien?q=...` mở danh sách thành viên đã lọc sẵn. Danh sách Hội và Người dùng của quản trị hệ thống nhận từ khóa mới ngay cả khi đang đứng ở trang đó.
+
+### Sửa lỗi
+
+- Trang Cộng sự nền tảng tràn ngang ở khổ 820px.
+
+## 1.18.0 - 2026-11-10
+
+Đợt B của việc gom phần quản trị: chủ hội mở app là thấy Bàn điều khiển, phần quản lý gom từ 15 mục ở hai khung về 4 chỗ (Bàn điều khiển, Tiền, Cộng sự, Cài đặt).
+
+### Tính năng
+
+- **Bàn điều khiển thay trang Hôm nay cho chủ hội và quản trị** (`/:slug/hom-nay`). Một màn trả lời ba câu: có gì cần xử lý, hội đang chạy thế nào, tiền đang ở đâu. Mục "Cần xử lý" gom yêu cầu rút của cộng sự, người chờ duyệt vào hội, bài chờ duyệt và gói Hội Mình sắp hết hạn (còn từ 7 ngày trở xuống); không có gì thì ghi rõ "Mọi việc đã xong". Số liệu, biểu đồ doanh thu, danh sách hoàn thiện hội và hoạt động gần đây chuyển từ Cài đặt, Tổng quan về đây. Thành viên thường vẫn thấy trang Hôm nay như cũ.
+- **Trang Tiền** (`/:slug/tien`) gom Doanh thu và Cài đặt, Thanh toán: số dư có thể rút, đang giữ, đã rút tháng này, nút Rút tiền, rồi số liệu theo kỳ và bảng giao dịch (hoàn tiền, xuất CSV).
+- **Trang Cộng sự** (`/:slug/cong-su`) mở thẳng hàng đợi yêu cầu rút hoa hồng, việc chủ hội làm hằng ngày với cộng sự. Mức hoa hồng (việc đặt một lần) nằm ở Cài đặt.
+- **Cài đặt còn 4 nhóm thay cho 10 mục**: Hội (thông tin, bảng tin và chuyên mục), Bán hàng (giá và gói), Cộng sự (mức hoa hồng), Tự động và kết nối (tiện ích, nhà phát triển). Trên điện thoại `/cai-dat` là danh sách 4 nhóm lớn, vào trong có nút quay lại.
+- **Điện thoại**: tab đầu của thanh dưới thành "Quản lý" cho chủ hội, có ô lối tắt tới Thành viên, Tiền, Cộng sự, Cài đặt. Chạm tên hội ở đầu trang để chuyển hội (trước đây chỉ máy tính chuyển được).
+- **Chủ hội đăng nhập xong vào thẳng Bàn điều khiển** của hội mình (trước: trang "Hội của tôi"). Đăng nhập bằng Google và đặt lại mật khẩu cũng theo cùng quy tắc.
+
+### Thay đổi
+
+- Thanh bên máy tính của chủ hội: "Bàn điều khiển" ở đầu, nhóm "Quản lý" gồm Tiền, Cộng sự, Cài đặt (trước: nhóm "Quản trị" gồm Cài đặt, Doanh thu).
+- Khung "Hội của tôi" chỉ còn hai mục ở đầu trang: Hội của tôi và Tài khoản. Nhà phát triển chuyển vào Cài đặt của hội, Khám phá nằm trong bảng chuyển hội.
+- Bỏ các mục trùng trong Cài đặt: Tổng quan (đã thành Bàn điều khiển), Khám phá, Mời thành viên, Thông báo. Bỏ bảng bật tắt cổng thanh toán ở trang Thanh toán vì trùng với phần "Cách khách thanh toán" trong Giá và gói.
+- Đường dẫn cũ vẫn chạy: `/doanh-thu` và `/cai-dat/thanh-toan` chuyển sang `/tien`, `/cai-dat/cong-su/rut-tien` chuyển sang `/cong-su`.
+- `/thanh-vien?trang-thai=pending` mở thẳng danh sách chờ duyệt.
+
+### Sửa lỗi
+
+- Trang yêu cầu rút của cộng sự tràn ngang ở khổ 820px (bốn ô số liệu bị ép vào một hàng).
+
+## 1.17.1 - 2026-11-10
+
+Đợt A của việc gom phần quản trị: sửa các lỗi tìm thấy khi rà soát 31 màn của chủ hội và quản trị hệ thống.
+
+### Sửa lỗi
+
+- **Trang Hội của tôi luôn ghi doanh thu 30 ngày là 0đ.** Truy vấn con so `community_id` với nhầm cột (Drizzle bỏ tên bảng khi chỉ select một bảng), nên không đơn nào khớp. Hội mẫu có 9.187.000đ trong 30 ngày vẫn hiện 0đ. Nay tính bằng một truy vấn gom nhóm, có test đối chiếu với trang Tổng quan.
+- **Mục "Mời thành viên" trong Cài đặt bấm vào không mở gì.** `/thanh-vien?moi=1` nay mở sẵn khung mời.
+- **Chủ hội trên điện thoại không có lối vào Cài đặt và Doanh thu của hội.** Trang Tôi có thêm hai mục này cho người có quyền.
+- **Trang Hội của tôi, Nhà phát triển, Tạo hội tràn ngang trên điện thoại** (522px trên màn 390px) vì thanh mục ở đầu trang xuống dòng. Trang Nhật ký của quản trị hệ thống cũng tràn (509px).
+- **Quản trị hệ thống đăng nhập xong bị đưa về trang Khám phá.** Nay vào thẳng khu quản trị khi tài khoản không có hội nào.
+- Trang Hôm nay: nút "Học tiếp" bị cắt chữ khi tên bài dài.
+
+## 1.17.0 - 2026-11-10
+
+Giao diện "Sáng và rõ" trên máy tính: chữ dễ đọc, thanh bên chia nhóm như điện thoại, hết tràn ngang ở máy tính nhỏ.
+
+### Giao diện
+
+- **Chữ trên máy tính.** Không chữ nào dưới 14px, chữ nội dung 16px, nút và ô nhập cao 44px (trước: chữ nền 14px, nút 40px). Đo ở khổ 1360px trên 37 màn hình của thành viên, chủ hội và quản trị: trước đây 26 màn có hơn nửa lượng chữ nhỏ hơn 14px (cao nhất 83%); nay cao nhất là 17% và 34 màn từ 10% trở xuống, phần còn lại chủ yếu là tiêu đề cột viết hoa 13px.
+- **Thanh bên** chia theo đúng nhóm của điện thoại: Hôm nay, Hội (Bảng tin, Sự kiện, Thành viên, Xếp hạng cộng sự), Học (Khóa học, Cửa hàng). Thêm nút "Viết bài" ở cuối thanh bên.
+- **Trang Hôm nay** chia hai cột: việc hôm nay và tiến độ bên trái, sự kiện và bàn luận bên phải.
+- **Bài học**: tiêu đề và nút cùng một hàng, nội dung bài nằm dưới và rộng đủ đọc (trước đây bị hai nút bóp còn khoảng 240px). Giáo trình chỉ đứng cạnh nội dung từ 1024px; hẹp hơn thì thu thành dòng "Danh sách bài".
+- Trong thẻ nền tối (gói VIP, Premium, Học tiếp), liên kết và dấu tích màu ngọc sáng lên để đọc được.
+- Khung quản trị hệ thống dùng màu thanh bên theo bảng màu mới.
+
+### Tính năng
+
+- **Đăng xuất trên máy tính**: nằm cuối nav Tài khoản (bản điện thoại đã có ở 1.16.0).
+
+### Sửa lỗi
+
+- Trang Cài đặt giá tràn ngang (thẻ VIP bị đẩy ra ngoài màn hình) ở mọi máy tính.
+- Ở máy tính nhỏ (1024px) tràn ngang ở Bài học, Tài khoản / Cộng sự, Cài đặt tổng quan, Cài đặt cộng sự; ở 820px thêm Tin nhắn, Tạo sự kiện và mọi trang của chủ hội, quản trị do ô tìm kiếm ở đầu trang có bề rộng cố định.
+- Ô tìm kiếm của khung quản trị bị vỡ (biểu tượng nằm trên dòng chữ).
+- Nút "Đăng ký" ở dòng sự kiện lúc cùng hàng lúc xuống dòng.
+- Trang Khám phá trên điện thoại lệch 10px ở đầu trang.
+
+## 1.16.0 - 2026-11-09
+
+Đợt 2 của trải nghiệm thành viên trên điện thoại: điều hướng gọn lại và trang Hôm nay.
+
+### Tính năng
+
+- **Trang Hôm nay** (`/:slug/hom-nay`), trang đích sau đăng nhập. Ba việc nhỏ trong ngày (ghé hội, học một bài, sự kiện hôm nay hoặc góp ý một bài) với dấu đã xong lấy từ dữ liệu thật; tiến độ khóa đang học nói bằng lời ("còn 4 bài, khoảng 30 phút là xong phần 1"); sự kiện sắp tới; bài đang được bàn luận. API mới `GET /v1/communities/:id/today` đếm bài học xong, bình luận và bài đăng trong ngày theo giờ Việt Nam.
+- **Thanh dưới mới trên điện thoại**: Hôm nay, Học, nút viết bài, Hội, Tôi. Nhóm Hội có hàng tab con Bảng tin, Sự kiện, Thành viên, Xếp hạng; nhóm Học có Khóa học, Cửa hàng. Trước đây Sự kiện, Thành viên và Xếp hạng không có lối vào trên điện thoại.
+- **Tìm kiếm trên điện thoại**: nút kính lúp ở đầu trang mở ô tìm trong bảng tin (trước đây ô tìm bị ẩn).
+- **Trang Tôi** trên điện thoại là danh sách mục lớn: hồ sơ, thông báo, tin nhắn, khóa đã mua, cộng sự, gói và thanh toán, hội của tôi, giao diện. Các trang con có lối quay lại.
+- **Nút Đăng xuất.** Trước đây không màn nào có.
+
+### Sửa lỗi
+
+- Ô tìm kiếm ghi "Tìm bài viết, khóa học, thành viên" nhưng chỉ lọc bài của bảng tin. Nay ghi đúng "Tìm trong bảng tin".
+- Khu học tập (`/hoc`) của người đang ở trong hội mà chưa mua lẻ gì là một trang trống dù họ đang học khóa theo gói. Nay chỉ đường sang khóa học của từng hội. Đầu trang ở đây cũng không còn tràn ngang trên điện thoại.
+- Giờ sự kiện dùng gạch nối thường ("20:00 - 21:30").
+
+## 1.15.0 - 2026-11-09
+
+Đợt 1 của việc làm lại trải nghiệm thành viên trên điện thoại: giao diện "Sáng và rõ", chữ dễ đọc, hết tràn ngang, bài học và đăng bài gọn lại.
+
+### Giao diện
+
+- **Bảng màu và bộ chữ mới.** Nền sáng, ngọc đậm là màu chính, cam chỉ dùng cho thứ cần chú ý, vàng cho Premium; một bộ chữ Be Vietnam Pro thay cho Montserrat và Open Sans. Giao diện tối đổi theo. Mọi cặp chữ trên nền đạt tương phản từ 4,5 (trước: nút chính 3,91, chữ mờ 3,34).
+- **Chữ trên điện thoại.** Nội dung 16px, không chữ nào dưới 14px, nút và ô nhập cao từ 44px. Đo trên 22 màn hình của thành viên: phần chữ nhỏ hơn 14px giảm từ 31 đến 79% xuống còn 0 đến 3%.
+- Hàng chip lọc ở Bảng tin, Khóa học, Cửa hàng là một hàng vuốt ngang trên điện thoại, không còn chiếm hai hàng.
+
+### Bài học
+
+- **Điện thoại: video lên đầu.** Trước đây phải cuộn qua cả danh sách bài mới tới video. Nay giáo trình thu thành dòng "Danh sách bài", bấm mới mở. Nút "Xong bài, sang bài tiếp" ghim ở đáy màn hình.
+
+### Đăng bài
+
+- **Khung soạn gọn lại**: ô viết, nút Ảnh, nút Đăng. Chuyên mục được chọn sẵn (mục đang xem, mục đăng lần trước, hoặc "Chia sẻ") và vẫn đổi được. Tiêu đề, nền màu, video, bình chọn, link và gửi email nằm sau nút "Thêm".
+- Bỏ ba thứ không có tác dụng: chip "Mọi thành viên" (không bấm được), nút "Nhắc tên" (chỉ chèn ký tự @), nút "Đính kèm" (trùng nút Ảnh).
+
+### Sửa lỗi
+
+- **Ba trang tràn ngang trên điện thoại**: Thành viên (rộng 1.031px trên màn 390px), Tài khoản / Gói và thanh toán, Tài khoản / Cộng sự. Nội dung bị cắt và thanh tab trôi khỏi màn hình.
+- Trang Khóa học ghi "đang học 0" ngay trên thẻ Học tiếp: khóa Premium đang học phần miễn phí bị xếp vào "Chưa mở". Nay đếm theo tiến độ thật.
+- Số bài bị lặp ("1.2 1.2 Ba con số") khi tên bài đã tự có số.
+- Xếp hạng cộng sự trên điện thoại hiện hạng 2 trước hạng 1.
+- Giao diện tối: ảnh đại diện ở đầu trang là chữ trắng trên nền trắng.
+
+## 1.14.1 - 2026-11-09
+
+Đưa bản mới lên Cloudflare nhanh hơn và biết chắc trang thật đã chạy đúng bản đó.
+
+### Deploy
+
+- **Kiểm tra song song.** Typecheck, lint và test trước đây chạy nối tiếp trên một máy (gần 4 phút trong tổng 5 phút mỗi lần deploy). Nay chạy song song trên ba máy, cả ba xanh mới deploy. Hai Worker deploy trong cùng một job nên chỉ cài thư viện một lần.
+- **Hỏi thẳng trang live sau khi deploy** (`infra/verify-live.mjs`): `/health` phải báo `ok` đúng số phiên bản, `/version.json` phải đúng commit vừa đẩy; hỏi lại mỗi 5 giây, tối đa 2 phút. Không khớp thì lần deploy báo đỏ thay vì xanh. Trước đây wrangler báo xong là coi như xong, nên từng có 4 lần deploy hỏng liên tiếp mà trang vẫn ở bản cũ.
+- **Tóm tắt bằng tiếng Việt** ở trang của mỗi lần chạy: bản nào đã lên, hoặc dừng ở bước nào và trang live đang ra sao, kèm chỗ bấm Cập nhật hay Quay lui.
+- **Migration.** Có secret `DATABASE_DIRECT_URL` trong GitHub thì workflow tự áp migration trước khi deploy. Chưa có thì cảnh báo rõ khi bản đang đẩy kèm migration mới, thay vì im lặng.
+- `pnpm deploy` (deploy tay) in từng bước và cũng hỏi trang live ở cuối; thêm `--skip-verify`. Lệnh mới `pnpm deploy:check` chỉ hỏi trang live.
+
+### Sửa lỗi
+
+- `pnpm dev` dừng ngay trên máy sạch vì kéo theo `hoiminh-jobs` (wrangler đòi chuỗi kết nối Postgres cho Hyperdrive), trái với README. Nay `pnpm dev` chỉ chạy API và web như mô tả (API bản Node tự chạy cron); cần thử Worker jobs thì `pnpm dev:jobs`.
+
 ## 1.14.0 - 2026-10-21
 
 Khu học tập cho người mua lẻ và link phòng họp sự kiện, chuyển từ PR #1 (phần còn giá trị) sang nền mới.

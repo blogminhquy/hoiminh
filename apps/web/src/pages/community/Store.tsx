@@ -59,9 +59,9 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-end gap-4 flex-wrap">
-        <div><h1 className="serif m-0 text-[28px] font-bold">Cửa hàng</h1><div className="muted text-[13px]">Sản phẩm số · truy cập trọn đời</div></div>
+        <div><h1 className="serif m-0 text-[28px] font-bold page-title">Cửa hàng</h1><div className="muted text-[13px]">Sản phẩm số · truy cập trọn đời</div></div>
         <span className="flex-grow" />
-        <div className="flex gap-2 flex-wrap">
+        <div className="chip-row">
           <Chip on={kind === 'all'} onClick={() => setKind('all')}>Tất cả · {total}</Chip>
           {(['course', 'bundle', 'digital'] as const).map((k) => <Chip key={k} on={kind === k} onClick={() => setKind(k)}>{KIND_LABEL[k]} · {counts[k] ?? 0}</Chip>)}
         </div>

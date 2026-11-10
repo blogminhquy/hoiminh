@@ -9,6 +9,7 @@ import { AuthShell } from '@/layouts/AuthShell';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AuthInput, CheckBox, FormError, StrengthBars } from './AuthParts';
+import { landingAfterAuth } from './Login';
 
 export default function Page() {
   const [params] = useSearchParams();
@@ -30,9 +31,9 @@ export default function Page() {
 
   const m = useMutation({
     mutationFn: () => api.post<AuthSession>('/v1/auth/reset-password', { token, password, logoutOthers }),
-    onSuccess: (session) => {
+    onSuccess: async (session) => {
       setSession(session);
-      navigate('/admin', { replace: true });
+      navigate(await landingAfterAuth(), { replace: true });
     },
   });
   const submit = (e: FormEvent) => {

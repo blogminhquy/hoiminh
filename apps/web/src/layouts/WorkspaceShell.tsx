@@ -1,4 +1,5 @@
-// Khung chủ hội (wsShell trong build.mjs): header với Hội của tôi / Nhà phát triển / Khám phá / Tài khoản, nội dung 1120px giữa.
+// Khung chủ hội: header chỉ còn Hội của tôi và Tài khoản (Nhà phát triển đã về Cài đặt của từng hội, Khám phá nằm
+// trong bảng chuyển hội), nội dung 1120px giữa.
 import { Bell } from 'lucide-react';
 import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -13,21 +14,20 @@ export function WorkspaceShell() {
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   const item = (to: string, label: string) => (
-    <NavLink to={to} end className="px-3 py-2 rounded-lg font-medium text-[14px]" style={({ isActive }) => ({ background: isActive ? T.bg : 'transparent', color: isActive ? T.ink : T.ink2 })}>{label}</NavLink>
+    <NavLink to={to} end className="px-3 py-2 rounded-lg font-medium text-[14px] whitespace-nowrap flex-shrink-0" style={({ isActive }) => ({ background: isActive ? T.bg : 'transparent', color: isActive ? T.ink : T.ink2 })}>{label}</NavLink>
   );
   return (
     <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>
       <header className="flex items-center gap-3 md:gap-5 px-4 md:px-16" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-        <Link to="/admin"><Logo size={26} /></Link>
-        <nav className="flex gap-1 ml-1 md:ml-3">
+        <Link to="/admin" aria-label="Hội Mình" className="flex-shrink-0"><Logo size={26} markOnlyOnMobile /></Link>
+        {/* Điện thoại: các mục nằm một hàng vuốt ngang, không xuống dòng làm vỡ đầu trang. */}
+        <nav className="flex gap-1 ml-1 md:ml-3 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {item('/admin', 'Hội của tôi')}
-          {item('/admin/nha-phat-trien', 'Nhà phát triển')}
-          {item('/kham-pha', 'Khám phá')}
-          {item('/tai-khoan/goi', 'Tài khoản')}
+          {item('/tai-khoan', 'Tài khoản')}
           {user?.isSuperAdmin && item('/he-thong', 'Hệ thống')}
         </nav>
         <span className="flex-grow" />
-        <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}>
+        <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}>
           <Bell size={20} />
           {badges.data?.unreadNotifications ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}
         </Link>

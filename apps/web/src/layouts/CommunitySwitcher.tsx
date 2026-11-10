@@ -1,23 +1,26 @@
-// Dropdown chuyển hội ở đầu thanh bên (mục 193).
+// Bảng chuyển hội: mở từ đầu thanh bên (máy tính) và từ tên hội ở đầu trang (điện thoại). Chọn hội nào thì vào
+// trang Hôm nay của hội đó (chủ hội và quản trị thấy Bàn điều khiển).
 import { CommunityMark, T } from '@hoiminh/ui';
-import { Compass, LayoutGrid } from 'lucide-react';
+import { Compass, LayoutGrid, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 
 export function CommunitySwitcher({ current, onClose }: { current: string; onClose: () => void }) {
   const { communities } = useAuth();
+  const owns = communities.some((c) => c.role === 'owner');
   return (
-    <div className="absolute left-0 right-0 top-full mt-1 rounded-xl overflow-hidden z-20 flex flex-col p-1.5" style={{ background: '#2E2823', boxShadow: '0 16px 40px rgba(0,0,0,0.4)' }} onMouseLeave={onClose}>
+    <div role="menu" className="community-switcher" onMouseLeave={onClose}>
       {communities.map((c) => (
-        <Link key={c.id} to={`/${c.slug}/bang-tin`} onClick={onClose} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg" style={{ background: c.slug === current ? 'rgba(255,253,249,0.10)' : 'transparent', color: T.invertInk }}>
-          <CommunityMark mark={c.logoMark} color={c.logoColor} size={28} radius={8} />
-          <span className="flex-grow min-w-0 truncate text-[13px] font-medium">{c.name}</span>
-          <span className="text-[11px]" style={{ color: T.sideMuted }}>{c.role === 'owner' ? 'Chủ hội' : c.role === 'admin' ? 'Quản trị' : ''}</span>
+        <Link key={c.id} role="menuitem" to={`/${c.slug}/hom-nay`} onClick={onClose} aria-current={c.slug === current ? 'true' : undefined} className="community-switcher-row">
+          <CommunityMark mark={c.logoMark} color={c.logoColor} size={30} radius={8} />
+          <span className="flex-grow min-w-0 truncate font-semibold">{c.name}</span>
+          <span className="text-[14px] flex-shrink-0" style={{ color: T.sideMuted }}>{c.role === 'owner' ? 'Chủ hội' : c.role === 'admin' ? 'Quản trị' : ''}</span>
         </Link>
       ))}
-      <div className="h-px my-1" style={{ background: 'rgba(255,253,249,0.08)' }} />
-      <Link to="/admin" onClick={onClose} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px]" style={{ color: T.sideText }}><LayoutGrid size={16} /> Hội của tôi</Link>
-      <Link to="/kham-pha" onClick={onClose} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px]" style={{ color: T.sideText }}><Compass size={16} /> Khám phá hội khác</Link>
+      <div className="h-px my-1" style={{ background: 'rgba(255,255,255,0.12)' }} />
+      <Link role="menuitem" to="/admin" onClick={onClose} className="community-switcher-row"><LayoutGrid size={18} /> Tất cả hội và gói Hội Mình</Link>
+      {owns && <Link role="menuitem" to="/admin/tao-hoi" onClick={onClose} className="community-switcher-row"><Plus size={18} /> Tạo hội mới</Link>}
+      <Link role="menuitem" to="/kham-pha" onClick={onClose} className="community-switcher-row"><Compass size={18} /> Khám phá hội khác</Link>
     </div>
   );
 }

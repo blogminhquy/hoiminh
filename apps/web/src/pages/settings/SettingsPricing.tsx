@@ -42,7 +42,7 @@ export default function Page() {
       {!f.doorsOpen && <div className="px-4 py-3 rounded-xl text-[13px]" style={{ background: T.goldSoft, color: T.goldDark }}>Cổng đang đóng: thành viên hiện tại vẫn vào bình thường, người mới không thể tham gia hay mua gói.</div>}
       {save.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(save.error)}</div>}
       <ModePicker value={f.pricingMode} onChange={(pricingMode) => patch({ pricingMode })} />
-      {paid && <div className="flex gap-4 flex-col md:flex-row">{f.tiers.map((t) => <TierCard key={t.key} t={t} mode={f.pricingMode} onChange={setTier} />)}</div>}
+      {paid && <div className="flex gap-4 flex-wrap">{f.tiers.map((t) => <TierCard key={t.key} t={t} mode={f.pricingMode} onChange={setTier} />)}</div>}
       {f.pricingMode === 'free' && <div className="muted text-[13px]">Hội miễn phí: mọi thành viên ở gói Tiêu chuẩn, vẫn có thể bán khóa học lẻ trong Cửa hàng.</div>}
       <div className="card flex flex-col gap-3.5" style={{ padding: '16px 20px' }}>
         <div className="flex items-center gap-2.5 flex-wrap"><span className="font-semibold">Cách thanh toán</span><span className="muted text-[13px]">Người mua tự chọn ở bước thanh toán</span></div>

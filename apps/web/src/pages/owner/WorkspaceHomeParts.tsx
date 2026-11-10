@@ -40,7 +40,7 @@ export function HoiCard({ c, role }: { c: WorkspaceHome['owned'][number]; role: 
         <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{role}</span>
         <span className="flex-grow" />
         <Link to={`/${c.slug}/cai-dat`} className="btn btn-ghost btn-sm">Cài đặt</Link>
-        <Link to={`/${c.slug}/bang-tin`} className="btn btn-dark btn-sm">Vào hội</Link>
+        <Link to={`/${c.slug}/hom-nay`} className="btn btn-dark btn-sm">Vào quản lý</Link>
       </div>
     </div>
   );
@@ -56,7 +56,7 @@ export function JoinedCard({ items }: { items: WorkspaceHome['joined'] }) {
       <div className="flex items-center"><span className="font-semibold">Hội bạn tham gia</span><span className="flex-grow" /><Link to="/kham-pha" className="text-[13px] font-semibold" style={{ color: T.teal }}>Khám phá thêm</Link></div>
       {items.length === 0 && <div className="muted text-[13px]">Bạn chưa tham gia hội nào khác.</div>}
       {items.map((j) => (
-        <Link key={j.id} to={`/${j.slug}/bang-tin`} className="flex items-center gap-3 py-2.5" style={{ borderTop: `1px solid ${T.line}`, color: T.ink }}>
+        <Link key={j.id} to={`/${j.slug}/hom-nay`} className="flex items-center gap-3 py-2.5" style={{ borderTop: `1px solid ${T.line}`, color: T.ink }}>
           <CommunityMark mark={j.logoMark} color={j.logoColor} size={36} radius={10} />
           <div className="flex-grow min-w-0"><div className="font-semibold truncate">{j.name}</div><div className="muted text-[12px]">{sub(j)}</div></div>
           <span className="tag" style={{ background: T.bg, color: T.ink2 }}>{j.role === 'member' ? 'Thành viên' : j.role === 'moderator' ? 'Điều hành' : 'Quản trị'}</span>

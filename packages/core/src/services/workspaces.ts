@@ -31,9 +31,17 @@ export async function myWorkspaceHome(ctx: Ctx) {
   const teamOf = await ctx.db.select({ wsId: workspaceMembers.workspaceId }).from(workspaceMembers).where(and(eq(workspaceMembers.userId, userId), sql`${workspaceMembers.role} <> 'owner'`));
   const wsIds = [...owned.map((o) => o.ws.id), ...teamOf.map((t) => t.wsId)];
   const since = addDays(ctx.now(), -30);
-  const ownedCommunities = wsIds.length
-    ? await ctx.db.select({ c: communities, revenue30: sql<number>`coalesce((select sum(total_minor) from ${orders} o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at >= ${since}),0)::bigint` }).from(communities).where(and(inArray(communities.workspaceId, wsIds), isNull(communities.deletedAt))).orderBy(desc(communities.createdAt))
+  const ownedRows = wsIds.length
+    ? await ctx.db.select({ c: communities }).from(communities).where(and(inArray(communities.workspaceId, wsIds), isNull(communities.deletedAt))).orderBy(desc(communities.createdAt))
     : [];
+  // Doanh thu 30 ngày tính bằng một truy vấn gom nhóm riêng. Bản cũ dùng truy vấn con trong sql``: Drizzle bỏ tên
+  // bảng khi chỉ select một bảng, nên `o.community_id = "id"` so với chính orders.id và luôn ra 0.
+  const revenueRows = ownedRows.length
+    ? await ctx.db.select({ communityId: orders.communityId, total: sql<number>`coalesce(sum(${orders.totalMinor}), 0)::bigint` }).from(orders)
+      .where(and(inArray(orders.communityId, ownedRows.map((r) => r.c.id)), eq(orders.status, 'paid'), gte(orders.paidAt, since))).groupBy(orders.communityId)
+    : [];
+  const revenue30 = new Map(revenueRows.map((r) => [r.communityId, Number(r.total)]));
+  const ownedCommunities = ownedRows.map((r) => ({ c: r.c, revenue30: revenue30.get(r.c.id) ?? 0 }));
   const joined = await ctx.db
     .select({ m: communityMembers, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, workspaceId: communities.workspaceId }, tier: { key: communityTiers.key, name: communityTiers.name } })
     .from(communityMembers)

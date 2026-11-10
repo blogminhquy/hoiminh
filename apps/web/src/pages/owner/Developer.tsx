@@ -1,4 +1,5 @@
-// Hội của tôi · Nhà phát triển (kiến trúc mục 13): API key, webhook gửi đi, hướng dẫn nối MCP.
+// Nhà phát triển (kiến trúc mục 13): API key, webhook gửi đi, hướng dẫn nối MCP. Mở từ Cài đặt hội, nhóm
+// "Tự động và kết nối" (/:slug/cai-dat/nha-phat-trien); đường dẫn cũ /admin/nha-phat-trien vẫn chạy.
 import { useQuery } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
 import { QueryState } from '@/components/QueryState';
@@ -11,7 +12,7 @@ export default function Page() {
   return (
     <>
       <div>
-        <h1 className="serif m-0 text-[32px] font-extrabold">Nhà phát triển</h1>
+        <h1 className="serif m-0 text-[28px] font-extrabold">Nhà phát triển</h1>
         <div className="muted">Nối Hội Mình với công cụ của bạn: API key để gọi REST, webhook để nhận sự kiện, MCP để trợ lý AI thao tác hộ.</div>
       </div>
       <QueryState q={q} rows={3}>

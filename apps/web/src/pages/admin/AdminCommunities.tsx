@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Chip, CommunityMark, T, money } from '@hoiminh/ui';
 import { Download, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
@@ -33,9 +33,10 @@ export default function Page() {
   const support = useLocation().pathname.endsWith('/ho-tro');
   const [status, setStatus] = useState<Status>(support ? 'reported' : 'active');
   const statuses = support ? SUPPORT_STATUSES : STATUSES;
-  // Nhận từ khóa từ ô tìm nhanh trên header quản trị (?q=...).
+  // Nhận từ khóa từ ô lệnh trên header quản trị (?q=...), kể cả khi đang đứng sẵn ở trang này.
   const [params] = useSearchParams();
   const [q, setQ] = useState(params.get('q') ?? '');
+  useEffect(() => { const next = params.get('q'); if (next !== null) setQ(next); }, [params]);
   const list = useQuery({ queryKey: ['admin', 'communities', status, q], queryFn: () => api.get<List>(`/v1/admin/communities?status=${status}${q ? `&q=${encodeURIComponent(q)}` : ''}`) });
   const act = useMutation({ mutationFn: (p: { id: string; action: 'lock' | 'unlock' | 'archive'; reason: string }) => api.post(`/v1/admin/communities/${p.id}/action`, { action: p.action, reason: p.reason }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin'] }) });
   const doAct = (r: Row, action: 'lock' | 'unlock' | 'archive') => { const reason = action === 'unlock' ? '' : window.prompt(action === 'lock' ? 'Lý do khóa hội:' : 'Lý do lưu trữ:') ?? ''; if (action !== 'unlock' && !reason) return; act.mutate({ id: r.id, action, reason }); };

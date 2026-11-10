@@ -59,15 +59,15 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 25 | Tạo khóa học (course-create) | `/:slug/khoa-hoc/moi`, `/:courseId/sua` | community/CourseCreate.tsx (+Parts) | e2e 05 |
 | 26 | Soạn nội dung khóa học (course-builder) | `/:slug/khoa-hoc/:courseId/soan` | community/CourseBuilder.tsx, CourseBuilderOutline.tsx (+Parts) | e2e 05 |
 | 27 | Quản trị thành viên (members) | `/:slug/thanh-vien` | community/Members.tsx (+Parts, +Extra) | api, core |
-| 28 | Cài đặt · Tổng quan (s-overview) | `/:slug/cai-dat` | settings/SettingsOverview.tsx, SettingsLayout.tsx | — |
+| 28 | Bàn điều khiển của chủ hội (thay Cài đặt · Tổng quan, 1.18.0) | `/:slug/hom-nay` | community/Dashboard.tsx, lib/owner-todo.ts, settings/SettingsLayout.tsx, SettingsHome.tsx | e2e 12, web test |
 | 29 | Cài đặt · Chung (s-general) | `/:slug/cai-dat/chung` | settings/SettingsGeneral.tsx | — |
 | 30 | Cài đặt · Giá và gói (settings) | `/:slug/cai-dat/gia` | settings/SettingsPricing.tsx (+Parts) | core L5 |
 | 31 | Cài đặt · Cộng sự (s-affiliate) | `/:slug/cai-dat/cong-su` | settings/SettingsAffiliate.tsx, AffiliateTabs.tsx | core L4 |
-| 32 | Cài đặt · Yêu cầu rút (s-affiliate-payouts) | `/:slug/cai-dat/cong-su/rut-tien` | settings/SettingsAffiliatePayouts.tsx, components/PayoutQueue, PayoutReviewPanel | e2e 04 |
+| 32 | Cộng sự · Yêu cầu rút (1.18.0, trước là Cài đặt · Yêu cầu rút) | `/:slug/cong-su` | community/Partners.tsx, components/PayoutQueue, PayoutReviewPanel | e2e 04 |
 | 33 | Cài đặt · Tiện ích (s-plugins) | `/:slug/cai-dat/tien-ich` | settings/SettingsPlugins.tsx | core L1 |
 | 34 | Cài đặt · Bảng tin (s-feed) | `/:slug/cai-dat/bang-tin` | settings/SettingsFeed.tsx | — |
-| 35 | Cài đặt · Thanh toán (s-payout) | `/:slug/cai-dat/thanh-toan` | settings/SettingsPayout.tsx | core L7 |
-| 36 | Doanh thu (revenue) | `/:slug/doanh-thu` | community/Revenue.tsx | — |
+| 35 | Tiền · Số dư (1.18.0, trước là Cài đặt · Thanh toán) | `/:slug/tien` | community/Money.tsx | core L7, e2e 12 |
+| 36 | Tiền · Doanh thu và giao dịch (1.18.0, trước là Doanh thu) | `/:slug/tien` | community/Money.tsx, RevenueParts.tsx | e2e 12 |
 | 37 | Hệ thống · Tổng quan (sa-overview) | `/he-thong` | admin/AdminOverview.tsx | e2e 07, api |
 | 38 | Hệ thống · Hội (sa-communities) | `/he-thong/hoi`, `/he-thong/ho-tro` | admin/AdminCommunities.tsx | e2e 07 |
 | 39 | Hệ thống · Thanh toán và đối soát (sa-payments) | `/he-thong/thanh-toan` | admin/AdminPayments.tsx (+Parts) | e2e 07, core L7 |

@@ -28,7 +28,7 @@ function ModuleBlock({ m, n, slug, open, onToggle }: { m: ModuleLite; n: number;
   const done = m.lessons.filter((l) => l.done).length;
   const total = m.lessons.length;
   const mins = fmtDuration(m.lessons.reduce((s, l) => s + (l.durationSeconds ?? 0), 0), true);
-  const tone = total && done === total ? { background: T.tealSoft, color: T.tealText } : done > 0 ? { background: T.accentSoft, color: T.accentText } : { background: T.bg, color: T.ink3 };
+  const tone = total && done === total ? { background: T.tealSoft, color: T.tealText } : done > 0 ? { background: T.goldSoft, color: T.goldText } : { background: T.bg, color: T.ink3 };
   return (
     <div style={{ borderTop: `1px solid ${T.line}` }}>
       <button type="button" onClick={onToggle} className="flex items-center gap-3.5 w-full text-left px-5 py-3.5" aria-expanded={open}>
@@ -69,7 +69,7 @@ function Body({ c, slug }: { c: Course; slug: string }) {
         </div>
         <div className="px-6 py-5 flex items-center gap-5 flex-wrap">
           <div className="flex-grow flex flex-col gap-2 min-w-[200px]">
-            <div className="flex items-center gap-2.5 text-[13px]"><span className="font-semibold">Tiến độ {pct}%</span><span className="muted">· {c.progress?.completedLessons ?? 0}/{c.lessonCount} bài{remaining && pct < 100 ? ` · còn khoảng ${remaining}` : ''}</span></div>
+            <div className="flex items-center gap-x-2.5 flex-wrap text-[13px]"><span className="font-semibold whitespace-nowrap">Tiến độ {pct}%</span><span className="muted">· {c.progress?.completedLessons ?? 0}/{c.lessonCount} bài{remaining && pct < 100 ? ` · còn khoảng ${remaining}` : ''}</span></div>
             <Prog value={pct} height={8} />
             {current && <div className="muted text-[12px]">Đang ở bài <strong style={{ color: T.ink }}>{current.title}</strong>{c.progress?.lastAccessedAt ? ` · học lần cuối ${timeAgo(c.progress.lastAccessedAt)}` : ''}</div>}
           </div>
@@ -80,7 +80,7 @@ function Body({ c, slug }: { c: Course; slug: string }) {
             </>
           )}
           {(c.access.allowed || firstLesson?.isPreview) && <Link to={startTo} className="btn btn-primary btn-lg"><Play size={16} /> {pct > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}</Link>}
-          {!c.access.allowed && !c.canManage && <Link to={c.product ? `/${slug}/thanh-toan?product=${c.product.id}` : `/${slug}/thanh-toan?tier=premium&cycle=monthly`} className="btn btn-primary btn-lg">Nâng cấp để mở</Link>}
+          {!c.access.allowed && !c.canManage && <Link to={c.product ? `/${slug}/thanh-toan?product=${c.product.id}` : `/${slug}/thanh-toan?tier=premium&cycle=monthly`} className={`btn btn-lg ${c.access.allowed || firstLesson?.isPreview ? 'btn-ghost' : 'btn-primary'}`}>Nâng cấp để mở</Link>}
         </div>
       </div>
       <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.line}` }}>

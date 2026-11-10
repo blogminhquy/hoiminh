@@ -68,8 +68,8 @@ export default function Page() {
   const selected = sp.get('c') ?? q.data?.items[0]?.id ?? null;
   const select = (id: string | null) => setSp(id ? { c: id } : {});
   return (
-    <div className="flex gap-5 flex-col md:flex-row">
-      <div className={`card w-full md:w-[340px] flex flex-col overflow-hidden flex-shrink-0 ${selected ? 'hide-mobile' : ''}`}>
+    <div className="flex gap-5 flex-col lg:flex-row">
+      <div className={`card w-full lg:w-[340px] flex flex-col overflow-hidden flex-shrink-0 ${selected ? 'hide-mobile' : ''}`}>
         <div className="flex flex-col gap-3" style={{ padding: '16px 16px 12px' }}>
           <h1 className="serif m-0 text-[22px] font-extrabold">Tin nhắn</h1>
           <div className="input" style={{ height: 38 }}><Search size={16} style={{ color: T.ink3 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm người…" className="flex-grow min-w-0" /></div>

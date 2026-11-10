@@ -31,7 +31,7 @@ function CommCard({ c }: { c: DiscoverCommunity }) {
       <div style={{ height: 150, background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }} />
       <div className="p-4 flex flex-col gap-2">
         <div className="flex items-center gap-2.5">
-          <CommunityMark mark={c.logoMark} color={T.ink} size={36} radius={10} />
+          <CommunityMark mark={c.logoMark} color={T.side} size={36} radius={10} />
           <span className="font-semibold text-[16px] truncate">{c.name}</span>
         </div>
         <div className="text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription || 'Chưa có mô tả'}</div>

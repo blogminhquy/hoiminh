@@ -15,7 +15,7 @@ export function placeLabel(e: { kind: string; meetingProvider: string | null; lo
   const online = PROVIDER_LABEL[e.meetingProvider ?? 'other'] ?? 'Trực tuyến';
   return e.kind === 'hybrid' ? `${online} + tại chỗ` : online;
 }
-export function timeRange(a: string, b: string): string { return `${fmtTime(a)} – ${fmtTime(b)}`; }
+export function timeRange(a: string, b: string): string { return `${fmtTime(a)} - ${fmtTime(b)}`; }
 
 export function useRegister(eventId: string) {
   const qc = useQueryClient();
@@ -32,7 +32,7 @@ export function EventRow({ e, slug }: { e: EventItem; slug: string }) {
   return (
     <div className="card flex items-center gap-4 flex-wrap" style={{ padding: '16px 20px', borderColor: e.live ? T.accent : undefined }}>
       <DateBlock date={d} tone={e.live ? 'accent' : 'neutral'} />
-      <div className="flex-grow min-w-0 flex flex-col gap-1">
+      <div className="flex-1 min-w-[220px] flex flex-col gap-1">
         <div className="flex items-center gap-2 flex-wrap">{e.live && <span className="tag" style={{ background: T.accentSoft, color: T.accentText }}>Đang diễn ra</span>}<Link to={`/${slug}/su-kien/${e.id}`} className="font-semibold text-[15px]" style={{ color: T.ink }}>{e.title}</Link></div>
         <div className="flex items-center gap-3.5 text-[13px] flex-wrap" style={{ color: T.ink2 }}>
           <span className="inline-flex items-center gap-1.5"><Clock size={15} />{timeRange(e.startsAt, e.endsAt)}</span>

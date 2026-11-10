@@ -11,6 +11,7 @@ memberRoutes.use('/:id/members', requireAuth);
 memberRoutes.use('/:id/members/*', requireAuth);
 memberRoutes.use('/:id/invites', requireAuth);
 memberRoutes.use('/:id/touch', requireAuth);
+memberRoutes.use('/:id/today', requireAuth);
 
 memberRoutes.get('/:id/members', async (c) => {
   const q = await parse(memberFilterSchema, query(c));
@@ -31,6 +32,8 @@ memberRoutes.post('/:id/members/:memberId/grant-course', async (c) => {
   return c.json({ ok: true });
 });
 memberRoutes.post('/:id/invites', async (c) => c.json(await members.invite(c.get('ctx'), c.req.param('id'), await parse(inviteSchema.partial({ emails: true }), await body(c))), 201));
+/** Việc người xem đã làm hôm nay trong hội (trang Hôm nay): số bài học xong, bình luận, bài đăng. */
+memberRoutes.get('/:id/today', async (c) => c.json(await members.todayActivity(c.get('ctx'), c.req.param('id'))));
 memberRoutes.post('/:id/touch', async (c) => {
   const ctx = c.get('ctx');
   if (ctx.actor.type === 'user') await members.touchActivity(ctx, c.req.param('id'), ctx.actor.userId);

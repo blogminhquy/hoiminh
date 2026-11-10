@@ -23,7 +23,7 @@ function useProductId(communityId: string, productSlug: string) {
 function Cover({ p }: { p: Product }) {
   const [play, setPlay] = useState(false);
   const embed = useQuery({ queryKey: ['video-parse', p.page?.introVideoUrl], queryFn: () => api.post<{ embed: { embedUrl: string } | null }>('/v1/video/parse', { url: p.page?.introVideoUrl }), enabled: play && Boolean(p.page?.introVideoUrl) });
-  if (play && embed.data?.embed) return <div className="relative rounded-[18px] overflow-hidden" style={{ aspectRatio: '16 / 9', background: '#171310' }}><iframe src={embed.data.embed.embedUrl} title="Video giới thiệu" className="absolute inset-0 w-full h-full border-0" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div>;
+  if (play && embed.data?.embed) return <div className="relative rounded-[18px] overflow-hidden" style={{ aspectRatio: '16 / 9', background: T.player }}><iframe src={embed.data.embed.embedUrl} title="Video giới thiệu" className="absolute inset-0 w-full h-full border-0" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div>;
   return (
     <div className="relative rounded-[18px] overflow-hidden flex items-center justify-center" style={{ aspectRatio: '16 / 9', background: p.coverUrl ? `url(${p.coverUrl}) center/cover` : p.coverColor }}>
       <div className="absolute left-7 bottom-7" style={{ color: T.invertInk }}><div className="serif text-[28px] md:text-[40px] font-extrabold leading-[1.05] max-w-[520px]">{p.page?.headline || p.name}</div>{p.page?.introVideoUrl && <div className="text-[14px] opacity-85 mt-2">Video giới thiệu</div>}</div>

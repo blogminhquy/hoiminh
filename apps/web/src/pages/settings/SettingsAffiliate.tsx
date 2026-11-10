@@ -51,7 +51,7 @@ export default function Page() {
             <span className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Tháng này</span>
             <div className="flex gap-5"><div><div className="serif text-[22px] font-extrabold">{s.activeAffiliates}</div><div className="text-[12px]" style={{ color: T.sideText }}>cộng sự có phát sinh</div></div><div><div className="serif text-[22px] font-extrabold">{s.referredRevenueShare}%</div><div className="text-[12px]" style={{ color: T.sideText }}>doanh thu từ giới thiệu</div></div></div>
             <div className="text-[13px]" style={{ color: T.sideText }}>Đã trả: {money(s.paidThisMonthMinor)} · chờ bạn chuyển: {money(s.awaitingTransferMinor)} · đang giữ: {money(s.holdingMinor)}</div>
-            {s.awaitingCount > 0 && <Link to={`/${shell.community.slug}/cai-dat/cong-su/rut-tien`} className="btn btn-primary btn-sm self-start">Xử lý {s.awaitingCount} yêu cầu rút</Link>}
+            {s.awaitingCount > 0 && <Link to={`/${shell.community.slug}/cong-su`} className="btn btn-primary btn-sm self-start">Xử lý {s.awaitingCount} yêu cầu rút</Link>}
           </div>
         </div>
       </div>

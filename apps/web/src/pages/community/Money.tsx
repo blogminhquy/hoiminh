@@ -1,9 +1,11 @@
-// Doanh thu (revenueMain): chip kỳ, 4 thẻ số liệu, bảng giao dịch (ngày, thành viên, sản phẩm, phương thức, số tiền, nợ cộng sự, trạng thái), xuất CSV.
+// Tiền (/:slug/tien): gom "Doanh thu" và "Cài đặt, Thanh toán" về một trang. Trên cùng là số dư (có thể rút, đang giữ,
+// đã rút tháng này) và nút Rút tiền, dưới là số liệu theo kỳ và bảng giao dịch (hoàn tiền, xuất CSV).
+// Số dư cần quyền billing.manage, giao dịch cần quyền revenue.read: thiếu quyền nào thì phần đó không hiện.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Chip, StatCard, StatusTag, T, money } from '@hoiminh/ui';
-import { Download } from 'lucide-react';
+import { Clock, Download, Handshake, ShieldCheck, Wallet } from 'lucide-react';
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { UserAvatar, type UserLite } from '@/components/UserLink';
 import { api, errorMessage } from '@/lib/api';
@@ -11,6 +13,7 @@ import { useCan, useShell } from '@/lib/community';
 import { fmtDate } from '@/lib/format';
 import { AdminRefundModal, type RefundTarget } from './RevenueParts';
 
+interface Payout { availableMinor: number; holdingMinor: number; withdrawnThisMonthMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number; ownerName: string }
 interface Tx { orderId: string; at: string; customer: UserLite; title: string; method: string; provider: string; amountMinor: number; commissionMinor: number; reversedCommissionMinor: number; status: string }
 interface Revenue { stats: { grossMinor: number; txCount: number; netMinor: number; refundedMinor: number; refundCount: number; owedToAffiliatesMinor: number; referredCount: number }; items: Tx[] }
 const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý'], [365, 'Năm']];
@@ -21,18 +24,49 @@ function toCsv(items: Tx[]): string {
   return rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
 }
 
-export default function Page() {
+function Balance() {
+  const shell = useShell();
+  const q = useQuery({ queryKey: ['payout-settings', shell.community.id], queryFn: () => api.get<Payout>(`/v1/communities/${shell.community.id}/payout`) });
+  const label = 'muted text-[13px] font-semibold uppercase tracking-[0.06em]';
+  return (
+    <QueryState q={q} rows={2}>
+      {(d) => (
+        <>
+          <section className="card card-invert flex flex-col gap-4" style={{ padding: '20px 22px' }} aria-label="Số dư">
+            <div className="flex items-end gap-x-8 gap-y-4 flex-wrap">
+              <div><div className={label}>Có thể rút</div><div className="serif text-[30px] font-extrabold leading-tight">{money(d.availableMinor)}</div></div>
+              <div><div className={label}>Đang giữ 14 ngày</div><div className="serif text-[22px] font-extrabold">{money(d.holdingMinor)}</div></div>
+              <div><div className={label}>Đã rút tháng này</div><div className="serif text-[22px] font-extrabold">{money(d.withdrawnThisMonthMinor)}</div></div>
+              <span className="flex-grow" />
+              <a href="mailto:hotro@hoiminh.vn?subject=Rut%20tien%20chu%20hoi" className="btn btn-gold w-full sm:w-auto"><Wallet size={18} />Rút tiền</a>
+            </div>
+            <div className="muted text-[14px] flex flex-col gap-1">
+              <span className="flex items-start gap-1.5"><Clock size={16} className="flex-shrink-0 mt-0.5" />Rút tiền được xử lý trong 1 ngày làm việc, tối thiểu 500.000đ, miễn phí.</span>
+              <span className="flex items-start gap-1.5"><ShieldCheck size={16} className="flex-shrink-0 mt-0.5" />Khách trả vào tài khoản Hội Mình, chuyển cho {d.ownerName || 'chủ hội'} theo yêu cầu rút. Hội Mình không thu phí giao dịch.</span>
+            </div>
+          </section>
+          {d.affiliatePendingCount > 0 && (
+            <Link to={`/${shell.community.slug}/cong-su`} className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-[15px] font-semibold" style={{ background: T.accentSoft, color: T.accentText }}>
+              <Handshake size={18} className="flex-shrink-0" /><span className="flex-grow">{d.affiliatePendingCount} yêu cầu rút của cộng sự đang chờ, cần chuyển {money(d.affiliatePendingMinor)}</span><span className="whitespace-nowrap">Xử lý</span>
+            </Link>
+          )}
+        </>
+      )}
+    </QueryState>
+  );
+}
+
+function Transactions() {
   const shell = useShell();
   const can = useCan();
   const [days, setDays] = useState(30);
   const [refund, setRefund] = useState<RefundTarget | null>(null);
-  const q = useQuery({ queryKey: ['revenue', shell.community.id, days], queryFn: () => api.get<Revenue>(`/v1/communities/${shell.community.id}/revenue?days=${days}`), enabled: can('revenue.read') });
+  const q = useQuery({ queryKey: ['revenue', shell.community.id, days], queryFn: () => api.get<Revenue>(`/v1/communities/${shell.community.id}/revenue?days=${days}`) });
   const refundM = useMutation({
     mutationFn: (p: { orderId: string; reason: string }) => api.post(`/v1/orders/${p.orderId}/admin-refund`, { reason: p.reason }),
     onSuccess: () => { setRefund(null); void q.refetch(); },
   });
   const canRefund = can('billing.manage');
-  if (!can('revenue.read')) return <Navigate to={`/${shell.community.slug}/bang-tin`} replace />;
   const exportCsv = () => {
     if (!q.data) return;
     const url = URL.createObjectURL(new Blob(['﻿' + toCsv(q.data.items)], { type: 'text/csv;charset=utf-8' }));
@@ -42,17 +76,17 @@ export default function Page() {
   const heads = canRefund ? ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ cộng sự', 'Trạng thái', ''] : ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ cộng sự', 'Trạng thái'];
   const minW = canRefund ? 956 : 860;
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="serif m-0 text-[28px] font-extrabold">Doanh thu</h1>
-        <div className="flex gap-2 md:ml-3">{RANGES.map(([d, l]) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{l}</Chip>)}</div>
+    <>
+      <div className="flex items-center gap-3 flex-wrap pt-1">
+        <h2 className="m-0 font-bold text-[18px]">Doanh thu</h2>
+        <div className="chip-row md:ml-2" style={{ width: 'auto' }}>{RANGES.map(([d, l]) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{l}</Chip>)}</div>
         <span className="flex-grow" />
         <button type="button" className="btn btn-ghost btn-sm" onClick={exportCsv} disabled={!q.data}><Download size={14} />Xuất CSV</button>
       </div>
       <QueryState q={q} rows={4}>
         {(d) => (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard label="Tổng thu" value={money(d.stats.grossMinor)} sub={`${d.stats.txCount} giao dịch · không phí giao dịch`} />
               <StatCard label="Đã vào số dư" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
               <StatCard label="Nợ cộng sự" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
@@ -66,7 +100,7 @@ export default function Page() {
                   <span className="muted">{fmtDate(t.at).slice(0, 5)}</span>
                   <div className="flex items-center gap-2 min-w-0"><UserAvatar user={t.customer} size={26} /><span className="font-medium truncate">{t.customer.name}</span></div>
                   <span className="truncate">{t.title}</span>
-                  <span className="muted">{PROVIDER[t.provider] ?? t.method ?? '—'}</span>
+                  <span className="muted">{PROVIDER[t.provider] ?? (t.method || 'Khác')}</span>
                   <span className="font-semibold">{money(t.amountMinor)}</span>
                   <span className="font-semibold" style={{ color: T.goldText }}>{t.status === 'refunded' && t.reversedCommissionMinor ? `đảo ${money(t.reversedCommissionMinor)}` : money(t.commissionMinor)}</span>
                   <StatusTag status={t.status === 'paid' ? 'succeeded' : t.status} />
@@ -88,6 +122,24 @@ export default function Page() {
         error={refundM.isError ? errorMessage(refundM.error) : null}
         onSubmit={(reason) => { if (refund) refundM.mutate({ orderId: refund.orderId, reason }); }}
       />
+    </>
+  );
+}
+
+export default function Page() {
+  const shell = useShell();
+  const can = useCan();
+  const canBalance = can('billing.manage');
+  const canTx = can('revenue.read');
+  if (!canBalance && !canTx) return <Navigate to={`/${shell.community.slug}/hom-nay`} replace />;
+  return (
+    <div className="flex flex-col gap-4" style={{ maxWidth: 1080 }}>
+      <div>
+        <h1 className="serif m-0 text-[28px] font-extrabold">Tiền</h1>
+        <div className="muted text-[15px]">Số dư, rút tiền, giao dịch và hoàn tiền. Cách khách thanh toán chỉnh ở <Link to={`/${shell.community.slug}/cai-dat/gia`} className="font-semibold">Cài đặt, mục Bán hàng</Link>.</div>
+      </div>
+      {canBalance && <Balance />}
+      {canTx && <Transactions />}
     </div>
   );
 }

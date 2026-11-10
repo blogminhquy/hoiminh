@@ -42,7 +42,7 @@ export function DayDivider({ date }: { date: string }) {
 
 export function MemberPanel({ other, panel, community, onArchive }: { other: Person; panel: Panel | null; community: { slug: string } | null; onArchive: () => void }) {
   return (
-    <aside className="card w-full md:w-[280px] p-5 flex flex-col gap-3.5 flex-shrink-0">
+    <aside className="card w-full lg:w-[280px] p-5 flex flex-col gap-3.5 flex-shrink-0">
       <div className="flex flex-col items-center gap-2 text-center">
         <Avatar name={other.name} src={other.avatarUrl} color={other.coverColor ?? T.ink} size={64} />
         <div className="font-bold text-[16px]">{other.name}</div>

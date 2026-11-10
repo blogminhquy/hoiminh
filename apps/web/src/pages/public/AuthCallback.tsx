@@ -1,4 +1,4 @@
-// Đích quay về sau Google (Supabase): đọc #access_token= trong hash, đổi lấy phiên Hội Mình rồi vào /admin.
+// Đích quay về sau Google (Supabase): đọc #access_token= trong hash, đổi lấy phiên Hội Mình rồi vào hội của người đó (chưa có hội thì vào /admin).
 import type { AuthSession } from '@hoiminh/contracts';
 import { Button, T } from '@hoiminh/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthShell } from '@/layouts/AuthShell';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { landingAfterAuth } from './Login';
 
 function tokenFromHash(hash: string): string | null {
   const p = new URLSearchParams(hash.replace(/^#/, ''));
@@ -28,10 +29,10 @@ export default function Page() {
       return;
     }
     api.post<AuthSession>('/v1/auth/google/callback', { accessToken })
-      .then((session) => {
+      .then(async (session) => {
         setSession(session);
         window.history.replaceState(null, '', window.location.pathname);
-        navigate('/admin', { replace: true });
+        navigate(await landingAfterAuth(), { replace: true });
       })
       .catch((err: unknown) => setError(errorMessage(err)));
   }, [navigate, setSession]);
@@ -50,7 +51,7 @@ export default function Page() {
           </>
         ) : (
           <>
-            <span className="inline-block w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: T.accent }} />
+            <span className="inline-block w-8 h-8 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: T.primary }} />
             <h2 className="serif m-0 text-[24px] font-extrabold">Đang đăng nhập…</h2>
             <div className="muted text-[13px]">Đang xác nhận tài khoản Google của bạn với Hội Mình.</div>
           </>

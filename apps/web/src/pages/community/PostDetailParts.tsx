@@ -61,7 +61,7 @@ export function Toc({ headings }: { headings: string[] }) {
       <div className="font-semibold text-[13px]">Trong bài này</div>
       {headings.map((h, i) => (
         <button key={i} type="button" onClick={() => go(i)} className="flex items-center gap-2 text-[13px] text-left" style={{ color: active === i ? T.ink : T.ink2, fontWeight: active === i ? 600 : 400 }}>
-          <span className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ background: active === i ? T.accent : T.line }} />{h}
+          <span className="w-[3px] h-4 rounded-full flex-shrink-0" style={{ background: active === i ? T.primary : T.line }} />{h}
         </button>
       ))}
     </div>

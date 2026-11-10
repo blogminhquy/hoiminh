@@ -30,7 +30,7 @@ export default function Page() {
         {(w) => (
           <>
             <div className="card flex items-center gap-3 flex-wrap" style={{ padding: '18px 20px' }}>
-              <div className="flex-grow flex flex-col gap-1.5 min-w-[240px]"><span className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.accent }}>Link của bạn</span><div className="input" style={{ color: T.ink }}><span className="flex-grow truncate">{w.link.replace(/^https?:\/\//, '')}</span><button type="button" aria-label="Sao chép" onClick={() => copy(w.link)} style={{ color: copied ? T.teal : T.ink3 }}>{copied ? <Check size={16} /> : <Copy size={16} />}</button></div></div>
+              <div className="flex-grow flex flex-col gap-1.5 min-w-[240px]"><span className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.primaryText }}>Link của bạn</span><div className="input" style={{ color: T.ink }}><span className="flex-grow truncate">{w.link.replace(/^https?:\/\//, '')}</span><button type="button" aria-label="Sao chép" onClick={() => copy(w.link)} style={{ color: copied ? T.teal : T.ink3 }}>{copied ? <Check size={16} /> : <Copy size={16} />}</button></div></div>
               <div className="flex gap-5 px-3">{[[w.clicks, 'Lượt bấm'], [w.signups, 'Đăng ký'], [w.paid, 'Trả phí']].map(([v, l]) => <div key={String(l)} className="text-center"><div className="font-bold text-[18px]">{v}</div><div className="muted text-[12px]">{l}</div></div>)}</div>
               <button type="button" className="btn btn-dark" onClick={() => copy(w.link)}>{copied ? 'Đã sao chép' : 'Sao chép'}</button>
             </div>

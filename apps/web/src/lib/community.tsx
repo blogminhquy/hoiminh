@@ -39,6 +39,11 @@ export function useCan(): (permission: string) => boolean {
   return (p) => s.viewer.permissions.includes(p);
 }
 
+/** Người xem có quyền quản lý hội này không (chủ hội, quản trị): thấy Bàn điều khiển thay cho trang Hôm nay của thành viên. */
+export function canManage(shell: Shell): boolean {
+  return ['settings.manage', 'billing.manage', 'revenue.read'].some((p) => shell.viewer.permissions.includes(p));
+}
+
 export function isPremium(shell: Shell): boolean {
   return shell.viewer.tier?.key === 'premium' || shell.viewer.tier?.key === 'vip' || shell.viewer.role === 'owner' || shell.viewer.role === 'admin';
 }

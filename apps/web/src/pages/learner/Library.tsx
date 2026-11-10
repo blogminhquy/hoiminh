@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { useAuth, type MyCommunity } from '@/lib/auth';
 import { CourseCard, DigitalCard, JoinSuggestion, type Library } from './LibraryParts';
 
 type Filter = 'all' | 'in_progress' | 'completed';
@@ -20,19 +20,31 @@ function Stat({ n, label }: { n: number; label: string }) {
   );
 }
 
-function Empty() {
+/** Chưa mua lẻ gì. Người đang ở trong hội vẫn có khóa học theo gói ở hội đó, nên chỉ đường sang đó thay vì để trang trống. */
+function Empty({ communities }: { communities: MyCommunity[] }) {
   return (
-    <div className="card flex flex-col items-center text-center gap-3" style={{ padding: '48px 24px' }}>
+    <div className="card flex flex-col items-center text-center gap-3" style={{ padding: '40px 20px' }}>
       <span className="inline-flex items-center justify-center rounded-full" style={{ width: 64, height: 64, background: T.goldSoft, color: T.goldText }}><GraduationCap size={30} /></span>
-      <h2 className="serif m-0 text-[20px] font-extrabold">Chưa có gì trong khu học tập</h2>
-      <p className="muted text-[14px] m-0" style={{ maxWidth: 420 }}>Khóa học và tài liệu bạn mua sẽ hiện ở đây, kể cả khi bạn không tham gia hội nào. Xem thử các hội đang mở để tìm nội dung phù hợp.</p>
-      <Link to="/kham-pha" className="btn btn-primary">Khám phá hội</Link>
+      <h2 className="serif m-0 text-[20px] font-extrabold">Bạn chưa mua lẻ khóa hay tài liệu nào</h2>
+      {communities.length > 0 ? (
+        <>
+          <p className="muted text-[14px] m-0" style={{ maxWidth: 440 }}>Trang này chỉ gom những thứ bạn mua lẻ. Khóa học theo gói thành viên nằm trong từng hội:</p>
+          <div className="flex flex-col gap-2 w-full" style={{ maxWidth: 380 }}>
+            {communities.map((c) => <Link key={c.id} to={`/${c.slug}/khoa-hoc`} className="btn btn-primary w-full" style={{ whiteSpace: 'normal', height: 'auto', minHeight: 46, padding: '8px 16px' }}>Khóa học ở {c.name}</Link>)}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="muted text-[14px] m-0" style={{ maxWidth: 420 }}>Khóa học và tài liệu bạn mua sẽ hiện ở đây, kể cả khi bạn không tham gia hội nào. Xem thử các hội đang mở để tìm nội dung phù hợp.</p>
+          <Link to="/kham-pha" className="btn btn-primary">Khám phá hội</Link>
+        </>
+      )}
     </div>
   );
 }
 
 export default function Page() {
-  const { user } = useAuth();
+  const { user, communities } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
   const q = useQuery({ queryKey: ['library'], queryFn: () => api.get<Library>('/v1/me/library') });
   const firstName = user?.name.trim().split(/\s+/).pop() ?? '';
@@ -46,9 +58,9 @@ export default function Page() {
         <Link to="/tai-khoan/goi" className="btn btn-ghost btn-sm"><Receipt size={15} />Đơn hàng và hóa đơn</Link>
       </div>
 
-      <QueryState q={q} rows={3} isEmpty={(d) => d.counts.courses === 0 && d.counts.digital === 0} empty={{ title: 'Chưa có gì trong khu học tập', hint: 'Khóa học và tài liệu bạn mua sẽ hiện ở đây' }}>
+      <QueryState q={q} rows={3}>
         {(d) => {
-          if (d.counts.courses === 0 && d.counts.digital === 0) return <Empty />;
+          if (d.counts.courses === 0 && d.counts.digital === 0) return <Empty communities={communities} />;
           const courses = d.courses.filter((c) => (filter === 'in_progress' ? (c.progress?.percent ?? 0) > 0 && !c.progress?.completedAt : filter === 'completed' ? Boolean(c.progress?.completedAt) : true));
           return (
             <>
