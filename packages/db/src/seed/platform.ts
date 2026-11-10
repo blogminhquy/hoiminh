@@ -89,7 +89,7 @@ async function seedMessaging(db: Database, base: Date, U: Record<string, SeedUse
     const pair = [ua, ub].sort().join(':');
     const last = cv.msgs[cv.msgs.length - 1]!;
     const lastAt = new Date(base.getTime() + 9 * 3_600_000 + last[2] * 3_600_000);
-    await db.insert(conversations).values({ id, communityId: c.id, pairKey: pair, lastMessageAt: lastAt, lastMessagePreview: last[1].slice(0, 80), lastMessageAutomated: last[3] ?? false, createdAt: daysFrom(base, -2) }).onConflictDoNothing();
+    await db.insert(conversations).values({ id, communityId: c.id, pairKey: pair, lastMessageAt: lastAt, lastMessagePreview: last[1].slice(0, 80), lastMessageAutomated: last[3] ?? false, lastMessageSenderId: U[last[0]]!.id, createdAt: daysFrom(base, -2) }).onConflictDoNothing();
     await db.insert(conversationParticipants).values([
       { id: await sid(`cp:${cv.key}:a`), conversationId: id, userId: ua, unreadCount: cv.unreadFor === cv.a ? 1 : 0, lastReadAt: lastAt },
       { id: await sid(`cp:${cv.key}:b`), conversationId: id, userId: ub, unreadCount: cv.unreadFor === cv.b ? 1 : 0, lastReadAt: lastAt },
