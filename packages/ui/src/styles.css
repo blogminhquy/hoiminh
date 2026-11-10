@@ -503,7 +503,7 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 }
 .chat-jump { position: absolute; left: 50%; bottom: 132px; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 14px; font-weight: 600; box-shadow: 0 6px 16px rgba(8, 24, 23, 0.22); }
 
-/* Ô nhập: thanh công cụ ở trên, ô chữ nhiều dòng không viền, nút gửi (hoặc nút thích khi chưa gõ gì). */
+/* Ô nhập: thanh công cụ ở trên, ô chữ nhiều dòng không viền, nút gửi ở góc phải (mờ khi chưa gõ gì). */
 .chat-composer { position: relative; flex-shrink: 0; background: var(--surface); border-top: 1px solid var(--line); }
 .chat-composer:focus-within { border-top-color: var(--primary); }
 .chat-tools { position: relative; display: flex; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
@@ -514,8 +514,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-input { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; padding: 8px 0; max-height: 132px; }
 .chat-input::placeholder { color: var(--ink3); }
 .chat-send { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--primary); color: var(--on-primary); }
-.chat-send.like { background: transparent; color: var(--gold-text); }
-.chat-send.like:hover { background: var(--gold-soft); }
 .chat-send:disabled { opacity: .55; cursor: not-allowed; }
 .chat-replying { display: flex; align-items: center; gap: 8px; padding: 8px 8px 0 16px; }
 .chat-replying .chat-quote { margin-bottom: 0; }

@@ -41,6 +41,9 @@ test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả 
 
   // Gửi bằng Enter; link trong tin bấm được, link ngoài mở tab mới; dòng xem trước có "Bạn: ".
   const input = thread.getByRole('textbox', { name: /Nhập tin nhắn tới/ });
+  // Ô nhập không còn nút thích nhanh: góc phải luôn là nút Gửi, chưa gõ gì thì chưa bấm được.
+  await expect(thread.getByRole('button', { name: /thích/i })).toHaveCount(0);
+  await expect(thread.getByRole('button', { name: 'Gửi', exact: true })).toBeDisabled();
   await input.fill('Em cảm ơn anh, em gửi link nhé: https://example.com/qa-tuan-nay và http://localhost:5173/minhquy/bang-tin');
   await input.press('Enter');
   await expect(thread.getByRole('link', { name: 'https://example.com/qa-tuan-nay' })).toHaveAttribute('target', '_blank');

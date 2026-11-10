@@ -2,13 +2,14 @@
 
 ## 1.28.1 - 2026-11-11
 
-Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay dưới bong bóng, thanh cảm xúc nằm ở đầu bên kia của hàng, bỏ nút thích ở góc bong bóng.
+Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay dưới bong bóng, thanh cảm xúc nằm ở đầu bên kia của hàng, bỏ nút thích ở góc bong bóng và nút thích nhanh trong ô nhập.
 
 ### Thay đổi
 
 - **Hàng dưới mỗi tin nhắn.** Giờ gửi nằm dưới bong bóng (không còn nằm trong bong bóng), kế đó là cảm xúc đã thả và trạng thái "Đã gửi", "Đã xem". Rê chuột vào tin thì các nút Trả lời, Sao chép, Thu hồi hiện ngay cạnh giờ gửi, dạng biểu tượng phẳng (trước đây là các nút tròn nằm bên hông bong bóng).
 - **Thanh sáu cảm xúc hiện ngay khi rê chuột vào tin**, ở đầu bên kia của hàng: tin dài thì thanh nằm sát mép xa của bong bóng, tin ngắn thì nằm kế các nút thao tác. Bấm một biểu tượng để thả, bấm lại (hoặc nút X) để gỡ.
 - **Bỏ nút thích ở góc dưới phải của bong bóng.** Không còn phải rê vào nút đó mới thấy thanh cảm xúc.
+- **Bỏ nút thích nhanh trong ô nhập.** Góc phải ô nhập luôn là nút Gửi, mờ đi khi chưa gõ gì. Muốn gửi một lượt thích thì chọn 👍 trong bảng biểu tượng cảm xúc rồi gửi.
 - Điện thoại và cột chat hẹp: chạm vào tin thì nút thao tác hiện cạnh giờ gửi, thanh cảm xúc hiện ở dòng ngay dưới; tin vừa chạm tự cuộn vào tầm nhìn.
 - Bảng "Thông tin hội thoại" chỉ đứng thành cột thứ ba khi màn hình rộng từ 1536px (trước là 1280px). Ở màn hình laptop 1366px cột chat trước đây chỉ còn khoảng 420px; nay bảng trượt đè lên khi bấm mở, cột chat rộng 760px.
 - Máy tính bảng dọc và cửa sổ hẹp hơn 1024px: mỗi lúc một màn như điện thoại (danh sách, rồi khung chat có nút quay lại). Trước đây ở 768px cột chat chỉ còn khoảng 200px.

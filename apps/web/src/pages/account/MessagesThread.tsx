@@ -1,9 +1,9 @@
 // Khung chat của một hội thoại (kiểu Zalo): đầu khung có trạng thái truy cập, luồng tin dồn về đáy, thao tác trên từng tin
-// (trả lời, cảm xúc, sao chép, thu hồi), ô nhập nhiều dòng có thanh công cụ (ảnh, biểu tượng cảm xúc), dán / thả ảnh để gửi.
+// (trả lời, cảm xúc, sao chép, thu hồi), ô nhập nhiều dòng có thanh công cụ (ảnh, biểu tượng cảm xúc), dán / thả ảnh để gửi. Nút gửi luôn ở góc phải, mờ khi chưa gõ gì.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MessageReaction } from '@hoiminh/contracts';
 import { Avatar, T } from '@hoiminh/ui';
-import { ArrowDown, ArrowLeft, Image as ImageIcon, PanelRight, Send, Smile, ThumbsUp, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, Image as ImageIcon, PanelRight, Send, Smile, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
@@ -84,7 +84,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
   const firstName = other.name.trim().split(/\s+/).pop() ?? other.name;
   const seen = seenLabel(other.lastSeenAt);
 
-  const submit = (body = text.trim()) => { if (!body || send.isPending) return; setProblem(''); setEmoji(false); send.mutate({ body, replyTo }); setText(''); setReplyTo(null); };
+  const submit = () => { const body = text.trim(); if (!body || send.isPending) return; setProblem(''); setEmoji(false); send.mutate({ body, replyTo }); setText(''); setReplyTo(null); };
   const sendImage = async (file: File | undefined) => {
     if (!file || !file.type.startsWith('image/') || uploading) return;
     setProblem(''); setUploading(true);
@@ -163,9 +163,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
           </div>
           <div className="chat-inputrow">
             <textarea ref={inputRef} className="chat-input" rows={1} value={text} maxLength={4000} placeholder={`Nhập tin nhắn tới ${firstName}`} aria-label={`Nhập tin nhắn tới ${other.name}`} onChange={(e) => setText(e.target.value)} onKeyDown={onKeyDown} onPaste={onPaste} />
-            {text.trim()
-              ? <button type="button" className="chat-send" aria-label="Gửi" title="Gửi (Enter)" disabled={send.isPending} onClick={() => submit()}><Send size={20} /></button>
-              : <button type="button" className="chat-send like" aria-label="Gửi nhanh một lượt thích" title="Gửi nhanh một lượt thích" disabled={send.isPending} onClick={() => submit('👍')}><ThumbsUp size={22} /></button>}
+            <button type="button" className="chat-send" aria-label="Gửi" title="Gửi (Enter)" disabled={!text.trim() || send.isPending} onClick={submit}><Send size={20} /></button>
           </div>
         </div>
       </section>
