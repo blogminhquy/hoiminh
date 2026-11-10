@@ -41,6 +41,32 @@ const make = (template: string, to: string, subject: string, title: string, body
   return { to, subject, html, text: strip(html), template };
 };
 
+/** Văn bản thường do chủ hội soạn thành HTML an toàn: mã hóa ký tự, giữ đoạn và xuống dòng, link bấm được. */
+export function plainToHtml(text: string): string {
+  return text
+    .trim()
+    .split(/\n{2,}/)
+    .map((para) => `<p style="margin:0 0 12px;">${h(para).replace(/(https?:\/\/[^\s<]+)/g, `<a href="$1" style="color:${BRAND.accent};">$1</a>`).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+/**
+ * Khung email gửi cho liên hệ của một chủ hội (người để lại email ở landing, có thể chưa có tài khoản Hội Mình):
+ * đứng tên người gửi thay vì "Hội Mình", chân thư nói rõ vì sao nhận và có link ngừng nhận.
+ */
+function contactLayout(sender: string, title: string, bodyHtml: string, cta: { label: string; url: string } | undefined, unsubscribeUrl: string): string {
+  return `<!doctype html><html lang="vi"><body style="margin:0;background:${BRAND.bg};font-family:'Open Sans',Segoe UI,Arial,sans-serif;color:${BRAND.ink};">
+<div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+  <div style="font-weight:800;font-size:20px;margin-bottom:20px;">${h(sender)}</div>
+  <div style="background:#FFFDF9;border:1px solid ${BRAND.line};border-radius:16px;padding:28px;">
+    <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;">${h(title)}</h1>
+    <div style="font-size:16px;line-height:1.7;">${bodyHtml}</div>
+    ${cta ? `<p style="margin:24px 0 0;"><a href="${h(cta.url)}" style="display:inline-block;background:${BRAND.accent};color:#FFFDF9;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px;">${h(cta.label)}</a></p>` : ''}
+  </div>
+  <p style="font-size:12px;color:${BRAND.muted};margin-top:16px;">Bạn nhận email này vì đã để lại thông tin tại ${h(sender)}. Email gửi qua nền tảng Hội Mình. <a href="${h(unsubscribeUrl)}" style="color:${BRAND.muted};">Ngừng nhận email</a></p>
+</div></body></html>`;
+}
+
 /** Bộ mẫu email hệ thống. */
 export const templates = {
   verifyCode: (to: string, name: string, code: string) =>
@@ -82,6 +108,18 @@ export const templates = {
   /** Email thử do quản trị hệ thống bấm gửi để kiểm chứng Resend đã nối. */
   testEmail: (to: string, name: string, meta: { env: string; from: string; sentAt: string }) =>
     make('test_email', to, 'Email thử từ Hội Mình', 'Resend đã nối', `<p>Chào ${h(name)}, đây là email thử gửi từ Hệ thống · Tổng quan. Nhận được nghĩa là RESEND_API_KEY đúng và tên miền gửi đã xác minh.</p><p style="font-size:13px;color:#8C8478;">Môi trường: ${h(meta.env)} · Gửi từ: ${h(meta.from)} · Lúc: ${h(meta.sentAt)}</p>`),
+  /** Email do quy tắc tự động của chủ hội gửi. `body` là văn bản thường đã thay biến. */
+  automationEmail: (to: string, p: { sender: string; subject: string; body: string; cta?: { label: string; url: string }; unsubscribeUrl: string }): EmailMessage => {
+    const html = contactLayout(p.sender, p.subject, plainToHtml(p.body), p.cta, p.unsubscribeUrl);
+    return { to, subject: p.subject, html, text: strip(html), template: 'automation_email' };
+  },
+  /** Mời khách bấm link để nhận quyền đang giữ theo email (chưa có tài khoản hoặc email chưa xác minh). */
+  activationInvite: (to: string, p: { sender: string; name: string; items: string[]; url: string; unsubscribeUrl: string }): EmailMessage => {
+    const list = p.items.map((i) => `<li>${h(i)}</li>`).join('');
+    const body = `<p style="margin:0 0 12px;">Chào ${h(p.name || 'bạn')}, ${h(p.sender)} vừa mở cho bạn:</p><ul style="margin:0 0 12px;padding-left:20px;">${list}</ul><p style="margin:0;">Bấm nút dưới đây, đặt mật khẩu một lần là vào được ngay. Link dùng được trong 30 ngày.</p>`;
+    const html = contactLayout(p.sender, 'Quyền truy cập của bạn đã sẵn sàng', body, { label: 'Kích hoạt và vào xem', url: p.url }, p.unsubscribeUrl);
+    return { to, subject: `${p.sender}: quyền truy cập của bạn đã sẵn sàng`, html, text: strip(html), template: 'activation_invite' };
+  },
   invite: (to: string, community: string, inviter: string, url: string) =>
     make('invite', to, `${inviter} mời bạn vào ${community}`, `Bạn được mời vào ${community}`, `<p><strong>${h(inviter)}</strong> mời bạn tham gia hội <strong>${h(community)}</strong> trên Hội Mình.</p>`, { label: 'Tham gia', url }),
 };

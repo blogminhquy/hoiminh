@@ -7,7 +7,7 @@ import { users } from './users';
 
 export type ReconciliationStatus = 'matched' | 'unmatched' | 'amount_mismatch' | 'duplicate' | 'manual_review' | 'missing_code' | 'wrong_content';
 export type EntitlementResource = 'community' | 'tier' | 'course' | 'product' | 'bundle' | 'digital' | 'platform_plan';
-export type EntitlementSource = 'purchase' | 'subscription' | 'community_bundle' | 'manual_grant' | 'coupon' | 'admin' | 'trial' | 'free_tier';
+export type EntitlementSource = 'purchase' | 'subscription' | 'community_bundle' | 'manual_grant' | 'coupon' | 'admin' | 'trial' | 'free_tier' | 'automation';
 
 export const providerAccounts = pgTable(
   'provider_accounts',

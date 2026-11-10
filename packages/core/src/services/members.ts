@@ -9,7 +9,9 @@ import { raw } from '../lib/db';
 import { conflict, forbidden, invalid, invalidState, notFound } from '../errors';
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
+import { normalizeTagName } from '../lib/inbound-payload';
 import { audit } from './audit';
+import { tagsByEmail } from './automation';
 import { getCommunityBySlug } from './communities';
 
 /** Tham gia hội miễn phí (free/freemium). Hội thu phí đi qua checkout. */
@@ -57,14 +59,17 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
 }
 
 /** Danh sách thành viên với bộ lọc (mục 189). */
-export async function listMembers(ctx: Ctx, communityId: string, q: { status?: MemberStatus; q?: string; tierKey?: string; role?: string; source?: string; cursor?: string; limit?: number }) {
-  await requireCommunityPermission(ctx, communityId, 'member.read');
+export async function listMembers(ctx: Ctx, communityId: string, q: { status?: MemberStatus; q?: string; tierKey?: string; role?: string; source?: string; tag?: string; cursor?: string; limit?: number }) {
+  const access = await requireCommunityPermission(ctx, communityId, 'member.read');
   const limit = q.limit ?? 30;
   const conds = [eq(communityMembers.communityId, communityId), eq(communityMembers.status, q.status ?? 'active')];
   if (q.q) conds.push(or(ilike(users.name, `%${q.q}%`), ilike(users.email, `%${q.q}%`), ilike(users.handle, `%${q.q.replace(/^@/, '')}%`))!);
   if (q.tierKey) conds.push(eq(communityTiers.key, q.tierKey as 'standard'));
   if (q.role) conds.push(eq(communityMembers.role, q.role as 'member'));
   if (q.source) conds.push(eq(communityMembers.source, q.source as 'direct'));
+  // Thẻ gắn theo email của liên hệ trong workspace (nguồn đồng bộ hoặc gắn tay), khớp với email tài khoản.
+  const tagName = q.tag ? normalizeTagName(q.tag) : '';
+  if (tagName) conds.push(sql`exists (select 1 from contacts c join contact_tags ct on ct.contact_id = c.id join tags t on t.id = ct.tag_id where c.workspace_id = ${access.workspaceId} and c.email = lower(${users.email}) and t.name = ${tagName})`);
   const c = decodeCursor(q.cursor);
   if (c) conds.push(or(lt(communityMembers.joinedAt, new Date(c.at)), and(eq(communityMembers.joinedAt, new Date(c.at)), lt(communityMembers.id, c.id)))!);
   const rows = await ctx.db
@@ -76,7 +81,8 @@ export async function listMembers(ctx: Ctx, communityId: string, q: { status?: M
     .orderBy(desc(communityMembers.joinedAt), desc(communityMembers.id))
     .limit(limit + 1);
   const counts = await ctx.db.select({ status: communityMembers.status, c: sql<number>`count(*)::int` }).from(communityMembers).where(eq(communityMembers.communityId, communityId)).groupBy(communityMembers.status);
-  const page = paginate(rows.map((r) => ({ ...r.m, createdAt: r.m.joinedAt, user: r.u, tier: r.tier })), limit);
+  const tagMap = await tagsByEmail(ctx, access.workspaceId, rows.map((r) => r.u.email));
+  const page = paginate(rows.map((r) => ({ ...r.m, createdAt: r.m.joinedAt, user: r.u, tier: r.tier, tags: tagMap.get(r.u.email.toLowerCase()) ?? [] })), limit);
   return { ...page, counts: Object.fromEntries(counts.map((r) => [r.status, r.c])) as Record<string, number> };
 }
 

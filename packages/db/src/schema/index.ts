@@ -9,3 +9,4 @@ export * from './payments-infra';
 export * from './messaging';
 export * from './affiliate';
 export * from './platform';
+export * from './automation';

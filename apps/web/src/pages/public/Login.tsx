@@ -33,7 +33,8 @@ export default function Page() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { setSession } = useAuth();
-  const [email, setEmail] = useState('');
+  // ?email=...: trang kích hoạt dẫn người đã có tài khoản tới đây với email điền sẵn.
+  const [email, setEmail] = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const next = params.get('next');
