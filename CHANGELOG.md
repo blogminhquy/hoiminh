@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.21.3 - 2026-11-10
+
+Sửa logo khó nhìn ở giao diện tối.
+
+### Sửa lỗi
+
+- **Chữ "Hội Mình" trên nền tối**: ở giao diện tối, chữ cạnh logo trên các trang Tạo hội (Chọn cách thanh toán...) và cột trái trang Đăng nhập, Đăng ký bị tối gần bằng màu nền nên gần như không đọc được. Nguyên nhân: logo dùng màu `surface`, mà `surface` ở giao diện tối là màu tối. Nay dùng màu chữ sáng dành cho nền tối (`invertInk`), rõ ở cả hai giao diện.
+- Thêm kiểm thử cho màu chữ của logo (`packages/ui/src/components/layout.test.tsx`).
+
 ## 1.21.2 - 2026-11-10
 
 Cơ sở dữ liệu chuyển từ Seoul về Singapore để gần người dùng Việt Nam hơn.

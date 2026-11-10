@@ -81,10 +81,14 @@ export function DateBlock({ date, tone = 'neutral', size = 56 }: { date: Date; t
   );
 }
 
-/** `markOnlyOnMobile`: điện thoại chỉ hiện hai chấm, bỏ chữ "Hội Mình" để đầu trang hẹp không tràn. */
+/**
+ * `markOnlyOnMobile`: điện thoại chỉ hiện hai chấm, bỏ chữ "Hội Mình" để đầu trang hẹp không tràn.
+ * `light`: logo đặt trên nền luôn tối (T.side), nên chữ dùng T.invertInk là màu sáng ở cả hai giao diện.
+ * Không dùng T.surface: ở giao diện tối T.surface là màu tối, chữ sẽ chìm vào nền.
+ */
 export function Logo({ size = 26, light, className, markOnlyOnMobile }: { size?: number; light?: boolean; className?: string; markOnlyOnMobile?: boolean }) {
   return (
-    <span className={clsx('inline-flex items-center gap-2 serif font-extrabold whitespace-nowrap', className)} style={{ fontSize: Math.round(size * 0.8), color: light ? T.surface : T.ink }}>
+    <span className={clsx('inline-flex items-center gap-2 serif font-extrabold whitespace-nowrap', className)} style={{ fontSize: Math.round(size * 0.8), color: light ? T.invertInk : T.ink }}>
       <svg width={size} height={size} viewBox="0 0 26 26" fill="none" aria-hidden="true">
         <circle cx="9" cy="13" r="7" fill={T.gold} />
         <circle cx="17" cy="13" r="7" fill={T.primary} fillOpacity="0.9" />
