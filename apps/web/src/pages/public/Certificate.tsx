@@ -13,7 +13,7 @@ interface Certificate {
   learner: { id: string; name: string; handle: string };
   course: { id: string; title: string; lessonCount: number; totalDurationSeconds: number };
   owner: string | null;
-  community: { name: string; slug: string; logoMark: string; logoColor: string } | null;
+  community: { name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null } | null;
   completedAt: string;
   verifyUrl: string;
 }
@@ -29,7 +29,7 @@ export default function Page() {
           {(c) => (
             <>
               <div className="card flex flex-col items-center text-center gap-4" style={{ padding: '40px 28px', borderWidth: 2, borderColor: T.gold }}>
-                {c.community && <div className="flex items-center gap-2.5"><CommunityMark mark={c.community.logoMark} color={c.community.logoColor} size={40} radius={10} /><span className="font-semibold">{c.community.name}</span></div>}
+                {c.community && <div className="flex items-center gap-2.5"><CommunityMark mark={c.community.logoMark} color={c.community.logoColor} url={c.community.logoUrl} size={40} radius={10} /><span className="font-semibold">{c.community.name}</span></div>}
                 <div className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: T.goldText }}>Chứng nhận hoàn thành</div>
                 <div className="serif text-[32px] font-extrabold leading-tight" style={{ color: T.ink }}>{c.learner.name}</div>
                 <div className="text-[16px] leading-[1.6]" style={{ color: T.ink2 }}>đã hoàn thành toàn bộ <strong style={{ color: T.ink }}>{c.course.lessonCount} bài</strong>{c.course.totalDurationSeconds ? ` (${fmtDuration(c.course.totalDurationSeconds, true)})` : ''} của khóa học</div>

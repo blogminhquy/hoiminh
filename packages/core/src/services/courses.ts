@@ -86,7 +86,7 @@ export async function certificate(ctx: Ctx, courseId: string, userId: string) {
   const [learner, owner, community] = await Promise.all([
     ctx.db.query.users.findFirst({ where: eq(users.id, userId), columns: { id: true, name: true, handle: true } }),
     ctx.db.query.users.findFirst({ where: eq(users.id, c.ownerUserId), columns: { name: true } }),
-    c.communityId ? ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { name: true, slug: true, logoMark: true, logoColor: true } }) : null,
+    c.communityId ? ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { name: true, slug: true, logoMark: true, logoColor: true, logoUrl: true } }) : null,
   ]);
   if (!learner) throw notFound();
   const code = (await sha256Hex(`certificate:${courseId}:${userId}`)).slice(0, 12).toUpperCase();

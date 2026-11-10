@@ -68,7 +68,7 @@ export { FILE_DELETE_JOB };
 
 /**
  * Mọi cột lưu tham chiếu tới tệp đã tải lên. `url`: bản sao của files.url (tài liệu riêng lưu object key);
- * `id`: files.id; `id-array`: mảng jsonb các files.id.
+ * `id`: files.id; `id-array`: mảng jsonb các files.id; `id-in-items`: mảng jsonb các object có khóa `fileId`.
  * Thêm cột mới lưu URL hoặc id tệp thì PHẢI thêm vào đây, không thì việc dọn R2 có thể xóa nhầm tệp đang dùng.
  * Test file-cleanup.test.ts quét schema và báo nếu có cột tên `*url*` hay `*file*` chưa được xếp loại.
  */
@@ -76,6 +76,7 @@ export const FILE_REFERENCES = [
   { table: 'users', column: 'avatar_url', kind: 'url' },
   { table: 'communities', column: 'logo_url', kind: 'url' },
   { table: 'communities', column: 'cover_url', kind: 'url' },
+  { table: 'communities', column: 'about_media', kind: 'id-in-items' },
   { table: 'courses', column: 'cover_url', kind: 'url' },
   { table: 'products', column: 'cover_url', kind: 'url' },
   { table: 'products', column: 'digital_file_ids', kind: 'id-array' },
@@ -99,6 +100,7 @@ async function stillReferenced(ctx: Ctx, ids: string[]): Promise<Set<string>> {
     const c = sql.identifier(r.column);
     if (r.kind === 'url') return sql`exists (select 1 from ${t} where ${c} in (f.url, f.object_key))`;
     if (r.kind === 'id') return sql`exists (select 1 from ${t} where ${c} = f.id)`;
+    if (r.kind === 'id-in-items') return sql`exists (select 1 from ${t} where ${c} @> jsonb_build_array(jsonb_build_object('fileId', f.id::text)))`;
     return sql`exists (select 1 from ${t} where ${c} @> to_jsonb(f.id::text))`;
   });
   const rows = await raw<{ id: string }>(ctx.db, sql`select f.id from files f where f.id in (${sql.join(ids.map((i) => sql`${i}::uuid`), sql`, `)}) and (${sql.join(checks, sql` or `)})`);

@@ -7,7 +7,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { fmtDate } from '@/lib/format';
 
-export interface CommunityLite { id: string; name: string; slug: string; logoMark: string; logoColor: string; pricingMode: string; doorsOpen: boolean }
+export interface CommunityLite { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; pricingMode: string; doorsOpen: boolean }
 export type LibrarySource = 'purchase' | 'bundle' | 'subscription' | 'granted';
 export interface LibraryCourse {
   id: string; title: string; coverUrl: string | null; coverColor: string; lessonCount: number;
@@ -50,7 +50,7 @@ export function CourseCard({ c }: { c: LibraryCourse }) {
       </div>
       <div className="flex flex-col gap-2.5 flex-grow" style={{ padding: '14px 16px 16px' }}>
         <h3 className="serif m-0 text-[17px] font-bold leading-[1.35]">{c.title}</h3>
-        {c.community && <div className="muted text-[12.5px] flex items-center gap-1.5"><CommunityMark mark={c.community.logoMark} color={c.community.logoColor} size={18} radius={5} />{c.community.name}</div>}
+        {c.community && <div className="muted text-[12.5px] flex items-center gap-1.5"><CommunityMark mark={c.community.logoMark} color={c.community.logoColor} url={c.community.logoUrl} size={18} radius={5} />{c.community.name}</div>}
         <div className="flex flex-col gap-1.5 mt-auto pt-1">
           <ProgressBar percent={percent} />
           <div className="muted text-[12.5px]">
@@ -105,7 +105,7 @@ export function DigitalCard({ p }: { p: LibraryDigital }) {
 export function JoinSuggestion({ c }: { c: CommunityLite }) {
   return (
     <div className="card flex items-center gap-3.5 flex-wrap" style={{ padding: '14px 18px' }}>
-      <CommunityMark mark={c.logoMark} color={c.logoColor} size={40} radius={11} />
+      <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={40} radius={11} />
       <div className="flex-grow min-w-0">
         <div className="font-semibold">{c.name}</div>
         <div className="muted text-[13px]">Bạn đang học nội dung của hội này. Vào hội miễn phí để hỏi đáp và nhận thông báo.</div>

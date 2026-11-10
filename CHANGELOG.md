@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.26.1 - 2026-11-10
+## 1.27.1 - 2026-11-10
 
 Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay dưới bong bóng, thanh cảm xúc nằm ở đầu bên kia của hàng, bỏ nút thích ở góc bong bóng.
 
@@ -12,6 +12,29 @@ Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay d�
 - Điện thoại và cột chat hẹp: chạm vào tin thì nút thao tác hiện cạnh giờ gửi, thanh cảm xúc hiện ở dòng ngay dưới; tin vừa chạm tự cuộn vào tầm nhìn.
 - Bảng "Thông tin hội thoại" chỉ đứng thành cột thứ ba khi màn hình rộng từ 1536px (trước là 1280px). Ở màn hình laptop 1366px cột chat trước đây chỉ còn khoảng 420px; nay bảng trượt đè lên khi bấm mở, cột chat rộng 760px.
 - Máy tính bảng dọc và cửa sổ hẹp hơn 1024px: mỗi lúc một màn như điện thoại (danh sách, rồi khung chat có nút quay lại). Trước đây ở 768px cột chat chỉ còn khoảng 200px.
+
+## 1.27.0 - 2026-11-10
+
+Chủ hội tự sửa được ảnh và video của trang giới thiệu, ảnh bìa ở thẻ hội, và logo vuông hiện ở mọi nơi có tên hội.
+
+### Tính năng
+
+- **Ảnh và video trang giới thiệu** (Cài đặt, Hội, Thông tin). Bố cục giống chính trang giới thiệu: một khung to hiện mục đang chọn, bên dưới là hàng ảnh nhỏ, cuối hàng là hai ô "Thêm ảnh" và "Thêm video". Chủ hội và quản trị thêm tối đa 12 ảnh và video; chọn một ảnh nhỏ rồi bấm "Lên trước", "Ra sau", "Đổi ảnh" (hoặc "Sửa link") hay "Xóa". Mỗi thay đổi lưu ngay, không cần bấm "Lưu thay đổi". Chọn được nhiều ảnh một lượt. Video dùng link YouTube, Vimeo, Loom, TikTok, Facebook hoặc Bunny (không tải tệp video lên); link không nhận diện được thì báo ngay và không thêm.
+- **Trang giới thiệu hiện đúng bộ ảnh và video đó.** Mục số 1 hiện đầu tiên. Ảnh hiện trọn, không bị cắt; video có nút phát, bấm là phát ngay trong trang; video YouTube có ảnh xem trước. Có nút mũi tên hai bên để lướt và hàng ảnh nhỏ bên dưới. Hội chưa thêm gì thì giữ như cũ: nền màu của hội kèm ảnh bìa ba khóa học đầu.
+- **Ảnh bìa của hội** (cùng trang Cài đặt). Ảnh ngang 16:9, hiện ở thẻ hội bên phải trang giới thiệu và trên thẻ hội ở trang Khám phá. Chưa có ảnh thì thẻ vẫn hiện nền màu kèm tên hội.
+- Chủ hội và quản trị mở trang giới thiệu sẽ thấy nút "Sửa ảnh và video" ở góc khung ảnh, dẫn thẳng tới mục đó trong Cài đặt. Hội chưa có ảnh nào thì có thêm một dòng nhắc (chỉ quản trị thấy).
+
+### Sửa lỗi
+
+- **Logo vuông đã tải lên nhưng nhiều nơi vẫn hiện hai chữ cái.** Nay logo hiện ở: mục "Hội tham gia" trong hồ sơ, bảng chuyển hội, trang Khám phá, cài đặt thông báo, Gói và thanh toán, thư viện khóa học, "Hội của tôi" (phần hội đã tham gia) và trang chứng nhận.
+- Trang giới thiệu: bấm phát video giới thiệu phải bấm thêm một lần nữa trong khung video mới chạy. Nay bấm một lần là phát.
+- Cài đặt, Thông tin: tải logo hỏng (tệp quá lớn, sai loại) không báo gì. Nay hiện lý do ngay dưới ô tải ảnh.
+
+### Kỹ thuật
+
+- Migration `0007_about_media.sql`: thêm cột `communities.about_media` (jsonb, mặc định mảng rỗng). Chỉ thêm cột, không đổi dữ liệu cũ. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy.**
+- API mới `PUT /v1/communities/:id/about-media` (quyền `settings.manage`), nhận đủ cả danh sách theo thứ tự. Ảnh bị bỏ khỏi danh sách thì tệp trên R2 được dọn; `FILE_REFERENCES` có thêm kiểu `id-in-items` để việc dọn tệp biết ảnh nào còn nằm trong bộ này.
+- Khách chưa đăng nhập xem trang giới thiệu qua cache 60 giây (có từ trước), nên ảnh vừa đổi có thể mất tối đa một phút mới tới người lạ; chủ hội thấy ngay.
 
 ## 1.26.0 - 2026-11-10
 
