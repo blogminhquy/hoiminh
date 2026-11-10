@@ -1,5 +1,6 @@
 // Ảnh và video trang giới thiệu hội: nhận diện link video, ảnh xem trước và địa chỉ nhúng (dùng ở trang giới thiệu và Cài đặt · Chung).
 import { parseVideoUrl } from '@hoiminh/contracts';
+import { youtubePoster } from './youtube';
 
 export const VIDEO_PROVIDER_LABEL: Record<string, string> = { youtube: 'YouTube', vimeo: 'Vimeo', loom: 'Loom', tiktok: 'TikTok', facebook: 'Facebook', bunny: 'Bunny' };
 export const VIDEO_SOURCES = 'YouTube, Vimeo, Loom, TikTok, Facebook hoặc Bunny';
@@ -20,7 +21,7 @@ export function videoInfo(url: string): VideoInfo | null {
   return {
     provider: e.provider,
     label: VIDEO_PROVIDER_LABEL[e.provider] ?? 'Video',
-    thumb: e.provider === 'youtube' ? `https://i.ytimg.com/vi/${e.externalId}/hqdefault.jpg` : null,
+    thumb: e.provider === 'youtube' ? youtubePoster(e.externalId) : null,
     embedSrc: `${e.embedUrl}${e.embedUrl.includes('?') ? '&' : '?'}autoplay=1`,
   };
 }

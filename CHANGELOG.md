@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.24.0 - 2026-11-10
+## 1.25.0 - 2026-11-10
 
 Chủ hội tự sửa được ảnh và video của trang giới thiệu, ảnh bìa ở thẻ hội, và logo vuông hiện ở mọi nơi có tên hội.
 
@@ -22,6 +22,33 @@ Chủ hội tự sửa được ảnh và video của trang giới thiệu, ản
 - Migration `0006_about_media.sql`: thêm cột `communities.about_media` (jsonb, mặc định mảng rỗng). Chỉ thêm cột, không đổi dữ liệu cũ. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy.**
 - API mới `PUT /v1/communities/:id/about-media` (quyền `settings.manage`), nhận đủ cả danh sách theo thứ tự. Ảnh bị bỏ khỏi danh sách thì tệp trên R2 được dọn; `FILE_REFERENCES` có thêm kiểu `id-in-items` để việc dọn tệp biết ảnh nào còn nằm trong bộ này.
 - Khách chưa đăng nhập xem trang giới thiệu qua cache 60 giây (có từ trước), nên ảnh vừa đổi có thể mất tối đa một phút mới tới người lạ; chủ hội thấy ngay.
+
+## 1.24.0 - 2026-11-10
+
+Video YouTube trong bài học chạy bằng trình phát riêng: người học không bấm sang YouTube được và không thấy video gợi ý.
+
+### Tính năng
+
+- **Trình phát riêng cho video YouTube của bài học.** Người học xem video ngay trong trang bài học. Tên video, logo YouTube, nút "Xem trên YouTube" không còn hiện, và bấm vào đâu trên video cũng không mở YouTube.
+- **Không còn video gợi ý.** Dải "Video khác" khi tạm dừng nằm ngoài vùng nhìn. Gần hết video thì trang tự dừng và hiện nút "Xem lại", nên màn hình gợi ý cuối video của YouTube không kịp hiện.
+- Các nút do trang tự dựng: phát và tạm dừng, thanh tua, lùi và tới 10 giây, âm lượng, Cài đặt, toàn màn hình. Thanh điều khiển tự ẩn khi đang phát.
+- **Nút Cài đặt (bánh răng) có hai mục: Chất lượng và Tốc độ.** Chất lượng gồm "Tự động" và các mức video có (1080p, 720p, 480p, 360p...); để Tự động thì hiện kèm mức đang phát, ví dụ "Tự động (720p)". Mức đã chọn được nhớ ở máy cho các bài sau. Tốc độ từ 0,75x tới 2x. Các mức xếp một cột dọc như YouTube, mức đang chọn có dấu tích. Trên điện thoại bảng Cài đặt mở từ đáy màn hình, chạm ra ngoài là đóng.
+- Phím tắt trên máy tính: Space hoặc K để phát và tạm dừng, mũi tên trái phải tua 5 giây, J và L tua 10 giây, M tắt tiếng, F toàn màn hình.
+- Điện thoại: mỗi nút cao và rộng 44px, chạm lần đầu để gọi thanh điều khiển, chạm lần nữa để tạm dừng. Toàn màn hình xoay ngang trên Android; iPhone dùng kiểu phủ kín trang.
+- Video dọc (link `/shorts/`) hiện trong khung 9:16.
+
+### Thay đổi
+
+- Chỉ áp dụng cho video YouTube ở trang bài học. Video từ Vimeo, Loom, Bunny, TikTok, Facebook giữ khung nhúng gốc của các nền tảng đó. Video giới thiệu ở trang bán hàng và ô xem trước trong trang soạn khóa học cũng giữ nguyên.
+- Tạm dừng giữa chừng thì không có gì đè lên khung hình, để người học dừng lại đọc slide.
+- Nếu trình duyệt chặn phát có tiếng, sau 4 giây video phát tắt tiếng và hiện nút "Chạm để bật tiếng".
+- Video bị gỡ, để riêng tư hoặc bị chủ video tắt quyền nhúng thì hiện lời báo bằng tiếng Việt kèm nút "Thử lại", thay cho màn hình lỗi có link của YouTube.
+
+### Kiểm thử
+
+- `apps/web/src/lib/youtube.test.ts`: tham số nhúng, đồng hồ, danh sách tốc độ và chất lượng, ngưỡng dừng trước giây cuối.
+- `e2e/tests/16-bai-hoc-video-youtube.spec.ts` chạy với YouTube giả (`e2e/helpers/youtube.ts`): bấm khắp mặt trình phát và đi Tab hết các nút mà không lượt nào vào được khung YouTube; link sang YouTube và dải "Video khác" nằm ngoài vùng nhìn ở cả video ngang lẫn video dọc; chọn chất lượng và tốc độ trong bảng Cài đặt; hết video hiện "Xem lại".
+- Chưa chạy được với YouTube thật trong môi trường kiểm thử (máy chạy thử bị chặn mạng tới YouTube). Cần xem lại trên máy thật sau khi deploy, nhất là việc đổi chất lượng: YouTube không còn cam kết giữ lệnh này cho trình phát nhúng.
 
 ## 1.23.0 - 2026-11-10
 
