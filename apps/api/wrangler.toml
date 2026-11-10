@@ -41,6 +41,14 @@ custom_domain = true
 pattern = "api.hoiminh.com"
 custom_domain = true
 
+# Chạy Worker ở trung tâm dữ liệu Cloudflare gần cơ sở dữ liệu nhất (Supabase đặt tại AWS Seoul, ap-northeast-2).
+# Mỗi request của người đăng nhập đi về database vài chục lượt; nếu Worker chạy ở điểm gần người dùng (Việt Nam) thì
+# mỗi lượt mất cả quãng Việt Nam tới Seoul, một lượt gọi API thành 1 đến 3 giây. Đặt Worker cạnh database thì người dùng
+# chỉ chịu quãng đường xa đúng một lần cho mỗi request. Chỉ ảnh hưởng handler fetch: tệp giao diện vẫn phát từ điểm
+# gần người dùng. Đổi vùng của database thì phải sửa dòng này theo (kiểm bằng header cf-placement của /health).
+[placement]
+region = "aws:ap-northeast-2"
+
 # Hyperdrive: gộp kết nối Postgres phía Cloudflare (Workers không cho dùng lại socket giữa các request).
 [[hyperdrive]]
 binding = "HYPERDRIVE"

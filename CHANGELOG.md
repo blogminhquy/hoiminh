@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 1.21.1 - 2026-11-10
+
+Sửa tải dữ liệu chậm trên bản chạy thật: Worker chạy cạnh cơ sở dữ liệu thay vì cạnh người dùng.
+
+### Sửa lỗi
+
+- **Mỗi lượt gọi dữ liệu mất 1 đến 3 giây.** Cơ sở dữ liệu (Supabase) đặt ở Seoul, còn Worker chạy ở điểm Cloudflare gần người dùng Việt Nam, nên mỗi câu truy vấn đi một vòng Việt Nam tới Seoul. Một lượt gọi API của người đăng nhập đi về database 17 đến 35 lượt (đếm bằng proxy đặt giữa API và PostgreSQL thật). Nay `apps/api/wrangler.toml` có `[placement] region = "aws:ap-northeast-2"`: Worker chạy ở trung tâm dữ liệu Cloudflare gần database nhất, người dùng chỉ chịu quãng đường xa một lần cho mỗi request.
+- Đo tại chỗ với PostgreSQL thật, 12 lượt gọi mà trang Bàn điều khiển và trang Hôm nay dùng: khi mỗi vòng đi về mất 80ms (Worker xa database) tổng cộng 26,2 giây, lượt "khung hội" 2,8 giây; khi mỗi vòng mất 2ms (Worker cạnh database) tổng cộng 1,1 giây, lượt "khung hội" 0,12 giây. Con số thật trên hoiminh.com còn cộng thêm một lượt Việt Nam tới Seoul cho mỗi request.
+- **Bớt 3 lượt đi về database ở mọi request của người đăng nhập** (17 còn 14 với `/v1/me`, 35 còn 32 với khung hội): bỏ câu hỏi danh mục kiểu mà postgres-js chạy trên mỗi kết nối mới (`fetch_types: false`), và lấy phiên cùng người dùng trong một câu khi xác minh token.
+
+### Thay đổi
+
+- Bước "Kiểm tra trang live" sau deploy in thêm nơi Worker đang chạy (header `cf-placement`): `remote-ICN` là đã chạy cạnh database ở Seoul.
 ## 1.21.0 - 2026-11-10
 
 Thẻ và quy tắc tự động: landing bắn đơn về kèm thẻ, thẻ tự cho khách vào hội, mở khóa học hoặc gửi email. Khách chưa cần có tài khoản.
