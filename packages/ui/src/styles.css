@@ -140,6 +140,16 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(8,24,23,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; z-index: 40; overflow-y: auto; }
 .modal { box-shadow: 0 24px 60px rgba(8,24,23,0.28); width: 100%; }
+/* Khung bật lên của bài viết trên Bảng tin: đầu khung (tên tác giả và nút X) đứng yên, chỉ phần nội dung cuộn. */
+.post-popup-backdrop { align-items: center; padding: 24px 16px; overflow: hidden; }
+.post-popup { display: flex; flex-direction: column; max-width: 760px; max-height: calc(100dvh - 48px); overflow: hidden; }
+.post-popup-body { overflow-y: auto; overscroll-behavior: contain; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 20px; }
+@media (max-width: 767px) {
+  /* Điện thoại: khung phủ kín màn hình như một trang, nút X luôn ở góc trên. */
+  .post-popup-backdrop { padding: 0; }
+  .post-popup { max-width: none; max-height: none; height: 100dvh; border-radius: 0 !important; border: 0 !important; }
+  .post-popup-body { padding: 16px 16px 24px; }
+}
 /*
  * Cỡ chữ ở mọi bề rộng: không chữ nào dưới 14px. Giao diện viết cỡ chữ bằng lớp Tailwind cố định
  * (text-[12px], text-[13px]...) ở khoảng 600 chỗ; nâng ở đây một lần thay vì sửa từng chỗ. `html` đứng trước

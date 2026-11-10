@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.22.0 - 2026-11-10
+
+Bài viết trên Bảng tin mở trong khung bật lên có nút X, không còn phải nhảy sang trang khác rồi quay lại.
+
+### Tính năng
+
+- **Khung bật lên cho bài viết.** Ở Bảng tin, bấm vào tiêu đề, ảnh, "Xem thêm" hoặc số bình luận thì bài mở ngay trên Bảng tin: đọc, thích, bình luận tại chỗ. Đóng bằng nút X, phím Esc, bấm ra ngoài khung hoặc nút Quay lại của trình duyệt, và vẫn ở đúng chỗ đang đọc. Số bình luận trên thẻ bài cập nhật ngay khi đóng.
+- Trên điện thoại khung phủ kín màn hình, tên tác giả và nút X luôn đứng yên ở trên, chỉ phần nội dung cuộn.
+- Nút mở rộng ở góc trái khung dẫn tới trang riêng của bài (có mục lục và bài liên quan).
+
+### Thay đổi
+
+- Bài đang mở nằm trên địa chỉ (`/bang-tin?bai=<id>`), nên tải lại trang vẫn giữ khung. Trang riêng `/bai-viet/<id>` giữ nguyên cho link chia sẻ, thông báo và email; nút Chia sẻ luôn chép địa chỉ trang riêng.
+- Các chỗ bấm trên thẻ bài vẫn là link thật: bấm giữa hoặc Ctrl bấm vẫn mở trang riêng ở tab mới.
+- Đầu bài viết trên màn hẹp: tên tác giả đứng cạnh avatar, các nút rớt xuống dòng dưới.
+
 ## 1.21.2 - 2026-11-10
 
 Cơ sở dữ liệu chuyển từ Seoul về Singapore để gần người dùng Việt Nam hơn.

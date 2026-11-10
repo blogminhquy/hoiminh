@@ -16,7 +16,7 @@ import { fmtTime, timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { AuthorCard, EditPostModal, Related, Toc, type PostAuthor } from './PostDetailParts';
 
-interface PostDetail {
+export interface PostDetail {
   id: string; title: string; contentMd: string; statusBgKey: string | null; pinned: boolean; likeCount: number; commentCount: number; createdAt: string; editedAt: string | null; videoUrl: string | null; linkUrl: string | null;
   author: PostAuthor; space: { id: string; name: string; colorKey: string }; community: { id: string; name: string; slug: string };
   images: GridImage[]; liked: boolean; poll: Poll | null; likers: UserLite[]; related: Array<{ id: string; title: string; likeCount: number; commentCount: number; author: string }>; headings: string[];
@@ -37,7 +37,11 @@ function Likers({ likers, total }: { likers: UserLite[]; total: number }) {
   );
 }
 
-function PostBody({ post, slug }: { post: PostDetail; slug: string }) {
+/**
+ * Thân bài viết: tác giả, nội dung, thích, lưu, sửa, xóa. Dùng ở trang riêng của bài và ở khung bật lên trên Bảng tin
+ * (`bare`: bỏ khung thẻ vì khung bật lên đã có khung; `onDeleted`, `onCommentsClick`: khung bật lên tự đóng và tự cuộn).
+ */
+export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { post: PostDetail; slug: string; bare?: boolean; onDeleted?: () => void; onCommentsClick?: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const like = useToggleLike('post');
@@ -50,15 +54,17 @@ function PostBody({ post, slug }: { post: PostDetail; slug: string }) {
   const canEdit = post.access.isAuthor || post.access.canModerate;
   const invalidate = () => { void qc.invalidateQueries({ queryKey: ['post', post.id] }); void qc.invalidateQueries({ queryKey: ['feed'] }); };
   const pin = useMutation({ mutationFn: () => api.patch(`/v1/posts/${post.id}`, { pinned: !post.pinned }), onSuccess: invalidate });
-  const del = useMutation({ mutationFn: () => api.del(`/v1/posts/${post.id}`), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['feed'] }); navigate(`/${slug}/bang-tin`); } });
-  const share = async () => { try { await navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* bỏ qua */ } };
+  const del = useMutation({ mutationFn: () => api.del(`/v1/posts/${post.id}`), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['feed'] }); if (onDeleted) onDeleted(); else navigate(`/${slug}/bang-tin`); } });
+  // Luôn chép địa chỉ trang riêng của bài, kể cả khi đang xem trong khung bật lên trên Bảng tin.
+  const share = async () => { try { await navigator.clipboard.writeText(`${window.location.origin}/${slug}/bai-viet/${post.id}`); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* bỏ qua */ } };
   const when = timeAgo(post.createdAt);
   const showImagesBelow = post.images.length > 0 && !/!\[/.test(post.contentMd);
   return (
-    <div className="card px-6 md:px-8 py-7 flex flex-col gap-[18px]">
+    <div className={bare ? 'flex flex-col gap-[18px]' : 'card px-6 md:px-8 py-7 flex flex-col gap-[18px]'}>
       <div className="flex items-center gap-3 flex-wrap">
         <UserAvatar user={post.author} size={44} />
-        <div className="flex-grow min-w-0">
+        {/* flex-1 + minWidth: trên màn hẹp tên tác giả vẫn đứng cạnh avatar, các nút mới là thứ rớt xuống dòng. */}
+        <div className="flex-1" style={{ minWidth: 180 }}>
           <div className="flex items-center gap-2 flex-wrap">
             <UserName user={post.author} />
             <Tag tone="gold" style={{ height: 20, padding: '0 6px' }}>Cấp {post.author.level}</Tag>
@@ -94,7 +100,9 @@ function PostBody({ post, slug }: { post: PostDetail; slug: string }) {
       {post.poll && <PollBox poll={post.poll} />}
       <div className="flex items-center gap-2 pt-4 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
         <Button size="sm" icon={<Heart size={14} fill={post.liked ? HEX.accent : 'none'} />} onClick={() => like.mutate(post.id)} style={post.liked ? { color: T.accentText, background: T.accentSoft, borderColor: T.accentSoft } : undefined} aria-pressed={post.liked}>Thích · {post.likeCount}</Button>
-        <a href="#binh-luan" className="btn btn-ghost btn-sm"><MessageCircle size={14} /> {post.commentCount} bình luận</a>
+        {onCommentsClick
+          ? <button type="button" className="btn btn-ghost btn-sm" onClick={onCommentsClick}><MessageCircle size={14} /> {post.commentCount} bình luận</button>
+          : <a href="#binh-luan" className="btn btn-ghost btn-sm"><MessageCircle size={14} /> {post.commentCount} bình luận</a>}
         <Button size="sm" icon={<Archive size={14} />} onClick={() => setSaved((v) => !v)} aria-pressed={saved}>{saved ? 'Đã lưu' : 'Lưu'}</Button>
         <span className="flex-grow" />
         <Likers likers={post.likers} total={post.likeCount} />

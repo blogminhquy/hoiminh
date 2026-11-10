@@ -1,8 +1,8 @@
 // Bảng tin của hội: chip chuyên mục, composer thu gọn, danh sách bài, rail thông tin hội / Premium / sự kiện sắp tới.
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Chip, DateBlock, T, money } from '@hoiminh/ui';
 import { Image as ImageIcon, Sparkles, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PostCard, type FeedPost } from '@/components/post/PostCard';
 import { LoadingBlock } from '@/components/QueryState';
@@ -13,6 +13,9 @@ import { isPremium, useShell, type Shell } from '@/lib/community';
 import { fmtTime } from '@/lib/format';
 import { Composer } from './Composer';
 import { SITE_HOST } from '@/lib/site';
+
+// Khung bật lên của bài viết kéo theo trình hiện Markdown và bình luận: chỉ tải khi có người mở bài.
+const PostPopup = lazy(() => import('./PostPopup'));
 
 interface FeedPage { items: FeedPost[]; nextCursor: string | null; spaces: Array<{ id: string; name: string; colorKey: string }>; access: { role: string; canBroadcast: boolean; canModerate: boolean } }
 
@@ -82,6 +85,16 @@ export default function Page() {
   const [spaceId, setSpaceId] = useState<string>('');
   const q = (params.get('q') ?? '').trim().toLowerCase();
   const composing = location.pathname.endsWith('/bang-tin/moi');
+  const qc = useQueryClient();
+  // Bài đang mở trong khung bật lên nằm trên địa chỉ (?bai=...): nút Quay lại của trình duyệt đóng khung, tải lại trang vẫn giữ khung.
+  const openId = params.get('bai');
+  const openPost = (p: FeedPost) => { const next = new URLSearchParams(params); next.set('bai', p.id); navigate({ search: next.toString() }, { state: { popup: true } }); };
+  const closePost = () => {
+    // Số bình luận trên thẻ bài có thể đã đổi trong lúc mở khung.
+    void qc.invalidateQueries({ queryKey: ['feed'] });
+    if ((location.state as { popup?: boolean } | null)?.popup) { navigate(-1); return; }
+    const next = new URLSearchParams(params); next.delete('bai'); setParams(next, { replace: true });
+  };
 
   const feed = useInfiniteQuery({
     queryKey: ['feed', cid, spaceId],
@@ -115,13 +128,14 @@ export default function Page() {
         {feed.isLoading && <LoadingBlock rows={3} />}
         {feed.isError && <ErrorBox message={errorMessage(feed.error)} onRetry={() => void feed.refetch()} />}
         {feed.isSuccess && posts.length === 0 && <Empty title={q ? 'Không tìm thấy bài nào' : 'Chưa có bài viết'} hint={q ? 'Thử từ khóa khác' : 'Hãy là người đầu tiên chia sẻ với cộng đồng'} />}
-        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} canModerate={feed.data?.pages[0]?.access.canModerate} />)}
+        {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} canModerate={feed.data?.pages[0]?.access.canModerate} onOpen={openPost} />)}
         {feed.hasNextPage && !q && (
           <Button block loading={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>Tải thêm</Button>
         )}
       </div>
       <Rail shell={shell} />
       <Composer open={composing} onClose={() => navigate(`/${slug}/bang-tin`)} defaultSpaceId={spaceId} />
+      {openId && <Suspense fallback={null}><PostPopup postId={openId} slug={slug} onClose={closePost} /></Suspense>}
     </div>
   );
 }
