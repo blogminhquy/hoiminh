@@ -1,4 +1,4 @@
-// Khung ứng dụng hội. Máy tính: sidebar 264px (logo Hội Mình ở góc trên trái) + header 64px (tên hội đứng cạnh ô tìm,
+// Khung ứng dụng hội. Máy tính: sidebar 264px, thu gọn được thành dải biểu tượng 72px (logo Hội Mình ở góc trên trái) + header 64px (tên hội đứng cạnh ô tìm,
 // bấm vào để chuyển hội). Điện thoại: header có nút mở menu, tên hội và tìm kiếm; menu trượt ra từ bên trái
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
@@ -15,16 +15,19 @@ import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { canManage, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
+import { useSidebarCollapsed } from '@/lib/sidebar';
 import { CommunitySwitcher } from './CommunitySwitcher';
+import { SidebarToggle } from './SidebarToggle';
 import { OwnerCommandPalette } from './OwnerCommand';
 import { PublicHeader } from './PublicHeader';
 
-function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean }) {
+/** `collapsed`: thanh bên đang thu gọn, chỉ còn biểu tượng; tên mục hiện khi rê chuột và vẫn đọc được bằng trình đọc màn hình. */
+function NavItem({ to, icon, label, extra, end, collapsed }: { to: string; icon: ReactNode; label: string; extra?: ReactNode; end?: boolean; collapsed?: boolean }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `nav-item${isActive ? ' on' : ''}`}>
+    <NavLink to={to} end={end} title={collapsed ? label : undefined} aria-label={collapsed ? label : undefined} className={({ isActive }) => `nav-item${isActive ? ' on' : ''}`}>
       {icon}
-      <span className="flex-grow">{label}</span>
-      {extra}
+      <span className="nav-label flex-grow">{label}</span>
+      {extra !== undefined && extra !== null && <span className="nav-extra inline-flex items-center">{extra}</span>}
     </NavLink>
   );
 }
@@ -34,35 +37,35 @@ function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode;
  * Danh sách mục tự cuộn khi màn hình thấp, còn nút "Viết bài" luôn ghim ở đáy. `pinInvite`: ghim cả nút
  * "Mời thành viên" (máy tính); menu điện thoại để nút đó cuộn theo danh sách cho đỡ chiếm chỗ.
  */
-function SidebarNav({ shell, onInvite, pinInvite }: { shell: Shell; onInvite: () => void; pinInvite?: boolean }) {
+function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; onInvite: () => void; pinInvite?: boolean; collapsed?: boolean }) {
   const s = shell.community.slug;
   const perms = shell.viewer.permissions;
   const manage = canManage(shell);
   const tabs = shell.community.tabs;
   const canPost = tabs.feed !== false;
-  const invite = <button type="button" className="btn w-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} onClick={onInvite}><Plus size={18} />Mời thành viên</button>;
+  const invite = <button type="button" className="btn w-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} title={collapsed ? 'Mời thành viên' : undefined} aria-label={collapsed ? 'Mời thành viên' : undefined} onClick={onInvite}><Plus size={18} /><span className="nav-label">Mời thành viên</span></button>;
   // Hội tắt Bảng tin thì không có nút Viết bài: nút Mời thành viên lên chỗ ghim.
   const inviteInFoot = pinInvite || !canPost;
   return (
     <>
       <div className="side-scroll flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="flex flex-col gap-0.5 pt-3">
-        {manage ? <NavItem to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
+        {manage ? <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
       </div>
       <div className="nav-group">Hội</div>
       <div className="flex flex-col gap-0.5">
-        {tabs.feed !== false && <NavItem to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
-        {tabs.events !== false && <NavItem to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
-        {tabs.members !== false && <NavItem to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
-        {tabs.affiliate !== false && <NavItem to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng cộng sự" />}
+        {tabs.feed !== false && <NavItem collapsed={collapsed} to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
+        {tabs.events !== false && <NavItem collapsed={collapsed} to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
+        {tabs.members !== false && <NavItem collapsed={collapsed} to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
+        {tabs.affiliate !== false && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng cộng sự" />}
       </div>
       {(tabs.courses !== false || tabs.store !== false) && (
         <>
           <div className="nav-group">Học</div>
           <div className="flex flex-col gap-0.5">
-            {tabs.courses !== false && <NavItem to={`/${s}/khoa-hoc`} icon={<BookOpen size={20} />} label="Khóa học" extra={shell.coursePercent !== null ? <span className="text-[12px] font-semibold" style={{ color: T.sideText }}>{shell.coursePercent}%</span> : undefined} />}
-            {tabs.resources && <NavItem to={`/${s}/khoa-hoc`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
-            {tabs.store !== false && <NavItem to={`/${s}/cua-hang`} icon={<Store size={20} />} label="Cửa hàng" />}
+            {tabs.courses !== false && <NavItem collapsed={collapsed} to={`/${s}/khoa-hoc`} icon={<BookOpen size={20} />} label="Khóa học" extra={shell.coursePercent !== null ? <span className="text-[12px] font-semibold" style={{ color: T.sideText }}>{shell.coursePercent}%</span> : undefined} />}
+            {tabs.resources && <NavItem collapsed={collapsed} to={`/${s}/khoa-hoc`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
+            {tabs.store !== false && <NavItem collapsed={collapsed} to={`/${s}/cua-hang`} icon={<Store size={20} />} label="Cửa hàng" />}
           </div>
         </>
       )}
@@ -70,16 +73,16 @@ function SidebarNav({ shell, onInvite, pinInvite }: { shell: Shell; onInvite: ()
         <>
           <div className="nav-group">Quản lý</div>
           <div className="flex flex-col gap-0.5">
-            {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem to={`/${s}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
-            {perms.includes('affiliates.manage') && <NavItem to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Cộng sự" end />}
-            {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
+            {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem collapsed={collapsed} to={`/${s}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
+            {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Cộng sự" end />}
+            {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem collapsed={collapsed} to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
           </div>
         </>
       )}
       {!inviteInFoot && <div className="pt-4 pb-1">{invite}</div>}
       </div>
       <div className="flex flex-col gap-2 pt-3 flex-shrink-0">
-        {canPost && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full"><Pencil size={18} />Viết bài</Link>}
+        {canPost && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full" title={collapsed ? 'Viết bài' : undefined} aria-label={collapsed ? 'Viết bài' : undefined}><Pencil size={18} /><span className="nav-label">Viết bài</span></Link>}
         {inviteInFoot && invite}
       </div>
     </>
@@ -87,13 +90,15 @@ function SidebarNav({ shell, onInvite, pinInvite }: { shell: Shell; onInvite: ()
 }
 
 function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
+  const [collapsed, toggle] = useSidebarCollapsed();
   return (
-    <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.side, color: T.sideText, padding: '16px 12px' }}>
+    <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" data-collapsed={collapsed ? 'true' : undefined} style={{ background: T.side, color: T.sideText, padding: '16px 12px' }}>
       {/* Cao 48px cộng lề trên 16px: đường kẻ dưới logo thẳng hàng với đáy header 64px. */}
-      <div className="flex items-center px-2 flex-shrink-0" style={{ height: 48, borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
-        <Link to="/kham-pha" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+      <div className="side-head flex items-center justify-between pl-2 flex-shrink-0" style={{ height: 48, borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
+        <Link to="/kham-pha" className="side-logo" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+        <SidebarToggle collapsed={collapsed} onToggle={toggle} />
       </div>
-      <SidebarNav shell={shell} onInvite={onInvite} pinInvite />
+      <SidebarNav shell={shell} onInvite={onInvite} pinInvite collapsed={collapsed} />
     </aside>
   );
 }

@@ -2,12 +2,14 @@
 
 ## 1.29.0 - 2026-11-11
 
-Kéo thả để xếp ảnh trang giới thiệu, ảnh bìa hồ sơ kiểu Facebook, và mọi ô chọn (dropdown) dùng danh sách riêng theo màu chủ đề.
+Kéo thả để xếp ảnh trang giới thiệu, ảnh bìa hồ sơ kiểu Facebook, thanh menu bên trái thu gọn được, và mọi ô chọn (dropdown) dùng danh sách riêng theo màu chủ đề.
 
 ### Tính năng
 
 - **Ảnh bìa hồ sơ.** Tài khoản, Hồ sơ: ảnh bìa nằm ngang ở đầu trang, ảnh đại diện tròn đè lên mép dưới, như trang cá nhân Facebook. Bấm "Chỉnh sửa ảnh bìa" ngay trên ảnh để tải ảnh lên, gỡ ảnh hoặc chọn màu nền dùng khi không có ảnh. Nút máy ảnh trên ảnh đại diện để đổi ảnh đại diện. Trước đây hồ sơ chỉ chọn được màu nền, không tải ảnh bìa được. Trang hồ sơ công khai hiện ảnh bìa này.
 - **Kéo thả để đổi thứ tự ảnh và video trang giới thiệu** (Cài đặt, Hội, Thông tin). Nhấn giữ một ảnh nhỏ rồi kéo tới chỗ mới; dùng được bằng chuột lẫn ngón tay, vuốt để cuộn trang thì không bị tính là kéo. Bàn phím: Shift cùng phím mũi tên trái, phải. Hai nút "Lên trước", "Ra sau" được bỏ; "Đổi ảnh" (hoặc "Sửa link") và "Xóa" chuyển lên góc khung to.
+
+- **Thu gọn thanh menu bên trái** (máy tính). Nút ở đầu thanh menu thu thanh từ 264px còn một dải biểu tượng 72px sát mép trái, nội dung trang rộng thêm; bấm lần nữa để mở ra. Khi thu gọn, rê chuột lên biểu tượng sẽ thấy tên mục, tên nhóm thành đường kẻ mảnh, hai nút "Viết bài" và "Mời thành viên" chỉ còn biểu tượng. Lựa chọn được nhớ trên máy. Áp dụng cho thanh menu của hội và của khu quản trị hệ thống; điện thoại vẫn dùng menu trượt như cũ.
 
 ### Thay đổi
 
