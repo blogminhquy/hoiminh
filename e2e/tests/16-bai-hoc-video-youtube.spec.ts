@@ -115,7 +115,7 @@ test('bài học YouTube: phát, tạm dừng, tua, chọn chất lượng và t
 
   // Chọn 360p: trang xin YouTube đúng mức đó, bảng đóng lại, mở lại thấy 360p đã được chọn.
   await menu.getByRole('menuitem', { name: /Chất lượng/ }).click();
-  await expect(menu.getByRole('menuitemradio')).toHaveText(['Tự động', '1080p', '720p', '480p', '360p', '240p', '144p']);
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['Tự động', '1080p', '720p', '480p', '360p', '240p', '144p'], { useInnerText: true });
   await expect(menu.getByRole('menuitemradio', { name: 'Tự động' })).toHaveAttribute('aria-checked', 'true');
   await menu.getByRole('menuitemradio', { name: '360p' }).click();
   await expect(menu).toHaveCount(0);
@@ -185,7 +185,7 @@ test('bài học YouTube trên điện thoại: nút đủ to, không tràn ngan
   }
   await expect(player.getByRole('button', { name: 'Lùi 10 giây' })).toBeHidden();
 
-  // Bảng Cài đặt nằm gọn trong trình phát thấp của điện thoại; 7 mức chất lượng xếp lưới 3 cột nên thấy hết, không phải cuộn.
+  // Bảng Cài đặt nằm gọn trong trình phát thấp của điện thoại; 7 mức chất lượng xếp đúng một hàng ngang, thấy hết không phải vuốt.
   await player.getByRole('button', { name: 'Cài đặt video' }).click();
   await player.getByRole('menuitem', { name: /Chất lượng/ }).click();
   const menu = player.getByRole('menu');
@@ -195,6 +195,16 @@ test('bài học YouTube trên điện thoại: nút đủ to, không tràn ngan
   expect(m.x + m.width).toBeLessThanOrEqual(p.x + p.width);
   expect(m.y + m.height).toBeLessThanOrEqual(p.y + p.height);
   expect(await menu.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+  const options = await Promise.all((await menu.getByRole('menuitemradio').all()).map(box));
+  expect(options).toHaveLength(7);
+  expect(new Set(options.map((o) => Math.round(o.y))).size, 'mọi mức nằm trên cùng một hàng').toBe(1);
+  expect(await menu.locator('.ytl-menu-grid').evaluate((el) => el.scrollWidth <= el.clientWidth), 'hàng không phải vuốt ngang ở 390px').toBe(true);
+  expect(m.height).toBeLessThan(110);
+  // Trong hàng ngang, ô "Tự động" ghi gọn là "Auto" để bảy mức vừa cả màn hình 360px.
+  await expect(menu.getByRole('menuitemradio').first()).toHaveText('Auto', { useInnerText: true });
+  await page.setViewportSize({ width: 360, height: 780 });
+  expect(await menu.locator('.ytl-menu-grid').evaluate((el) => el.scrollWidth <= el.clientWidth), 'hàng không phải vuốt ngang ở 360px').toBe(true);
+  await page.setViewportSize({ width: 390, height: 780 });
   const last = menu.getByRole('menuitemradio', { name: '144p' });
   expect((await box(last)).height).toBeGreaterThanOrEqual(44);
   await last.click();

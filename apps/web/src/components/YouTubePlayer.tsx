@@ -67,6 +67,7 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
   const [qualityPref, setQualityPref] = useState(savedQuality);
   const qualityPrefRef = useRef(qualityPref);
   const [rates, setRates] = useState<number[]>([]);
+  const optionsRef = useRef<HTMLDivElement>(null);
 
   /** Hiện thanh điều khiển, rồi tự ẩn sau gần 3 giây không động tới. */
   const wake = useCallback(() => {
@@ -215,6 +216,14 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
       document.removeEventListener('webkitfullscreenchange', sync);
     };
   }, []);
+
+  // Điện thoại xếp các mức thành một hàng ngang: mở ra thì đưa mức đang chọn vào tầm nhìn nếu hàng phải vuốt.
+  useEffect(() => {
+    if (menu !== 'quality' && menu !== 'speed') return;
+    const row = optionsRef.current;
+    const chosen = row?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (row && chosen) row.scrollLeft = Math.max(0, chosen.offsetLeft - (row.clientWidth - chosen.offsetWidth) / 2);
+  }, [menu]);
 
   // Toàn màn hình kiểu phủ kín trang (iPhone không cho phần tử thường vào toàn màn hình thật): khóa cuộn trang nền.
   useEffect(() => {
@@ -441,10 +450,11 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
           {menu === 'quality' && (
             <>
               <button type="button" className="ytl-menu-item ytl-menu-head" aria-label="Quay lại cài đặt" onClick={() => setMenu('main')}><ChevronLeft size={18} />Chất lượng</button>
-              <div className="ytl-menu-grid">
+              <div ref={optionsRef} className="ytl-menu-grid">
                 {qualityOptions(levels).map((level) => (
                   <button key={level} type="button" role="menuitemradio" aria-checked={qualityPref === level} className="ytl-menu-item" onClick={() => chooseQuality(level)}>
-                    <span className="ytl-menu-check">{qualityPref === level && <Check size={18} />}</span>{qualityLabel(level)}
+                    <span className="ytl-menu-check">{qualityPref === level && <Check size={18} />}</span>
+                    {level === QUALITY_AUTO ? <><span className="ytl-long">Tự động</span><span className="ytl-short">Auto</span></> : qualityLabel(level)}
                   </button>
                 ))}
               </div>
@@ -453,7 +463,7 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
           {menu === 'speed' && (
             <>
               <button type="button" className="ytl-menu-item ytl-menu-head" aria-label="Quay lại cài đặt" onClick={() => setMenu('main')}><ChevronLeft size={18} />Tốc độ</button>
-              <div className="ytl-menu-grid">
+              <div ref={optionsRef} className="ytl-menu-grid">
                 {speedOptions(rates, rate).map((r) => (
                   <button key={r} type="button" role="menuitemradio" aria-checked={rate === r} className="ytl-menu-item" onClick={() => chooseRate(r)}>
                     <span className="ytl-menu-check">{rate === r && <Check size={18} />}</span>{speedLabel(r)}
