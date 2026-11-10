@@ -6,7 +6,7 @@ Nhập bài từ link YouTube lấy luôn tên bài, mô tả và thời lượn
 
 ### Tính năng
 
-- **Nhập nhanh từ link YouTube lấy luôn tên, mô tả, thời lượng.** Trước đây mỗi bài mang tên tạm kiểu "Bài 1 · YouTube q1sMd3Pk90U". Nay tên bài là tên video, phần nội dung bài là mô tả của video, thời lượng điền sẵn (nên tổng thời lượng khóa và "còn khoảng..." cũng đúng). Trong lúc nhập có dòng "Đang nhập bài 3/11". Link không nhận diện được thì được giữ lại trong ô kèm lời báo, không lặng lẽ bỏ qua; nhập đứt giữa chừng thì ô chỉ còn các link chưa nhập, bấm lại không tạo trùng bài.
+- **Nhập nhanh từ link YouTube lấy luôn tên, mô tả, thời lượng.** Trước đây mỗi bài mang tên tạm kiểu "Bài 1 · YouTube q1sMd3Pk90U". Nay tên bài là tên video (luôn lấy được, không cần cài gì). Mô tả của video vào phần nội dung bài và thời lượng được điền sẵn khi máy chủ có `YOUTUBE_API_KEY` (xem mục Kỹ thuật); chưa có key thì máy chủ thử đọc trang xem video, YouTube chặn thì bài chỉ có tên. Trong lúc nhập có dòng "Đang nhập bài 3/11". Link không nhận diện được thì được giữ lại trong ô kèm lời báo, không lặng lẽ bỏ qua; nhập đứt giữa chừng thì ô chỉ còn các link chưa nhập, bấm lại không tạo trùng bài.
 - **Nút "Lấy tên từ YouTube cho N bài"** ở cột giáo trình, hiện khi khóa còn bài mang tên tạm từ lần nhập trước: một lần bấm là đổi hết sang tên thật, kèm mô tả và thời lượng. Nội dung và thời lượng đã tự điền thì giữ nguyên.
 - **Nút "Lấy tên và mô tả từ YouTube"** trong khung soạn bài, hiện khi link video là YouTube: điền tên, mô tả (nếu bài chưa có nội dung) và thời lượng (nếu chưa điền) vào bản nháp, bấm "Lưu bài" để giữ.
 - **Đổi tên module tại chỗ**: bấm vào tên module hoặc nút bút chì cạnh nó, gõ tên mới, Enter hoặc bấm ra ngoài để lưu, Esc để hủy. Trước đây module tạo ra mang tên "Module 1" và không có chỗ nào sửa.
@@ -18,10 +18,13 @@ Nhập bài từ link YouTube lấy luôn tên bài, mô tả và thời lượn
 - **Trang khóa học: bìa nằm trên cùng, nút quay lại nổi trên bìa.** Bỏ dòng "‹ Khóa học" mờ phía trên; nút quay lại là một nút tròn nền đặc có bóng ở góc trên trái bìa, đọc rõ trên mọi ảnh. Nhãn "Khóa học · Premium", tên khóa và dòng "N module · N bài" chuyển xuống dưới ảnh.
 - Lưu bài trong khung soạn không còn làm tròn thời lượng thành phút chẵn khi ô "Thời lượng (phút)" không đổi (bài 12:34 lưu lại vẫn là 12:34, trước đây thành 13:00).
 - Rê chuột lên tên bài trong cột giáo trình thì hiện đủ tên (tên video thường dài hơn chỗ hiển thị).
+- **Khung soạn bài: khung video nằm trên, ô dán link nằm dưới.** Trước đây khung video nhỏ nằm cạnh ô dán link, chia khung soạn thành hai cột chật. Nay là một cột: video rộng theo khung soạn, dưới là ô link, dòng hướng dẫn và nút "Lấy tên và mô tả từ YouTube".
 
 ### Kỹ thuật
 
-- API mới `POST /v1/video/meta` (cần đăng nhập): trả `{ embed, meta }`, `meta` gồm `title`, `description`, `durationSeconds`. Không cần API key của YouTube: tên lấy từ oEmbed, mô tả và thời lượng đọc từ trang xem video. Máy chủ chỉ gọi tới youtube.com với mã video đã kiểm định dạng. YouTube không trả trang xem thì vẫn có tên, mô tả để trống; không lấy được gì thì `meta` là null và bài giữ tên tạm.
+- API mới `POST /v1/video/meta` (cần đăng nhập): trả `{ embed, meta }`, `meta` gồm `title`, `description`, `durationSeconds`. Máy chủ chỉ gọi tới youtube.com và googleapis.com với mã video đã kiểm định dạng, không gọi theo link người dùng dán.
+- **Secret tùy chọn `YOUTUBE_API_KEY`** (key của YouTube Data API v3, miễn phí 10.000 lượt mỗi ngày, mỗi video tốn 1 lượt): có key thì tên, mô tả, thời lượng lấy qua API chính thức. Đặt bằng `wrangler secret put YOUTUBE_API_KEY` ở Worker `hoiminh-api`. Key sai hoặc hết hạn mức thì ghi log `video_meta.youtube_api_failed` rồi lấy theo cách không cần key.
+- Không có key: tên lấy từ oEmbed của YouTube, mô tả và thời lượng đọc từ trang xem video. Thử với YouTube thật từ máy chủ đặt ở trung tâm dữ liệu: oEmbed trả tên đúng, còn trang xem bị YouTube chuyển sang trang kiểm tra robot, nên không có key thì nhiều khả năng bài chỉ có tên. Không lấy được cả tên thì `meta` là null và bài giữ tên tạm.
 - Đường dẫn này không mở transaction database (`NO_DB_PATHS` trong `apps/api/src/middleware/auth.ts`), để không giữ một kết nối database trong lúc chờ YouTube trả lời.
 
 ## 1.23.0 - 2026-11-10

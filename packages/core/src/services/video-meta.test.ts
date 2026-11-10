@@ -53,6 +53,39 @@ describe('fetchVideoMeta', () => {
     expect(await fetchVideoMeta('không phải link', { fetch: fetchMock })).toEqual({ embed: null, meta: null });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  it('trang xem bị chuyển sang trang kiểm tra robot → không đi theo, vẫn có tên', async () => {
+    const fetchMock = fakeYoutube({ page: new Response(null, { status: 302, headers: { Location: 'https://www.google.com/sorry/index' } }) });
+    const r = await fetchVideoMeta(`https://youtu.be/${ID}`, { fetch: fetchMock });
+    expect(r.meta).toEqual({ title: 'Javis Agent: bài 1', description: '', durationSeconds: null });
+    const pageCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('/watch')) as unknown as [string, RequestInit];
+    expect(pageCall[1].redirect).toBe('manual');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it('có API key: một lượt gọi YouTube Data API, key nằm trong header chứ không trong URL', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ items: [{ snippet: { title: ' Tên từ API ', description: 'Mô tả từ API\r\nDòng 2' }, contentDetails: { duration: 'PT1H2M3S' } }] })));
+    const r = await fetchVideoMeta(`https://youtu.be/${ID}`, { fetch: fetchMock, apiKey: 'khoa-bi-mat' });
+    expect(r.meta).toEqual({ title: 'Tên từ API', description: 'Mô tả từ API\nDòng 2', durationSeconds: 3723 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ID}`);
+    expect(url).not.toContain('khoa-bi-mat');
+    expect((init?.headers as Record<string, string>)['X-Goog-Api-Key']).toBe('khoa-bi-mat');
+  });
+  it('API key sai hoặc hết hạn mức → cảnh báo rồi lấy theo cách không cần key', async () => {
+    const base = fakeYoutube();
+    const warn = vi.fn();
+    const fetchMock = vi.fn(async (url: string) => (url.includes('googleapis.com') ? new Response('{"error":{"code":403}}', { status: 403 }) : base(url)));
+    const r = await fetchVideoMeta(`https://youtu.be/${ID}`, { fetch: fetchMock, apiKey: 'sai', warn });
+    expect(r.meta).toEqual({ title: 'Javis Agent: bài 1', description: DESCRIPTION, durationSeconds: 754 });
+    expect(warn).toHaveBeenCalledWith('video_meta.youtube_api_failed', { error: 'HTTP 403' });
+  });
+  it('API không thấy video (riêng tư, đã xóa) → thử cách không cần key, không cảnh báo', async () => {
+    const warn = vi.fn();
+    const fetchMock = vi.fn(async (url: string) => (url.includes('googleapis.com') ? new Response('{"items":[]}') : new Response('', { status: 404 })));
+    const r = await fetchVideoMeta(`https://youtu.be/${ID}`, { fetch: fetchMock, apiKey: 'k', warn });
+    expect(r.meta).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
   it('tên quá dài bị cắt còn 160 ký tự', async () => {
     const r = await fetchVideoMeta(`https://youtu.be/${ID}`, { fetch: fakeYoutube({ oembed: new Response(JSON.stringify({ title: 'a'.repeat(300) })) }) });
     expect(r.meta?.title).toHaveLength(160);

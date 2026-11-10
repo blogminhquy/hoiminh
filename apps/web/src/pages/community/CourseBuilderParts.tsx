@@ -94,11 +94,12 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
         <Field label="Tên bài"><Input value={d.title} onChange={(e) => patch({ title: e.target.value })} maxLength={160} /></Field>
         {(d.kind === 'video' || d.videoUrl) && (
           <Field label="Video">
-            <div className="flex gap-3 flex-col sm:flex-row">
-              <div className="rounded-[10px] flex items-center justify-center overflow-hidden flex-shrink-0" style={{ width: 200, maxWidth: '100%', aspectRatio: '16 / 9', background: T.player, color: T.invertInk }}>
-                {embed ? <iframe title="Xem trước video" src={embed.embedUrl} className="w-full h-full" allow="autoplay; fullscreen" /> : <Play size={24} />}
+            {/* Khung video nằm trên, ô dán link nằm dưới: một cột, không chia đôi khung soạn. */}
+            <div className="flex flex-col gap-3">
+              <div className="rounded-[12px] flex items-center justify-center overflow-hidden" style={{ width: '100%', maxWidth: 720, aspectRatio: '16 / 9', background: T.player, color: T.invertInk }}>
+                {embed ? <iframe title="Xem trước video" src={embed.embedUrl} className="w-full h-full" allow="autoplay; fullscreen" /> : <Play size={32} />}
               </div>
-              <div className="flex-grow flex flex-col gap-2 min-w-0">
+              <div className="flex flex-col gap-2 min-w-0">
                 <Input left={<LinkIcon size={16} style={{ color: T.ink3 }} />} value={d.videoUrl} onChange={(e) => patch({ videoUrl: e.target.value })} placeholder="youtube.com/watch?v=…" right={d.videoUrl.trim() ? (embed ? <Tag tone="teal"><Check size={11} />{PROVIDER_LABEL[embed.provider] ?? embed.provider}</Tag> : embed === null ? <Tag tone="danger">Không nhận diện</Tag> : null) : null} />
                 <div className="muted text-[12px]">Dán link YouTube, TikTok, Facebook, Loom, Vimeo hoặc Bunny. Video ẩn trên YouTube vẫn phát được. Đặt "Không liệt kê" để người ngoài không tìm thấy.</div>
                 {embed?.provider === 'youtube' && (

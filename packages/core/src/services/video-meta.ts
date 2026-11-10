@@ -1,6 +1,7 @@
 // Lấy tên, mô tả và thời lượng của một video YouTube để điền sẵn khi nhập bài học từ link.
-// Không cần API key: tên lấy từ oEmbed (ổn định), mô tả và thời lượng đọc từ trang xem video.
-// YouTube không trả trang xem (chặn máy chủ, video riêng tư) thì vẫn có tên, mô tả để trống.
+// Có YOUTUBE_API_KEY: hỏi YouTube Data API v3, lấy chắc chắn cả ba.
+// Không có key (hoặc API lỗi): tên lấy từ oEmbed (ổn định), mô tả và thời lượng đọc từ trang xem video.
+// YouTube hay chuyển máy chủ ở trung tâm dữ liệu sang trang kiểm tra robot thay vì trả trang xem; khi đó vẫn có tên, mô tả để trống.
 import { parseVideoUrl, type VideoEmbed } from '@hoiminh/contracts';
 
 export interface VideoMeta {
@@ -53,11 +54,11 @@ function metaContent(html: string, attr: string, name: string): string | null {
   return m?.[1] ? decodeEntities(m[1]) : null;
 }
 
-/** "PT1H2M3S" → giây. */
+/** "PT1H2M3S" hoặc "P1DT2H" → giây. */
 function isoDuration(s: string | null): number | null {
-  const m = s ? /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(s) : null;
+  const m = s ? /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(s) : null;
   if (!m) return null;
-  const total = Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  const total = Number(m[1] ?? 0) * 86400 + Number(m[2] ?? 0) * 3600 + Number(m[3] ?? 0) * 60 + Number(m[4] ?? 0);
   return total > 0 ? total : null;
 }
 
@@ -106,26 +107,48 @@ async function fetchOembedTitle(f: FetchLike, videoId: string, signal: AbortSign
 }
 
 async function fetchPage(f: FetchLike, videoId: string, signal: AbortSignal) {
-  const res = await f(`https://www.youtube.com/watch?v=${videoId}`, { headers: BROWSER_HEADERS, signal });
+  // Không đi theo chuyển hướng: YouTube chuyển sang trang kiểm tra robot ở tên miền khác, đi theo cũng không có dữ liệu.
+  const res = await f(`https://www.youtube.com/watch?v=${videoId}`, { headers: BROWSER_HEADERS, redirect: 'manual', signal });
   if (!res.ok) return null;
   return parseYoutubePage(await res.text(), videoId);
 }
 
+/** YouTube Data API v3 (videos.list, 1 đơn vị hạn mức mỗi lượt). Key gửi trong header để không nằm trong URL. */
+async function fetchDataApi(f: FetchLike, videoId: string, apiKey: string, signal: AbortSignal): Promise<VideoMeta | { error: string }> {
+  const res = await f(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}`, { headers: { 'X-Goog-Api-Key': apiKey, Accept: 'application/json' }, signal });
+  if (!res.ok) return { error: `HTTP ${res.status}` };
+  const data = (await res.json().catch(() => null)) as { items?: Array<{ snippet?: { title?: unknown; description?: unknown }; contentDetails?: { duration?: unknown } }> } | null;
+  const item = data?.items?.[0];
+  // Không có mục nào: video riêng tư hoặc đã xóa. Không phải lỗi của key nên không cần cảnh báo.
+  if (!item || typeof item.snippet?.title !== 'string') return { error: '' };
+  const { description } = item.snippet;
+  const duration = item.contentDetails?.duration;
+  return { title: item.snippet.title, description: typeof description === 'string' ? description : '', durationSeconds: isoDuration(typeof duration === 'string' ? duration : null) };
+}
+
+const cleanTitle = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, TITLE_MAX);
+
 /**
  * Nhận diện link video và, với YouTube, lấy tên, mô tả, thời lượng.
- * Chỉ gọi tới youtube.com với id đã kiểm định dạng, nên link dán vào không điều khiển được máy chủ gọi đi đâu.
+ * Chỉ gọi tới youtube.com và googleapis.com với id đã kiểm định dạng, nên link dán vào không điều khiển được máy chủ gọi đi đâu.
  * `meta` là null khi không phải YouTube hoặc không lấy được tên (video riêng tư, đã xóa, YouTube không trả lời).
  */
-export async function fetchVideoMeta(rawUrl: string, opts: { fetch?: FetchLike; timeoutMs?: number } = {}): Promise<VideoMetaResult> {
+export async function fetchVideoMeta(rawUrl: string, opts: { fetch?: FetchLike; timeoutMs?: number; apiKey?: string; warn?: (msg: string, data: Record<string, unknown>) => void } = {}): Promise<VideoMetaResult> {
   const embed = parseVideoUrl(rawUrl);
   if (!embed || embed.provider !== 'youtube') return { embed, meta: null };
   const f: FetchLike = opts.fetch ?? ((url, init) => fetch(url, init));
   const signal = AbortSignal.timeout(opts.timeoutMs ?? 6000);
+  if (opts.apiKey) {
+    const viaApi = await fetchDataApi(f, embed.externalId, opts.apiKey, signal).catch((err) => ({ error: String(err) }));
+    if ('title' in viaApi) return { embed, meta: { title: cleanTitle(viaApi.title), description: descriptionToMarkdown(viaApi.description), durationSeconds: viaApi.durationSeconds } };
+    // Key sai, hết hạn mức hoặc Google lỗi: ghi log cho người vận hành rồi lấy theo cách không cần key.
+    if (viaApi.error) opts.warn?.('video_meta.youtube_api_failed', { error: viaApi.error });
+  }
   const [oembedTitle, page] = await Promise.all([
     fetchOembedTitle(f, embed.externalId, signal).catch(() => null),
     fetchPage(f, embed.externalId, signal).catch(() => null),
   ]);
-  const title = (oembedTitle ?? page?.title ?? '').replace(/\s+/g, ' ').trim().slice(0, TITLE_MAX);
+  const title = cleanTitle(oembedTitle ?? page?.title ?? '');
   if (!title) return { embed, meta: null };
   return { embed, meta: { title, description: descriptionToMarkdown(page?.description ?? ''), durationSeconds: page?.durationSeconds ?? null } };
 }

@@ -45,5 +45,6 @@ learningRoutes.post('/video/parse', async (c) => {
 // Đường dẫn này nằm trong NO_DB_PATHS (middleware/auth.ts): không mở transaction database trong lúc chờ YouTube.
 learningRoutes.post('/video/meta', requireAuth, async (c) => {
   const { url } = await parse(z.object({ url: z.string().max(2000) }), await body(c));
-  return c.json(await videoMeta.fetchVideoMeta(url));
+  const { env, log } = c.get('ctx');
+  return c.json(await videoMeta.fetchVideoMeta(url, { apiKey: env.YOUTUBE_API_KEY, warn: (msg, data) => log.warn(msg, data) }));
 });
