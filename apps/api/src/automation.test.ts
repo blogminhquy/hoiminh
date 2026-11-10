@@ -2,8 +2,7 @@
 // đặt cookie phiên, link ngừng nhận email, và quyền vào màn quản trị.
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App } from '@hoiminh/core';
-import { connect, runMigrations } from '@hoiminh/db';
-import { seedAll } from '@hoiminh/db/seed';
+import { openSeededTestDb } from '@hoiminh/db/testing';
 import type { EmailMessage } from '@hoiminh/email';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
@@ -25,9 +24,7 @@ const A = () => `/v1/communities/${communityId}/automation`;
 
 beforeAll(async () => {
   const env = loadEnv({ APP_ENV: 'test', DATABASE_URL: 'pglite://memory', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' });
-  const handle = await connect(env.DATABASE_URL);
-  await runMigrations(handle);
-  const seed = await seedAll(handle.db, { encryptionKey: env.ENCRYPTION_KEY, appUrl: env.APP_URL });
+  const { handle, seed } = await openSeededTestDb({ encryptionKey: env.ENCRYPTION_KEY, appUrl: env.APP_URL });
   communityId = seed.communityId;
   app = await createApp({ env, db: handle.db, onEmail: (m) => emails.push(m) });
   hono = createHonoApp(app);
