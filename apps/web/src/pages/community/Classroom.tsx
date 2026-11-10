@@ -7,15 +7,17 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
 import { QueryState } from '@/components/QueryState';
+import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { api } from '@/lib/api';
 import { isPremium, useOptionalShell } from '@/lib/community';
 import { useLearningLinks } from '@/layouts/LearnerShell';
 import { Markdown } from '@/lib/markdown';
+import { isVerticalVideoUrl } from '@/lib/youtube';
 import { LessonRow, ModuleHead, lessonState, moduleMeta, type LessonLite, type ModuleLite } from './LessonParts';
 
 interface LessonDto {
   lesson: { id: string; title: string; kind: 'video' | 'text' | 'task' | 'file'; contentMd: string; durationSeconds: number | null; videoUrl: string | null };
-  embed: { provider: string; embedUrl: string } | null; locked: boolean; sequentialLocked: boolean; dripLocked: boolean; dripUnlocksAt: string | null; lockReason: string | null;
+  embed: { provider: string; externalId: string; embedUrl: string } | null; locked: boolean; sequentialLocked: boolean; dripLocked: boolean; dripUnlocksAt: string | null; lockReason: string | null;
   course: { id: string; title: string; lessonCount: number; communitySlug: string | null; modules: ModuleLite[]; progress: { completedLessons: number; totalLessons: number; percent: number } | null; accessMode: string; product: { id: string; priceMinor: number; slug: string } | null };
   prev: LessonLite | null; next: LessonLite | null; resources: Array<{ id: string; name: string; url: string }>; done: boolean;
 }
@@ -93,7 +95,10 @@ export default function Page() {
             <div className="flex gap-6 flex-col lg:flex-row">
               <Curriculum d={d} lessonHref={links.lesson} className="hidden lg:flex" />
               <div className="flex-grow flex flex-col gap-4 min-w-0">
-                {d.locked ? <LockedPlayer d={d} slug={slug} courseHref={links.course(d.course.id)} /> : d.embed ? (
+                {d.locked ? <LockedPlayer d={d} slug={slug} courseHref={links.course(d.course.id)} /> : d.embed?.provider === 'youtube' ? (
+                  // YouTube: trình phát riêng, không bấm sang YouTube được và không hiện video gợi ý. Nền tảng khác giữ khung nhúng gốc.
+                  <YouTubePlayer key={d.embed.externalId} videoId={d.embed.externalId} title={d.lesson.title} vertical={isVerticalVideoUrl(d.lesson.videoUrl)} />
+                ) : d.embed ? (
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '16 / 9', background: T.player }}><iframe src={d.embed.embedUrl} title={d.lesson.title} className="absolute inset-0 w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
                 ) : null}
                 {/* Tiêu đề và nút cùng một hàng; nội dung bài nằm ở hàng dưới để không bị nút bóp hẹp. */}
