@@ -1,10 +1,11 @@
 // Trang "Tôi" (/tai-khoan). Điện thoại: một danh sách mục lớn dễ chạm thay cho hàng tab vuốt ngang,
 // kèm chọn giao diện và nút Đăng xuất. Máy tính: giữ bố cục cũ, vào thẳng Gói và thanh toán.
 import { Avatar, T } from '@hoiminh/ui';
-import { Bell, ChevronRight, GraduationCap, Handshake, LogOut, MessageCircle, Receipt, UserRound, UsersRound } from 'lucide-react';
+import { Bell, ChevronRight, GraduationCap, Handshake, LogOut, MessageCircle, Receipt, Settings, UserRound, UsersRound, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, useBadges } from '@/lib/auth';
+import { useOptionalShell } from '@/lib/community';
 import { ThemeChoices } from './AccountLayout';
 
 /** Bề rộng từ đó khung Tài khoản hiện nav bên trái (khớp điểm gãy 900px trong styles.css). */
@@ -25,6 +26,11 @@ export default function Page() {
   const { user, communities, logout } = useAuth();
   const badges = useBadges();
   const navigate = useNavigate();
+  // Người có quyền quản trị hội đang mở: lối vào Cài đặt và Doanh thu (trên điện thoại không có thanh bên).
+  const shell = useOptionalShell();
+  const perms = shell?.viewer.permissions ?? [];
+  const canSettings = perms.includes('settings.manage');
+  const canRevenue = perms.includes('revenue.read');
   if (typeof window !== 'undefined' && window.matchMedia(WIDE).matches) return <Navigate to="/tai-khoan/goi" replace />;
   const owns = communities.some((c) => c.role === 'owner');
   return (
@@ -34,6 +40,13 @@ export default function Page() {
         <span className="flex-grow min-w-0"><span className="block serif font-extrabold text-[20px] truncate">{user?.name}</span><span className="block muted text-[14px] truncate">{user?.handle ? `@${user.handle} · ` : ''}Xem trang cá nhân</span></span>
         <ChevronRight size={20} style={{ color: T.ink3 }} />
       </Link>
+
+      {shell && (canSettings || canRevenue) && (
+        <nav className="card px-3 py-1 me-list" aria-label={`Quản lý ${shell.community.name}`}>
+          {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint={shell.community.name} />}
+          {canRevenue && <Row to={`/${shell.community.slug}/doanh-thu`} icon={<Wallet size={20} />} label="Doanh thu" hint="Giao dịch, hoàn tiền" />}
+        </nav>
+      )}
 
       <nav className="card px-3 py-1 me-list" aria-label="Tôi">
         <Row to="/tai-khoan/ho-so" icon={<UserRound size={20} />} label="Hồ sơ và tài khoản" hint="Tên, ảnh, mật khẩu, xác thực hai lớp" />

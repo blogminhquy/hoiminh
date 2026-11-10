@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 1.17.1 - 2026-11-10
+
+Đợt A của việc gom phần quản trị: sửa các lỗi tìm thấy khi rà soát 31 màn của chủ hội và quản trị hệ thống.
+
+### Sửa lỗi
+
+- **Trang Hội của tôi luôn ghi doanh thu 30 ngày là 0đ.** Truy vấn con so `community_id` với nhầm cột (Drizzle bỏ tên bảng khi chỉ select một bảng), nên không đơn nào khớp. Hội mẫu có 9.187.000đ trong 30 ngày vẫn hiện 0đ. Nay tính bằng một truy vấn gom nhóm, có test đối chiếu với trang Tổng quan.
+- **Mục "Mời thành viên" trong Cài đặt bấm vào không mở gì.** `/thanh-vien?moi=1` nay mở sẵn khung mời.
+- **Chủ hội trên điện thoại không có lối vào Cài đặt và Doanh thu của hội.** Trang Tôi có thêm hai mục này cho người có quyền.
+- **Trang Hội của tôi, Nhà phát triển, Tạo hội tràn ngang trên điện thoại** (522px trên màn 390px) vì thanh mục ở đầu trang xuống dòng. Trang Nhật ký của quản trị hệ thống cũng tràn (509px).
+- **Quản trị hệ thống đăng nhập xong bị đưa về trang Khám phá.** Nay vào thẳng khu quản trị khi tài khoản không có hội nào.
+- Trang Hôm nay: nút "Học tiếp" bị cắt chữ khi tên bài dài.
+
 ## 1.17.0 - 2026-11-10
 
 Giao diện "Sáng và rõ" trên máy tính: chữ dễ đọc, thanh bên chia nhóm như điện thoại, hết tràn ngang ở máy tính nhỏ.

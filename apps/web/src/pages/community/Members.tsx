@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Avatar, Button, Chip, Empty, ErrorBox, Select, T, Tag } from '@hoiminh/ui';
 import { Download, ListFilter, MessageCircle, Plus, Search, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, apiFetch, errorMessage } from '@/lib/api';
@@ -29,7 +30,9 @@ function ManageMembers({ communityId, slug }: { communityId: string; slug: strin
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState({ tierKey: '', role: '', source: '' });
   const [filterOpen, setFilterOpen] = useState(false);
-  const [invite, setInvite] = useState(false);
+  // ?moi=1: mở sẵn khung mời (mục "Mời thành viên" ở Cài đặt và ô lệnh dẫn tới đây).
+  const [search] = useSearchParams();
+  const [invite, setInvite] = useState(search.get('moi') === '1');
   const [openId, setOpenId] = useState<string | null>(null);
   const [msgTo, setMsgTo] = useState<MemberUser | null>(null);
   const [exporting, setExporting] = useState(false);

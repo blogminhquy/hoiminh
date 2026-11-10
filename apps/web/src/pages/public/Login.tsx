@@ -10,12 +10,13 @@ import { api } from '@/lib/api';
 import { useAuth, type MyCommunity } from '@/lib/auth';
 import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider } from './AuthParts';
 
-/** Đích sau đăng nhập: ?next → /admin nếu là chủ hội → trang Hôm nay của hội đầu tiên → Khám phá. */
-function landingFor(next: string | null, communities: MyCommunity[]): string {
+/** Đích sau đăng nhập: ?next → /admin nếu là chủ hội → trang Hôm nay của hội đầu tiên → khu quản trị nếu là quản trị hệ thống → Khám phá. */
+export function landingFor(next: string | null, communities: MyCommunity[], isSuperAdmin = false): string {
   if (next && next.startsWith('/')) return next;
   if (communities.some((c) => c.role === 'owner')) return '/admin';
   const first = communities[0];
   if (first) return `/${first.slug}/hom-nay`;
+  if (isSuperAdmin) return '/he-thong';
   return '/kham-pha';
 }
 
@@ -34,8 +35,8 @@ export default function Page() {
 
   const finish = async (session: AuthSession) => {
     setSession(session);
-    const me = await api.get<{ communities: MyCommunity[] }>('/v1/me');
-    return landingFor(next, me.communities);
+    const me = await api.get<{ user: { isSuperAdmin?: boolean }; communities: MyCommunity[] }>('/v1/me');
+    return landingFor(next, me.communities, Boolean(me.user?.isSuperAdmin));
   };
 
   const m = useMutation({

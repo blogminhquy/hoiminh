@@ -15,6 +15,7 @@ export default function Page() {
   const library = useQuery({ queryKey: ['library'], queryFn: () => api.get<LibraryCounts>('/v1/me/library'), enabled: Boolean(user) && !loading && !slug });
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
   if (user && slug) return <Navigate to={`/${slug}/hom-nay`} replace />;
+  if (user?.isSuperAdmin && !slug) return <Navigate to="/he-thong" replace />;
   if (user) {
     if (library.isLoading) return <div className="p-8"><LoadingBlock /></div>;
     const owned = (library.data?.counts.courses ?? 0) + (library.data?.counts.digital ?? 0);

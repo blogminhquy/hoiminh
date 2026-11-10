@@ -24,7 +24,7 @@ export default function Page() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="serif m-0 text-[28px] font-extrabold">Nhật ký và webhook</h1>
-        <div className="flex gap-2 md:ml-3"><Chip on={kind === 'audit'} onClick={() => setKind('audit')}>Nhật ký thao tác</Chip><Chip on={kind === 'webhook'} onClick={() => setKind('webhook')}>Webhook thanh toán</Chip><Chip on={kind === 'email'} onClick={() => setKind('email')}>Email hệ thống</Chip></div>
+        <div className="chip-row md:ml-3"><Chip on={kind === 'audit'} onClick={() => setKind('audit')}>Nhật ký thao tác</Chip><Chip on={kind === 'webhook'} onClick={() => setKind('webhook')}>Webhook thanh toán</Chip><Chip on={kind === 'email'} onClick={() => setKind('email')}>Email hệ thống</Chip></div>
         <span className="flex-grow" />
         <span className="muted text-[12px]">Tự làm mới mỗi phút · 100 dòng gần nhất</span>
       </div>
