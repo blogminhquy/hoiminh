@@ -15,6 +15,14 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
   const side = page.locator('aside.app-sidebar');
   // Mục có thể kèm số đếm ("Sự kiện 2", "Khóa học 4%") nên so theo phần đầu của tên.
   for (const label of ['Hôm nay', 'Bảng tin', 'Sự kiện', 'Thành viên', 'Khóa học', 'Cửa hàng']) await expect(side.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
+  // Logo Hội Mình ở góc trên trái thanh bên; tên hội đứng ở đầu trang, bấm vào để chuyển hội.
+  await expect(side.getByRole('link', { name: /^Hội Mình/ })).toHaveAttribute('href', '/kham-pha');
+  const switcher = page.locator('header.app-header').getByRole('button', { name: /chuyển hội$/ });
+  await expect(switcher).toContainText('Kinh Doanh Online');
+  await switcher.click();
+  await expect(page.getByRole('menu').getByRole('menuitem', { name: /Khám phá hội khác/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
   await expectNoSideScroll(page);
 
   for (const path of ['/minhquy/bang-tin', '/minhquy/khoa-hoc', '/minhquy/su-kien', '/minhquy/thanh-vien', '/tai-khoan/cong-su', '/tin-nhan']) {
@@ -27,6 +35,16 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
   await side.getByRole('link', { name: 'Viết bài' }).click();
   await expect(page.getByRole('dialog').getByText('Tạo bài viết')).toBeVisible();
   await expect(page.getByRole('dialog').getByLabel('Chuyên mục')).not.toHaveValue('');
+  // Nền màu cho bài ngắn: ô đầu là "Không nền", sau đó 8 màu; chọn màu nào thì ô đó được đánh dấu.
+  await page.getByRole('dialog').getByRole('button', { name: /^Thêm/ }).click();
+  const bgs = page.getByRole('dialog').getByRole('radiogroup', { name: 'Nền màu' });
+  await expect(bgs.getByRole('radio')).toHaveCount(9);
+  await expect(bgs.getByRole('radio', { name: 'Không nền' })).toBeChecked();
+  await bgs.getByRole('radio', { name: 'Nền Xanh ngọc' }).click();
+  await expect(bgs.getByRole('radio', { name: 'Nền Xanh ngọc' })).toBeChecked();
+  await expect(bgs.getByRole('radio', { name: 'Không nền' })).not.toBeChecked();
+  // Dải màu không nằm trong vùng cuộn: vòng chọn quanh ô không bị mép khung cắt.
+  expect(await bgs.evaluate((el) => getComputedStyle(el).overflowX)).toBe('visible');
   await page.keyboard.press('Escape');
 
   await page.goto('/tai-khoan/goi');

@@ -51,8 +51,11 @@ test.describe('điện thoại', () => {
     await page.getByRole('link', { name: 'Cài đặt', exact: true }).click();
     await expect(page).toHaveURL(/\/minhquy\/cai-dat$/);
 
-    // Chạm tên hội ở đầu trang để chuyển hội (điện thoại không có thanh bên).
-    await page.getByRole('button', { name: /chuyển hội$/ }).click();
+    // Mở menu bên trái, chạm tên hội ở đầu menu để chuyển hội. Chủ hội thấy cả nhóm Quản lý trong menu.
+    await page.getByRole('button', { name: 'Mở menu' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Menu hội' });
+    for (const label of ['Bàn điều khiển', 'Tiền', 'Cộng sự', 'Cài đặt']) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
+    await drawer.getByRole('button', { name: /chuyển hội$/ }).click();
     const menu = page.getByRole('menu');
     await expect(menu.getByRole('menuitem', { name: /Tất cả hội/ })).toBeVisible();
     await expect(menu.getByRole('menuitem', { name: /Kinh Doanh Online/ })).toHaveAttribute('href', '/minhquy/hom-nay');

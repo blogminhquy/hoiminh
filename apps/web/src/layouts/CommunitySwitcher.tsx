@@ -1,15 +1,27 @@
-// Bảng chuyển hội: mở từ đầu thanh bên (máy tính) và từ tên hội ở đầu trang (điện thoại). Chọn hội nào thì vào
+// Bảng chuyển hội: mở từ tên hội ở đầu trang (máy tính và điện thoại). Chọn hội nào thì vào
 // trang Hôm nay của hội đó (chủ hội và quản trị thấy Bàn điều khiển).
 import { CommunityMark, T } from '@hoiminh/ui';
 import { Compass, LayoutGrid, Plus } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 
 export function CommunitySwitcher({ current, onClose }: { current: string; onClose: () => void }) {
   const { communities } = useAuth();
   const owns = communities.some((c) => c.role === 'owner');
+  // Đóng khi bấm ra ngoài hoặc nhấn Esc. Bấm vào chính nút mở (cùng khối cha với bảng) thì để nút tự đóng mở.
+  const box = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => { if (!box.current?.parentElement?.contains(e.target as Node)) close.current(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current(); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  }, []);
   return (
-    <div role="menu" className="community-switcher" onMouseLeave={onClose}>
+    <div ref={box} role="menu" className="community-switcher" onMouseLeave={onClose}>
       {communities.map((c) => (
         <Link key={c.id} role="menuitem" to={`/${c.slug}/hom-nay`} onClick={onClose} aria-current={c.slug === current ? 'true' : undefined} className="community-switcher-row">
           <CommunityMark mark={c.logoMark} color={c.logoColor} size={30} radius={8} />

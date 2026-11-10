@@ -1,8 +1,8 @@
 // Mảnh của Composer: dải chọn nền status, ảnh đính kèm, video, bình chọn, link.
 import { useMutation } from '@tanstack/react-query';
 import { Button, Input, STATUS_BGS, T } from '@hoiminh/ui';
-import { Check, Image as ImageIcon, Link as LinkIcon, Plus, Video, X } from 'lucide-react';
-import { useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { Ban, Check, Link as LinkIcon, Plus, Video, X } from 'lucide-react';
+import { useRef, useState, type RefObject } from 'react';
 import { api, errorMessage } from '@/lib/api';
 
 export const STATUS_MAX = 130;
@@ -10,25 +10,30 @@ export const STATUS_MAX = 130;
 export interface PickedImage { fileId: string; url: string; width: number | null; height: number | null }
 export interface PollDraft { question: string; options: string[]; multipleChoice: boolean }
 
-const Sq = ({ children, onClick, label, style }: { children: ReactNode; onClick?: () => void; label: string; style?: CSSProperties }) => (
-  <button type="button" aria-label={label} onClick={onClick} className="w-10 h-10 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={style}>{children}</button>
-);
+const BG_LABELS: Record<string, string> = { dat: 'Đỏ đất', ngoc: 'Xanh ngọc', nau: 'Nâu đậm', vang: 'Vàng cam', tim: 'Tím', la: 'Xanh lá', giay: 'Giấy chấm', hoang: 'Hoàng hôn' };
 
-/** Dải chọn nền: Aa bật/tắt, X bỏ nền, 8 swatch, nút ảnh. */
-export function BgStrip({ bgKey, onPick, onToggle, onClear, onImage, overlay }: { bgKey: string | null; onPick: (k: string) => void; onToggle: () => void; onClear: () => void; onImage: () => void; overlay?: boolean }) {
+/**
+ * Dải chọn nền cho bài ngắn: ô đầu là "Không nền", sau đó 8 màu. Mỗi ô là vùng chạm 40px, chấm màu 30px nằm giữa.
+ * Vòng chọn (4px quanh chấm) nằm gọn trong vùng chạm, nên không bao giờ bị mép khung cắt. Hẹp thì tự xuống dòng,
+ * không cuộn ngang. Dải nằm trên nền T.bg của khung "Thêm", nên khe giữa chấm và vòng chọn cũng dùng T.bg.
+ */
+export function BgStrip({ bgKey, onPick }: { bgKey: string | null; onPick: (k: string | null) => void }) {
+  const ring = `0 0 0 2px ${T.bg}, 0 0 0 4px ${T.ink}`;
+  const dot = 'w-[30px] h-[30px] rounded-full inline-flex items-center justify-center';
   return (
-    <div className={`flex items-center gap-2 p-2 rounded-xl ${overlay ? 'absolute left-3 right-3 bottom-3' : ''}`} style={{ background: overlay ? 'rgba(255,253,249,0.92)' : T.bg }}>
-      <Sq label="Bật/tắt nền" onClick={onToggle} style={{ background: bgKey ? T.ink : T.surface, color: bgKey ? T.surface : T.ink, border: bgKey ? 'none' : `1px solid ${T.line2}` }}>
-        <span className="serif font-extrabold text-[14px]">Aa</span>
-      </Sq>
-      <Sq label="Bỏ nền" onClick={onClear} style={{ border: `1px solid ${T.line2}`, color: T.ink3 }}><X size={18} /></Sq>
-      <span className="w-px h-7" style={{ background: T.line2 }} />
-      <div className="flex gap-2 flex-grow overflow-x-auto">
-        {STATUS_BGS.map((b) => (
-          <button key={b.key} type="button" aria-label={`Nền ${b.key}`} onClick={() => onPick(b.key)} className="w-10 h-10 rounded-[10px] flex-shrink-0" style={{ background: b.css, outline: bgKey === b.key ? `2.5px solid ${T.ink}` : 'none', outlineOffset: 2, border: bgKey === b.key ? 'none' : '1px solid rgba(31,27,23,0.08)' }} />
-        ))}
-      </div>
-      <Sq label="Thêm ảnh" onClick={onImage} style={{ border: `1px solid ${T.line2}`, color: T.ink2 }}><ImageIcon size={18} /></Sq>
+    <div role="radiogroup" aria-label="Nền màu" className="flex flex-wrap gap-0.5 -ml-[5px]">
+      <button type="button" role="radio" aria-checked={!bgKey} aria-label="Không nền" title="Không nền" onClick={() => onPick(null)} className="bg-swatch">
+        <span className={dot} style={{ background: T.surface, border: `1px solid ${T.line2}`, color: bgKey ? T.ink3 : T.ink, boxShadow: bgKey ? undefined : ring }}><Ban size={16} /></span>
+      </button>
+      {STATUS_BGS.map((b) => {
+        const on = bgKey === b.key;
+        const label = BG_LABELS[b.key] ?? b.key;
+        return (
+          <button key={b.key} type="button" role="radio" aria-checked={on} aria-label={`Nền ${label}`} title={label} onClick={() => onPick(b.key)} className="bg-swatch">
+            <span className={dot} style={{ background: b.css, color: b.fg, boxShadow: on ? ring : `0 0 0 1px ${T.line2}` }}>{on && <Check size={16} strokeWidth={3} />}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

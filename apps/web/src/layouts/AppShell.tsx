@@ -1,11 +1,11 @@
-// Khung ứng dụng hội. Máy tính: sidebar 264px + header 64px. Điện thoại: header gọn có tìm kiếm, thanh dưới 4 mục
-// (Hôm nay, Học, Hội, Tôi) với nút viết bài ở giữa, và hàng tab con cho nhóm Hội (Bảng tin, Sự kiện, Thành viên,
-// Xếp hạng) và nhóm Học (Khóa học, Cửa hàng). Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"),
-// thanh bên có thêm nhóm Quản lý (Tiền, Cộng sự, Cài đặt), trên điện thoại ba trang đó thuộc tab Quản lý,
-// và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { Bell, BookOpen, Calendar, ChevronDown, FileText, Handshake, House, LayoutDashboard, Lock, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
+// Khung ứng dụng hội. Máy tính: sidebar 264px (logo Hội Mình ở góc trên trái) + header 64px (tên hội đứng cạnh ô tìm,
+// bấm vào để chuyển hội). Điện thoại: header có nút mở menu, tên hội và tìm kiếm; menu trượt ra từ bên trái
+// (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
+// viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
+// Quản lý (Tiền, Cộng sự, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
+import { Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, LayoutDashboard, Lock, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
@@ -29,25 +29,14 @@ function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode;
   );
 }
 
-function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
+/** Các mục điều hướng của hội và hai nút cuối. Dùng chung cho thanh bên (máy tính) và menu trượt (điện thoại). */
+function SidebarNav({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
   const s = shell.community.slug;
   const perms = shell.viewer.permissions;
   const manage = canManage(shell);
-  const [switching, setSwitching] = useState(false);
   const tabs = shell.community.tabs;
   return (
-    <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.side, color: T.sideText, padding: '16px 12px' }}>
-      <div className="relative">
-        <button type="button" onClick={() => setSwitching((v) => !v)} className="w-full flex items-center gap-2.5 text-left px-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
-          <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={40} radius={12} />
-          <span className="flex-grow min-w-0">
-            <span className="block font-semibold text-[14px] truncate" style={{ color: T.invertInk }}>{shell.community.name}</span>
-            <span className="block text-[12px]" style={{ color: T.sideMuted }}>{shell.stats.members} thành viên · {shell.stats.online} đang online</span>
-          </span>
-          <ChevronDown size={18} style={{ color: T.sideMuted }} />
-        </button>
-        {switching && <CommunitySwitcher current={s} onClose={() => setSwitching(false)} />}
-      </div>
+    <>
       <div className="flex flex-col gap-0.5 pt-3">
         {manage ? <NavItem to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
       </div>
@@ -78,53 +67,114 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
           </div>
         </>
       )}
-      <div className="flex-grow" />
+      <div className="flex-grow" style={{ minHeight: 16 }} />
       <div className="flex flex-col gap-2">
         {tabs.feed !== false && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full"><Pencil size={18} />Viết bài</Link>}
         <button type="button" className="btn w-full" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} onClick={onInvite}><Plus size={18} />Mời thành viên</button>
       </div>
+    </>
+  );
+}
+
+function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
+  return (
+    <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.side, color: T.sideText, padding: '16px 12px' }}>
+      {/* Cao 48px cộng lề trên 16px: đường kẻ dưới logo thẳng hàng với đáy header 64px. */}
+      <div className="flex items-center px-2 flex-shrink-0" style={{ height: 48, borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
+        <Link to="/kham-pha" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+      </div>
+      <SidebarNav shell={shell} onInvite={onInvite} />
     </aside>
   );
 }
 
-function Header({ shell, onCommand }: { shell: Shell; onCommand: () => void }) {
-  const { user, communities } = useAuth();
+/**
+ * Menu của điện thoại: trượt ra từ bên trái, chứa đúng các mục của thanh bên. Đầu menu là hội đang mở; người có từ hai
+ * hội (hoặc đang quản lý hội) chạm vào đó để chuyển hội. Đóng bằng nút X, chạm ra ngoài, Esc, hoặc khi chọn một mục.
+ */
+function MobileDrawer({ shell, onInvite, onClose }: { shell: Shell; onInvite: () => void; onClose: () => void }) {
+  const { communities } = useAuth();
+  const [switching, setSwitching] = useState(false);
+  const canSwitch = communities.length > 1 || canManage(shell);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close.current(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, []);
+  const c = shell.community;
+  const who = (
+    <>
+      <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={40} radius={12} />
+      <span className="flex-grow min-w-0">
+        <span className="block font-semibold text-[15px] leading-snug" style={{ color: T.invertInk, overflowWrap: 'anywhere' }}>{c.name}</span>
+        <span className="block text-[13px] whitespace-nowrap" style={{ color: T.sideMuted }}>{shell.stats.members} thành viên · {shell.stats.online} online</span>
+      </span>
+    </>
+  );
+  return (
+    <div className="app-drawer-backdrop" onClick={onClose}>
+      {/* Chọn một mục (mọi link trong menu) là đóng menu, kể cả khi mục đó là trang đang mở. */}
+      <aside role="dialog" aria-modal="true" aria-label="Menu hội" className="app-drawer flex flex-col" style={{ background: T.side, color: T.sideText }} onClick={(e) => { e.stopPropagation(); if ((e.target as HTMLElement).closest('a')) onClose(); }}>
+        <div className="flex items-center justify-between flex-shrink-0 pl-2" style={{ height: 48 }}>
+          <Link to="/kham-pha" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+          <button type="button" aria-label="Đóng menu" onClick={onClose} className="w-11 h-11 rounded-[10px] flex items-center justify-center" style={{ color: T.sideText }}><X size={22} /></button>
+        </div>
+        <div className="relative flex-shrink-0 mt-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          {canSwitch ? (
+            <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${c.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="w-full flex items-center gap-2.5 text-left p-2.5 min-h-[60px]">
+              {who}
+              <ChevronsUpDown size={18} className="flex-shrink-0" style={{ color: T.sideMuted }} />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2.5 p-2.5 min-h-[60px]">{who}</div>
+          )}
+          {switching && <CommunitySwitcher current={c.slug} onClose={() => setSwitching(false)} />}
+        </div>
+        <SidebarNav shell={shell} onInvite={() => { onClose(); onInvite(); }} />
+      </aside>
+    </div>
+  );
+}
+
+function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => void; onMenu: () => void }) {
+  const { user } = useAuth();
   const badges = useBadges();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
   const [switching, setSwitching] = useState(false);
   const slug = shell.community.slug;
-  // Điện thoại không có thanh bên: người có từ hai hội (hoặc đang quản lý hội) chạm tên hội ở đầu trang để chuyển hội.
   const manage = canManage(shell);
-  const canSwitch = communities.length > 1 || manage;
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
   const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
   const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
   return (
     <>
       <header className="app-header flex items-center gap-2 md:gap-4 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-        <Link to="/kham-pha" className="hide-mobile"><Logo size={26} /></Link>
-        {canSwitch ? (
-          <div className="relative flex md:hidden min-w-0 flex-1">
-            <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${shell.community.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="flex items-center gap-2 min-w-0 text-left min-h-[44px]">
-              <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
-              <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
-              <ChevronDown size={18} className="flex-shrink-0" style={{ color: T.ink3 }} />
-            </button>
-            {switching && <CommunitySwitcher current={slug} onClose={() => setSwitching(false)} />}
-          </div>
-        ) : (
-          <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center gap-2 min-w-0 flex-1">
-            <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
-            <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
-          </Link>
-        )}
+        {/* Điện thoại: nút mở menu, rồi tên hội (tối đa hai dòng để hiện đủ chữ). Chuyển hội nằm trong menu. */}
+        <button type="button" aria-label="Mở menu" aria-haspopup="dialog" onClick={onMenu} className="md:hidden w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={iconBtn}><Menu size={22} /></button>
+        <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center min-w-0 flex-1">
+          <span className="font-bold text-[15px] leading-[1.25] line-clamp-2" style={{ color: T.ink, overflowWrap: 'anywhere' }}>{shell.community.name}</span>
+        </Link>
+        {/* Máy tính: logo và tên hội đứng đầu header, cạnh ô tìm, bấm vào để chuyển hội. */}
+        <div className="relative min-w-0 hidden md:flex">
+          <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${shell.community.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="flex items-center gap-2.5 min-w-0 text-left min-h-[44px]">
+            <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={36} radius={10} />
+            <span className="font-bold text-[17px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+            <ChevronsUpDown size={18} className="flex-shrink-0" style={{ color: T.ink3 }} />
+          </button>
+          {switching && <CommunitySwitcher current={slug} onClose={() => setSwitching(false)} />}
+        </div>
         {/* Người quản lý có ô lệnh (làm việc, đi tới, cài đặt, tìm); thành viên giữ ô tìm trong bảng tin. */}
+        {/* Hệ số co 100: khi header hẹp, ô tìm co trước (tới 180px), tên hội giữ đủ chữ lâu nhất có thể rồi mới cắt. */}
         {manage ? (
-          <span className="hidden md:flex ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }}><CommandButton onOpen={onCommand} /></span>
+          <span className="hidden md:flex md:ml-2" style={{ flex: '1 100 420px', minWidth: 180, maxWidth: 420 }}><CommandButton onOpen={onCommand} /></span>
         ) : (
-          <form className="input search ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <form className="input search md:ml-2" style={{ flex: '1 100 420px', minWidth: 180, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
             <Search size={18} style={{ color: T.ink3 }} />
             <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
           </form>
@@ -161,24 +211,6 @@ export function mobileSection(pathname: string, slug: string): 'today' | 'learn'
   return null;
 }
 
-/** Hàng tab con trên điện thoại: chỉ hiện ở các trang danh sách của nhóm Hội và nhóm Học. */
-function MobileSectionTabs({ shell }: { shell: Shell }) {
-  const { pathname } = useLocation();
-  const s = shell.community.slug;
-  const tabs = shell.community.tabs;
-  const groups: Array<Array<[string, string, boolean]>> = [
-    [[`/${s}/bang-tin`, 'Bảng tin', tabs.feed !== false], [`/${s}/su-kien`, 'Sự kiện', tabs.events !== false], [`/${s}/thanh-vien`, 'Thành viên', tabs.members !== false], [`/${s}/xep-hang`, 'Xếp hạng', tabs.affiliate !== false]],
-    [[`/${s}/khoa-hoc`, 'Khóa học', tabs.courses !== false], [`/${s}/cua-hang`, 'Cửa hàng', tabs.store !== false]],
-  ];
-  const group = groups.find((g) => g.some(([to]) => pathname === to || pathname === `${to}/moi`))?.filter(([, , on]) => on);
-  if (!group || group.length < 2) return null;
-  return (
-    <nav className="md:hidden section-tabs" aria-label="Mục con">
-      {group.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'on' : '')}>{label}</NavLink>)}
-    </nav>
-  );
-}
-
 function MobileTabs({ shell }: { shell: Shell }) {
   const { pathname } = useLocation();
   const slug = shell.community.slug;
@@ -209,6 +241,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const shell = useShellQuery(slug);
   const [invite, setInvite] = useState(false);
   const [command, setCommand] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const toggleCommand = useCallback(() => setCommand((v) => !v), []);
   useCommandHotkey(toggleCommand, Boolean(shell.data && canManage(shell.data)));
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
@@ -238,14 +271,14 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
       <div className="flex min-h-screen" style={{ background: T.bg }}>
         <Sidebar shell={data} onInvite={() => setInvite(true)} />
         <div className="flex-grow flex flex-col min-w-0">
-          <Header shell={data} onCommand={() => setCommand(true)} />
+          <Header shell={data} onCommand={() => setCommand(true)} onMenu={() => setDrawer(true)} />
           <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
-            <MobileSectionTabs shell={data} />
             <Outlet />
           </div>
         </div>
         {/* Trang bài học có nút hoàn thành ghim ở đáy (.lesson-bar), nên ẩn thanh tab để hai thanh không chồng nhau. */}
         {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs shell={data} />}
+        {drawer && <MobileDrawer shell={data} onInvite={() => setInvite(true)} onClose={() => setDrawer(false)} />}
         {canManage(data) && <OwnerCommandPalette shell={data} open={command} onClose={() => setCommand(false)} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
       </div>
