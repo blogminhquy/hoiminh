@@ -17,12 +17,22 @@ test('điện thoại: Hôm nay, thanh dưới, đăng bài nhanh, đăng xuất
   await expect(page.getByRole('progressbar', { name: 'Việc hôm nay' })).toBeVisible();
   await expectNoSideScroll(page);
 
-  // Thanh dưới: Hội mở Bảng tin, tab con dẫn tới Thành viên (trước đây không có lối vào trên điện thoại).
+  // Thanh dưới: Hội mở Bảng tin. Các mục còn lại nằm trong menu trượt từ bên trái (nút ở đầu trang).
   const nav = page.getByRole('navigation', { name: 'Điều hướng chính' });
   await nav.getByRole('link', { name: 'Hội', exact: true }).click();
   await expect(page).toHaveURL(/\/minhquy\/bang-tin$/);
-  await page.getByRole('navigation', { name: 'Mục con' }).getByRole('link', { name: 'Thành viên' }).click();
+  await expect(page.locator('header.app-header')).toContainText('Kinh Doanh Online Cùng AI');
+  await page.getByRole('button', { name: 'Mở menu' }).click();
+  const menu = page.getByRole('dialog', { name: 'Menu hội' });
+  await expect(menu).toContainText('Kinh Doanh Online Cùng AI');
+  for (const label of ['Hôm nay', 'Bảng tin', 'Sự kiện', 'Thành viên', 'Khóa học', 'Cửa hàng']) await expect(menu.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
+  // Đóng bằng nút X, mở lại rồi chọn một mục: tới đúng trang và menu tự đóng.
+  await menu.getByRole('button', { name: 'Đóng menu' }).click();
+  await expect(menu).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mở menu' }).click();
+  await menu.getByRole('link', { name: 'Thành viên' }).click();
   await expect(page).toHaveURL(/\/minhquy\/thanh-vien$/);
+  await expect(menu).toHaveCount(0);
   await expect(page.getByPlaceholder(/Tìm theo tên/)).toBeVisible();
   await expectNoSideScroll(page);
 
@@ -56,7 +66,10 @@ test('điện thoại: Hôm nay, thanh dưới, đăng bài nhanh, đăng xuất
 test('điện thoại: bài học có video trước và nút hoàn thành ghim ở đáy', async ({ page }) => {
   await login(page, USERS.member2);
   await page.goto('/minhquy/khoa-hoc');
-  await expect(page.getByRole('navigation', { name: 'Mục con' }).getByRole('link', { name: 'Cửa hàng' })).toBeVisible();
+  await page.getByRole('button', { name: 'Mở menu' }).click();
+  await expect(page.getByRole('dialog', { name: 'Menu hội' }).getByRole('link', { name: 'Cửa hàng' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Menu hội' })).toHaveCount(0);
   await page.goto('/minhquy/hom-nay');
   const learn = page.getByRole('link', { name: /^(Học|Học tiếp)$/ }).first();
   if (await learn.count()) {

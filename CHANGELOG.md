@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.23.0 - 2026-11-10
+
+Tên hội ra đầu trang cạnh ô tìm, logo Hội Mình thu về góc trên trái; điện thoại có menu trượt từ bên trái; dải chọn nền màu trong khung đăng bài được làm lại.
+
+### Thay đổi
+
+- **Đổi chỗ logo Hội Mình và tên hội** (máy tính, theo cách bố trí của Skool): logo Hội Mình nằm ở góc trên trái thanh bên; logo và tên hội đứng ở đầu trang, ngay cạnh ô tìm, bấm vào để chuyển hội. Tên hội hiện đủ chữ: khi đầu trang hẹp thì ô tìm co lại trước (tới 180px), hết chỗ mới cắt tên.
+- Bảng chuyển hội rộng theo tên hội dài nhất (tối đa 440px) nên tên trong bảng không còn bị cắt; đóng được bằng cách bấm ra ngoài hoặc nhấn Esc (trước đây chỉ đóng khi rê chuột ra khỏi bảng).
+- Dòng "N thành viên · N đang online" dưới tên hội ở thanh bên máy tính được bỏ; hai con số này vẫn có ở cột phải của Bảng tin và ở đầu menu trên điện thoại.
+- **Điện thoại có nút mở menu ở đầu trang**: menu trượt ra từ bên trái, chứa đúng các mục của thanh bên trên máy tính (Hôm nay hoặc Bàn điều khiển, Bảng tin, Sự kiện, Thành viên, Xếp hạng, Khóa học, Cửa hàng, nhóm Quản lý của chủ hội, nút Viết bài và Mời thành viên). Đầu menu là hội đang mở kèm số thành viên; chạm vào đó để chuyển hội. Đóng bằng nút X, chạm ra ngoài, Esc, hoặc khi chọn một mục.
+- **Nút "Viết bài" ghim ở đáy menu**: danh sách mục phía trên tự cuộn khi màn hình thấp, nút "Viết bài" luôn thấy. Thanh bên trên máy tính cũng vậy (trước đây màn hình thấp thì hai nút cuối bị đẩy ra ngoài, không cuộn tới được).
+- Đầu trang trên điện thoại gọn lại: nút menu, tên hội (tối đa hai dòng nên hiện đủ chữ), tìm kiếm, tin nhắn, thông báo. Nút chuyển hội chuyển vào trong menu.
+- Bỏ hàng tab con trên điện thoại (Bảng tin, Sự kiện, Thành viên, Xếp hạng; Khóa học, Cửa hàng) vì menu đã có đủ các mục này; trang hiện lại tiêu đề của chính nó. Thanh dưới bốn mục giữ nguyên.
+- **Dải chọn nền màu trong khung đăng bài**: chín ô tròn (ô đầu là "Không nền", sau đó tám màu), ô đang chọn có dấu tích và vòng viền. Hẹp thì tự xuống dòng, không cuộn ngang. Bỏ ba nút "Aa", "X" và nút ảnh trong dải vì trùng việc với ô "Không nền" và nút "Ảnh" ở dưới.
+
+### Sửa lỗi
+
+- Vòng viền của ô nền màu đang chọn bị cắt ở mép trái và trên dưới (ô nằm trong vùng cuộn ngang nên phần viền ló ra ngoài bị che).
+- Điện thoại 390px: nút "Đăng bài" trong khung đăng bài tràn ra ngoài mép khung khoảng 20px. Hai nút "Ảnh" và "Thêm" nay dùng lề hẹp hơn trên điện thoại.
+
 ## 1.22.0 - 2026-11-10
 
 Bài viết trên Bảng tin mở trong khung bật lên kiểu Facebook, và cảm xúc có sáu loại thay cho một nút Thích.

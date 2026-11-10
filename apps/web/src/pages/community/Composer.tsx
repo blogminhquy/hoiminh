@@ -126,7 +126,7 @@ export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onC
             {eligible && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-semibold" style={{ color: T.ink2 }}>Nền màu cho bài ngắn (dưới {STATUS_MAX} ký tự, không ảnh)</span>
-                <BgStrip bgKey={bgKey} onPick={setBgKey} onToggle={() => setBgKey(bgKey ? null : 'dat')} onClear={() => setBgKey(null)} onImage={picker.open} />
+                <BgStrip bgKey={bgKey} onPick={setBgKey} />
               </div>
             )}
             {canBroadcast && (
@@ -140,8 +140,9 @@ export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onC
 
         {create.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(create.error)}</span>}
         <div className="flex items-center gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
-          <Button icon={<ImageIcon size={18} />} onClick={picker.open}>Ảnh</Button>
-          <Button aria-expanded={more} onClick={() => setMore((v) => !v)}>Thêm {more ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</Button>
+          {/* Điện thoại 390px: ba nút với lề 18px rộng hơn khung 20px, nút Đăng bài tràn ra ngoài. Hai nút phụ dùng lề 12px. */}
+          <Button className="max-md:!px-3" icon={<ImageIcon size={18} />} onClick={picker.open}>Ảnh</Button>
+          <Button className="max-md:!px-3" aria-expanded={more} onClick={() => setMore((v) => !v)}>Thêm {more ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</Button>
           <span className="flex-grow" />
           <Button variant="primary" loading={create.isPending} disabled={!valid} onClick={() => create.mutate()}>Đăng bài</Button>
         </div>

@@ -278,7 +278,25 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 @media (max-width: 767px) { .owner-money > .btn { margin-left: 0; width: 100%; } }
 
 /* Bảng chuyển hội: thả xuống từ đầu thanh bên (máy tính) hoặc từ tên hội ở đầu trang (điện thoại). */
-.community-switcher { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; min-width: 272px; max-width: calc(100vw - 32px); z-index: 40; display: flex; flex-direction: column; padding: 6px; border-radius: 14px; background: var(--side-dark); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+/* Menu trượt từ bên trái trên điện thoại (MobileDrawer trong AppShell). Nằm trên thanh dưới (30), dưới các khung bật lên (40). */
+.app-drawer-backdrop { position: fixed; inset: 0; z-index: 38; background: rgba(8, 24, 23, 0.5); animation: drawer-fade 0.16s ease-out; }
+.app-drawer { width: min(312px, 86vw); height: 100%; overflow: hidden; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3); animation: drawer-in 0.2s ease-out; }
+/* Danh sách mục của thanh bên và menu trượt: tự cuộn, thanh cuộn mảnh trên nền tối. Nút Viết bài nằm ngoài vùng này nên luôn thấy. */
+.side-scroll { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.22) transparent; }
+@keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
+/* Trong menu trượt, bảng chuyển hội rộng đúng bằng khối tên hội (không rộng theo chữ, kẻo tràn mép menu). */
+.app-drawer .community-switcher { right: 0; width: auto; min-width: 0; max-width: none; }
+.app-drawer .community-switcher-row .truncate { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+@media (min-width: 768px) { .app-drawer-backdrop { display: none; } }
+@media (prefers-reduced-motion: reduce) { .app-drawer, .app-drawer-backdrop { animation: none; } }
+/* Rộng theo tên hội dài nhất (tối đa 440px) để tên không bị cắt; không hẹp hơn nút mở và 272px. */
+.community-switcher { position: absolute; left: 0; top: 100%; margin-top: 4px; width: max-content; min-width: max(100%, 272px); max-width: min(440px, calc(100vw - 32px)); z-index: 40; display: flex; flex-direction: column; padding: 6px; border-radius: 14px; background: var(--side-dark); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+/* Ô chọn nền màu trong khung đăng bài: vùng chạm 40px, chấm màu 30px ở giữa nên vòng chọn không bị cắt. */
+.bg-swatch { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 999px; cursor: pointer; }
+.bg-swatch > span { transition: transform 0.12s ease; }
+.bg-swatch:hover > span { transform: scale(1.08); }
+.bg-swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .community-switcher-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 10px; color: var(--side-text); font-size: 15px; }
 .community-switcher-row:hover, .community-switcher-row[aria-current] { background: rgba(255, 255, 255, 0.10); color: #FFFFFF; }
 
