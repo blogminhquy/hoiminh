@@ -1,40 +1,89 @@
 name: CI
 
+# Ba nhóm kiểm tra chạy SONG SONG trên ba máy, thời gian chờ bằng nhóm lâu nhất chứ không phải tổng:
+#   static: kiểu (typecheck), lint, build giao diện.
+#   test:   test đơn vị và tích hợp (vitest) của mọi gói.
+#   e2e:    Playwright các luồng nghiệp vụ trên trình duyệt thật.
+# Trước đây e2e chờ nhóm kiểm tra xong mới chạy, và typecheck, lint, test, build nối đuôi trên một máy: 8 đến 11 phút
+# mỗi lượt. Một nhóm đỏ không chặn nhóm kia, nên một lượt chạy cho thấy trọn danh sách chỗ đỏ.
+# Repo để private nên GitHub tính phút theo từng máy (làm tròn lên phút): giữ ba máy, không chia nhỏ hơn.
 on:
   push:
     branches: [main]
   pull_request:
 
+# Commit mới lên cùng một PR thì hủy lượt cũ đang chạy dở: lượt cũ kiểm một commit không còn ai merge.
+# main không bao giờ bị hủy: mỗi commit lên main giữ trọn lượt kiểm của nó.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PNPM_VERSION: 9.15.4
+  NODE_VERSION: 22
+
 jobs:
-  check:
+  static:
+    name: Kiểu, lint, build
     runs-on: ubuntu-latest
+    # Bình thường khoảng 2 phút. Hạn này chỉ để một lượt kẹt không ngồi tới trần 6 tiếng của GitHub.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.15.4
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
+      # Lint trước vì chỉ mất khoảng 10 giây: lỗi dễ sửa nhất hiện ra sớm nhất.
       - run: pnpm lint
+      - run: pnpm typecheck
+      # Chỉ build giao diện. "build" của api và jobs là `tsc --noEmit`, trùng hẳn với typecheck ở trên.
+      - run: pnpm --filter @hoiminh/web build
+
+  test:
+    name: Test đơn vị
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm build
 
   e2e:
+    name: E2E
     runs-on: ubuntu-latest
-    needs: check
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.15.4
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @hoiminh/e2e exec playwright install --with-deps chromium
+      # --only-shell: test chạy không màn hình nên chỉ cần bản headless, khỏi tải cả Chromium đầy đủ.
+      - run: pnpm --filter @hoiminh/e2e exec playwright install --with-deps --only-shell chromium
       - run: pnpm test:e2e
+      # Khi đỏ: giữ báo cáo kèm ảnh chụp và trace để xem lại, khỏi phải chạy lại mới biết hỏng ở đâu.
+      - name: Lưu báo cáo e2e khi đỏ
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-bao-cao
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
