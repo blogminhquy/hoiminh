@@ -217,12 +217,10 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
     };
   }, []);
 
-  // Điện thoại xếp các mức thành một hàng ngang: mở ra thì đưa mức đang chọn vào tầm nhìn nếu hàng phải vuốt.
+  // Danh sách dài hơn bảng (video có nhiều mức, hoặc trình phát thấp): mở ra thì đưa mức đang chọn vào tầm nhìn.
   useEffect(() => {
     if (menu !== 'quality' && menu !== 'speed') return;
-    const row = optionsRef.current;
-    const chosen = row?.querySelector<HTMLElement>('[aria-checked="true"]');
-    if (row && chosen) row.scrollLeft = Math.max(0, chosen.offsetLeft - (row.clientWidth - chosen.offsetWidth) / 2);
+    optionsRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [menu]);
 
   // Toàn màn hình kiểu phủ kín trang (iPhone không cho phần tử thường vào toàn màn hình thật): khóa cuộn trang nền.
@@ -439,6 +437,8 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
           </div>
         </div>
       )}
+      {/* Lớp nền chỉ hiện trên điện thoại, nơi bảng Cài đặt mở từ đáy màn hình: chạm ra ngoài bảng là đóng. */}
+      {showBar && menu && <div className="ytl-menu-backdrop" aria-hidden="true" onClick={() => setMenu(null)} />}
       {showBar && menu && (
         <div className="ytl-menu" role="menu" aria-label={menu === 'quality' ? 'Chất lượng' : menu === 'speed' ? 'Tốc độ' : 'Cài đặt video'}>
           {menu === 'main' && (
@@ -453,8 +453,7 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
               <div ref={optionsRef} className="ytl-menu-grid">
                 {qualityOptions(levels).map((level) => (
                   <button key={level} type="button" role="menuitemradio" aria-checked={qualityPref === level} className="ytl-menu-item" onClick={() => chooseQuality(level)}>
-                    <span className="ytl-menu-check">{qualityPref === level && <Check size={18} />}</span>
-                    {level === QUALITY_AUTO ? <><span className="ytl-long">Tự động</span><span className="ytl-short">Auto</span></> : qualityLabel(level)}
+                    <span className="ytl-menu-check">{qualityPref === level && <Check size={18} />}</span>{qualityLabel(level)}
                   </button>
                 ))}
               </div>

@@ -185,31 +185,35 @@ test('bài học YouTube trên điện thoại: nút đủ to, không tràn ngan
   }
   await expect(player.getByRole('button', { name: 'Lùi 10 giây' })).toBeHidden();
 
-  // Bảng Cài đặt nằm gọn trong trình phát thấp của điện thoại; 7 mức chất lượng xếp đúng một hàng ngang, thấy hết không phải vuốt.
-  await player.getByRole('button', { name: 'Cài đặt video' }).click();
-  await player.getByRole('menuitem', { name: /Chất lượng/ }).click();
+  // Bảng Cài đặt trên điện thoại mở từ đáy màn hình, rộng hết màn hình; các mức chất lượng xếp một cột dọc như YouTube.
+  const settings = player.getByRole('button', { name: 'Cài đặt video' });
   const menu = player.getByRole('menu');
-  const [m, p] = [await box(menu), await box(player)];
-  expect(m.x).toBeGreaterThanOrEqual(p.x);
-  expect(m.y).toBeGreaterThanOrEqual(p.y);
-  expect(m.x + m.width).toBeLessThanOrEqual(p.x + p.width);
-  expect(m.y + m.height).toBeLessThanOrEqual(p.y + p.height);
-  expect(await menu.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+  await settings.click();
+  await menu.getByRole('menuitem', { name: /Chất lượng/ }).click();
+  const sheet = await box(menu);
+  expect(Math.round(sheet.x)).toBe(0);
+  expect(Math.round(sheet.width)).toBe(390);
+  expect(Math.round(sheet.y + sheet.height)).toBe(780);
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['Tự động', '1080p', '720p', '480p', '360p', '240p', '144p'], { useInnerText: true });
   const options = await Promise.all((await menu.getByRole('menuitemradio').all()).map(box));
-  expect(options).toHaveLength(7);
-  expect(new Set(options.map((o) => Math.round(o.y))).size, 'mọi mức nằm trên cùng một hàng').toBe(1);
-  expect(await menu.locator('.ytl-menu-grid').evaluate((el) => el.scrollWidth <= el.clientWidth), 'hàng không phải vuốt ngang ở 390px').toBe(true);
-  expect(m.height).toBeLessThan(110);
-  // Trong hàng ngang, ô "Tự động" ghi gọn là "Auto" để bảy mức vừa cả màn hình 360px.
-  await expect(menu.getByRole('menuitemradio').first()).toHaveText('Auto', { useInnerText: true });
-  // Đo sau khi phông chữ tải xong. Hàng được thiết kế dư khoảng 10% bề rộng ở 360px, vì chữ trên mỗi máy rộng hẹp khác nhau đôi chút.
-  await page.evaluate(() => document.fonts.ready);
-  await page.setViewportSize({ width: 360, height: 780 });
-  expect(await menu.locator('.ytl-menu-grid').evaluate((el) => el.scrollWidth <= el.clientWidth), 'hàng không phải vuốt ngang ở 360px').toBe(true);
-  await page.setViewportSize({ width: 390, height: 780 });
-  const last = menu.getByRole('menuitemradio', { name: '144p' });
-  expect((await box(last)).height).toBeGreaterThanOrEqual(44);
-  await last.click();
+  expect(new Set(options.map((o) => Math.round(o.x))).size, 'mọi mức thẳng một cột').toBe(1);
+  for (const [i, o] of options.entries()) {
+    expect(o.height).toBeGreaterThanOrEqual(44);
+    if (i > 0) expect(o.y, 'mỗi mức một dòng, dòng sau nằm dưới dòng trước').toBeGreaterThanOrEqual(options[i - 1]!.y + options[i - 1]!.height - 1);
+  }
+  // Bảy mức hiện đủ, không phải cuộn.
+  expect(await menu.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+
+  // Chạm ra ngoài bảng (vào lớp nền mờ) là đóng, video vẫn phát.
+  await page.mouse.click(195, 60);
+  await expect(menu).toHaveCount(0);
+  await expect(player).toHaveAttribute('data-phase', 'playing');
+
+  // Chọn mức thấp nhất ở dòng cuối.
+  await settings.click();
+  await menu.getByRole('menuitem', { name: /Chất lượng/ }).click();
+  await menu.getByRole('menuitemradio', { name: '144p' }).click();
+  await expect(menu).toHaveCount(0);
   expect((await youtubeLog(page)).calls).toContain('quality:tiny:tiny');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

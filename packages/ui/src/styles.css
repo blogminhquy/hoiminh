@@ -367,7 +367,7 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .ytl-menu-value { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding-left: 16px; color: rgba(255, 255, 255, 0.74); font-variant-numeric: tabular-nums; }
 .ytl-menu-check { display: inline-flex; flex-shrink: 0; width: 20px; color: var(--gold); }
 .ytl-menu-grid { display: flex; flex-direction: column; }
-.ytl-short { display: none; }
+.ytl-menu-backdrop { display: none; }
 .ytl-time { padding: 0 8px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ytl-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
 .ytl-range:disabled { cursor: default; opacity: .5; }
@@ -395,18 +395,10 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 @media (max-width: 639px) {
   /* Điện thoại: bỏ nút lùi, tới 10 giây và thanh âm lượng (đã có thanh tua và nút âm lượng của máy) để các nút còn lại đủ to. */
   .ytl-wide { display: none; }
-  /* Trình phát trên điện thoại chỉ cao khoảng 200px: các mức chất lượng, tốc độ xếp một hàng ngang cho gọn; mức đang chọn tô vàng thay cho dấu tích. Màn hình hẹp không đủ chỗ thì hàng vuốt ngang được. */
-  .ytl-menu { left: 2px; right: 2px; bottom: 4px; min-width: 0; max-width: none; max-height: calc(100% - 8px); padding: 6px 3px; }
-  .ytl-menu-head { min-height: 36px; margin-bottom: 4px; }
-  /* Một dải liền, các ô sát nhau không có khe: khe và bề rộng tối thiểu của ô ăn hết chỗ dư ở màn hình 360px, mà chữ trên mỗi máy rộng hẹp khác nhau đôi chút. */
-  .ytl-menu-grid { flex-direction: row; gap: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
-  .ytl-menu-grid::-webkit-scrollbar { display: none; }
-  .ytl-menu-grid .ytl-menu-item { flex: 1 0 auto; width: auto; min-width: 0; justify-content: center; padding: 0 2px; font-size: 14px; }
-  /* Bảy mức phải vừa một hàng ở màn hình 360px, nên ô "Tự động" ghi gọn là "Auto". */
-  .ytl-menu-grid .ytl-long { display: none; }
-  .ytl-menu-grid .ytl-short { display: inline; }
-  .ytl-menu-grid .ytl-menu-item[aria-checked="true"] { background: var(--gold); color: #1F1B17; font-weight: 700; }
-  .ytl-menu-grid .ytl-menu-check { display: none; }
+  /* Trình phát trên điện thoại chỉ cao khoảng 200px, không đủ chỗ cho danh sách dọc. Bảng Cài đặt vì vậy mở từ đáy màn hình như YouTube: mỗi mức một dòng, có lớp nền mờ để chạm ra ngoài là đóng. */
+  .ytl-menu-backdrop { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.5); }
+  .ytl-menu { position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; min-width: 0; max-width: none; max-height: min(72vh, 520px); padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; background: #101A1A; overscroll-behavior: contain; }
+  .ytl-menu-item { min-height: 48px; padding: 0 14px; }
   .ytl { border-radius: 12px; }
   .ytl-fs { border-radius: 0; }
   .ytl-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7.5px; }
