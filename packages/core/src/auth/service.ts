@@ -118,11 +118,15 @@ export async function logout(ctx: Ctx, sessionId: string): Promise<void> {
 export async function authenticate(ctx: Ctx, provider: AuthProvider, token: string): Promise<{ userId: string; sessionId: string; user: typeof users.$inferSelect } | null> {
   const claims = await verifyAccessToken(provider.jwtSecret, token);
   if (!claims) return null;
-  const session = await ctx.db.query.authSessions.findFirst({ where: and(eq(authSessions.id, claims.sid), isNull(authSessions.revokedAt)), columns: { id: true } });
-  if (!session) return null;
-  const user = await ctx.db.query.users.findFirst({ where: eq(users.id, claims.sub) });
-  if (!user || user.status !== 'active') return null;
-  return { userId: user.id, sessionId: session.id, user };
+  // Phiên và người dùng lấy trong một câu: mọi request của người đăng nhập đều qua đây, bớt một lượt đi về database.
+  const [row] = await ctx.db
+    .select({ sessionId: authSessions.id, user: users })
+    .from(authSessions)
+    .innerJoin(users, eq(users.id, claims.sub))
+    .where(and(eq(authSessions.id, claims.sid), isNull(authSessions.revokedAt)))
+    .limit(1);
+  if (!row || row.user.status !== 'active') return null;
+  return { userId: row.user.id, sessionId: row.sessionId, user: row.user };
 }
 
 /** Gửi mã 6 số xác minh email (15 phút). */

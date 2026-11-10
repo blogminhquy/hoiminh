@@ -52,7 +52,10 @@ async function openPglite(target: string): Promise<DbHandle> {
 
 async function openPostgres(url: string): Promise<DbHandle> {
   const { default: postgres } = await import('postgres');
-  const sql = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
+  // fetch_types: false bỏ câu hỏi danh mục kiểu mảng mà postgres-js chạy trên mỗi kết nối mới. Worker mở kết nối mới
+  // cho từng request nên đó là một lượt đi về database thừa ở mọi request. Schema không có cột mảng (danh sách lưu
+  // bằng jsonb) và không câu SQL nào truyền tham số mảng; thêm cột kiểu mảng thì phải bật lại.
+  const sql = postgres(url, { prepare: false, fetch_types: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
   const db = drizzlePostgres(sql, { schema });
   // drizzle thay serializer ngày giờ của postgres-js bằng hàm trả nguyên giá trị (cột đã tự đổi Date
   // thành chuỗi). Nhưng Date đặt thẳng trong sql`...` thì đi tới driver nguyên dạng Date và nổ
