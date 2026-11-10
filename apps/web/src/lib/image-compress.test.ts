@@ -97,13 +97,68 @@ describe('compressImage', () => {
     expect(out.type).toBe('image/webp');
   });
 
-  it('trình duyệt không xuất được WebP (Safari) thì xuất JPEG, máy chủ sẽ chuyển sang WebP', async () => {
+  it('không xuất được WebP mà cũng không có bộ dự phòng thì xuất JPEG, máy chủ sẽ chuyển sang WebP', async () => {
     const { deps, encode } = fakeDeps({ width: 4000, height: 3000 }, 100_000, { webp: false });
     const out = await compressImage(fileOf('IMG_2.HEIC.jpg', 'image/jpeg', 5_000_000), IMAGE_MAX_SIDE, deps);
     expect(encode).toHaveBeenNthCalledWith(1, source, 1200, 900, WEBP_QUALITY, 'image/webp');
     expect(encode).toHaveBeenNthCalledWith(2, source, 1200, 900, JPEG_QUALITY, 'image/jpeg');
     expect(out.name).toBe('IMG_2.HEIC.jpg');
     expect(out.type).toBe('image/jpeg');
+  });
+
+  describe('bộ mã hóa WebP dự phòng (WebAssembly) cho trình duyệt không tự xuất được WebP', () => {
+    const softwareOf = (bytes: number, type = 'image/webp') => vi.fn(async (_s: CanvasImageSource, _w: number, _h: number, _q: number): Promise<Blob | null> => new Blob([new Uint8Array(bytes)], { type }));
+
+    it('Safari: ra WebP ngay trên máy người dùng, không xuất JPEG nên máy chủ không phải chuyển', async () => {
+      const { deps, encode } = fakeDeps({ width: 4000, height: 3000 }, 100_000, { webp: false });
+      const software = softwareOf(80_000);
+      const out = await compressImage(fileOf('IMG_3.jpg', 'image/jpeg', 5_000_000), IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: software });
+      expect(software).toHaveBeenCalledTimes(1);
+      expect(software).toHaveBeenCalledWith(source, 1200, 900, WEBP_QUALITY);
+      expect(encode).toHaveBeenCalledTimes(1);
+      expect(out.name).toBe('IMG_3.webp');
+      expect(out.type).toBe('image/webp');
+      expect(out.size).toBe(80_000);
+    });
+
+    it('trình duyệt tự xuất được WebP thì không đụng tới bộ dự phòng', async () => {
+      const { deps } = fakeDeps({ width: 4000, height: 3000 });
+      const software = softwareOf(80_000);
+      const out = await compressImage(fileOf('a.png', 'image/png', 5_000_000), IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: software });
+      expect(software).not.toHaveBeenCalled();
+      expect(out.size).toBe(100_000);
+    });
+
+    it('bộ dự phòng lỗi (không tải được, hết bộ nhớ) thì xuất JPEG như trước', async () => {
+      const { deps, encode } = fakeDeps({ width: 4000, height: 3000 }, 100_000, { webp: false });
+      const software = vi.fn(async (): Promise<Blob | null> => { throw new Error('không tải được bộ mã hóa'); });
+      const out = await compressImage(fileOf('a.jpg', 'image/jpeg', 5_000_000), IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: software });
+      expect(encode).toHaveBeenNthCalledWith(2, source, 1200, 900, JPEG_QUALITY, 'image/jpeg');
+      expect(out.type).toBe('image/jpeg');
+      expect(out.name).toBe('a.jpg');
+    });
+
+    it('bộ dự phòng trả null, tệp rỗng hoặc sai định dạng thì xuất JPEG', async () => {
+      for (const software of [vi.fn(async (): Promise<Blob | null> => null), softwareOf(0), softwareOf(80_000, 'image/png')]) {
+        const { deps } = fakeDeps({ width: 4000, height: 3000 }, 100_000, { webp: false });
+        const out = await compressImage(fileOf('a.jpg', 'image/jpeg', 5_000_000), IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: software });
+        expect(software).toHaveBeenCalledTimes(1);
+        expect(out.type).toBe('image/jpeg');
+      }
+    });
+
+    it('ảnh gốc đã là WebP, chưa cần thu nhỏ mà bản dự phòng nặng hơn thì giữ nguyên tệp gốc', async () => {
+      const original = fileOf('san.webp', 'image/webp', 3_000);
+      const { deps, encode } = fakeDeps({ width: 64, height: 64 }, 5_000, { webp: false });
+      expect(await compressImage(original, IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: softwareOf(5_000) })).toBe(original);
+      expect(encode).toHaveBeenCalledTimes(1);
+    });
+
+    it('giải phóng ảnh đã giải mã cả khi bộ dự phòng lỗi', async () => {
+      const { deps, release } = fakeDeps({ width: 2000, height: 2000 }, 100_000, { webp: false });
+      await compressImage(fileOf('a.png', 'image/png', 1_000_000), IMAGE_MAX_SIDE, { ...deps, encodeWebpSoftware: vi.fn(async (): Promise<Blob | null> => { throw new Error('lỗi'); }) });
+      expect(release).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('không xuất được WebP và bản JPEG nặng hơn ảnh chưa cần thu nhỏ thì giữ ảnh gốc', async () => {
