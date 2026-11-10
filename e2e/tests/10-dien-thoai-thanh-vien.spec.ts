@@ -71,7 +71,10 @@ test('điện thoại: bài học có video trước và nút hoàn thành ghim 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Menu hội' })).toHaveCount(0);
   await page.goto('/minhquy/hom-nay');
-  const learn = page.getByRole('link', { name: /^(Học|Học tiếp)$/ }).first();
+  // Chờ trang Hôm nay tải xong rồi mới tìm nút "Học" của việc hôm nay, và chỉ tìm trong phần nội dung:
+  // đếm ngay lúc trang vừa mở thì lúc có lúc không, và có khi bấm nhầm mục "Học" ở thanh dưới (dẫn tới danh sách khóa học).
+  await page.waitForLoadState('networkidle');
+  const learn = page.locator('.app-content').getByRole('link', { name: /^(Học|Học tiếp)$/ }).first();
   if (await learn.count()) {
     await learn.click();
     await expect(page).toHaveURL(/\/minhquy\/bai\/[0-9a-f-]{36}/);

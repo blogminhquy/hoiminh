@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## 1.26.0 - 2026-11-10
+
+Trang Tin nhắn làm lại theo cách dùng của Zalo: ba cột liền nhau lấp đầy màn hình, và các thao tác quen tay trên từng tin (trả lời, thả cảm xúc, thu hồi) cùng ghim hội thoại.
+
+### Tính năng
+
+- **Khung Tin nhắn lấp đầy màn hình.** Danh sách hội thoại, khung chat và bảng "Thông tin hội thoại" đứng liền nhau, cao đúng bằng phần màn hình dưới đầu trang, không còn khoảng trống bên dưới. Chỉ luồng tin và danh sách cuộn, cả trang đứng yên. Tin mới nhất nằm sát ô nhập như Zalo.
+- **Trả lời trích dẫn.** Rê vào một tin (điện thoại: chạm vào tin) rồi bấm Trả lời: tin gốc hiện phía trên ô nhập và nằm trong tin trả lời; bấm vào phần trích dẫn thì khung chat cuộn tới tin gốc.
+- **Thả cảm xúc** bằng sáu biểu tượng 👍 ❤️ 😆 😮 😭 😡. Bấm nút thích ở góc tin để thích nhanh, rê vào nút đó để chọn cảm xúc khác; mỗi người một cảm xúc trên một tin, đổi hoặc gỡ được.
+- **Thu hồi tin nhắn** của chính mình trong 24 giờ sau khi gửi. Nội dung và ảnh bị xóa hẳn; hai bên chỉ còn thấy "Tin nhắn đã được thu hồi", kể cả ở phần trích dẫn và dòng xem trước trong danh sách.
+- **Ghim hội thoại** lên đầu danh sách (từ menu ba chấm của từng dòng hoặc từ bảng thông tin). Ghim là của riêng mỗi người.
+- **Ô nhập kiểu Zalo:** nhiều dòng, tự cao theo nội dung; Enter để gửi, Shift Enter để xuống dòng (điện thoại gửi bằng nút); thanh công cụ có gửi ảnh và bảng biểu tượng cảm xúc; dán ảnh từ bộ nhớ tạm hoặc kéo thả ảnh vào khung chat là gửi; chưa gõ gì thì nút gửi là nút thích nhanh. Tin hiện ngay với trạng thái "Đang gửi", rồi "Đã gửi", "Đã xem".
+- **Link trong tin nhắn bấm được.** Link trong Hội Mình mở ngay tại chỗ, link ngoài mở tab mới. Tin nhắn chào tự động có link "Bắt đầu tại đây" nay bấm vào là tới.
+- **Bảng "Thông tin hội thoại"** (bật tắt bằng nút ở góc phải khung chat): hàng thao tác nhanh (ghim, xem hồ sơ, quản lý thành viên, lưu trữ), thông tin thành viên, toàn bộ ảnh và link đã gửi trong hội thoại.
+- Dưới tên người đang chat có trạng thái "Đang hoạt động" hoặc "Truy cập ... trước". Danh sách hội thoại hiện "Bạn: ..." khi tin cuối là của mình, và "[Hình ảnh]" khi tin cuối chỉ có ảnh.
+- Tin liền nhau của cùng một người gom thành cụm, giờ gửi nằm trong bong bóng cuối cụm; tin chỉ gồm một đến ba biểu tượng cảm xúc hiện to, không khung.
+- **Điện thoại:** vào Tin nhắn thấy danh sách trước; chạm một hội thoại thì khung chat chiếm trọn màn hình (ẩn thanh tab dưới để nhường chỗ cho ô nhập), có nút quay lại danh sách.
+
+### Thay đổi
+
+- Người gửi thấy "Đã xem" ngay khi người nhận mở hội thoại (qua kênh thời gian thực), không phải chờ lượt tải lại.
+- Mở một hội thoại thì số chưa đọc trong danh sách và chấm đỏ ở đầu trang biến mất ngay.
+
+### Sửa lỗi
+
+- Điện thoại: trang Tin nhắn luôn tự mở hội thoại đầu tiên nên không bao giờ thấy danh sách, không chuyển được sang hội thoại khác, và tin của hội thoại đầu bị đánh dấu đã đọc dù chưa xem.
+- Gửi ảnh không kèm chữ bị từ chối ("Dữ liệu không hợp lệ"). Nay tin chỉ có ảnh gửi được bình thường.
+- Hội thoại dài hơn 200 tin chỉ hiện 200 tin cũ nhất, tin mới không hiện ra. Nay luôn hiện các tin mới nhất.
+- Có tin mới hoặc thứ tự danh sách thay đổi làm khung chat tự nhảy sang hội thoại khác khi chưa chọn hội thoại nào.
+
+### Cần làm khi triển khai
+
+- Áp dụng migration `0006_message_actions.sql` lên database thật trước khi merge (thêm cột cho trả lời, cảm xúc, thu hồi, ghim; chạy lại nhiều lần vẫn an toàn).
+
 ## 1.25.0 - 2026-11-10
 
 Safari tự đổi ảnh sang WebP ngay trên máy người dùng, nên việc chuyển ảnh không còn phụ thuộc hạn mức Cloudflare Images.
