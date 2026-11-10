@@ -43,6 +43,13 @@
       "when": 1794305930545,
       "tag": "0005_tag_automation",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794338438053,
+      "tag": "0006_about_media",
+      "breakpoints": true
     }
   ]
 }

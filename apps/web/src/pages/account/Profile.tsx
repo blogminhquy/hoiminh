@@ -12,7 +12,7 @@ import { MessageModal } from '@/pages/community/MessageModal';
 interface Profile {
   user: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; bio: string | null; location: string | null; occupation: string | null; links: Array<{ kind: string; label: string; url: string }>; createdAt: string; lastSeenAt: string | null; privacy: { allowMessages: boolean }; isSelf: boolean };
   stats: { posts: number; comments: number; coursesCompleted: number; coursesTotal: number; communities: number; referrals: number };
-  memberships: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; role: string; tier: { key: string; name: string } | null; level: number; joinedAt: string }>;
+  memberships: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; role: string; tier: { key: string; name: string } | null; level: number; joinedAt: string }>;
   progress: Array<{ courseId: string; title: string; percent: number; completedAt: string | null }>;
   leaderboard: { rank: number; referrals: number; paid: number; communityId: string } | null;
   recentPosts: Array<{ id: string; communityId: string; title: string | null; excerpt: string | null; likeCount: number; commentCount: number; createdAt: string }>;
@@ -78,7 +78,7 @@ export default function Page() {
               {p.memberships.length > 0 && (
                 <div className="card p-4 flex flex-col gap-2.5">
                   <div className="font-semibold">Hội tham gia</div>
-                  {p.memberships.map((m) => <Link key={m.id} to={`/${m.slug}`} className="flex items-center gap-2.5" style={{ color: T.ink }}><CommunityMark mark={m.logoMark} color={m.logoColor} size={32} radius={9} /><div className="flex-grow min-w-0"><div className="text-[13px] font-semibold truncate">{m.name}</div><div className="muted text-[12px]">{ROLE[m.role] ?? m.role}</div></div></Link>)}
+                  {p.memberships.map((m) => <Link key={m.id} to={`/${m.slug}`} className="flex items-center gap-2.5" style={{ color: T.ink }}><CommunityMark mark={m.logoMark} color={m.logoColor} url={m.logoUrl} size={32} radius={9} /><div className="flex-grow min-w-0"><div className="text-[13px] font-semibold truncate">{m.name}</div><div className="muted text-[12px]">{ROLE[m.role] ?? m.role}</div></div></Link>)}
                 </div>
               )}
               {p.leaderboard && (

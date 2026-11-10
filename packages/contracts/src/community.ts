@@ -53,6 +53,18 @@ export const updateCommunityGeneralSchema = z.object({
   links: z.array(z.object({ label: z.string().max(60), url: z.string().url() })).max(6).optional(),
 });
 
+/** Số ảnh và video tối đa trong bộ sưu tập trang giới thiệu hội. */
+export const ABOUT_MEDIA_MAX = 12;
+/** Bộ ảnh và video trang giới thiệu, gửi đủ cả danh sách theo đúng thứ tự muốn hiện. Ảnh trỏ tới tệp đã tải lên, video là link dán vào. */
+export const updateAboutMediaSchema = z.object({
+  items: z.array(z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('image'), fileId: idSchema }),
+    z.object({ kind: z.literal('video'), url: z.string().trim().url().max(500) }),
+  ])).max(ABOUT_MEDIA_MAX),
+});
+export type UpdateAboutMediaInput = z.infer<typeof updateAboutMediaSchema>;
+export interface AboutMediaItem { id: string; kind: 'image' | 'video'; url: string; fileId: string | null }
+
 export const tierInputSchema = z.object({
   id: idSchema.optional(),
   key: z.enum(['standard', 'premium', 'vip']),

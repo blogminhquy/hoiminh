@@ -14,6 +14,13 @@ export interface CommunityLink {
   label: string;
   url: string;
 }
+/** Một ảnh hoặc video trong bộ sưu tập trang giới thiệu hội. Ảnh: `url` là bản sao files.url, `fileId` trỏ tới tệp; video: `url` là link dán vào. */
+export interface CommunityAboutMedia {
+  id: string;
+  kind: 'image' | 'video';
+  url: string;
+  fileId: string | null;
+}
 
 export const workspaces = pgTable(
   'workspaces',
@@ -62,6 +69,8 @@ export const communities = pgTable(
     coverColor: text('cover_color').notNull().default('#0E8E96'),
     coverTagline: text('cover_tagline').notNull().default(''),
     introVideoUrl: text('intro_video_url'),
+    /** Ảnh và video chủ hội xếp cho trang giới thiệu, theo thứ tự hiển thị. */
+    aboutMedia: jsonb('about_media').$type<CommunityAboutMedia[]>().notNull().default([]),
     rules: jsonb('rules').$type<string[]>().notNull().default([]),
     links: jsonb('links').$type<CommunityLink[]>().notNull().default([]),
     status: text('status').$type<CommunityStatus>().notNull().default('active'),

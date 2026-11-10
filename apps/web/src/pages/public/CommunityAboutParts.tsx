@@ -1,15 +1,14 @@
-// Mảnh trang giới thiệu hội (aboutBody trong build.mjs): kiểu dữ liệu, tab, ảnh bìa, lợi ích, người dẫn dắt, khóa học, FAQ.
-import { COMMUNITY_CATEGORY_LABELS } from '@hoiminh/contracts';
-import { useMutation } from '@tanstack/react-query';
+// Mảnh trang giới thiệu hội (aboutBody trong build.mjs): kiểu dữ liệu, tab, bộ ảnh và video, lợi ích, người dẫn dắt, khóa học, FAQ.
+import { COMMUNITY_CATEGORY_LABELS, type AboutMediaItem } from '@hoiminh/contracts';
 import { Avatar, T } from '@hoiminh/ui';
-import { BookOpen, Calendar, ChevronDown, Lock, MessageCircle, Play, Store, Trophy, Users } from 'lucide-react';
+import { BookOpen, Calendar, ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Lock, MessageCircle, Pencil, Play, Store, Trophy, Users } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { videoInfo } from '@/lib/about-media';
 import { fmtCount } from '@/lib/format';
 
 export interface AboutPage {
-  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; description: string; category: string; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; introVideoUrl: string | null; links: Array<{ label: string; url: string }>; status: string; pricingMode: string; doorsOpen: boolean; memberCount: number; paidMemberCount: number; tabs: Record<string, boolean>; customDomain: string | null };
+  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; description: string; category: string; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; introVideoUrl: string | null; aboutMedia?: AboutMediaItem[]; links: Array<{ label: string; url: string }>; status: string; pricingMode: string; doorsOpen: boolean; memberCount: number; paidMemberCount: number; tabs: Record<string, boolean>; customDomain: string | null };
   tiers: Array<{ id: string; key: string; name: string; monthlyMinor: number | null; yearlyMinor: number | null; oneTimeMinor: number | null; benefits: string[] }>;
   owner: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; bio: string } | null;
   courses: Array<{ id: string; title: string; slug: string; coverColor: string; coverUrl: string | null; lessonCount: number; accessMode: string; priceMinor: number | null }>;
@@ -48,43 +47,76 @@ export function AboutTabs({ d, member }: { d: AboutPage; member: boolean }) {
   );
 }
 
+interface Slide { key: string; label: string; color: string; image: string | null; video: string | null; /** Ảnh chủ hội tải lên hiện trọn ảnh, không đè chữ; nền màu và ảnh bìa khóa học thì đè tiêu đề. */ title: string | null }
+
+/** Chủ hội đã xếp ảnh và video thì hiện đúng bộ đó; chưa có thì hiện nền màu của hội kèm ảnh bìa ba khóa học đầu. */
+function slidesOf(d: AboutPage): Slide[] {
+  const c = d.community;
+  const media = c.aboutMedia ?? [];
+  if (media.length) {
+    return media.map((m, k) => (m.kind === 'video'
+      ? { key: m.id, label: `Video ${k + 1}`, color: T.side, image: videoInfo(m.url)?.thumb ?? null, video: m.url, title: null }
+      : { key: m.id, label: `Ảnh ${k + 1}`, color: T.side, image: m.url, video: null, title: null }));
+  }
+  return [
+    { key: 'bia', label: c.coverTagline || c.name, color: c.coverColor, image: c.coverUrl, video: c.introVideoUrl, title: c.coverTagline || c.name },
+    ...d.courses.slice(0, 3).map((k) => ({ key: k.id, label: k.title, color: k.coverColor, image: k.coverUrl, video: null, title: k.title })),
+  ];
+}
+
 export function AboutHero({ d }: { d: AboutPage }) {
   const c = d.community;
-  const slides = [{ color: c.coverColor, url: c.coverUrl, title: c.coverTagline || c.name }, ...d.courses.slice(0, 3).map((k) => ({ color: k.coverColor, url: k.coverUrl, title: k.title }))];
+  const slides = slidesOf(d);
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const parse = useMutation({ mutationFn: (url: string) => api.post<{ embed: { embedUrl: string } | null }>('/v1/video/parse', { url }) });
-  const cur = slides[i] ?? slides[0]!;
-  const play = () => {
-    if (!c.introVideoUrl) return;
-    setPlaying(true);
-    if (!parse.data) parse.mutate(c.introVideoUrl);
-  };
-  const embedUrl = parse.data?.embed?.embedUrl ?? null;
+  const at = Math.min(i, slides.length - 1);
+  const cur = slides[at]!;
+  const video = cur.video ? videoInfo(cur.video) : null;
+  const go = (k: number) => { setI((k + slides.length) % slides.length); setPlaying(false); };
+  const canEdit = d.viewer?.role === 'owner' || d.viewer?.role === 'admin';
+  const editTo = `/${c.slug}/cai-dat/chung#anh-video`;
+  const arrow = 'absolute top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center';
+  const arrowStyle = { width: 40, height: 40, background: 'rgba(0,0,0,0.45)', color: '#fff' };
   return (
     <>
-      <div className="relative overflow-hidden flex items-center justify-center rounded-[18px]" style={{ aspectRatio: '16 / 9', background: cur.url ? `url(${cur.url}) center/cover` : cur.color }}>
-        {playing && embedUrl ? (
-          <iframe src={embedUrl} title="Video giới thiệu" className="absolute inset-0 w-full h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
+      <div className="relative overflow-hidden flex items-center justify-center rounded-[18px]" style={{ aspectRatio: '16 / 9', backgroundColor: cur.color, backgroundImage: cur.image && (cur.title || cur.video) ? `url(${cur.image})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        {playing && video ? (
+          <iframe src={video.embedSrc} title="Video giới thiệu" className="absolute inset-0 w-full h-full" style={{ border: 0 }} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
         ) : (
           <>
-            <div className="absolute left-4 bottom-4 md:left-7 md:bottom-7" style={{ color: T.invertInk }}>
-              <div className="serif font-extrabold leading-[1.05] text-[24px] md:text-[40px]" style={{ maxWidth: 520, textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>{cur.title}</div>
-              {c.introVideoUrl && i === 0 && <div className="text-[14px] mt-2" style={{ opacity: 0.85 }}>{playing && parse.isError ? 'Không mở được video, thử mở trực tiếp' : 'Video giới thiệu'}</div>}
-            </div>
-            {c.introVideoUrl && i === 0 && (
-              playing && parse.isError
-                ? <a href={c.introVideoUrl} target="_blank" rel="noreferrer" className="btn btn-primary">Mở video</a>
-                : <button type="button" aria-label="Phát video giới thiệu" onClick={play} className="rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.primary, color: T.onPrimary }}>{playing && parse.isPending ? <span className="inline-block w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Play size={30} />}</button>
+            {!cur.title && !cur.video && cur.image && <img src={cur.image} alt={`Ảnh giới thiệu ${c.name}`} className="absolute inset-0 w-full h-full" style={{ objectFit: 'contain' }} />}
+            {cur.title && (
+              <div className="absolute left-4 bottom-4 md:left-7 md:bottom-7" style={{ color: T.invertInk }}>
+                <div className="serif font-extrabold leading-[1.05] text-[24px] md:text-[40px]" style={{ maxWidth: 520, textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>{cur.title}</div>
+                {cur.video && <div className="text-[14px] mt-2" style={{ opacity: 0.85 }}>Video giới thiệu</div>}
+              </div>
+            )}
+            {cur.video && (video
+              ? <button type="button" aria-label="Phát video giới thiệu" onClick={() => setPlaying(true)} className="relative rounded-full flex items-center justify-center" style={{ width: 72, height: 72, background: T.primary, color: T.onPrimary, boxShadow: '0 6px 24px rgba(0,0,0,0.3)' }}><Play size={30} /></button>
+              : <a href={cur.video} target="_blank" rel="noreferrer" className="btn btn-primary relative">Mở video</a>)}
+            {slides.length > 1 && (
+              <>
+                <button type="button" aria-label="Xem mục trước" onClick={() => go(at - 1)} className={`${arrow} left-3`} style={arrowStyle}><ChevronLeft size={22} /></button>
+                <button type="button" aria-label="Xem mục sau" onClick={() => go(at + 1)} className={`${arrow} right-3`} style={arrowStyle}><ChevronRight size={22} /></button>
+              </>
             )}
           </>
         )}
+        {canEdit && !playing && <Link to={editTo} className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-[10px] text-[14px] font-semibold" style={{ padding: '8px 12px', background: T.surface, color: T.ink, boxShadow: '0 2px 10px rgba(0,0,0,0.18)' }}><Pencil size={15} />Sửa ảnh và video</Link>}
       </div>
       {slides.length > 1 && (
-        <div className="flex gap-2.5 overflow-x-auto">
+        <div className="flex gap-2.5 overflow-x-auto" style={{ padding: 4, margin: -4 }}>
           {slides.map((s, k) => (
-            <button key={k} type="button" aria-label={s.title} onClick={() => { setI(k); setPlaying(false); }} className="flex-shrink-0 rounded-[10px]" style={{ width: 120, height: 68, background: s.url ? `url(${s.url}) center/cover` : s.color, opacity: k === i ? 1 : 0.55, outline: k === i ? `2px solid ${T.ink}` : undefined, outlineOffset: 2 }} />
+            <button key={s.key} type="button" aria-label={s.label} aria-current={k === at ? 'true' : undefined} onClick={() => go(k)} className="relative flex-shrink-0 rounded-[10px] flex items-center justify-center" style={{ width: 120, height: 68, backgroundColor: s.color, backgroundImage: s.image ? `url(${s.image})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', opacity: k === at ? 1 : 0.6, outline: k === at ? `2px solid ${T.ink}` : undefined, outlineOffset: 2 }}>
+              {s.video && <span className="inline-flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.6)', color: '#fff' }}><Play size={14} /></span>}
+            </button>
           ))}
+        </div>
+      )}
+      {canEdit && !(c.aboutMedia ?? []).length && (
+        <div className="flex items-center gap-3 flex-wrap rounded-[14px] text-[15px] leading-[1.6]" style={{ padding: '14px 18px', border: `1px dashed ${T.line2}`, color: T.ink2 }}>
+          <span style={{ flex: '1 1 260px' }}>Trang giới thiệu chưa có ảnh hay video riêng. Thêm vài ảnh chụp bên trong hội và một video ngắn để người mới dễ quyết định tham gia hơn. Chỉ quản trị thấy dòng này.</span>
+          <Link to={editTo} className="btn btn-primary btn-sm"><ImagePlus size={15} />Thêm ảnh và video</Link>
         </div>
       )}
     </>

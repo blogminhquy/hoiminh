@@ -43,7 +43,7 @@ export async function myWorkspaceHome(ctx: Ctx) {
   const revenue30 = new Map(revenueRows.map((r) => [r.communityId, Number(r.total)]));
   const ownedCommunities = ownedRows.map((r) => ({ c: r.c, revenue30: revenue30.get(r.c.id) ?? 0 }));
   const joined = await ctx.db
-    .select({ m: communityMembers, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, workspaceId: communities.workspaceId }, tier: { key: communityTiers.key, name: communityTiers.name } })
+    .select({ m: communityMembers, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, logoUrl: communities.logoUrl, workspaceId: communities.workspaceId }, tier: { key: communityTiers.key, name: communityTiers.name } })
     .from(communityMembers)
     .innerJoin(communities, eq(communities.id, communityMembers.communityId))
     .leftJoin(communityTiers, eq(communityTiers.id, communityMembers.tierId))

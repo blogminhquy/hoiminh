@@ -1,5 +1,5 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, cộng sự, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
@@ -38,6 +38,7 @@ communityRoutes.patch('/:id/general', requireAuth, async (c) => {
   const coverUrl = input.coverFileId === undefined ? undefined : input.coverFileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, input.coverFileId) }))?.url ?? null) : null;
   return c.json(await communities.updateGeneral(ctx, c.req.param('id'), { ...input, logoUrl, coverUrl }));
 });
+communityRoutes.put('/:id/about-media', requireAuth, async (c) => c.json({ items: await communities.updateAboutMedia(c.get('ctx'), c.req.param('id'), await parse(updateAboutMediaSchema, await body(c))) }));
 communityRoutes.get('/:id/pricing', requireAuth, async (c) => c.json(await communities.pricingSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/pricing', requireAuth, async (c) => c.json(await communities.updatePricing(c.get('ctx'), c.req.param('id'), await parse(updatePricingSchema, await body(c)))));
 communityRoutes.get('/:id/plugins', requireAuth, async (c) => c.json(await communities.listPlugins(c.get('ctx'), c.req.param('id'))));
