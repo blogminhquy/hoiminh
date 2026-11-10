@@ -101,7 +101,8 @@ export default function Page() {
               ? <>Còn <strong>{remaining.lessons} bài</strong>{remaining.seconds > 0 ? <>, khoảng <strong>{fmtDuration(remaining.seconds, true)}</strong></> : null} là xong phần {remaining.index}: {remaining.title}.</>
               : <>Đã xong {cont.course.completedLessons} trên {cont.course.lessonCount} bài.</>}
           </p>
-          <Link to={`/${slug}/bai/${cont.lesson.id}`} className="btn btn-primary w-full sm:w-auto sm:self-start"><Play size={16} />Học tiếp: {cont.lesson.title}</Link>
+          {/* Tên bài dài thì cắt bằng dấu ba chấm, không để chữ tràn ra ngoài nút. */}
+          <Link to={`/${slug}/bai/${cont.lesson.id}`} className="btn btn-primary w-full sm:w-auto sm:self-start max-w-full min-w-0"><Play size={16} className="flex-shrink-0" /><span className="truncate">Học tiếp: {cont.lesson.title}</span></Link>
         </section>
       )}
 
