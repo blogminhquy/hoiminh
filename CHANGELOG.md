@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 1.20.0 - 2026-11-10
+
+Ảnh tải lên hội luôn là WebP cỡ nhỏ, và nói rõ là không nhận tệp video.
+
+### Tính năng
+
+- **Mọi ảnh tải lên thành WebP**, cạnh dài tối đa 1200px (avatar và logo 512px), chất lượng 80. Áp dụng cho ảnh bài viết, bình luận, tin nhắn, ảnh bìa, avatar và logo. Đo với một ảnh chụp màn hình PNG 1360x860 nặng 176 KB: còn 51 KB sau khi nén (nhẹ hơn 71%).
+  - Trình duyệt nén sang WebP ngay trên máy người dùng trước khi tải lên (Chrome, Edge, Firefox, Android).
+  - Trình duyệt không tự xuất được WebP (Safari trên iPhone và máy Mac) thì gửi JPEG, máy chủ chuyển sang WebP bằng Cloudflare Images trước khi ghi vào R2. Đây là công nghệ trang tài liệu Cloudflare (viết bằng Astro) dùng cho ảnh của họ.
+  - Ảnh PNG nền trong suốt giữ được nền trong suốt (trước đây đổi sang JPEG nên bị đổ nền trắng).
+- **Không nhận tệp video ở bất kỳ mục nào.** Trước đây tệp video đã bị từ chối nhưng chỉ báo "Loại tệp không được hỗ trợ"; nay báo rõ "Không nhận tệp video. Hãy dán link video (YouTube, TikTok, Facebook…)". Video trong bài viết và bài học vẫn đưa vào bằng cách dán link như cũ.
+
+### Thay đổi
+
+- `apps/api/wrangler.toml` thêm binding `[images]` (tên `IMAGES`). Gói Cloudflare Images miễn phí cho 5.000 lượt chuyển đổi mỗi tháng. Chỉ ảnh tới máy chủ ở dạng JPEG hoặc PNG mới tốn một lượt; ảnh trình duyệt đã nén sẵn thành WebP thì không. Hết lượt hoặc Cloudflare từ chối thì ảnh lưu đúng dạng nhận được, lượt tải lên vẫn thành công.
+- Ảnh GIF giữ nguyên để không mất chuyển động. Tài liệu bài học và tệp số (tệp riêng) không bị đụng tới.
+- Ảnh đã tải lên trước bản này giữ nguyên định dạng cũ.
+
 ## 1.19.0 - 2026-11-10
 
 Đợt C của việc gom phần quản trị: ô lệnh "Bạn muốn làm gì?" và khu quản trị hệ thống gom từ 11 mục về 5 nhóm.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, createMediaProvider, validateUpload } from './index';
-import { fakeBucket } from './testing';
+import { AVATAR_MAX_SIDE, CloudflareImageOptimizer, IMAGE_MAX_SIDE, LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, WEBP_QUALITY, createMediaProvider, validateUpload, webpKeyFor, webpTarget, type ImageTransformerLike, type ImagesBindingLike } from './index';
+import { fakeBucket, fakeImages } from './testing';
 
 describe('media', () => {
   it('local provider ký và xác minh URL', async () => {
@@ -61,5 +61,64 @@ describe('media', () => {
   it('validate loại tệp', () => {
     expect(validateUpload('image/png', 100).ok).toBe(true);
     expect(validateUpload('video/mp4', 100).ok).toBe(false);
+  });
+  it('không nhận tệp video ở bất kỳ định dạng nào, và nói rõ cách thay thế', () => {
+    for (const mime of ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska']) {
+      const v = validateUpload(mime, 1_000);
+      expect(v.ok).toBe(false);
+      if (!v.ok) expect(v.reason).toContain('dán link video');
+    }
+  });
+});
+
+describe('ảnh WebP', () => {
+  it('webpKeyFor: ảnh đã là WebP luôn dùng đuôi .webp; JPEG, PNG chỉ khi máy chủ chuyển được; GIF không bao giờ', () => {
+    expect(webpKeyFor('image/webp', false)).toBe(true);
+    expect(webpKeyFor('image/jpeg', true)).toBe(true);
+    expect(webpKeyFor('image/png', true)).toBe(true);
+    expect(webpKeyFor('image/jpeg', false)).toBe(false);
+    expect(webpKeyFor('image/gif', true)).toBe(false);
+    expect(webpKeyFor('application/pdf', true)).toBe(false);
+  });
+
+  it('webpTarget: chỉ ảnh công khai JPEG, PNG ở key đuôi .webp mới cần chuyển, avatar nhỏ hơn ảnh bài viết', () => {
+    expect(webpTarget('public/post_image/2026-11-10/abc.webp', 'image/jpeg')).toEqual({ maxSide: IMAGE_MAX_SIDE });
+    expect(webpTarget('public/cover/2026-11-10/abc.webp', 'image/png')).toEqual({ maxSide: IMAGE_MAX_SIDE });
+    expect(webpTarget('public/avatar/2026-11-10/abc.webp', 'image/jpeg')).toEqual({ maxSide: AVATAR_MAX_SIDE });
+    // Đã là WebP: đi thẳng vào kho, không tốn lượt chuyển đổi.
+    expect(webpTarget('public/post_image/2026-11-10/abc.webp', 'image/webp')).toBeNull();
+    expect(webpTarget('public/post_image/2026-11-10/abc.gif', 'image/gif')).toBeNull();
+    expect(webpTarget('public/post_image/2026-11-10/abc.jpg', 'image/jpeg')).toBeNull();
+    // Tài liệu bài học và tệp số là tệp riêng: không bao giờ đụng tới byte gốc.
+    expect(webpTarget('private/lesson_resource/2026-11-10/so-do.webp', 'image/png')).toBeNull();
+  });
+
+  it('CloudflareImageOptimizer thu nhỏ không phóng to, xuất WebP chất lượng 80', async () => {
+    const images = fakeImages();
+    const out = await new CloudflareImageOptimizer(images).toWebp(new Uint8Array(1234), { maxSide: 1200 });
+    expect(new TextDecoder().decode(out!)).toBe('webp:1234');
+    expect(images.calls).toEqual([{ transform: { width: 1200, height: 1200, fit: 'scale-down' }, output: { format: 'image/webp', quality: WEBP_QUALITY }, inputBytes: 1234 }]);
+  });
+
+  it('Cloudflare từ chối (hết hạn mức, ảnh hỏng) thì trả null và báo lỗi cho người gọi ghi log', async () => {
+    const errors: unknown[] = [];
+    const out = await new CloudflareImageOptimizer(fakeImages({ fail: true }), (e) => errors.push(e)).toWebp(new Uint8Array(10), { maxSide: 512 });
+    expect(out).toBeNull();
+    expect(String(errors[0])).toContain('9422');
+  });
+
+  it('binding trả về tệp rỗng thì coi như không chuyển được', async () => {
+    const handle: ImageTransformerLike = { transform: () => handle, output: async () => ({ response: () => new Response(new Uint8Array(0)) }) };
+    const empty: ImagesBindingLike = { input: () => handle };
+    expect(await new CloudflareImageOptimizer(empty).toWebp(new Uint8Array(10), { maxSide: 512 })).toBeNull();
+  });
+
+  it('chỉ R2 qua binding có bộ chuyển ảnh mới báo convertsToWebp', () => {
+    const base = { apiUrl: 'https://api.test', secret: 's'.repeat(32) };
+    expect(createMediaProvider({ r2: {}, ...base }).convertsToWebp).toBe(false);
+    expect(createMediaProvider({ r2: {}, r2Bucket: fakeBucket(), ...base }).convertsToWebp).toBe(false);
+    expect(createMediaProvider({ r2: {}, r2Bucket: fakeBucket(), images: new CloudflareImageOptimizer(fakeImages()), ...base }).convertsToWebp).toBe(true);
+    // Đủ 4 biến R2_* thì trình duyệt tải thẳng lên R2, máy chủ không chạm vào byte nên không chuyển được.
+    expect(createMediaProvider({ r2: { accountId: 'a', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b' }, r2Bucket: fakeBucket(), images: new CloudflareImageOptimizer(fakeImages()), ...base }).convertsToWebp).toBe(false);
   });
 });

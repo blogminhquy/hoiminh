@@ -2,7 +2,69 @@
 //   - R2Provider: R2 qua giao thức S3 (aws4fetch), trình duyệt tải thẳng lên R2 bằng URL ký. Cần 4 secret R2_*.
 //   - R2BindingProvider: R2 qua binding `FILES` của Worker, không cần secret; tệp đi qua API (/files/upload, /files).
 //   - LocalMediaProvider: thư mục .data/files cho dev/test.
+// Ảnh công khai (bài viết, bình luận, tin nhắn, bìa, avatar) lưu ở dạng WebP: trình duyệt nén trước, ảnh nào tới
+// máy chủ vẫn là JPEG/PNG thì CloudflareImageOptimizer (binding `IMAGES` của Worker) chuyển nốt trước khi ghi vào R2.
 import { AwsClient } from 'aws4fetch';
+
+/** Cạnh dài tối đa của ảnh công khai, và của avatar/logo. Khớp với bước nén ở trình duyệt (apps/web/src/lib/image-compress.ts). */
+export const IMAGE_MAX_SIDE = 1200;
+export const AVATAR_MAX_SIDE = 512;
+/** Chất lượng WebP (thang 1 đến 100): ảnh bài viết nhìn không khác bản gốc mà nhẹ hơn JPEG cùng cỡ. */
+export const WEBP_QUALITY = 80;
+
+/** Chuyển ảnh sang WebP ở máy chủ. Trả null khi không chuyển được: người gọi lưu ảnh gốc, không để hỏng lượt tải lên. */
+export interface ImageOptimizer {
+  toWebp(bytes: Uint8Array, opts: { maxSide: number; quality?: number }): Promise<Uint8Array | null>;
+}
+
+/** Binding Images của Worker (`[images]` trong wrangler.toml). Chỉ khai báo phần dùng tới. */
+export interface ImagesBindingLike {
+  input(stream: ReadableStream): ImageTransformerLike;
+}
+export interface ImageTransformerLike {
+  transform(options: Record<string, unknown>): ImageTransformerLike;
+  output(options: { format: string; quality?: number }): Promise<{ response(): Response }>;
+}
+
+/**
+ * Cloudflare Images qua binding: thu nhỏ cho vừa `maxSide` (không bao giờ phóng to) rồi xuất WebP.
+ * Mỗi ảnh là một lượt chuyển đổi tính vào hạn mức Images của tài khoản; hết hạn mức hay ảnh hỏng thì trả null.
+ */
+export class CloudflareImageOptimizer implements ImageOptimizer {
+  constructor(private readonly images: ImagesBindingLike, private readonly onError?: (err: unknown) => void) {}
+  async toWebp(bytes: Uint8Array, opts: { maxSide: number; quality?: number }): Promise<Uint8Array | null> {
+    try {
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      const result = await this.images
+        .input(new Blob([copy]).stream())
+        .transform({ width: opts.maxSide, height: opts.maxSide, fit: 'scale-down' })
+        .output({ format: 'image/webp', quality: opts.quality ?? WEBP_QUALITY });
+      const out = new Uint8Array(await result.response().arrayBuffer());
+      return out.byteLength > 0 ? out : null;
+    } catch (err) {
+      this.onError?.(err);
+      return null;
+    }
+  }
+}
+
+/** Loại ảnh chuyển được sang WebP. GIF giữ nguyên để không mất chuyển động. */
+const WEBP_SOURCES = new Set(['image/jpeg', 'image/png']);
+
+/** Ảnh công khai JPEG/PNG/WebP: object key dùng đuôi .webp khi máy chủ chuyển được (hoặc tệp đã là WebP). */
+export function webpKeyFor(mimeType: string, serverConverts: boolean): boolean {
+  return mimeType === 'image/webp' || (serverConverts && WEBP_SOURCES.has(mimeType));
+}
+
+/**
+ * Tệp vừa nhận có cần chuyển sang WebP không: chỉ ảnh công khai JPEG/PNG nằm ở key đuôi .webp.
+ * Ảnh đã là WebP (trình duyệt nén sẵn) đi thẳng vào kho, không tốn lượt chuyển đổi.
+ */
+export function webpTarget(objectKey: string, contentType: string): { maxSide: number } | null {
+  if (!objectKey.startsWith('public/') || !objectKey.endsWith('.webp') || !WEBP_SOURCES.has(contentType)) return null;
+  return { maxSide: objectKey.startsWith('public/avatar/') ? AVATAR_MAX_SIDE : IMAGE_MAX_SIDE };
+}
 
 export interface PresignedUpload {
   method: 'PUT';
@@ -16,6 +78,8 @@ export interface MediaProvider {
   readonly kind: 'r2' | 'local';
   /** Tên ngắn để hiện ở /health và Hệ thống · Tổng quan. */
   readonly label: string;
+  /** Máy chủ chuyển được ảnh JPEG/PNG sang WebP lúc nhận tệp (cần tệp đi qua API và có binding Images). */
+  readonly convertsToWebp: boolean;
   /** Tạo URL tải lên trực tiếp từ trình duyệt. */
   presignUpload(objectKey: string, contentType: string, ttlSeconds?: number): Promise<PresignedUpload>;
   /** URL công khai (file public). */
@@ -38,6 +102,8 @@ export interface R2Config {
 export class R2Provider implements MediaProvider {
   readonly kind = 'r2' as const;
   readonly label = 'R2 (S3)';
+  // Trình duyệt tải thẳng lên R2, máy chủ không chạm vào byte của ảnh nên không chuyển được.
+  readonly convertsToWebp = false;
   private readonly client: AwsClient;
   private readonly endpoint: string;
   constructor(private readonly cfg: R2Config) {
@@ -108,6 +174,11 @@ export abstract class ProxiedMediaProvider implements MediaProvider {
   abstract readonly label: string;
   /** Kho lưu do API dùng; null nghĩa là API tự lo (đĩa local). */
   abstract readonly store: ObjectStore | null;
+  /** Bộ chuyển ảnh sang WebP; null thì ảnh lưu đúng như trình duyệt gửi lên. */
+  readonly images: ImageOptimizer | null = null;
+  get convertsToWebp(): boolean {
+    return this.images !== null;
+  }
   constructor(protected readonly apiUrl: string, private readonly signingSecret: string, protected readonly publicBaseUrl = '') {}
   async presignUpload(objectKey: string, contentType: string, ttlSeconds = 900): Promise<PresignedUpload> {
     const expires = Date.now() + ttlSeconds * 1000;
@@ -142,9 +213,11 @@ export class R2BindingProvider extends ProxiedMediaProvider {
   readonly kind = 'r2' as const;
   readonly label = 'R2 (binding)';
   readonly store: ObjectStore;
-  constructor(bucket: R2BucketLike, apiUrl: string, signingSecret: string, publicBaseUrl = '') {
+  override readonly images: ImageOptimizer | null;
+  constructor(bucket: R2BucketLike, apiUrl: string, signingSecret: string, publicBaseUrl = '', images: ImageOptimizer | null = null) {
     super(apiUrl, signingSecret, publicBaseUrl);
     this.store = new R2BucketStore(bucket);
+    this.images = images;
   }
 }
 
@@ -162,16 +235,19 @@ export class LocalMediaProvider extends ProxiedMediaProvider {
  * Tạo provider theo cấu hình. Ưu tiên: đủ 4 biến R2_* → S3 (tải thẳng lên R2, hợp tệp lớn);
  * có binding → R2 qua API (không cần secret); không có gì → đĩa local.
  */
-export function createMediaProvider(opts: { r2: Partial<R2Config>; r2Bucket?: R2BucketLike | null; apiUrl: string; secret: string }): MediaProvider {
+export function createMediaProvider(opts: { r2: Partial<R2Config>; r2Bucket?: R2BucketLike | null; images?: ImageOptimizer | null; apiUrl: string; secret: string }): MediaProvider {
   const r = opts.r2;
   if (r.accountId && r.accessKeyId && r.secretAccessKey && r.bucket) {
     return new R2Provider({ accountId: r.accountId, accessKeyId: r.accessKeyId, secretAccessKey: r.secretAccessKey, bucket: r.bucket, publicBaseUrl: r.publicBaseUrl ?? '' });
   }
-  if (opts.r2Bucket) return new R2BindingProvider(opts.r2Bucket, opts.apiUrl, opts.secret, r.publicBaseUrl ?? '');
+  if (opts.r2Bucket) return new R2BindingProvider(opts.r2Bucket, opts.apiUrl, opts.secret, r.publicBaseUrl ?? '', opts.images ?? null);
   return new LocalMediaProvider(opts.apiUrl, opts.secret);
 }
 
-/** Kiểm tra loại tệp cho phép và giới hạn dung lượng (mục 80). */
+/**
+ * Kiểm tra loại tệp cho phép và giới hạn dung lượng (mục 80). Chỉ nhận ảnh và tài liệu: không nhận tệp video ở bất kỳ
+ * mục nào, video đưa vào bài viết và bài học bằng cách dán link (YouTube, TikTok, Facebook, Loom, Vimeo, Bunny).
+ */
 export const UPLOAD_RULES = {
   image: { mimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], maxBytes: 10 * 1024 * 1024 },
   document: { mimes: ['application/pdf', 'text/plain', 'application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], maxBytes: 100 * 1024 * 1024 },
@@ -181,5 +257,6 @@ export function validateUpload(mime: string, size: number): { ok: true; kind: 'i
   for (const [kind, rule] of Object.entries(UPLOAD_RULES) as Array<['image' | 'document', { mimes: readonly string[]; maxBytes: number }]>) {
     if (rule.mimes.includes(mime)) return size <= rule.maxBytes ? { ok: true, kind } : { ok: false, reason: `Tệp vượt ${Math.round(rule.maxBytes / 1024 / 1024)}MB` };
   }
+  if (mime.startsWith('video/')) return { ok: false, reason: 'Không nhận tệp video. Hãy dán link video (YouTube, TikTok, Facebook…) thay vì tải tệp lên.' };
   return { ok: false, reason: 'Loại tệp không được hỗ trợ' };
 }
