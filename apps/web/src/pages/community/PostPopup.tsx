@@ -1,20 +1,24 @@
-// Bài viết mở trong khung bật lên ngay trên Bảng tin: đọc bài, thích, bình luận rồi bấm X (hoặc Esc, hoặc bấm ra ngoài)
-// là về lại đúng chỗ đang đọc, không phải chuyển sang trang khác rồi quay lại. Trang riêng /bai-viet/:id vẫn còn cho
+// Bài viết mở trong khung bật lên ngay trên Bảng tin, bố cục như Facebook: đầu khung và ô viết bình luận ở đáy đứng yên,
+// bài viết và các bình luận cuộn ở giữa. Bấm X (hoặc Esc, hoặc bấm ra ngoài) là về lại đúng chỗ đang đọc. Trang riêng /bai-viet/:id vẫn còn cho
 // link chia sẻ, thông báo và email.
 import { useQuery } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
 import { Maximize2, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { PostBody, type PostDetail } from './PostDetail';
 
 export default function PostPopup({ postId, slug, onClose }: { postId: string; slug: string; onClose: () => void }) {
   const q = useQuery({ queryKey: ['post', postId], queryFn: () => api.get<PostDetail>(`/v1/posts/${postId}`) });
-  const comments = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
   const closeBtn = useRef<HTMLButtonElement>(null);
+  // Phần đáy đứng yên của khung: ô viết bình luận của CommentThread được đặt vào đây (state chứ không ref, để khi phần
+  // đáy gắn vào trang thì CommentThread vẽ lại và thấy nó).
+  const [foot, setFoot] = useState<HTMLDivElement | null>(null);
 
   // onClose đổi theo từng lần Bảng tin vẽ lại; giữ bản mới nhất trong ref để hiệu ứng dưới đây chỉ chạy một lần khi mở,
   // nếu không mỗi lần vẽ lại sẽ giật tiêu điểm khỏi ô bình luận đang gõ.
@@ -43,12 +47,13 @@ export default function PostPopup({ postId, slug, onClose }: { postId: string; s
           <QueryState q={q} rows={2}>
             {(post) => (
               <>
-                <PostBody post={post} slug={slug} bare onDeleted={onClose} onCommentsClick={() => comments.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
-                <div ref={comments}><CommentThread targetType="post" targetId={post.id} /></div>
+                <PostBody post={post} slug={slug} bare onDeleted={onClose} onCommentsClick={() => foot?.querySelector('textarea')?.focus()} />
+                <CommentThread targetType="post" targetId={post.id} variant="plain" composerSlot={foot} placeholder={user ? `Bình luận dưới tên ${user.name}` : 'Viết bình luận…'} />
               </>
             )}
           </QueryState>
         </div>
+        <div ref={setFoot} className="post-popup-foot" />
       </div>
     </div>
   );

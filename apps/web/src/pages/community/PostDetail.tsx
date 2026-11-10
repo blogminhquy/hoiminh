@@ -1,13 +1,14 @@
 // Chi tiết bài viết: nội dung Markdown, ảnh, bình chọn, thích, bình luận; rail tác giả / mục lục / bài liên quan.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar, Button, CATEGORY_COLORS, HEX, T, Tag } from '@hoiminh/ui';
-import { Archive, ChevronLeft, ExternalLink, Heart, MessageCircle, MoreHorizontal, Pin } from 'lucide-react';
+import { Button, CATEGORY_COLORS, T, Tag } from '@hoiminh/ui';
+import { ChevronLeft, ExternalLink, MessageCircle, MoreHorizontal, Pin, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
 import { PhotoGrid, type GridImage } from '@/components/post/PhotoGrid';
 import { PollBox, type Poll } from '@/components/post/PollBox';
-import { StatusBox, useToggleLike } from '@/components/post/PostCard';
+import { StatusBox } from '@/components/post/PostCard';
+import { ReactionButton, ReactionSummary } from '@/components/post/Reactions';
 import { QueryState } from '@/components/QueryState';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
 import { api } from '@/lib/api';
@@ -19,22 +20,8 @@ import { AuthorCard, EditPostModal, Related, Toc, type PostAuthor } from './Post
 export interface PostDetail {
   id: string; title: string; contentMd: string; statusBgKey: string | null; pinned: boolean; likeCount: number; commentCount: number; createdAt: string; editedAt: string | null; videoUrl: string | null; linkUrl: string | null;
   author: PostAuthor; space: { id: string; name: string; colorKey: string }; community: { id: string; name: string; slug: string };
-  images: GridImage[]; liked: boolean; poll: Poll | null; likers: UserLite[]; related: Array<{ id: string; title: string; likeCount: number; commentCount: number; author: string }>; headings: string[];
+  images: GridImage[]; liked: boolean; myReaction?: string | null; reactionCounts?: Record<string, number>; poll: Poll | null; likers: UserLite[]; related: Array<{ id: string; title: string; likeCount: number; commentCount: number; author: string }>; headings: string[];
   access: { canModerate: boolean; isAuthor: boolean };
-}
-
-function Likers({ likers, total }: { likers: UserLite[]; total: number }) {
-  if (!total) return null;
-  const names = likers.slice(0, 2).map((l) => l.name);
-  const rest = total - names.length;
-  return (
-    <>
-      <div className="flex">
-        {likers.slice(0, 3).map((l, k) => <span key={l.handle} className="inline-flex rounded-full" style={{ marginLeft: k ? -8 : 0, border: `2px solid ${T.surface}` }}><Avatar name={l.name} src={l.avatarUrl} color={l.coverColor} size={26} /></span>)}
-      </div>
-      <span className="muted text-[12px]">{names.join(', ')}{rest > 0 ? ` và ${rest} người khác` : ''}</span>
-    </>
-  );
 }
 
 /**
@@ -44,11 +31,9 @@ function Likers({ likers, total }: { likers: UserLite[]; total: number }) {
 export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { post: PostDetail; slug: string; bare?: boolean; onDeleted?: () => void; onCommentsClick?: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const like = useToggleLike('post');
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
   const cat = CATEGORY_COLORS[post.space.colorKey] ?? CATEGORY_COLORS.neutral!;
   const isStatus = Boolean(post.statusBgKey) && !post.title && post.images.length === 0;
   const canEdit = post.access.isAuthor || post.access.canModerate;
@@ -60,7 +45,7 @@ export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { pos
   const when = timeAgo(post.createdAt);
   const showImagesBelow = post.images.length > 0 && !/!\[/.test(post.contentMd);
   return (
-    <div className={bare ? 'flex flex-col gap-[18px]' : 'card px-6 md:px-8 py-7 flex flex-col gap-[18px]'}>
+    <div className={bare ? 'flex flex-col gap-3' : 'card px-6 md:px-8 py-7 flex flex-col gap-[18px]'}>
       <div className="flex items-center gap-3 flex-wrap">
         <UserAvatar user={post.author} size={44} />
         {/* flex-1 + minWidth: trên màn hẹp tên tác giả vẫn đứng cạnh avatar, các nút mới là thứ rớt xuống dòng. */}
@@ -71,9 +56,8 @@ export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { pos
             <span className="tag" style={{ background: cat.bg, color: cat.fg }}>{post.space.name}</span>
             {post.pinned && <span className="inline-flex items-center gap-1 font-semibold text-[12px]" style={{ color: T.goldText }}><Pin size={12} /> Đã ghim</span>}
           </div>
-          <div className="muted text-[13px]">{when}{when !== 'vừa xong' && !when.includes('phút') && !when.includes('giờ') ? `, ${fmtTime(post.createdAt)}` : ''} · {post.community.name}{post.editedAt ? ' · đã chỉnh sửa' : ''}</div>
+          <div className="muted text-[13px]">{when}{when !== 'vừa xong' && !when.includes('phút') && !when.includes('giờ') ? `, ${fmtTime(post.createdAt)}` : ''}{bare ? '' : ` · ${post.community.name}`}{post.editedAt ? ' · đã chỉnh sửa' : ''}</div>
         </div>
-        <Button size="sm" icon={<ExternalLink size={14} />} onClick={() => void share()}>{copied ? 'Đã sao chép' : 'Chia sẻ'}</Button>
         {post.access.canModerate && <Button size="sm" icon={<Pin size={14} />} loading={pin.isPending} onClick={() => pin.mutate()} aria-label={post.pinned ? 'Bỏ ghim' : 'Ghim'} style={post.pinned ? { color: T.goldText, background: T.goldSoft, borderColor: T.goldSoft } : undefined} />}
         {canEdit && (
           <div className="relative">
@@ -91,21 +75,26 @@ export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { pos
         <StatusBox text={post.contentMd} bgKey={post.statusBgKey} height={320} fontSize={32} />
       ) : (
         <>
-          {post.title && <h1 className="serif m-0 text-[30px] leading-[1.25] font-extrabold">{post.title}</h1>}
+          {post.title && <h1 className={`serif m-0 leading-[1.25] font-extrabold ${bare ? 'text-[22px]' : 'text-[30px]'}`}>{post.title}</h1>}
           <Markdown md={post.contentMd} />
           {showImagesBelow && <PhotoGrid images={post.images} />}
           {post.linkUrl && <a href={post.linkUrl} target="_blank" rel="noreferrer" className="chip self-start"><ExternalLink size={14} /> {post.linkUrl}</a>}
         </>
       )}
       {post.poll && <PollBox poll={post.poll} />}
-      <div className="flex items-center gap-2 pt-4 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
-        <Button size="sm" icon={<Heart size={14} fill={post.liked ? HEX.accent : 'none'} />} onClick={() => like.mutate(post.id)} style={post.liked ? { color: T.accentText, background: T.accentSoft, borderColor: T.accentSoft } : undefined} aria-pressed={post.liked}>Thích · {post.likeCount}</Button>
+      {(post.likeCount > 0 || post.commentCount > 0) && (
+        <div className="flex items-center gap-3 text-[14px]" style={{ color: T.ink2 }}>
+          <ReactionSummary counts={post.reactionCounts} total={post.likeCount} />
+          <span className="flex-grow" />
+          {post.commentCount > 0 && <span>{post.commentCount} bình luận</span>}
+        </div>
+      )}
+      <div className="post-actions">
+        <ReactionButton targetType="post" targetId={post.id} mine={post.myReaction ?? (post.liked ? 'like' : null)} />
         {onCommentsClick
-          ? <button type="button" className="btn btn-ghost btn-sm" onClick={onCommentsClick}><MessageCircle size={14} /> {post.commentCount} bình luận</button>
-          : <a href="#binh-luan" className="btn btn-ghost btn-sm"><MessageCircle size={14} /> {post.commentCount} bình luận</a>}
-        <Button size="sm" icon={<Archive size={14} />} onClick={() => setSaved((v) => !v)} aria-pressed={saved}>{saved ? 'Đã lưu' : 'Lưu'}</Button>
-        <span className="flex-grow" />
-        <Likers likers={post.likers} total={post.likeCount} />
+          ? <button type="button" className="post-action" onClick={onCommentsClick}><MessageCircle size={18} /> Bình luận</button>
+          : <a href="#binh-luan" className="post-action" style={{ color: T.ink2 }}><MessageCircle size={18} /> Bình luận</a>}
+        <button type="button" className="post-action" onClick={() => void share()}><Share2 size={18} /> {copied ? 'Đã chép link' : 'Chia sẻ'}</button>
       </div>
       {editing && <EditPostModal open onClose={() => setEditing(false)} post={post} />}
     </div>

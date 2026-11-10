@@ -140,16 +140,38 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(8,24,23,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; z-index: 40; overflow-y: auto; }
 .modal { box-shadow: 0 24px 60px rgba(8,24,23,0.28); width: 100%; }
-/* Khung bật lên của bài viết trên Bảng tin: đầu khung (tên tác giả và nút X) đứng yên, chỉ phần nội dung cuộn. */
+/* Khung bật lên của bài viết trên Bảng tin, bố cục như Facebook: đầu khung (tên tác giả, nút X) và ô bình luận ở đáy
+   đứng yên, phần giữa (bài viết rồi tới bình luận) cuộn. */
 .post-popup-backdrop { align-items: center; padding: 24px 16px; overflow: hidden; }
-.post-popup { display: flex; flex-direction: column; max-width: 760px; max-height: calc(100dvh - 48px); overflow: hidden; }
-.post-popup-body { overflow-y: auto; overscroll-behavior: contain; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 20px; }
+.post-popup { display: flex; flex-direction: column; max-width: 700px; max-height: calc(100dvh - 48px); overflow: hidden; }
+.post-popup-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.post-popup-foot { flex-shrink: 0; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface); }
 @media (max-width: 767px) {
-  /* Điện thoại: khung phủ kín màn hình như một trang, nút X luôn ở góc trên. */
+  /* Điện thoại: khung phủ kín màn hình như một trang, nút X luôn ở góc trên, ô bình luận luôn ở đáy. */
   .post-popup-backdrop { padding: 0; }
   .post-popup { max-width: none; max-height: none; height: 100dvh; border-radius: 0 !important; border: 0 !important; }
-  .post-popup-body { padding: 16px 16px 24px; }
+  .post-popup-body { padding: 14px 16px; }
+  .post-popup-foot { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
 }
+/* Hàng Thích, Bình luận, Chia sẻ dưới bài viết: các nút chia đều, không viền, có nền khi rê chuột. */
+.post-actions { display: flex; gap: 4px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.post-actions > * { flex: 1 1 0; display: flex; }
+.post-action { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: 8px; font-size: 15px; font-weight: 600; color: var(--ink2); background: transparent; white-space: nowrap; cursor: pointer; }
+.post-action:hover { background: var(--bg); }
+/* Thanh sáu cảm xúc bật lên phía trên nút Thích. */
+.reaction-picker { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 30; display: inline-flex; gap: 2px; padding: 5px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(8,24,23,0.18); animation: reaction-pop .12s ease-out; }
+.reaction-picker button { width: 40px; height: 40px; font-size: 26px; line-height: 1; border-radius: 999px; background: transparent; cursor: pointer; transition: transform .12s ease; }
+.reaction-picker button:hover, .reaction-picker button:focus-visible { transform: scale(1.3) translateY(-3px); }
+.reaction-picker button[aria-pressed="true"] { background: var(--bg); }
+@keyframes reaction-pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
+/* Ô viết bình luận gọn: một dòng bo tròn, tự cao lên khi gõ nhiều, nút gửi nằm trong ô. */
+.comment-box { display: flex; align-items: flex-end; gap: 6px; flex: 1 1 auto; min-width: 0; padding: 4px 6px 4px 14px; border-radius: 20px; background: var(--bg); border: 1px solid transparent; }
+.comment-box:focus-within { border-color: var(--line2); background: var(--surface); }
+.comment-box textarea { flex: 1 1 auto; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 15px; line-height: 1.45; padding: 6px 0; max-height: 132px; }
+.comment-box textarea::placeholder { color: var(--ink3); }
+.comment-send { width: 34px; height: 34px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--primary); cursor: pointer; }
+.comment-send:disabled { color: var(--ink3); cursor: default; opacity: 0.6; }
+.comment-send:not(:disabled):hover { background: var(--primary-soft); }
 /*
  * Cỡ chữ ở mọi bề rộng: không chữ nào dưới 14px. Giao diện viết cỡ chữ bằng lớp Tailwind cố định
  * (text-[12px], text-[13px]...) ở khoảng 600 chỗ; nâng ở đây một lần thay vì sửa từng chỗ. `html` đứng trước
