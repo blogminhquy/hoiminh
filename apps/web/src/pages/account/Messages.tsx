@@ -1,87 +1,103 @@
-// Tin nhắn (messagesMain): danh sách hội thoại 340px (tìm, lọc), luồng tin nhắn polling 15 giây, ô nhập + ảnh, panel thành viên 280px.
+// Tin nhắn (kiểu Zalo): ba cột liền nhau lấp đầy màn hình. Trái là danh sách hội thoại (tìm, lọc, ghim), giữa là khung chat,
+// phải là "Thông tin hội thoại". Điện thoại: vào thấy danh sách trước, chạm một hội thoại mới mở khung chat (có nút quay lại).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Chip, T } from '@hoiminh/ui';
-import { Image as ImageIcon, Search, Send, User } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { LoadingBlock, QueryState } from '@/components/QueryState';
-import { Avatar } from '@hoiminh/ui';
-import { api, errorMessage } from '@/lib/api';
+import { MessageCircle, Search } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { QueryState } from '@/components/QueryState';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { usePollInterval } from '@/lib/realtime';
-import { Bubble, ConvoRow, DayDivider, MemberPanel, type Conversation, type Message, type Panel, type Person } from './MessagesParts';
+import { ConvoRow, type Conversation } from './MessagesParts';
+import { ThreadView } from './MessagesThread';
 
 interface ConvoList { items: Conversation[]; unreadConversations: number }
-interface Thread { items: Message[]; other: Person | null; community: { id: string; name: string; slug: string } | null; panel: Panel | null }
 type Filter = 'all' | 'unread' | 'automated';
 
-function ThreadView({ id, meId, onArchived }: { id: string; meId: string; onArchived: () => void }) {
-  const qc = useQueryClient();
-  const [text, setText] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-  const bottom = useRef<HTMLDivElement>(null);
-  const refetchInterval = usePollInterval(15_000);
-  const q = useQuery({ queryKey: ['thread', id], queryFn: () => api.get<Thread>(`/v1/me/conversations/${id}/messages`), refetchInterval });
-  const send = useMutation({
-    mutationFn: (p: { body: string; imageFileId?: string }) => api.post(`/v1/me/messages`, { conversationId: id, body: p.body, imageFileId: p.imageFileId }),
-    onSuccess: () => { setText(''); void qc.invalidateQueries({ queryKey: ['thread', id] }); void qc.invalidateQueries({ queryKey: ['conversations'] }); void qc.invalidateQueries({ queryKey: ['badges'] }); },
-  });
-  const archive = useMutation({ mutationFn: () => api.post(`/v1/me/conversations/${id}/archive`, {}), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['conversations'] }); onArchived(); } });
-  useEffect(() => { bottom.current?.scrollIntoView({ block: 'end' }); }, [q.data?.items.length]);
-  const pickImage = async (file: File) => { const r = await api.upload(file, 'message_image'); send.mutate({ body: text.trim(), imageFileId: r.fileId }); };
-  if (q.isLoading) return <div className="card flex-grow p-6"><LoadingBlock /></div>;
-  if (q.isError || !q.data?.other) return <div className="card flex-grow p-6 muted text-[13px]">{errorMessage(q.error)}</div>;
-  const d = q.data;
-  const other = d.other!;
-  return (
-    <>
-      <div className="card flex-grow flex flex-col overflow-hidden min-w-0" style={{ minHeight: 520 }}>
-        <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: `1px solid ${T.line}` }}>
-          <Avatar name={other.name} src={other.avatarUrl} color={other.coverColor ?? T.ink} size={40} />
-          <div className="flex-grow min-w-0"><div className="font-semibold truncate">{other.name}</div><div className="muted text-[12px] flex items-center gap-1.5 flex-wrap">{d.panel?.tier && <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 18, padding: '0 6px' }}>{d.panel.tier.name}</span>}{d.community?.name}</div></div>
-          <Link to={`/u/${other.handle}`} className="btn btn-ghost btn-sm"><User size={14} />Hồ sơ</Link>
-        </div>
-        <div className="flex-grow px-4 py-5 md:px-6 flex flex-col gap-3.5 overflow-y-auto" style={{ maxHeight: 560 }}>
-          {d.items.map((m, i) => { const prev = d.items[i - 1]; const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString(); return <div key={m.id} className="flex flex-col gap-3.5">{newDay && <DayDivider date={m.createdAt} />}<Bubble m={m} mine={m.senderUserId === meId} /></div>; })}
-          <div ref={bottom} />
-        </div>
-        {send.isError && <div className="px-4 text-[13px]" style={{ color: T.accentText }}>{errorMessage(send.error)}</div>}
-        <div className="px-4 py-3 flex items-center gap-2" style={{ borderTop: `1px solid ${T.line}` }}>
-          <button type="button" aria-label="Gửi ảnh" className="w-9 h-9 inline-flex items-center justify-center" style={{ color: T.ink2 }} onClick={() => fileRef.current?.click()}><ImageIcon size={20} /></button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void pickImage(f); e.target.value = ''; }} />
-          <div className="input flex-grow" style={{ height: 44, borderRadius: 12 }}><input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Nhắn cho ${other.name.split(' ').pop()}…`} className="flex-grow min-w-0" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && text.trim()) { e.preventDefault(); send.mutate({ body: text.trim() }); } }} /></div>
-          <button type="button" aria-label="Gửi" className="btn btn-primary" style={{ width: 44, height: 44, padding: 0, borderRadius: 12 }} disabled={!text.trim() || send.isPending} onClick={() => send.mutate({ body: text.trim() })}><Send size={18} /></button>
-        </div>
-      </div>
-      <div className="hide-mobile"><MemberPanel other={other} panel={d.panel} community={d.community} onArchive={() => archive.mutate()} /></div>
-    </>
-  );
+const MOBILE = '(max-width: 767px)';
+/** Từ bề rộng này bảng thông tin đứng thành cột thứ ba; hẹp hơn thì nó trượt đè lên khung chat, nên mặc định đóng. */
+const WIDE = '(min-width: 1280px)';
+
+function useMedia(query: string): boolean {
+  return useSyncExternalStore((l) => { const m = window.matchMedia(query); m.addEventListener('change', l); return () => m.removeEventListener('change', l); }, () => window.matchMedia(query).matches, () => false);
+}
+
+/**
+ * Cho khung chat lấp đầy đúng phần màn hình còn lại dưới header, ở mọi khung trang (hội, khu học tập, chưa có hội):
+ * đo lề của vùng nội dung để tràn ra sát mép, đo vị trí đỉnh và thanh tab dưới (điện thoại) để tính chiều cao.
+ * Chiều cao tính bằng CSS (100dvh trừ các số đo này) nên thanh địa chỉ điện thoại co giãn không cần đo lại.
+ */
+function useFillViewport(ref: RefObject<HTMLElement>, dep: unknown): void {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+    const measure = () => {
+      const cs = getComputedStyle(parent);
+      const tabs = document.querySelector<HTMLElement>('.mobile-tabs');
+      const set = (k: string, v: string) => { if (el.style.getPropertyValue(k) !== v) el.style.setProperty(k, v); };
+      set('--chat-pt', cs.paddingTop); set('--chat-pr', cs.paddingRight); set('--chat-pb', cs.paddingBottom); set('--chat-pl', cs.paddingLeft);
+      set('--chat-top', `${Math.round(parent.getBoundingClientRect().top + window.scrollY)}px`);
+      set('--chat-bottom', `${tabs && getComputedStyle(tabs).display !== 'none' ? tabs.offsetHeight : 0}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, [ref, dep]);
 }
 
 export default function Page() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [info, setInfo] = useState(() => window.matchMedia(WIDE).matches);
+  const mobile = useMedia(MOBILE);
+  const wide = useMedia(WIDE);
+  // Thu hẹp cửa sổ xuống dưới 1280px thì bảng thông tin sẽ đè lên khung chat: tự đóng lại, cần thì bấm mở.
+  useEffect(() => { if (!wide) setInfo(false); }, [wide]);
+  const frame = useRef<HTMLDivElement>(null);
   const refetchInterval = usePollInterval(15_000);
   const q = useQuery({ queryKey: ['conversations', filter, search], queryFn: () => api.get<ConvoList>(`/v1/me/conversations?filter=${filter}${search ? `&q=${encodeURIComponent(search)}` : ''}`), refetchInterval });
-  const selected = sp.get('c') ?? q.data?.items[0]?.id ?? null;
-  const select = (id: string | null) => setSp(id ? { c: id } : {});
+  const open = sp.get('c');
+  // Máy tính mở sẵn hội thoại đầu tiên. Điện thoại thì không: mở sẵn sẽ che mất danh sách và tự đánh dấu "đã đọc" tin chưa xem.
+  // Giữ nguyên hội thoại đã mở sẵn: có tin mới hay ghim làm đổi thứ tự danh sách thì khung chat không tự nhảy sang người khác.
+  const [auto, setAuto] = useState<string | null>(null);
+  const firstId = q.data?.items[0]?.id ?? null;
+  useEffect(() => { if (!auto && firstId) setAuto(firstId); }, [auto, firstId]);
+  const selected = open ?? (mobile ? null : auto ?? firstId);
+  const select = (id: string | null) => setSp(id ? { c: id } : {}, { replace: !id });
+  /** Hội thoại vừa lưu trữ biến khỏi danh sách: về danh sách (điện thoại) hoặc mở hội thoại kế tiếp (máy tính). */
+  const leave = (id: string) => { setAuto(q.data?.items.find((c) => c.id !== id)?.id ?? null); if (id === open) select(null); };
+  useFillViewport(frame, open);
+  const reload = () => void qc.invalidateQueries({ queryKey: ['conversations'] });
+  const pin = useMutation({ mutationFn: (c: Conversation) => api.post(`/v1/me/conversations/${c.id}/pin`, { pinned: !c.pinned }), onSuccess: (_r, c) => { reload(); void qc.invalidateQueries({ queryKey: ['thread', c.id] }); } });
+  const archive = useMutation({ mutationFn: (c: Conversation) => api.post(`/v1/me/conversations/${c.id}/archive`, {}), onSuccess: (_r, c) => { reload(); if (c.id === selected) leave(c.id); } });
+  const tab = (key: Filter, label: string) => <button type="button" role="tab" aria-selected={filter === key} className={`chat-tab${filter === key ? ' on' : ''}`} onClick={() => setFilter(key)}>{label}</button>;
   return (
-    <div className="flex gap-5 flex-col lg:flex-row">
-      <div className={`card w-full lg:w-[340px] flex flex-col overflow-hidden flex-shrink-0 ${selected ? 'hide-mobile' : ''}`}>
-        <div className="flex flex-col gap-3" style={{ padding: '16px 16px 12px' }}>
+    <div ref={frame} className={`chat-page${open ? ' open' : ''}`}>
+      <section className="chat-list" aria-label="Danh sách hội thoại">
+        <div className="flex flex-col gap-3 px-4 pt-4">
           <h1 className="serif m-0 text-[22px] font-extrabold">Tin nhắn</h1>
-          <div className="input" style={{ height: 38 }}><Search size={16} style={{ color: T.ink3 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm người…" className="flex-grow min-w-0" /></div>
-          <div className="flex gap-1.5"><Chip on={filter === 'all'} onClick={() => setFilter('all')} style={{ height: 28, fontSize: 12 }}>Tất cả</Chip><Chip on={filter === 'unread'} onClick={() => setFilter('unread')} style={{ height: 28, fontSize: 12 }}>Chưa đọc{q.data?.unreadConversations ? ` · ${q.data.unreadConversations}` : ''}</Chip><Chip on={filter === 'automated'} onClick={() => setFilter('automated')} style={{ height: 28, fontSize: 12 }}>Tự động</Chip></div>
+          <label className="input" style={{ height: 40, background: 'var(--bg)', borderColor: 'transparent' }}><Search size={18} style={{ color: 'var(--ink3)' }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm kiếm" aria-label="Tìm hội thoại theo tên" className="flex-grow min-w-0" /></label>
         </div>
-        <div className="flex flex-col gap-0.5 px-2 pb-2 overflow-y-auto" style={{ maxHeight: 640 }}>
-          <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có tin nhắn', hint: 'Nhắn cho thành viên từ trang hồ sơ hoặc danh sách thành viên' }}>
-            {(d) => <>{d.items.map((c) => <ConvoRow key={c.id} c={c} on={c.id === selected} onClick={() => select(c.id)} />)}</>}
+        <div className="chat-tabs" role="tablist" aria-label="Lọc hội thoại">
+          {tab('all', 'Tất cả')}
+          {tab('unread', `Chưa đọc${q.data?.unreadConversations ? ` (${q.data.unreadConversations})` : ''}`)}
+          {tab('automated', 'Tự động')}
+        </div>
+        <div className="chat-convos">
+          <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={filter === 'all' && !search ? { title: 'Chưa có tin nhắn', hint: 'Nhắn cho thành viên từ trang hồ sơ hoặc danh sách thành viên' } : { title: 'Không có hội thoại nào khớp', hint: 'Thử bỏ bộ lọc hoặc đổi từ khóa tìm kiếm' }}>
+            {(d) => <>{d.items.map((c) => <ConvoRow key={c.id} c={c} on={c.id === selected} onClick={() => select(c.id)} onPin={() => pin.mutate(c)} onArchive={() => archive.mutate(c)} />)}</>}
           </QueryState>
         </div>
-      </div>
-      {selected && user ? <ThreadView key={selected} id={selected} meId={user.id} onArchived={() => select(null)} /> : <div className="card flex-grow p-8 text-center muted text-[13px] hide-mobile">Chọn một hội thoại để xem</div>}
+      </section>
+      {selected && user
+        ? <ThreadView key={selected} id={selected} meId={user.id} info={info} onInfo={setInfo} onBack={() => select(null)} onArchived={() => { reload(); leave(selected); }} />
+        : <section className="chat-main"><div className="chat-empty"><MessageCircle size={40} strokeWidth={1.5} /><span>Chọn một hội thoại để bắt đầu nhắn tin</span></div></section>}
     </div>
   );
 }

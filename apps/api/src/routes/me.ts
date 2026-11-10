@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
-import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, shell, subscriptions, totp, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
+import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
+import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -106,7 +106,7 @@ meRoutes.post('/notifications/read', async (c) => {
 meRoutes.get('/notifications/prefs', async (c) => c.json(await notifications.getPrefs(c.get('ctx'))));
 meRoutes.put('/notifications/prefs', async (c) => c.json(await notifications.updatePrefs(c.get('ctx'), await parse(notificationPrefsSchema, await body(c)))));
 
-// Tin nhắn (polling 15 giây)
+// Tin nhắn (kênh thời gian thực, không có thì web hỏi lại mỗi 15 giây)
 meRoutes.get('/conversations', async (c) => {
   const q = query(c);
   return c.json(await messaging.listConversations(c.get('ctx'), { filter: q.filter as 'all', q: q.q }));
@@ -124,8 +124,23 @@ meRoutes.post('/messages', async (c) => {
   const ctx = c.get('ctx');
   let imageUrl: string | null = null;
   if (input.imageFileId) imageUrl = (await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null;
-  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, imageUrl });
+  if (!input.body && !imageUrl) throw notFound('Không tìm thấy ảnh đã tải lên');
+  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, imageUrl, replyToId: input.replyToId ?? null });
   return c.json(msg, 201);
+});
+meRoutes.post('/messages/:id/reaction', async (c) => {
+  const { emoji } = await parse(reactMessageSchema, await body(c));
+  await messaging.reactToMessage(c.get('ctx'), c.req.param('id'), emoji);
+  return c.json({ ok: true });
+});
+meRoutes.post('/messages/:id/recall', async (c) => {
+  await messaging.recallMessage(c.get('ctx'), c.req.param('id'));
+  return c.json({ ok: true });
+});
+meRoutes.post('/conversations/:id/pin', async (c) => {
+  const { pinned } = await parse(pinConversationSchema, await body(c));
+  await messaging.pinConversation(c.get('ctx'), c.req.param('id'), pinned);
+  return c.json({ ok: true });
 });
 
 meRoutes.get('/id', (c) => c.json({ userId: requireUser(c.get('ctx')) }));

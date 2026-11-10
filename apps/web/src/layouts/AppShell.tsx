@@ -221,6 +221,11 @@ export function mobileSection(pathname: string, slug: string): 'today' | 'learn'
   return null;
 }
 
+/** Đang mở một hội thoại trên trang Tin nhắn: điện thoại ẩn thanh tab dưới để khung chat chiếm trọn màn hình. */
+export function inOpenChat(pathname: string, search: string): boolean {
+  return pathname.replace(/\/+$/, '') === '/tin-nhan' && new URLSearchParams(search).has('c');
+}
+
 function MobileTabs({ shell }: { shell: Shell }) {
   const { pathname } = useLocation();
   const slug = shell.community.slug;
@@ -287,7 +292,8 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
           </div>
         </div>
         {/* Trang bài học có nút hoàn thành ghim ở đáy (.lesson-bar), nên ẩn thanh tab để hai thanh không chồng nhau. */}
-        {!/\/bai\/[^/]+$/.test(location.pathname) && <MobileTabs shell={data} />}
+        {/* Đang mở một hội thoại (/tin-nhan?c=...) cũng ẩn, như Zalo: nhường chỗ cho ô nhập tin nhắn. */}
+        {!/\/bai\/[^/]+$/.test(location.pathname) && !inOpenChat(location.pathname, location.search) && <MobileTabs shell={data} />}
         {drawer && <MobileDrawer shell={data} onInvite={() => setInvite(true)} onClose={() => setDrawer(false)} />}
         {canManage(data) && <OwnerCommandPalette shell={data} open={command} onClose={() => setCommand(false)} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
