@@ -1,7 +1,8 @@
 // Form soạn một bài học (phải) và modal nhập nhanh nhiều link YouTube cho màn Soạn nội dung khóa học.
+// Tên, mô tả và thời lượng của video YouTube được lấy về qua /v1/video/meta.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Chip, ErrorBox, Field, Input, Modal, Select, T, Tag, Textarea } from '@hoiminh/ui';
-import { Check, CheckSquare, ExternalLink, FileText, Link as LinkIcon, Paperclip, Play, Plus, Video, X } from 'lucide-react';
+import { Check, CheckSquare, Download, ExternalLink, FileText, Link as LinkIcon, Paperclip, Play, Plus, Video, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdEditor, ToggleRow } from '@/components/EditorBits';
 import { LoadingBlock } from '@/components/QueryState';
@@ -11,6 +12,12 @@ export type LessonKind = 'video' | 'text' | 'task' | 'file';
 export const KIND_ICON: Record<LessonKind, ReactNode> = { video: <Video size={14} />, text: <FileText size={14} />, task: <CheckSquare size={14} />, file: <Paperclip size={14} /> };
 const KINDS: Array<[LessonKind, string]> = [['video', 'Video'], ['text', 'Bài viết'], ['task', 'Bài tập'], ['file', 'Tài liệu']];
 const PROVIDER_LABEL: Record<string, string> = { youtube: 'YouTube', tiktok: 'TikTok', facebook: 'Facebook', loom: 'Loom', vimeo: 'Vimeo', bunny: 'Bunny' };
+
+interface VideoMetaRes { embed: { provider: string; externalId: string } | null; meta: { title: string; description: string; durationSeconds: number | null } | null }
+/** Nhận diện link và lấy tên, mô tả, thời lượng từ YouTube. `meta` null khi không phải YouTube hoặc YouTube không trả lời. */
+export const fetchVideoMeta = (url: string) => api.post<VideoMetaRes>('/v1/video/meta', { url });
+/** Tên tạm của bài nhập từ link khi chưa lấy được tên thật, ví dụ "Bài 3 · YouTube dQw4w9WgXcQ". */
+export const PLACEHOLDER_TITLE = /^Bài \d+ · YouTube [A-Za-z0-9_-]{6,}$/;
 
 interface LessonDto { lesson: { id: string; title: string; kind: LessonKind; videoUrl: string | null; contentMd: string; isPreview: boolean; dripDays: number; requireComplete: boolean; durationSeconds: number | null }; embed: { provider: string; embedUrl: string } | null; resources: Array<{ id: string; fileId: string | null; name: string }> }
 interface Draft { title: string; kind: LessonKind; videoUrl: string; contentMd: string; isPreview: boolean; dripDays: number; requireComplete: boolean; durationMinutes: string; resources: Array<{ key: string; fileId: string | null; name: string }> }
@@ -30,6 +37,8 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
   const [resourcesTouched, setResourcesTouched] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Ô nhập chỉ có phút; giữ số giây chính xác (lấy từ YouTube) để lưu lại không bị làm tròn thành phút chẵn.
+  const exactSeconds = useRef<number | null>(l.durationSeconds);
   const patch = (p: Partial<Draft>) => setD((prev) => ({ ...prev, ...p }));
 
   useEffect(() => {
@@ -42,11 +51,23 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
 
   const save = useMutation({
     mutationFn: () => {
-      const body: Record<string, unknown> = { title: d.title.trim(), kind: d.kind, videoUrl: d.videoUrl.trim() || null, contentMd: d.contentMd, isPreview: d.isPreview, dripDays: d.dripDays, requireComplete: d.requireComplete, durationSeconds: d.durationMinutes ? Number(d.durationMinutes) * 60 : null };
+      const minutes = d.durationMinutes ? Number(d.durationMinutes) : null;
+      const durationSeconds = minutes === null ? null : exactSeconds.current !== null && Math.round(exactSeconds.current / 60) === minutes ? exactSeconds.current : minutes * 60;
+      const body: Record<string, unknown> = { title: d.title.trim(), kind: d.kind, videoUrl: d.videoUrl.trim() || null, contentMd: d.contentMd, isPreview: d.isPreview, dripDays: d.dripDays, requireComplete: d.requireComplete, durationSeconds };
       if (resourcesTouched) body.resourceFileIds = d.resources.map((r) => r.fileId).filter((x): x is string => Boolean(x));
       return api.patch(`/v1/courses/${courseId}/lessons/${l.id}`, body);
     },
     onSuccess: () => { setResourcesTouched(false); void qc.invalidateQueries({ queryKey: ['lesson', l.id] }); void qc.invalidateQueries({ queryKey: ['course', courseId] }); },
+  });
+  // Điền tên, mô tả, thời lượng từ YouTube vào bản nháp; nội dung đã viết thì giữ nguyên. Người soạn bấm Lưu bài để giữ.
+  const fill = useMutation({
+    mutationFn: () => fetchVideoMeta(d.videoUrl.trim()),
+    onSuccess: ({ meta }) => {
+      if (!meta) return;
+      const seconds = d.durationMinutes ? null : meta.durationSeconds;
+      if (seconds) exactSeconds.current = seconds;
+      patch({ title: meta.title, contentMd: d.contentMd.trim() ? d.contentMd : meta.description, durationMinutes: seconds ? String(Math.round(seconds / 60)) : d.durationMinutes });
+    },
   });
   const addFiles = async (files: FileList) => {
     setUploading(true);
@@ -80,6 +101,15 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
               <div className="flex-grow flex flex-col gap-2 min-w-0">
                 <Input left={<LinkIcon size={16} style={{ color: T.ink3 }} />} value={d.videoUrl} onChange={(e) => patch({ videoUrl: e.target.value })} placeholder="youtube.com/watch?v=…" right={d.videoUrl.trim() ? (embed ? <Tag tone="teal"><Check size={11} />{PROVIDER_LABEL[embed.provider] ?? embed.provider}</Tag> : embed === null ? <Tag tone="danger">Không nhận diện</Tag> : null) : null} />
                 <div className="muted text-[12px]">Dán link YouTube, TikTok, Facebook, Loom, Vimeo hoặc Bunny. Video ẩn trên YouTube vẫn phát được. Đặt "Không liệt kê" để người ngoài không tìm thấy.</div>
+                {embed?.provider === 'youtube' && (
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <Button size="sm" icon={<Download size={14} />} loading={fill.isPending} onClick={() => fill.mutate()}>Lấy tên và mô tả từ YouTube</Button>
+                    {fill.isSuccess && !fill.isPending && (fill.data.meta
+                      ? <span className="text-[12px] font-semibold" style={{ color: T.teal }}>Đã điền từ YouTube. Bấm Lưu bài để giữ.</span>
+                      : <span className="text-[12px]" style={{ color: T.accentText }}>Chưa lấy được từ YouTube. Video riêng tư hoặc YouTube không trả lời, thử lại sau.</span>)}
+                    {fill.isError && <span className="text-[12px]" style={{ color: T.accentText }}>{errorMessage(fill.error)}</span>}
+                  </div>
+                )}
               </div>
             </div>
           </Field>
@@ -107,33 +137,47 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
   );
 }
 
-/** Nhập nhanh: mỗi link YouTube một bài vào module đang mở. */
+/** Nhập nhanh: mỗi link một bài vào module đang mở. Link YouTube lấy luôn tên bài, mô tả và thời lượng. */
 export function BulkImportModal({ open, onClose, courseId, moduleId }: { open: boolean; onClose: () => void; courseId: string; moduleId: string | null }) {
   const qc = useQueryClient();
   const [text, setText] = useState('');
+  const [progress, setProgress] = useState<{ at: number; total: number } | null>(null);
   const m = useMutation({
     mutationFn: async () => {
       const links = text.split(/\s+/).map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s));
-      let n = 0;
+      const unknown: string[] = [];
+      let made = 0;
       for (const [i, url] of links.entries()) {
-        const r = await api.post<{ embed: { provider: string; externalId: string } | null }>('/v1/video/parse', { url });
-        if (!r.embed) continue;
-        await api.post(`/v1/courses/${courseId}/lessons`, { moduleId, title: `Bài ${i + 1} · ${r.embed.provider === 'youtube' ? 'YouTube' : r.embed.provider} ${r.embed.externalId}`.slice(0, 160), kind: 'video', videoUrl: url });
-        n++;
+        setProgress({ at: i + 1, total: links.length });
+        try {
+          const r = await fetchVideoMeta(url);
+          if (!r.embed) { unknown.push(url); continue; }
+          const fallback = `Bài ${i + 1} · ${PROVIDER_LABEL[r.embed.provider] ?? r.embed.provider} ${r.embed.externalId}`.slice(0, 160);
+          await api.post(`/v1/courses/${courseId}/lessons`, { moduleId, title: r.meta?.title ?? fallback, kind: 'video', videoUrl: url, contentMd: r.meta?.description ?? '', durationSeconds: r.meta?.durationSeconds ?? null });
+          made++;
+        } catch (e) {
+          // Dừng giữa chừng: chỉ giữ lại các link chưa nhập, để bấm lại không tạo trùng bài.
+          setText([...unknown, ...links.slice(i)].join('\n'));
+          throw e;
+        }
       }
-      return n;
+      return { made, unknown };
     },
-    onSuccess: () => { setText(''); void qc.invalidateQueries({ queryKey: ['course', courseId] }); onClose(); },
+    onSettled: () => { setProgress(null); void qc.invalidateQueries({ queryKey: ['course', courseId] }); },
+    onSuccess: ({ unknown }) => { setText(unknown.join('\n')); if (!unknown.length) onClose(); },
   });
   if (!open) return null;
+  const close = () => { if (!m.isPending) { m.reset(); onClose(); } };
   return (
-    <Modal open onClose={onClose} title="Nhập nhanh từ danh sách link" width={520}>
+    <Modal open onClose={close} title="Nhập nhanh từ danh sách link" width={520}>
       <div className="p-5 flex flex-col gap-3">
-        <span className="muted text-[13px]">Dán nhiều link YouTube (mỗi dòng một link). Mỗi link thành một bài video trong module đang mở, bạn đổi tên bài sau.</span>
-        <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={'https://youtube.com/watch?v=…\nhttps://youtu.be/…'} />
+        <span className="muted text-[13px]">Dán nhiều link YouTube (mỗi dòng một link). Mỗi link thành một bài video trong module đang mở. Tên bài, mô tả và thời lượng lấy luôn từ YouTube, bạn sửa lại sau nếu muốn.</span>
+        <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} disabled={m.isPending} placeholder={'https://youtube.com/watch?v=…\nhttps://youtu.be/…'} />
         {!moduleId && <span className="text-[13px]" style={{ color: T.accentText }}>Hãy tạo và mở một module trước.</span>}
-        {m.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
-        <div className="flex gap-2 justify-end"><Button size="sm" onClick={onClose}>Hủy</Button><Button size="sm" variant="primary" loading={m.isPending} disabled={!moduleId || !text.trim()} onClick={() => m.mutate()}>Tạo bài</Button></div>
+        {progress && <span className="text-[13px] font-semibold" style={{ color: T.teal }}>Đang nhập bài {progress.at}/{progress.total}…</span>}
+        {m.isSuccess && m.data.unknown.length > 0 && <span className="text-[13px]" style={{ color: T.accentText }}>Đã tạo {m.data.made} bài. {m.data.unknown.length} link còn lại ở trên không nhận diện được nên chưa nhập.</span>}
+        {m.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)} Các link chưa nhập còn ở trên, bấm Tạo bài để nhập tiếp.</span>}
+        <div className="flex gap-2 justify-end"><Button size="sm" disabled={m.isPending} onClick={close}>Hủy</Button><Button size="sm" variant="primary" loading={m.isPending} disabled={!moduleId || !text.trim()} onClick={() => m.mutate()}>Tạo bài</Button></div>
       </div>
     </Modal>
   );

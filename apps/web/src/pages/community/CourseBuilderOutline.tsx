@@ -1,11 +1,11 @@
-// Cột trái Soạn khóa học: danh sách module/bài, kéo thả sắp xếp (HTML5 DnD), thêm module/bài, nhập nhanh từ link.
+// Cột trái Soạn khóa học: danh sách module/bài, kéo thả sắp xếp (HTML5 DnD), thêm module/bài, đổi tên module tại chỗ, nhập nhanh từ link.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
-import { ChevronDown, ChevronRight, GripVertical, Plus, Sparkles, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { api } from '@/lib/api';
+import { ChevronDown, ChevronRight, Download, GripVertical, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { api, errorMessage } from '@/lib/api';
 import { fmtDuration } from '@/lib/format';
-import { KIND_ICON, type LessonKind } from './CourseBuilderParts';
+import { fetchVideoMeta, KIND_ICON, PLACEHOLDER_TITLE, type LessonKind } from './CourseBuilderParts';
 
 export interface OutlineLesson { id: string; title: string; kind: LessonKind; durationSeconds: number | null; isPreview: boolean }
 export interface OutlineModule { id: string; title: string; lessons: OutlineLesson[] }
@@ -17,7 +17,7 @@ function LessonItem({ l, on, onSelect, onDragStart, onDrop, onDelete }: { l: Out
       className="flex items-center gap-2.5 rounded-[10px] text-[13px] cursor-pointer" style={{ padding: '8px 10px 8px 6px', background: on ? T.accentSoft : 'transparent' }}>
       <span style={{ color: T.line2 }}><GripVertical size={14} /></span>
       <span className="w-6 h-6 rounded-md inline-flex items-center justify-center flex-shrink-0" style={{ background: on ? T.surface : T.bg, color: T.ink2 }}>{KIND_ICON[l.kind]}</span>
-      <span className="flex-grow min-w-0 truncate" style={{ fontWeight: on ? 600 : 400 }}>{l.title}</span>
+      <span className="flex-grow min-w-0 truncate" title={l.title} style={{ fontWeight: on ? 600 : 400 }}>{l.title}</span>
       {l.isPreview && <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 18, padding: '0 5px', fontSize: 10 }}>Xem thử</span>}
       <span className="muted text-[11px]">{dur}</span>
       {on && <button type="button" aria-label="Xóa bài" title="Xóa bài" style={{ color: T.ink3 }} onClick={(e) => { e.stopPropagation(); onDelete(); }}><Trash2 size={14} /></button>}
@@ -25,7 +25,7 @@ function LessonItem({ l, on, onSelect, onDragStart, onDrop, onDelete }: { l: Out
   );
 }
 
-export function Outline({ courseId, modules, selected, onSelect, onOpenImport, onModuleOpen }: { courseId: string; modules: OutlineModule[]; selected: string | null; onSelect: (id: string) => void; onOpenImport: () => void; onModuleOpen: (id: string | null) => void }) {
+export function Outline({ courseId, modules, selected, onSelect, onOpenImport, onModuleOpen, onLessonsRenamed }: { courseId: string; modules: OutlineModule[]; selected: string | null; onSelect: (id: string) => void; onOpenImport: () => void; onModuleOpen: (id: string | null) => void; onLessonsRenamed: (lessonIds: string[]) => void }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState<Record<string, boolean>>(() => (modules[0] ? { [modules[0].id]: true } : {}));
   const [drag, setDrag] = useState<string | null>(null);
@@ -38,7 +38,39 @@ export function Outline({ courseId, modules, selected, onSelect, onOpenImport, o
   // Xóa bài / module: API đã có từ đầu nhưng không nút nào gọi, nên bài tạo nhầm phải xóa bằng SQL.
   const delLesson = useMutation({ mutationFn: (id: string) => api.del(`/v1/lessons/${id}`), onSuccess: () => void refresh() });
   const delModule = useMutation({ mutationFn: (id: string) => api.del(`/v1/modules/${id}`), onSuccess: () => void refresh() });
+  // Đổi tên module tại chỗ: bấm vào tên hoặc nút bút chì, Enter hoặc bấm ra ngoài để lưu, Esc để hủy.
+  const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
+  const editCancelled = useRef(false);
+  const renameModule = useMutation({ mutationFn: (v: { id: string; title: string }) => api.patch(`/v1/courses/${courseId}/modules/${v.id}`, { title: v.title }), onSuccess: () => void refresh() });
+  const startEdit = (m: OutlineModule) => { editCancelled.current = false; setEditing({ id: m.id, title: m.title }); };
+  const commitEdit = (m: OutlineModule) => {
+    const title = editing?.title.trim() ?? '';
+    setEditing(null);
+    if (!editCancelled.current && title && title !== m.title) renameModule.mutate({ id: m.id, title });
+  };
   const reorder = useMutation({ mutationFn: (mods: OutlineModule[]) => api.put(`/v1/courses/${courseId}/reorder`, { modules: mods.map((m, i) => ({ id: m.id, sortOrder: i, lessonIds: m.lessons.map((l) => l.id) })) }), onSuccess: () => void refresh() });
+  // Bài nhập từ link trước đây mang tên tạm "Bài 1 · YouTube <mã video>": lấy tên thật, mô tả và thời lượng về một lượt.
+  // Nội dung và thời lượng người soạn đã tự điền thì giữ nguyên.
+  const placeholders = modules.flatMap((m) => m.lessons).filter((l) => PLACEHOLDER_TITLE.test(l.title));
+  const rename = useMutation({
+    mutationFn: async () => {
+      const renamed: string[] = [];
+      try {
+        for (const l of placeholders) {
+          const cur = (await api.get<{ lesson: { videoUrl: string | null; contentMd: string; durationSeconds: number | null } }>(`/v1/lessons/${l.id}`)).lesson;
+          const meta = cur.videoUrl ? (await fetchVideoMeta(cur.videoUrl)).meta : null;
+          if (!meta) continue;
+          await api.patch(`/v1/courses/${courseId}/lessons/${l.id}`, { title: meta.title, ...(cur.contentMd.trim() ? {} : { contentMd: meta.description }), ...(cur.durationSeconds ? {} : { durationSeconds: meta.durationSeconds }) });
+          qc.removeQueries({ queryKey: ['lesson', l.id] });
+          renamed.push(l.id);
+        }
+      } finally {
+        onLessonsRenamed(renamed);
+      }
+      return renamed.length;
+    },
+    onSettled: () => void refresh(),
+  });
   const openModuleId = modules.find((m) => open[m.id])?.id ?? null;
   const total = modules.reduce((n, m) => n + m.lessons.length, 0);
 
@@ -65,8 +97,15 @@ export function Outline({ courseId, modules, selected, onSelect, onOpenImport, o
           <div className="flex items-center gap-2" style={{ padding: '10px 8px 6px' }}>
             <span style={{ color: T.line2 }}><GripVertical size={14} /></span>
             <button type="button" onClick={() => toggle(m.id)} style={{ color: T.ink3 }} aria-label="Gập/mở">{open[m.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
-            <span className="flex-grow font-bold text-[13px] truncate">{i + 1}. {m.title}</span>
+            {editing?.id === m.id ? (
+              <input autoFocus aria-label="Tên module" maxLength={120} value={editing.title} onChange={(e) => setEditing({ id: m.id, title: e.target.value })} onFocus={(e) => e.target.select()} onBlur={() => commitEdit(m)}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { editCancelled.current = true; e.currentTarget.blur(); } }}
+                className="flex-grow min-w-0 font-bold text-[16px] md:text-[13px] rounded-md px-1.5" style={{ height: 30, background: T.surface, color: T.ink, border: `1px solid ${T.ink3}` }} />
+            ) : (
+              <button type="button" onClick={() => startEdit(m)} title="Bấm để đổi tên module" className="flex-grow min-w-0 font-bold text-[13px] truncate text-left">{i + 1}. {renameModule.isPending && renameModule.variables?.id === m.id ? renameModule.variables.title : m.title}</button>
+            )}
             <span className="muted text-[11px]">{m.lessons.length} bài</span>
+            <button type="button" onClick={() => startEdit(m)} style={{ color: T.ink3 }} aria-label="Đổi tên module" title="Đổi tên module"><Pencil size={14} /></button>
             <button type="button" onClick={() => addLesson.mutate(m.id)} style={{ color: T.ink3 }} aria-label="Thêm bài"><Plus size={14} /></button>
             <button type="button" onClick={() => { if (window.confirm(m.lessons.length ? `Xóa module "${m.title}" và ${m.lessons.length} bài trong đó?` : `Xóa module "${m.title}"?`)) delModule.mutate(m.id); }} style={{ color: T.ink3 }} aria-label="Xóa module" title="Xóa module"><Trash2 size={14} /></button>
           </div>
@@ -77,7 +116,15 @@ export function Outline({ courseId, modules, selected, onSelect, onOpenImport, o
         <button type="button" className="btn btn-ghost btn-sm flex-1" onClick={() => addModule.mutate()} disabled={addModule.isPending}><Plus size={14} />Module</button>
         <button type="button" className="btn btn-ghost btn-sm flex-1" onClick={() => openModuleId && addLesson.mutate(openModuleId)} disabled={!openModuleId || addLesson.isPending}><Plus size={14} />Bài</button>
       </div>
-      <button type="button" onClick={onOpenImport} className="mt-auto px-3 py-2.5 rounded-[10px] text-[12px] flex gap-2 items-start text-left" style={{ background: T.bg, color: T.ink2 }}><Sparkles size={14} className="flex-shrink-0 mt-0.5" /><span>Có thể nhập nhanh từ danh sách link YouTube, mỗi link thành một bài.</span></button>
+      {renameModule.isError && <span className="text-[12px] px-2" style={{ color: T.accentText }}>{errorMessage(renameModule.error)}</span>}
+      {(placeholders.length > 0 || rename.isSuccess || rename.isError) && (
+        <div className="flex flex-col gap-1.5" style={{ padding: '6px 4px 2px' }}>
+          {placeholders.length > 0 && <button type="button" className="btn btn-ghost btn-sm" onClick={() => rename.mutate()} disabled={rename.isPending}><Download size={14} />{rename.isPending ? 'Đang lấy từ YouTube…' : `Lấy tên từ YouTube cho ${placeholders.length} bài`}</button>}
+          {rename.isSuccess && !rename.isPending && <span className="text-[12px] px-1" style={{ color: rename.data > 0 ? T.teal : T.accentText }}>{rename.data > 0 ? `Đã đổi tên ${rename.data} bài theo YouTube.` : 'Chưa lấy được tên từ YouTube. Video riêng tư hoặc YouTube không trả lời, thử lại sau.'}</span>}
+          {rename.isError && <span className="text-[12px] px-1" style={{ color: T.accentText }}>{errorMessage(rename.error)}</span>}
+        </div>
+      )}
+      <button type="button" onClick={onOpenImport} className="mt-auto px-3 py-2.5 rounded-[10px] text-[12px] flex gap-2 items-start text-left" style={{ background: T.bg, color: T.ink2 }}><Sparkles size={14} className="flex-shrink-0 mt-0.5" /><span>Có thể nhập nhanh từ danh sách link YouTube, mỗi link thành một bài, lấy luôn tên và mô tả.</span></button>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Khóa học, module, bài học, tiến độ.
 import { createCourseSchema, lessonInputSchema, moduleInputSchema, reorderSchema, updateCourseSchema, updateLessonSchema } from '@hoiminh/contracts';
-import { courses } from '@hoiminh/core';
+import { courses, videoMeta } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -40,4 +40,10 @@ learningRoutes.post('/video/parse', async (c) => {
   const { url } = await parse(z.object({ url: z.string() }), await body(c));
   const { parseVideoUrl } = await import('@hoiminh/contracts');
   return c.json({ embed: parseVideoUrl(url) });
+});
+// Nhận diện link và lấy tên, mô tả, thời lượng từ YouTube để điền sẵn bài học. Cần đăng nhập vì máy chủ phải gọi ra ngoài.
+// Đường dẫn này nằm trong NO_DB_PATHS (middleware/auth.ts): không mở transaction database trong lúc chờ YouTube.
+learningRoutes.post('/video/meta', requireAuth, async (c) => {
+  const { url } = await parse(z.object({ url: z.string().max(2000) }), await body(c));
+  return c.json(await videoMeta.fetchVideoMeta(url));
 });

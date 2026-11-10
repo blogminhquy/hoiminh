@@ -6,6 +6,11 @@ import { ACCESS_COOKIE, readCookie, sameOriginWrite } from '../lib/session-cooki
 
 /** Đường dẫn máy-với-máy: chạy dưới quyền hệ thống thay vì theo actor. */
 const SYSTEM_PATHS = ['/webhooks', '/pay/simulator', '/r', '/files', '/health'];
+/**
+ * Đường dẫn chỉ gọi dịch vụ ngoài và không đụng database: vẫn xác thực như thường nhưng không mở transaction,
+ * để không giữ một kết nối database trong lúc chờ bên ngoài trả lời. Handler ở đây không được truy vấn database.
+ */
+const NO_DB_PATHS = ['/v1/video/meta'];
 
 /** Gắn ctx vào mỗi request; xác thực nếu có Authorization hoặc cookie phiên. */
 export function authMiddleware(app: App): MiddlewareHandler<Env> {
@@ -39,11 +44,16 @@ export function authMiddleware(app: App): MiddlewareHandler<Env> {
     // Mọi truy vấn của request chạy trong một transaction có biến phiên của actor (RLS).
     // Điểm vào máy-với-máy không có actor mà vẫn phải ghi xuyên tenant: webhook cổng
     // thanh toán, trang mô phỏng sandbox, đếm lượt bấm link cộng sự, phát tệp theo URL ký.
-    const run = machine ? withSystemScope : withTenantScope;
-    await run(ctx, async (scoped) => {
-      c.set('ctx', scoped);
+    if (NO_DB_PATHS.includes(path)) {
+      c.set('ctx', ctx);
       await next();
-    });
+    } else {
+      const run = machine ? withSystemScope : withTenantScope;
+      await run(ctx, async (scoped) => {
+        c.set('ctx', scoped);
+        await next();
+      });
+    }
     // Ghi nhật ký dùng API key sau khi transaction đã đóng, nên dùng ctx gốc.
     if (ctx.actor.type === 'api_key') await apiKeySvc.logApiKeyUse(ctx, ctx.actor.apiKeyId, c.req.method, new URL(c.req.url).pathname, c.res.status).catch(() => null);
   };

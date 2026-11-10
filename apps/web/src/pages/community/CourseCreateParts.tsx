@@ -93,7 +93,7 @@ export function CourseRail({ f, lessonCount, provider }: { f: CourseForm; lesson
       <div className="card p-4 flex flex-col gap-2.5">
         <div className="font-semibold text-[13px]">Xem trước thẻ</div>
         <div className="card overflow-hidden flex flex-col">
-          <div className="relative flex items-end p-4" style={{ height: 160, background: f.coverUrl ? `url(${f.coverUrl}) center/cover` : f.coverColor }}>
+          <div className="relative flex items-end p-4" style={{ aspectRatio: '16 / 9', background: f.coverUrl ? `url(${f.coverUrl}) center/cover` : f.coverColor }}>
             {!f.coverUrl && <span className="serif font-extrabold leading-[1.15]" style={{ color: T.invertInk, fontSize: 22, maxWidth: 240 }}>{f.title || 'Tên khóa học'}</span>}
             <span className="tag absolute" style={{ top: 12, left: 12, background: T.bg, color: T.ink3 }}>Nháp</span>
           </div>
