@@ -85,6 +85,8 @@ export const memberFilterSchema = z.object({
   tierKey: z.string().optional(),
   role: memberRoleSchema.optional(),
   source: z.enum(['invite', 'affiliate', 'discovery', 'direct']).optional(),
+  /** Lọc theo thẻ của liên hệ trùng email (thẻ đồng bộ từ landing hoặc gắn tay). */
+  tag: z.string().max(60).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });

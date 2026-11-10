@@ -12,14 +12,14 @@ export interface SettingsGroup { key: string; label: string; hint: string; icon:
 /** Bốn nhóm cài đặt của một hội. Trang đầu của nhóm là tabs[0]. */
 export function settingsGroups(shell: Shell): SettingsGroup[] {
   const base = `/${shell.community.slug}/cai-dat`;
-  const connect = [{ label: 'Tiện ích', to: `${base}/tien-ich` }];
+  const connect = [{ label: 'Tiện ích', to: `${base}/tien-ich` }, { label: 'Nguồn đồng bộ', to: `${base}/nguon-dong-bo` }, { label: 'Quy tắc tự động', to: `${base}/quy-tac` }, { label: 'Liên hệ và thẻ', to: `${base}/lien-he` }];
   // Khóa API và webhook thuộc về người đứng tên không gian làm việc.
   if (shell.viewer.role === 'owner') connect.push({ label: 'Nhà phát triển', to: `${base}/nha-phat-trien` });
   return [
     { key: 'hoi', label: 'Hội', hint: 'Tên, logo, quy tắc, câu hỏi khi tham gia, chuyên mục', icon: <Store size={20} />, tabs: [{ label: 'Thông tin', to: `${base}/chung` }, { label: 'Bảng tin và chuyên mục', to: `${base}/bang-tin` }] },
     { key: 'ban-hang', label: 'Bán hàng', hint: 'Giá, gói thành viên, cách khách thanh toán', icon: <Tag size={20} />, tabs: [{ label: 'Giá và gói', to: `${base}/gia` }] },
     { key: 'cong-su', label: 'Cộng sự', hint: 'Mức hoa hồng, thời gian giữ, bảng xếp hạng', icon: <Handshake size={20} />, tabs: [{ label: 'Mức hoa hồng', to: `${base}/cong-su` }] },
-    { key: 'ket-noi', label: 'Tự động và kết nối', hint: 'Tin nhắn chào, tự duyệt, Pixel, khóa API, webhook', icon: <Plug size={20} />, tabs: connect },
+    { key: 'ket-noi', label: 'Tự động và kết nối', hint: 'Tin nhắn chào, nhận đơn từ landing, thẻ và quy tắc tự động, khóa API', icon: <Plug size={20} />, tabs: connect },
   ];
 }
 

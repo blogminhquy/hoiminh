@@ -8,4 +8,5 @@ export * from './events';
 export * from './commerce';
 export * from './affiliate';
 export * from './platform';
+export * from './automation';
 export * from './i18n';

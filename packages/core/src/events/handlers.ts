@@ -8,6 +8,7 @@ import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
+import { applyPendingGrantsForUser, elevated } from '../services/automation-engine';
 import { grant } from '../services/entitlements';
 import { notify } from '../services/notifications';
 import { activatePlatformPurchase } from '../services/platform-billing';
@@ -31,6 +32,13 @@ export function registerHandlers(app: AppContext): void {
   bus.on('user.registered', async (p, ev) => {
     const c = ctx(ev);
     await attachAttribution(c, p.userId, null, p.ref);
+  });
+
+  bus.on('user.email_verified', async (p, ev) => {
+    const c = ctx(ev);
+    const user = await userOf(c, p.userId);
+    // Người vừa xác minh email không thuộc workspace của chủ hội nên phải đọc bảng liên hệ bằng quyền hệ thống.
+    if (user) await elevated(c, () => applyPendingGrantsForUser(c, user));
   });
 
   bus.on('member.joined', async (p, ev) => {

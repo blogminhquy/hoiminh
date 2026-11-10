@@ -61,6 +61,20 @@ export async function register(ctx: Ctx, provider: AuthProvider, input: Register
 }
 
 /**
+ * Tạo tài khoản cho người đã chứng minh được email bằng link gửi tới chính hộp thư đó (kích hoạt quyền từ quy tắc
+ * tự động): email coi như đã xác minh nên không gửi mã 6 số. Người gọi phải tự kiểm tra email chưa có tài khoản.
+ */
+export async function registerVerified(ctx: Ctx, provider: AuthProvider, input: { email: string; name: string; password: string }, meta?: { userAgent?: string }): Promise<{ user: typeof users.$inferSelect; session: AuthSession }> {
+  const handle = await uniqueHandle(ctx, input.name);
+  const [row] = await ctx.db.insert(users).values({ email: input.email, name: input.name, handle, emailVerifiedAt: ctx.now() }).returning();
+  const identity = await provider.signUp(input.email, input.password, { name: input.name, userId: row!.id }, ctx.db);
+  await ctx.db.update(users).set({ authProviderId: identity.providerUserId }).where(eq(users.id, row!.id));
+  const user = { ...row!, authProviderId: identity.providerUserId };
+  await ctx.events.emit('user.registered', { userId: user.id, email: user.email, ref: null, communitySlug: null });
+  return { user, session: await issueSession(ctx, provider, user, true, meta) };
+}
+
+/**
  * Đăng nhập email + mật khẩu. Tài khoản bật xác thực hai lớp thì chưa cấp phiên mà trả
  * về vé bước hai; web gọi tiếp `verifyTwoFactor` với mã từ ứng dụng.
  */
@@ -151,6 +165,8 @@ export async function verifyEmail(ctx: Ctx, userId: string, code: string): Promi
   }
   await ctx.db.update(emailVerifications).set({ consumedAt: ctx.now() }).where(eq(emailVerifications.id, match.id));
   const [user] = await ctx.db.update(users).set({ emailVerifiedAt: ctx.now() }).where(eq(users.id, userId)).returning();
+  // Quyền đang giữ theo email này (quy tắc tự động của chủ hội) vào tài khoản ngay khi email được xác minh.
+  await ctx.events.emit('user.email_verified', { userId, email: user!.email });
   return toAuthUser(user!);
 }
 
