@@ -3,7 +3,7 @@
 //   /health        phải trả status "ok" (database nối được) và đúng số phiên bản, nếu có --version.
 //   /version.json  phải đúng commit vừa deploy, nếu có --commit.
 // Cloudflare cần vài giây để bản mới chạy ở mọi nơi, nên hỏi lại mỗi 5 giây cho tới khi khớp hoặc hết giờ.
-// Kèm theo nơi Worker đang chạy (header cf-placement): "remote-ICN" nghĩa là đã chạy cạnh database ở Seoul,
+// Kèm theo nơi Worker đang chạy (header cf-placement): "remote-SIN" nghĩa là đã chạy cạnh database ở Singapore,
 // "local-..." nghĩa là vẫn chạy ở điểm gần người gọi (placement chưa có hiệu lực).
 // Dùng: node infra/verify-live.mjs [--url https://hoiminh.com] [--commit <sha>] [--version 1.14.1] [--timeout 90]
 // Thoát mã 0 khi khớp, mã 1 khi hết giờ mà vẫn chưa khớp.
