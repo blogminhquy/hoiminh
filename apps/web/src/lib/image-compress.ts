@@ -7,7 +7,7 @@
 // Chỉ bước 3 tốn lượt chuyển đổi Cloudflare Images (gói miễn phí 5.000 lượt mỗi tháng).
 // Đây là tối ưu phía người dùng, không phải ràng buộc: server vẫn kiểm tra như cũ (validateUpload: ảnh tối đa 10 MB).
 
-export type UploadPurpose = 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'comment_image';
+export type UploadPurpose = 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'message_file' | 'comment_image';
 
 export const IMAGE_MAX_SIDE = 1200;
 export const AVATAR_MAX_SIDE = 512;

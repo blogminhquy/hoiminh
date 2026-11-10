@@ -1,8 +1,18 @@
 # CHANGELOG
 
-## 1.28.1 - 2026-11-11
+## 1.29.0 - 2026-11-11
 
-Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay dưới bong bóng, thanh cảm xúc nằm ở đầu bên kia của hàng, bỏ nút thích ở góc bong bóng và nút thích nhanh trong ô nhập.
+Tin nhắn: gửi được tệp đính kèm (tối đa 5MB), có đủ ba trạng thái đã gửi, đã nhận, đã xem, có tab Lưu trữ, chặn và báo cáo người dùng; hàng thao tác dưới mỗi tin được xếp lại và khung chat không còn kéo ngang được.
+
+### Tính năng
+
+- **Đính kèm tệp trong tin nhắn, tối đa 5MB.** Nút kẹp giấy ở thanh công cụ của ô nhập, hoặc kéo thả tệp vào khung chat. Nhận PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), văn bản (.txt) và .zip. Tệp quá 5MB hoặc sai loại bị chặn ngay tại máy kèm lý do, máy chủ kiểm lại lần nữa lúc nhận tệp. Tin hiện thẻ tệp có tên và dung lượng; bấm là tải về với đúng tên gốc. Tệp là tệp riêng: chỉ hai người trong hội thoại lấy được link tải, link sống 5 phút. Bảng "Thông tin hội thoại" có thêm mục Tệp.
+- **Ba trạng thái của tin mình gửi: Đã gửi, Đã nhận, Đã xem.** "Đã nhận" là khi ứng dụng của người nhận đã nhận được tin (họ đang mở Hội Mình ở bất kỳ trang nào), "Đã xem" là khi họ mở hội thoại.
+- **Tab "Lưu trữ" trong danh sách hội thoại.** Hội thoại đã lưu trữ nằm ở đây (trước đây lưu trữ xong là không tìm lại được cho tới khi có tin mới). Bỏ lưu trữ từ menu ba chấm của dòng hội thoại hoặc từ bảng thông tin. Có tin mới thì hội thoại vẫn tự trở lại danh sách chính.
+- **Menu ba chấm ở đầu khung chat: Xem hồ sơ, Chặn, Báo cáo.**
+  - Chặn: hai bên không nhắn được cho nhau cho tới khi người chặn bỏ chặn. Ô nhập đổi thành dòng báo kèm nút Bỏ chặn.
+  - Báo cáo: chọn lý do (spam, quấy rối, lừa đảo, nội dung không phù hợp, lý do khác) và mô tả thêm. Báo cáo tới quản trị hệ thống: có thông báo, và có trang mới **Hệ thống · Báo cáo người dùng** để xem, mở người bị báo cáo và đánh dấu đã xử lý.
+- Thu hồi tin nhắn nay xóa luôn ảnh và tệp của tin đó khỏi kho lưu trữ (trước đây ảnh đã thu hồi vẫn mở được bằng link cũ).
 
 ### Thay đổi
 
@@ -13,6 +23,14 @@ Tin nhắn: giờ gửi và các nút thao tác xếp thành một hàng ngay d�
 - Điện thoại và cột chat hẹp: chạm vào tin thì nút thao tác hiện cạnh giờ gửi, thanh cảm xúc hiện ở dòng ngay dưới; tin vừa chạm tự cuộn vào tầm nhìn.
 - Bảng "Thông tin hội thoại" chỉ đứng thành cột thứ ba khi màn hình rộng từ 1536px (trước là 1280px). Ở màn hình laptop 1366px cột chat trước đây chỉ còn khoảng 420px; nay bảng trượt đè lên khi bấm mở, cột chat rộng 760px.
 - Máy tính bảng dọc và cửa sổ hẹp hơn 1024px: mỗi lúc một màn như điện thoại (danh sách, rồi khung chat có nút quay lại). Trước đây ở 768px cột chat chỉ còn khoảng 200px.
+
+### Sửa lỗi
+
+- **Khung chat kéo ngang được sang phải làm vỡ khung.** Thanh cảm xúc ẩn của từng tin vẫn chiếm chỗ bên ngoài khung nên luồng tin có thanh cuộn ngang. Thanh cảm xúc nay nằm trong hàng dưới bong bóng, luồng tin không còn cuộn ngang.
+
+### Cần làm khi triển khai
+
+- Áp dụng migration `0008_message_files_blocks.sql` lên database thật trước khi merge (thêm cột tệp đính kèm và `delivered_at` cho tin nhắn, hai bảng `user_blocks` và `user_reports` kèm policy; chạy lại nhiều lần vẫn an toàn).
 
 ## 1.28.0 - 2026-11-11
 

@@ -37,8 +37,13 @@ export const sendMessageSchema = z.object({
   /** Được để trống khi tin chỉ có ảnh. */
   body: z.string().trim().max(4000).default(''),
   imageFileId: idSchema.nullable().optional(),
+  /** Tệp đính kèm (đã tải lên với purpose `message_file`, tối đa 5MB). */
+  fileId: idSchema.nullable().optional(),
   replyToId: idSchema.nullable().optional(),
-}).refine((v) => v.body.length > 0 || Boolean(v.imageFileId), { message: 'Tin nhắn chưa có nội dung', path: ['body'] });
+}).refine((v) => v.body.length > 0 || Boolean(v.imageFileId) || Boolean(v.fileId), { message: 'Tin nhắn chưa có nội dung', path: ['body'] });
+export const archiveConversationSchema = z.object({ archived: z.boolean().default(true) });
+export const USER_REPORT_REASONS = ['spam', 'harassment', 'scam', 'inappropriate', 'other'] as const;
+export const reportUserSchema = z.object({ userId: idSchema, conversationId: idSchema.nullable().optional(), reason: z.enum(USER_REPORT_REASONS), detail: z.string().trim().max(1000).default('') });
 export const reactMessageSchema = z.object({ emoji: z.enum(MESSAGE_REACTIONS).nullable() });
 export const pinConversationSchema = z.object({ pinned: z.boolean() });
 

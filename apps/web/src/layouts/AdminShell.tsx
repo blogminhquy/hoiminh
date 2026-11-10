@@ -17,7 +17,7 @@ import { useVersionStatus } from '@/lib/version';
 interface AdminGroup { key: string; label: string; icon: ReactNode; tabs: Array<{ label: string; to: string }> }
 const GROUPS: AdminGroup[] = [
   { key: 'tong-quan', label: 'Tổng quan', icon: <House size={20} />, tabs: [{ label: 'Tổng quan', to: '/he-thong' }] },
-  { key: 'hoi', label: 'Hội và người dùng', icon: <Users size={20} />, tabs: [{ label: 'Hội', to: '/he-thong/hoi' }, { label: 'Người dùng', to: '/he-thong/nguoi-dung' }, { label: 'Bị báo cáo', to: '/he-thong/ho-tro' }] },
+  { key: 'hoi', label: 'Hội và người dùng', icon: <Users size={20} />, tabs: [{ label: 'Hội', to: '/he-thong/hoi' }, { label: 'Người dùng', to: '/he-thong/nguoi-dung' }, { label: 'Bị báo cáo', to: '/he-thong/ho-tro' }, { label: 'Báo cáo người dùng', to: '/he-thong/bao-cao' }] },
   { key: 'tien', label: 'Tiền', icon: <Wallet size={20} />, tabs: [{ label: 'Thanh toán và đối soát', to: '/he-thong/thanh-toan' }, { label: 'Cộng sự nền tảng', to: '/he-thong/cong-su' }] },
   { key: 'goi', label: 'Gói và tính năng', icon: <BadgeCheck size={20} />, tabs: [{ label: 'Gói nền tảng', to: '/he-thong/goi' }, { label: 'Tính năng', to: '/he-thong/tinh-nang' }] },
   { key: 'he-thong', label: 'Hệ thống', icon: <KeyRound size={20} />, tabs: [{ label: 'Hạ tầng và khóa', to: '/he-thong/ha-tang' }, { label: 'Phiên bản', to: '/he-thong/phien-ban' }, { label: 'Nhật ký', to: '/he-thong/nhat-ky' }] },

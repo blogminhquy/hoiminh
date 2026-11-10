@@ -433,8 +433,9 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-empty { margin: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--ink3); font-size: 15px; }
 
 /* Danh sách hội thoại: hàng tab gạch chân, mỗi dòng có ảnh đại diện, tên, giờ, dòng xem trước, số chưa đọc. */
-.chat-tabs { display: flex; gap: 20px; padding: 4px 16px 0; margin-top: 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
-.chat-tab { height: 40px; font-size: 15px; font-weight: 600; color: var(--ink3); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.chat-tabs { display: flex; gap: 14px; padding: 4px 16px 0; margin-top: 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+.chat-tabs::-webkit-scrollbar { display: none; }
+.chat-tab { flex-shrink: 0; height: 40px; font-size: 15px; font-weight: 600; color: var(--ink3); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
 .chat-tab.on { color: var(--primary-text); border-bottom-color: var(--primary); }
 .chat-convos { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0; }
 .chat-convos > :not(.chat-convo) { margin: 12px 16px; }
@@ -447,8 +448,8 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-convo:hover .chat-convo-more, .chat-convo:focus-within .chat-convo-more, .chat-convo.menu-open .chat-convo-more { visibility: visible; }
 .chat-convo:hover .chat-convo-time, .chat-convo:focus-within .chat-convo-time, .chat-convo.menu-open .chat-convo-time { visibility: hidden; }
 .chat-menu { position: absolute; z-index: 11; top: 40px; right: 12px; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(8, 24, 23, 0.16); }
-.chat-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); }
-.chat-menu button:hover { background: var(--bg); }
+.chat-menu [role='menuitem'] { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); white-space: nowrap; }
+.chat-menu [role='menuitem']:hover { background: var(--bg); }
 
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
@@ -478,6 +479,15 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-status { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .chat-image { display: block; margin-bottom: 4px; }
 .chat-image img { display: block; max-width: min(320px, 100%); max-height: 360px; border-radius: 8px; }
+/* Tệp đính kèm: thẻ có biểu tượng, tên (cắt bằng dấu ba chấm khi dài), dung lượng và nút tải. */
+.chat-file { display: flex; align-items: center; gap: 10px; width: 100%; min-width: min(240px, 100%); max-width: 360px; margin-bottom: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); text-align: left; white-space: normal; color: var(--ink); }
+.chat-file:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.chat-file i { width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface); color: var(--primary-text); }
+.chat-file span > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 1.4; }
+.chat-file span > span { color: var(--ink3); }
+.chat-file:disabled { cursor: progress; }
+/* Đã chặn: thay ô nhập bằng một dòng báo, người chặn có nút bỏ chặn. */
+.chat-blocked { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px; text-align: center; font-size: 15px; color: var(--ink2); }
 .chat-quote { display: flex; flex-direction: column; width: 100%; margin-bottom: 6px; padding: 6px 10px; border-left: 3px solid var(--primary); border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); text-align: left; font-size: 14px; line-height: 1.4; white-space: normal; }
 .chat-quote > span { color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 

@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
-import { changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
+import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
+import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -50,7 +50,13 @@ meRoutes.post('/2fa/disable', rateLimit('write'), async (c) => {
   return c.json({ ok: true });
 });
 
-meRoutes.get('/badges', async (c) => c.json(await notifications.badges(c.get('ctx'))));
+meRoutes.get('/badges', async (c) => {
+  const ctx = c.get('ctx');
+  const result = await notifications.badges(ctx);
+  // Ứng dụng vừa hỏi số chưa đọc tức là đã nhận được các tin gửi tới: người gửi thấy "Đã nhận".
+  await messaging.markDelivered(ctx);
+  return c.json(result);
+});
 /** Khu học tập của người mua lẻ: khóa học và sản phẩm số đã sở hữu, không cần là thành viên hội nào. */
 meRoutes.get('/library', async (c) => c.json(await learner.myLibrary(c.get('ctx'))));
 meRoutes.get('/communities', async (c) => c.json(await shell.myCommunities(c.get('ctx'))));
@@ -116,7 +122,8 @@ meRoutes.get('/conversations/:id/messages', async (c) => {
   return c.json(await messaging.listMessages(c.get('ctx'), c.req.param('id'), { after: q.after, limit: q.limit ? Number(q.limit) : undefined }));
 });
 meRoutes.post('/conversations/:id/archive', async (c) => {
-  await messaging.archiveConversation(c.get('ctx'), c.req.param('id'));
+  const { archived } = await parse(archiveConversationSchema, await body(c));
+  await messaging.archiveConversation(c.get('ctx'), c.req.param('id'), archived);
   return c.json({ ok: true });
 });
 meRoutes.post('/messages', async (c) => {
@@ -124,8 +131,8 @@ meRoutes.post('/messages', async (c) => {
   const ctx = c.get('ctx');
   let imageUrl: string | null = null;
   if (input.imageFileId) imageUrl = (await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null;
-  if (!input.body && !imageUrl) throw notFound('Không tìm thấy ảnh đã tải lên');
-  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, imageUrl, replyToId: input.replyToId ?? null });
+  if (!input.body && !imageUrl && !input.fileId) throw notFound('Không tìm thấy ảnh đã tải lên');
+  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, imageUrl, replyToId: input.replyToId ?? null, fileId: input.fileId ?? null });
   return c.json(msg, 201);
 });
 meRoutes.post('/messages/:id/reaction', async (c) => {
@@ -133,6 +140,7 @@ meRoutes.post('/messages/:id/reaction', async (c) => {
   await messaging.reactToMessage(c.get('ctx'), c.req.param('id'), emoji);
   return c.json({ ok: true });
 });
+meRoutes.get('/messages/:id/file', async (c) => c.json(await messaging.messageFileUrl(c.get('ctx'), c.req.param('id'))));
 meRoutes.post('/messages/:id/recall', async (c) => {
   await messaging.recallMessage(c.get('ctx'), c.req.param('id'));
   return c.json({ ok: true });
@@ -142,5 +150,16 @@ meRoutes.post('/conversations/:id/pin', async (c) => {
   await messaging.pinConversation(c.get('ctx'), c.req.param('id'), pinned);
   return c.json({ ok: true });
 });
+
+// Chặn và báo cáo người dùng (menu ba chấm của khung chat)
+meRoutes.post('/users/:id/block', rateLimit('write'), async (c) => {
+  await safety.blockUser(c.get('ctx'), c.req.param('id'));
+  return c.json({ ok: true });
+});
+meRoutes.delete('/users/:id/block', async (c) => {
+  await safety.unblockUser(c.get('ctx'), c.req.param('id'));
+  return c.json({ ok: true });
+});
+meRoutes.post('/reports', rateLimit('write'), async (c) => c.json(await safety.reportUser(c.get('ctx'), await parse(reportUserSchema, await body(c))), 201));
 
 meRoutes.get('/id', (c) => c.json({ userId: requireUser(c.get('ctx')) }));

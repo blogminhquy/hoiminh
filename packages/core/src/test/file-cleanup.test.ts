@@ -444,6 +444,8 @@ describe('danh sách cột tham chiếu tệp', () => {
     'affiliate_links.destination_url', 'affiliate_clicks.landing_url', 'events.meeting_url', 'event_recordings.video_url',
     'lessons.video_url', 'courses.intro_video_url', 'communities.intro_video_url', 'product_pages.intro_video_url', 'product_pages.external_landing_url',
     'posts.video_url', 'posts.link_url', 'webhooks.url', 'files.url',
+    // Tên và dung lượng của tệp đính kèm tin nhắn (chép lại để hiển thị); tham chiếu thật là messages.file_url.
+    'messages.file_name', 'messages.file_size',
   ];
   const allColumns = (Object.values(schema) as unknown[]).filter((t): t is PgTable => typeof t === 'object' && t !== null && Object.getPrototypeOf(t) !== null && is(t, PgTable)).flatMap((t) => getTableConfig(t).columns.map((c) => `${getTableName(t)}.${c.name}`));
 

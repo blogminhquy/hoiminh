@@ -1,5 +1,5 @@
 // Tin nhắn không realtime (polling) và thông báo trong app.
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { id, ts } from './_helpers';
 import { communities } from './tenant';
 import { users } from './users';
@@ -52,10 +52,46 @@ export const messages = pgTable(
     reactions: jsonb('reactions').$type<Record<string, string>>().notNull().default({}),
     /** Đã thu hồi: nội dung không còn trả về cho ai. */
     recalledAt: ts('recalled_at'),
+    /** Tệp đính kèm (tối đa 5MB): object key của tệp riêng trong kho, tên gốc và dung lượng chép lại lúc gửi. */
+    fileUrl: text('file_url'),
+    fileName: text('file_name'),
+    fileSize: integer('file_size'),
+    /** Ứng dụng của người nhận đã nhận được tin (trạng thái "Đã nhận", trước "Đã xem"). */
+    deliveredAt: ts('delivered_at'),
     readAt: ts('read_at'),
     createdAt: ts('created_at').notNull().defaultNow(),
   },
   (t) => [index('messages_conversation_idx').on(t.conversationId, t.createdAt)],
+);
+
+/** Chặn một người: hai bên không nhắn được cho nhau cho tới khi người chặn bỏ chặn. */
+export const userBlocks = pgTable(
+  'user_blocks',
+  {
+    blockerUserId: uuid('blocker_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    blockedUserId: uuid('blocked_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.blockerUserId, t.blockedUserId] }), index('user_blocks_blocked_idx').on(t.blockedUserId)],
+);
+
+export type UserReportReason = 'spam' | 'harassment' | 'scam' | 'inappropriate' | 'other';
+/** Báo cáo một người dùng (từ khung chat) để quản trị hệ thống xem xét. */
+export const userReports = pgTable(
+  'user_reports',
+  {
+    id: id(),
+    reporterUserId: uuid('reporter_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    reportedUserId: uuid('reported_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id').references(() => conversations.id, { onDelete: 'set null' }),
+    reason: text('reason').$type<UserReportReason>().notNull(),
+    detail: text('detail').notNull().default(''),
+    status: text('status').$type<'open' | 'resolved'>().notNull().default('open'),
+    resolvedByUserId: uuid('resolved_by_user_id'),
+    resolvedAt: ts('resolved_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('user_reports_status_idx').on(t.status, t.createdAt), index('user_reports_reported_idx').on(t.reportedUserId)],
 );
 
 export const notifications = pgTable(
