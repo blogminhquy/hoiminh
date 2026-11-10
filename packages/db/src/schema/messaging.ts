@@ -1,5 +1,5 @@
 // Tin nhắn không realtime (polling) và thông báo trong app.
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { id, ts } from './_helpers';
 import { communities } from './tenant';
 import { users } from './users';
@@ -14,6 +14,8 @@ export const conversations = pgTable(
     lastMessageAt: ts('last_message_at'),
     lastMessagePreview: text('last_message_preview').notNull().default(''),
     lastMessageAutomated: boolean('last_message_automated').notNull().default(false),
+    /** Người gửi tin cuối, để danh sách hiện "Bạn: ..." trước dòng xem trước. */
+    lastMessageSenderId: uuid('last_message_sender_id'),
     archivedAt: ts('archived_at'),
     createdAt: ts('created_at').notNull().defaultNow(),
   },
@@ -29,6 +31,8 @@ export const conversationParticipants = pgTable(
     unreadCount: integer('unread_count').notNull().default(0),
     lastReadAt: ts('last_read_at'),
     archivedAt: ts('archived_at'),
+    /** Ghim hội thoại lên đầu danh sách (chỉ phía mình). */
+    pinnedAt: ts('pinned_at'),
   },
   (t) => [uniqueIndex('conversation_participants_uq').on(t.conversationId, t.userId), index('conversation_participants_user_idx').on(t.userId)],
 );
@@ -42,6 +46,12 @@ export const messages = pgTable(
     body: text('body').notNull(),
     imageUrl: text('image_url'),
     automated: boolean('automated').notNull().default(false),
+    /** Tin đang được trả lời (trích dẫn). */
+    replyToId: uuid('reply_to_id').references((): AnyPgColumn => messages.id, { onDelete: 'set null' }),
+    /** Cảm xúc: mỗi người một cảm xúc trên một tin, lưu { userId: emoji }. */
+    reactions: jsonb('reactions').$type<Record<string, string>>().notNull().default({}),
+    /** Đã thu hồi: nội dung không còn trả về cho ai. */
+    recalledAt: ts('recalled_at'),
     readAt: ts('read_at'),
     createdAt: ts('created_at').notNull().defaultNow(),
   },

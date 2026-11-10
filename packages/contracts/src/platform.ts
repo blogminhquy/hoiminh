@@ -26,13 +26,21 @@ export const createWebhookSchema = z.object({
   description: z.string().max(120).default(''),
 });
 
+/** Sáu cảm xúc thả được lên tin nhắn (bộ quen thuộc của Zalo). */
+export const MESSAGE_REACTIONS = ['👍', '❤️', '😆', '😮', '😭', '😡'] as const;
+export type MessageReaction = (typeof MESSAGE_REACTIONS)[number];
+
 export const sendMessageSchema = z.object({
   conversationId: idSchema.optional(),
   recipientUserId: idSchema.optional(),
   communityId: idSchema.optional(),
-  body: z.string().trim().min(1).max(4000),
+  /** Được để trống khi tin chỉ có ảnh. */
+  body: z.string().trim().max(4000).default(''),
   imageFileId: idSchema.nullable().optional(),
-});
+  replyToId: idSchema.nullable().optional(),
+}).refine((v) => v.body.length > 0 || Boolean(v.imageFileId), { message: 'Tin nhắn chưa có nội dung', path: ['body'] });
+export const reactMessageSchema = z.object({ emoji: z.enum(MESSAGE_REACTIONS).nullable() });
+export const pinConversationSchema = z.object({ pinned: z.boolean() });
 
 export const notificationPrefsSchema = z.object({
   emailDigest: z.boolean().optional(),
