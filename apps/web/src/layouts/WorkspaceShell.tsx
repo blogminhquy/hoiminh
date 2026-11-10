@@ -1,4 +1,5 @@
-// Khung chủ hội (wsShell trong build.mjs): header với Hội của tôi / Nhà phát triển / Khám phá / Tài khoản, nội dung 1120px giữa.
+// Khung chủ hội: header chỉ còn Hội của tôi và Tài khoản (Nhà phát triển đã về Cài đặt của từng hội, Khám phá nằm
+// trong bảng chuyển hội), nội dung 1120px giữa.
 import { Bell } from 'lucide-react';
 import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -22,9 +23,7 @@ export function WorkspaceShell() {
         {/* Điện thoại: các mục nằm một hàng vuốt ngang, không xuống dòng làm vỡ đầu trang. */}
         <nav className="flex gap-1 ml-1 md:ml-3 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {item('/admin', 'Hội của tôi')}
-          {item('/admin/nha-phat-trien', 'Nhà phát triển')}
-          {item('/kham-pha', 'Khám phá')}
-          {item('/tai-khoan/goi', 'Tài khoản')}
+          {item('/tai-khoan', 'Tài khoản')}
           {user?.isSuperAdmin && item('/he-thong', 'Hệ thống')}
         </nav>
         <span className="flex-grow" />

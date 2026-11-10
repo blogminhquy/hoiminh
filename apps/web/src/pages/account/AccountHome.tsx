@@ -1,7 +1,7 @@
 // Trang "Tôi" (/tai-khoan). Điện thoại: một danh sách mục lớn dễ chạm thay cho hàng tab vuốt ngang,
 // kèm chọn giao diện và nút Đăng xuất. Máy tính: giữ bố cục cũ, vào thẳng Gói và thanh toán.
 import { Avatar, T } from '@hoiminh/ui';
-import { Bell, ChevronRight, GraduationCap, Handshake, LogOut, MessageCircle, Receipt, Settings, UserRound, UsersRound, Wallet } from 'lucide-react';
+import { Bell, ChevronRight, GraduationCap, Handshake, LayoutDashboard, LogOut, MessageCircle, Receipt, Settings, UserRound, UsersRound, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, useBadges } from '@/lib/auth';
@@ -26,11 +26,11 @@ export default function Page() {
   const { user, communities, logout } = useAuth();
   const badges = useBadges();
   const navigate = useNavigate();
-  // Người có quyền quản trị hội đang mở: lối vào Cài đặt và Doanh thu (trên điện thoại không có thanh bên).
+  // Người có quyền quản lý hội đang mở: lối vào Bàn điều khiển, Tiền và Cài đặt (trên điện thoại không có thanh bên).
   const shell = useOptionalShell();
   const perms = shell?.viewer.permissions ?? [];
-  const canSettings = perms.includes('settings.manage');
-  const canRevenue = perms.includes('revenue.read');
+  const canSettings = perms.includes('settings.manage') || perms.includes('billing.manage');
+  const canRevenue = perms.includes('revenue.read') || perms.includes('billing.manage');
   if (typeof window !== 'undefined' && window.matchMedia(WIDE).matches) return <Navigate to="/tai-khoan/goi" replace />;
   const owns = communities.some((c) => c.role === 'owner');
   return (
@@ -43,8 +43,9 @@ export default function Page() {
 
       {shell && (canSettings || canRevenue) && (
         <nav className="card px-3 py-1 me-list" aria-label={`Quản lý ${shell.community.name}`}>
-          {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint={shell.community.name} />}
-          {canRevenue && <Row to={`/${shell.community.slug}/doanh-thu`} icon={<Wallet size={20} />} label="Doanh thu" hint="Giao dịch, hoàn tiền" />}
+          <Row to={`/${shell.community.slug}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" hint={shell.community.name} />
+          {canRevenue && <Row to={`/${shell.community.slug}/tien`} icon={<Wallet size={20} />} label="Tiền" hint="Số dư, rút tiền, giao dịch, hoàn tiền" />}
+          {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint="Hội, bán hàng, cộng sự, kết nối" />}
         </nav>
       )}
 

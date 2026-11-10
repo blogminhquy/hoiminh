@@ -19,8 +19,10 @@ test('cộng sự rút tiền và chủ hội chi trả thủ công', async ({ p
   await expect(page.getByText('Hoàng Vũ').first()).toBeVisible();
 
   await login(page, USERS.owner);
+  // Đường dẫn cũ (trong thông báo đã gửi) phải tự chuyển sang trang Cộng sự mới.
   await page.goto('/minhquy/cai-dat/cong-su/rut-tien');
-  await expect(page.getByRole('heading', { name: 'Yêu cầu rút của cộng sự' })).toBeVisible();
+  await expect(page).toHaveURL(/\/minhquy\/cong-su$/);
+  await expect(page.getByRole('heading', { name: 'Cộng sự', exact: true })).toBeVisible();
   const row = page.locator('div', { hasText: 'hoangvu@gmail.com' }).filter({ has: page.getByRole('button', { name: 'Xem xét' }) }).last();
   await row.getByRole('button', { name: 'Xem xét' }).click();
   // exact: bảng "Đã xử lý gần đây" có dòng từ chối "Sai tên chủ tài khoản…" cũng chứa chuỗi này.

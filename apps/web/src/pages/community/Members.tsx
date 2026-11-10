@@ -26,12 +26,14 @@ export default function Page() {
 }
 
 function ManageMembers({ communityId, slug }: { communityId: string; slug: string }) {
-  const [status, setStatus] = useState('active');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState({ tierKey: '', role: '', source: '' });
   const [filterOpen, setFilterOpen] = useState(false);
   // ?moi=1: mở sẵn khung mời (mục "Mời thành viên" ở Cài đặt và ô lệnh dẫn tới đây).
+  // ?trang-thai=pending: mở thẳng danh sách chờ duyệt (việc "Cần xử lý" trên Bàn điều khiển dẫn tới đây).
   const [search] = useSearchParams();
+  const wanted = search.get('trang-thai');
+  const [status, setStatus] = useState(STATUSES.some(([k]) => k === wanted) ? wanted! : 'active');
   const [invite, setInvite] = useState(search.get('moi') === '1');
   const [openId, setOpenId] = useState<string | null>(null);
   const [msgTo, setMsgTo] = useState<MemberUser | null>(null);

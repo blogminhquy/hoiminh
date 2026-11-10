@@ -21,7 +21,7 @@ Tài khoản mẫu (mật khẩu chung `hoiminh123`):
 
 | Vai trò | Email | Vào đâu |
 |---|---|---|
-| Chủ hội | minhquy@gmail.com | `/admin`, `/minhquy/cai-dat` |
+| Chủ hội | minhquy@gmail.com | `/minhquy/hom-nay` (Bàn điều khiển), `/minhquy/tien`, `/minhquy/cai-dat`, `/admin` |
 | Super admin | admin@hoiminh.vn | `/he-thong` |
 | Cộng sự | hoangvu@gmail.com | `/tai-khoan/cong-su`, `/minhquy/xep-hang` |
 | Thành viên Tiêu chuẩn | congtran@gmail.com | `/minhquy/bang-tin` |

@@ -59,7 +59,7 @@ export default function Page() {
             </div>
             {d.key === 'welcome_dm' && p.enabled && <WelcomeConfig p={p} saving={m.isPending} onSave={(config) => m.mutate({ key: d.key, enabled: true, config })} />}
             {d.key === 'meta_pixel' && p.enabled && <PixelConfig p={p} saving={m.isPending} onSave={(config) => m.mutate({ key: d.key, enabled: true, config })} />}
-            {d.key === 'webhook' && p.enabled && <div className="muted text-[12px]">Tạo địa chỉ nhận và khóa API trong Hội của tôi · Tài khoản · API. Tài liệu: <code>POST /v1/communities/{shell.community.id}/invites</code>.</div>}
+            {d.key === 'webhook' && p.enabled && <div className="muted text-[12px]">Tạo địa chỉ nhận và khóa API ở tab Nhà phát triển ngay phía trên. Tài liệu: <code>POST /v1/communities/{shell.community.id}/invites</code>.</div>}
           </div>
         );
       })}

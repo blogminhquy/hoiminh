@@ -1,6 +1,6 @@
-// Bảng route: công khai, chủ hội (/admin), hội (/:slug/...), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
+// Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Cộng sự và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
-import { createBrowserRouter, Outlet, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useParams, type RouteObject } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
@@ -15,6 +15,12 @@ const page = (loader: () => Promise<{ default: ComponentType }>) => {
     </Suspense>
   );
 };
+
+/** Đường dẫn cũ trong hội (link đã lưu, thông báo đã gửi) chuyển sang trang mới cùng hội. */
+function SlugRedirect({ to }: { to: string }) {
+  const { slug } = useParams();
+  return <Navigate to={`/${slug}/${to}`} replace />;
+}
 
 const publicRoutes: RouteObject[] = [
   { path: '/', element: page(() => import('@/pages/public/Home')) },
@@ -98,19 +104,22 @@ const communityRoutes: RouteObject = {
         { path: 'su-kien/:eventId/sua', element: page(() => import('@/pages/community/EventCreate')) },
         { path: 'xep-hang', element: page(() => import('@/pages/community/Leaderboard')) },
         { path: 'thanh-vien', element: page(() => import('@/pages/community/Members')) },
-        { path: 'doanh-thu', element: page(() => import('@/pages/community/Revenue')) },
+        { path: 'tien', element: page(() => import('@/pages/community/Money')) },
+        { path: 'cong-su', element: page(() => import('@/pages/community/Partners')) },
+        { path: 'doanh-thu', element: <SlugRedirect to="tien" /> },
+        { path: 'cai-dat/thanh-toan', element: <SlugRedirect to="tien" /> },
+        { path: 'cai-dat/cong-su/rut-tien', element: <SlugRedirect to="cong-su" /> },
         {
           path: 'cai-dat',
           element: page(() => import('@/pages/settings/SettingsLayout')),
           children: [
-            { index: true, element: page(() => import('@/pages/settings/SettingsOverview')) },
+            { index: true, element: page(() => import('@/pages/settings/SettingsHome')) },
             { path: 'chung', element: page(() => import('@/pages/settings/SettingsGeneral')) },
+            { path: 'bang-tin', element: page(() => import('@/pages/settings/SettingsFeed')) },
             { path: 'gia', element: page(() => import('@/pages/settings/SettingsPricing')) },
             { path: 'cong-su', element: page(() => import('@/pages/settings/SettingsAffiliate')) },
-            { path: 'cong-su/rut-tien', element: page(() => import('@/pages/settings/SettingsAffiliatePayouts')) },
             { path: 'tien-ich', element: page(() => import('@/pages/settings/SettingsPlugins')) },
-            { path: 'bang-tin', element: page(() => import('@/pages/settings/SettingsFeed')) },
-            { path: 'thanh-toan', element: page(() => import('@/pages/settings/SettingsPayout')) },
+            { path: 'nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
           ],
         },
       ],

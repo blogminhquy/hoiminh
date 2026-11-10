@@ -20,7 +20,9 @@ test('tạo hội, khóa học và sự kiện', async ({ page }) => {
   await page.getByRole('button', { name: /Tạo hội/ }).click();
   await expect(page.getByText('đã sẵn sàng')).toBeVisible();
   await page.getByRole('link', { name: 'Vào hội' }).click();
-  await expect(page).toHaveURL(new RegExp(`/${slug}/bang-tin`));
+  // Chủ hội vào hội là thấy Bàn điều khiển, có danh sách việc để hoàn thiện hội mới.
+  await expect(page).toHaveURL(new RegExp(`/${slug}/hom-nay`));
+  await expect(page.getByRole('heading', { name: 'Hoàn thiện hội' })).toBeVisible();
 
   await page.goto(`/${slug}/khoa-hoc/moi`);
   await page.getByLabel(/Tên khóa học/).fill('Khóa học E2E');

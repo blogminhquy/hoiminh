@@ -1,15 +1,18 @@
-// Trang "Hôm nay": mở app là thấy việc của riêng mình trong ngày. Ba việc nhỏ (ghé hội, học một bài,
+// Trang "Hôm nay" (/:slug/hom-nay). Chủ hội và quản trị thấy Bàn điều khiển (Dashboard.tsx), thành viên thấy trang dưới đây:
+// mở app là thấy việc của riêng mình trong ngày. Ba việc nhỏ (ghé hội, học một bài,
 // sự kiện hôm nay hoặc góp ý một bài), tiến độ khóa đang học nói bằng lời, sự kiện sắp tới và điều đang được bàn.
 // Máy tính: hai cột (việc hôm nay và tiến độ bên trái; sự kiện, bàn luận bên phải). Điện thoại: một cột.
 // Mọi dấu "đã xong" lấy từ dữ liệu thật: GET /v1/communities/:id/today, danh sách khóa học, sự kiện, bảng tin.
 import { useQuery } from '@tanstack/react-query';
 import { DateBlock, Prog, T } from '@hoiminh/ui';
 import { Check, ChevronRight, MessageCircle, Play } from 'lucide-react';
+import { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import type { FeedPost } from '@/components/post/PostCard';
+import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useShell } from '@/lib/community';
+import { canManage, useShell } from '@/lib/community';
 import { fmtDuration, fmtLongDate, fmtTime } from '@/lib/format';
 import { buildTodayTasks, moduleRemaining, pickDiscussPost, pickTodayEvent, type TodayActivity, type TodayTask } from '@/lib/today';
 import { useRegister, type EventItem } from './EventParts';
@@ -34,7 +37,16 @@ function TaskRow({ task }: { task: TodayTask }) {
   );
 }
 
+// Bàn điều khiển chỉ tải khi người xem là chủ hội hoặc quản trị, thành viên không phải tải phần mã này.
+const Dashboard = lazy(() => import('./Dashboard'));
+
 export default function Page() {
+  const shell = useShell();
+  if (canManage(shell)) return <Suspense fallback={<LoadingBlock rows={4} />}><Dashboard /></Suspense>;
+  return <MemberToday />;
+}
+
+function MemberToday() {
   const shell = useShell();
   const { user } = useAuth();
   const cid = shell.community.id;

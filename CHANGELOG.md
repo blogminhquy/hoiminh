@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 1.18.0 - 2026-11-10
+
+Đợt B của việc gom phần quản trị: chủ hội mở app là thấy Bàn điều khiển, phần quản lý gom từ 15 mục ở hai khung về 4 chỗ (Bàn điều khiển, Tiền, Cộng sự, Cài đặt).
+
+### Tính năng
+
+- **Bàn điều khiển thay trang Hôm nay cho chủ hội và quản trị** (`/:slug/hom-nay`). Một màn trả lời ba câu: có gì cần xử lý, hội đang chạy thế nào, tiền đang ở đâu. Mục "Cần xử lý" gom yêu cầu rút của cộng sự, người chờ duyệt vào hội, bài chờ duyệt và gói Hội Mình sắp hết hạn (còn từ 7 ngày trở xuống); không có gì thì ghi rõ "Mọi việc đã xong". Số liệu, biểu đồ doanh thu, danh sách hoàn thiện hội và hoạt động gần đây chuyển từ Cài đặt, Tổng quan về đây. Thành viên thường vẫn thấy trang Hôm nay như cũ.
+- **Trang Tiền** (`/:slug/tien`) gom Doanh thu và Cài đặt, Thanh toán: số dư có thể rút, đang giữ, đã rút tháng này, nút Rút tiền, rồi số liệu theo kỳ và bảng giao dịch (hoàn tiền, xuất CSV).
+- **Trang Cộng sự** (`/:slug/cong-su`) mở thẳng hàng đợi yêu cầu rút hoa hồng, việc chủ hội làm hằng ngày với cộng sự. Mức hoa hồng (việc đặt một lần) nằm ở Cài đặt.
+- **Cài đặt còn 4 nhóm thay cho 10 mục**: Hội (thông tin, bảng tin và chuyên mục), Bán hàng (giá và gói), Cộng sự (mức hoa hồng), Tự động và kết nối (tiện ích, nhà phát triển). Trên điện thoại `/cai-dat` là danh sách 4 nhóm lớn, vào trong có nút quay lại.
+- **Điện thoại**: tab đầu của thanh dưới thành "Quản lý" cho chủ hội, có ô lối tắt tới Thành viên, Tiền, Cộng sự, Cài đặt. Chạm tên hội ở đầu trang để chuyển hội (trước đây chỉ máy tính chuyển được).
+- **Chủ hội đăng nhập xong vào thẳng Bàn điều khiển** của hội mình (trước: trang "Hội của tôi"). Đăng nhập bằng Google và đặt lại mật khẩu cũng theo cùng quy tắc.
+
+### Thay đổi
+
+- Thanh bên máy tính của chủ hội: "Bàn điều khiển" ở đầu, nhóm "Quản lý" gồm Tiền, Cộng sự, Cài đặt (trước: nhóm "Quản trị" gồm Cài đặt, Doanh thu).
+- Khung "Hội của tôi" chỉ còn hai mục ở đầu trang: Hội của tôi và Tài khoản. Nhà phát triển chuyển vào Cài đặt của hội, Khám phá nằm trong bảng chuyển hội.
+- Bỏ các mục trùng trong Cài đặt: Tổng quan (đã thành Bàn điều khiển), Khám phá, Mời thành viên, Thông báo. Bỏ bảng bật tắt cổng thanh toán ở trang Thanh toán vì trùng với phần "Cách khách thanh toán" trong Giá và gói.
+- Đường dẫn cũ vẫn chạy: `/doanh-thu` và `/cai-dat/thanh-toan` chuyển sang `/tien`, `/cai-dat/cong-su/rut-tien` chuyển sang `/cong-su`.
+- `/thanh-vien?trang-thai=pending` mở thẳng danh sách chờ duyệt.
+
+### Sửa lỗi
+
+- Trang yêu cầu rút của cộng sự tràn ngang ở khổ 820px (bốn ô số liệu bị ép vào một hàng).
+
 ## 1.17.1 - 2026-11-10
 
 Đợt A của việc gom phần quản trị: sửa các lỗi tìm thấy khi rà soát 31 màn của chủ hội và quản trị hệ thống.

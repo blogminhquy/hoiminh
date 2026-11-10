@@ -1,7 +1,8 @@
 // Khung ứng dụng hội. Máy tính: sidebar 264px + header 64px. Điện thoại: header gọn có tìm kiếm, thanh dưới 4 mục
 // (Hôm nay, Học, Hội, Tôi) với nút viết bài ở giữa, và hàng tab con cho nhóm Hội (Bảng tin, Sự kiện, Thành viên,
-// Xếp hạng) và nhóm Học (Khóa học, Cửa hàng).
-import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
+// Xếp hạng) và nhóm Học (Khóa học, Cửa hàng). Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"),
+// thanh bên có thêm nhóm Quản lý (Tiền, Cộng sự, Cài đặt), trên điện thoại ba trang đó thuộc tab Quản lý.
+import { Bell, BookOpen, Calendar, ChevronDown, FileText, Handshake, House, LayoutDashboard, Lock, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -11,7 +12,7 @@ import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
-import { ShellProvider, useShellQuery, type Shell } from '@/lib/community';
+import { canManage, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { CommunitySwitcher } from './CommunitySwitcher';
 import { PublicHeader } from './PublicHeader';
 
@@ -27,7 +28,8 @@ function NavItem({ to, icon, label, extra, end }: { to: string; icon: ReactNode;
 
 function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
   const s = shell.community.slug;
-  const manage = shell.viewer.permissions.includes('settings.manage') || shell.viewer.permissions.includes('revenue.read');
+  const perms = shell.viewer.permissions;
+  const manage = canManage(shell);
   const [switching, setSwitching] = useState(false);
   const tabs = shell.community.tabs;
   return (
@@ -44,7 +46,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
         {switching && <CommunitySwitcher current={s} onClose={() => setSwitching(false)} />}
       </div>
       <div className="flex flex-col gap-0.5 pt-3">
-        <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />
+        {manage ? <NavItem to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
       </div>
       <div className="nav-group">Hội</div>
       <div className="flex flex-col gap-0.5">
@@ -65,10 +67,11 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
       )}
       {manage && (
         <>
-          <div className="nav-group">Quản trị</div>
+          <div className="nav-group">Quản lý</div>
           <div className="flex flex-col gap-0.5">
-            <NavItem to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />
-            <NavItem to={`/${s}/doanh-thu`} icon={<Wallet size={20} />} label="Doanh thu" />
+            {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem to={`/${s}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
+            {perms.includes('affiliates.manage') && <NavItem to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Cộng sự" end />}
+            {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
           </div>
         </>
       )}
@@ -82,12 +85,15 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
 }
 
 function Header({ shell }: { shell: Shell }) {
-  const { user } = useAuth();
+  const { user, communities } = useAuth();
   const badges = useBadges();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const slug = shell.community.slug;
+  // Điện thoại không có thanh bên: người có từ hai hội (hoặc đang quản lý hội) chạm tên hội ở đầu trang để chuyển hội.
+  const canSwitch = communities.length > 1 || canManage(shell);
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
   const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
   const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
@@ -95,10 +101,21 @@ function Header({ shell }: { shell: Shell }) {
     <>
       <header className="app-header flex items-center gap-2 md:gap-4 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
         <Link to="/kham-pha" className="hide-mobile"><Logo size={26} /></Link>
-        <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center gap-2 min-w-0 flex-1">
-          <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
-          <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
-        </Link>
+        {canSwitch ? (
+          <div className="relative flex md:hidden min-w-0 flex-1">
+            <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${shell.community.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="flex items-center gap-2 min-w-0 text-left min-h-[44px]">
+              <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
+              <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+              <ChevronDown size={18} className="flex-shrink-0" style={{ color: T.ink3 }} />
+            </button>
+            {switching && <CommunitySwitcher current={slug} onClose={() => setSwitching(false)} />}
+          </div>
+        ) : (
+          <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center gap-2 min-w-0 flex-1">
+            <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
+            <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+          </Link>
+        )}
         <form className="input search ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
           <Search size={18} style={{ color: T.ink3 }} />
           <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -122,12 +139,12 @@ function Header({ shell }: { shell: Shell }) {
   );
 }
 
-/** Đường dẫn đang mở thuộc nhóm nào trên thanh dưới. Trang tài khoản, tin nhắn, thông báo thuộc "Tôi". */
+/** Đường dẫn đang mở thuộc nhóm nào trên thanh dưới. Trang tài khoản, tin nhắn, thông báo thuộc "Tôi". Tiền, Cộng sự, Cài đặt thuộc mục đầu (Quản lý). */
 export function mobileSection(pathname: string, slug: string): 'today' | 'learn' | 'community' | 'me' | null {
   const base = `/${slug}/`;
   if (!pathname.startsWith(base)) return /^\/(tai-khoan|tin-nhan|thong-bao|u\/|hoc)/.test(pathname) ? 'me' : null;
   const rest = pathname.slice(base.length);
-  if (rest.startsWith('hom-nay')) return 'today';
+  if (/^(hom-nay|tien|cong-su|cai-dat|doanh-thu)(\/|$)/.test(rest)) return 'today';
   if (/^(khoa-hoc|bai\/|cua-hang)/.test(rest)) return 'learn';
   if (/^(bang-tin|bai-viet|su-kien|thanh-vien|xep-hang)/.test(rest)) return 'community';
   return null;
@@ -163,7 +180,7 @@ function MobileTabs({ shell }: { shell: Shell }) {
   );
   return (
     <nav className="mobile-tabs" aria-label="Điều hướng chính">
-      {item('today', `/${slug}/hom-nay`, <Sun size={22} />, 'Hôm nay')}
+      {canManage(shell) ? item('today', `/${slug}/hom-nay`, <LayoutDashboard size={22} />, 'Quản lý') : item('today', `/${slug}/hom-nay`, <Sun size={22} />, 'Hôm nay')}
       {(t.courses !== false || t.store !== false) && item('learn', learnTo, <BookOpen size={22} />, 'Học')}
       {t.feed !== false && <Link to={`/${slug}/bang-tin/moi`} aria-label="Viết bài mới" className="mobile-tab-plus"><Plus size={26} /></Link>}
       {item('community', communityTo, <Users size={22} />, 'Hội')}

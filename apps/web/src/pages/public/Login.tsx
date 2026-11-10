@@ -7,17 +7,26 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '@/layouts/AuthShell';
 import { api } from '@/lib/api';
-import { useAuth, type MyCommunity } from '@/lib/auth';
+import { preferredCommunitySlug, useAuth, type MyCommunity } from '@/lib/auth';
 import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider } from './AuthParts';
 
-/** Đích sau đăng nhập: ?next → /admin nếu là chủ hội → trang Hôm nay của hội đầu tiên → khu quản trị nếu là quản trị hệ thống → Khám phá. */
+/**
+ * Đích sau đăng nhập: ?next → trang Hôm nay của hội nên mở (hội lần trước đang dùng, không có thì hội mình làm chủ:
+ * chủ hội thấy Bàn điều khiển, thành viên thấy việc hôm nay) → khu quản trị nếu là quản trị hệ thống → Khám phá.
+ */
 export function landingFor(next: string | null, communities: MyCommunity[], isSuperAdmin = false): string {
   if (next && next.startsWith('/')) return next;
-  if (communities.some((c) => c.role === 'owner')) return '/admin';
-  const first = communities[0];
-  if (first) return `/${first.slug}/hom-nay`;
+  const slug = preferredCommunitySlug(communities);
+  if (slug) return `/${slug}/hom-nay`;
   if (isSuperAdmin) return '/he-thong';
   return '/kham-pha';
+}
+
+/** Sau khi đã có phiên (Google, đặt lại mật khẩu): hỏi danh sách hội rồi chọn đích. Chưa có hội nào thì vào "Hội của tôi" để tạo. */
+export async function landingAfterAuth(next: string | null = null): Promise<string> {
+  const me = await api.get<{ user: { isSuperAdmin?: boolean }; communities: MyCommunity[] }>('/v1/me');
+  if (!next && me.communities.length === 0 && !me.user?.isSuperAdmin) return '/admin';
+  return landingFor(next, me.communities, Boolean(me.user?.isSuperAdmin));
 }
 
 export default function Page() {

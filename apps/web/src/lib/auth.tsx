@@ -76,10 +76,10 @@ export function rememberCommunitySlug(slug: string): void {
   try { localStorage.setItem('hm_current_slug', slug); } catch { /* bỏ qua */ }
 }
 
-/** Hội nên mở mặc định: hội đã ghi nhớ nếu còn trong danh sách, nếu không thì hội đang hoạt động đầu tiên. */
+/** Hội nên mở mặc định: hội đã ghi nhớ nếu còn trong danh sách, nếu không thì hội mình làm chủ trước, rồi tới hội đang hoạt động đông thành viên nhất. */
 export function preferredCommunitySlug(communities: MyCommunity[]): string | null {
   const remembered = currentCommunitySlug(null);
   if (remembered && communities.some((c) => c.slug === remembered)) return remembered;
-  const ranked = [...communities].sort((a, b) => Number(b.pinned) - Number(a.pinned) || Number(b.status === 'active') - Number(a.status === 'active') || b.memberCount - a.memberCount);
+  const ranked = [...communities].sort((a, b) => Number(b.pinned) - Number(a.pinned) || Number(b.role === 'owner') - Number(a.role === 'owner') || Number(b.status === 'active') - Number(a.status === 'active') || b.memberCount - a.memberCount);
   return ranked[0]?.slug ?? null;
 }
