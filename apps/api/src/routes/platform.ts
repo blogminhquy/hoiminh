@@ -56,7 +56,7 @@ localFilesRoutes.put('/upload/*', async (c) => {
   const type = c.req.header('content-type') ?? 'application/octet-stream';
   let bytes: Uint8Array = new Uint8Array(await c.req.arrayBuffer());
   let stored = type;
-  // Ảnh công khai còn là JPEG/PNG (trình duyệt không tự xuất được WebP, ví dụ Safari): chuyển sang WebP trước khi ghi vào kho.
+  // Ảnh công khai còn là JPEG/PNG (trình duyệt không đổi được sang WebP, client cũ, gọi API trực tiếp): chuyển sang WebP trước khi ghi vào kho.
   // Không chuyển được (hết hạn mức Images, ảnh hỏng) thì lưu đúng tệp nhận được, lượt tải lên vẫn thành công.
   const target = media.images ? webpTarget(key, type) : null;
   if (target && media.images) {

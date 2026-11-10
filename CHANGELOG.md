@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.25.0 - 2026-11-10
+## 1.26.0 - 2026-11-10
 
 Trang Tin nhắn làm lại theo cách dùng của Zalo: ba cột liền nhau lấp đầy màn hình, và các thao tác quen tay trên từng tin (trả lời, thả cảm xúc, thu hồi) cùng ghim hội thoại.
 
@@ -33,6 +33,35 @@ Trang Tin nhắn làm lại theo cách dùng của Zalo: ba cột liền nhau l�
 ### Cần làm khi triển khai
 
 - Áp dụng migration `0006_message_actions.sql` lên database thật trước khi merge (thêm cột cho trả lời, cảm xúc, thu hồi, ghim; chạy lại nhiều lần vẫn an toàn).
+
+## 1.25.0 - 2026-11-10
+
+Safari tự đổi ảnh sang WebP ngay trên máy người dùng, nên việc chuyển ảnh không còn phụ thuộc hạn mức Cloudflare Images.
+
+### Tính năng
+
+- **Bộ mã hóa WebP riêng cho trình duyệt không tự xuất được WebP** (Safari trên iPhone và máy Mac). Trước đây các máy này gửi JPEG lên, máy chủ chuyển sang WebP bằng Cloudflare Images, mỗi ảnh tốn một lượt trong 5.000 lượt miễn phí mỗi tháng. Nay thứ tự khi tải ảnh lên là:
+  1. Trình duyệt tự đổi sang WebP bằng canvas (Chrome, Edge, Firefox, Android), như trước.
+  2. Không tự đổi được thì web dùng bộ mã hóa WebAssembly (libwebp, gói `@jsquash/webp`), vẫn chạy trên máy người dùng.
+  3. Cả hai không được thì gửi JPEG, máy chủ chuyển bằng Cloudflare Images như trước.
+- Bước 1 và 2 không tốn lượt chuyển đổi nào của Cloudflare, bao nhiêu người dùng cũng vậy. Cloudflare Images chỉ còn là lưới an toàn cho bước 3.
+- Ảnh PNG nền trong suốt giữ được nền trong suốt ở cả ba bước.
+
+### Thay đổi
+
+- Bộ mã hóa chỉ được tải khi cần: Chrome, Edge, Firefox, Android không tải thêm gì. Safari tải một lần khoảng 130 KB (đã nén) ở ảnh đầu tiên, các ảnh sau dùng lại.
+- Sau lần đầu thấy canvas không xuất được WebP, các ảnh sau bỏ qua lượt thử đó, đi thẳng tới bộ mã hóa.
+- Bộ mã hóa tải hỏng (rớt mạng) thì ảnh đó đi theo bước 3, ảnh sau thử tải lại.
+- Thêm thư viện `@jsquash/webp` cho `apps/web`. Không đổi gì ở máy chủ, database hay cấu hình Cloudflare.
+
+### Đã kiểm
+
+- Chạy mã thật trong Chromium, ép canvas trả PNG khi xin WebP để giả Safari, trên cả bản dev lẫn bản build: ảnh PNG 3000x2000 nặng 3,5 MB ra WebP 1200x800 nặng 165 KB, bằng đúng dung lượng Chrome tự nén; vùng trong suốt giữ nguyên; avatar ra 512px. Riêng bước mã hóa ảnh 1200x800 mất khoảng 140 ms (bản SIMD) và 200 ms (bản không SIMD) trên máy thử.
+- Mở trang bình thường không tải tệp nào của bộ mã hóa.
+
+### Chưa kiểm chứng được
+
+- Chưa chạy trên Safari thật (máy thử chỉ có Chromium). Thời gian nén trên iPhone đời cũ chưa đo. Sau khi lên bản này, tải một ảnh từ iPhone và xem đường dẫn ảnh kết thúc bằng `.webp`.
 
 ## 1.24.0 - 2026-11-10
 

@@ -1,7 +1,10 @@
 // Nén ảnh ngay trong trình duyệt trước khi tải lên: đổi sang WebP, cạnh dài tối đa 1200px (avatar 512px).
 // Ảnh chụp điện thoại hay ảnh AI thường 2 đến 10 MB và hơn 1200px; sau nén còn vài chục đến vài trăm KB,
-// tải nhanh hơn và R2 không phải chứa bản gốc. Trình duyệt không tự xuất được WebP (Safari) thì xuất JPEG,
-// máy chủ chuyển nốt sang WebP bằng Cloudflare Images lúc nhận tệp (packages/media, route PUT /files/upload).
+// tải nhanh hơn và R2 không phải chứa bản gốc. Thứ tự đổi sang WebP:
+//   1. canvas của trình duyệt (Chrome, Edge, Firefox, Android);
+//   2. trình duyệt không tự xuất được WebP (Safari): bộ mã hóa WebAssembly nạp riêng (webp-encoder.ts), vẫn chạy trên máy người dùng;
+//   3. cả hai không được: gửi JPEG, máy chủ chuyển nốt bằng Cloudflare Images lúc nhận tệp (packages/media, route PUT /files/upload).
+// Chỉ bước 3 tốn lượt chuyển đổi Cloudflare Images (gói miễn phí 5.000 lượt mỗi tháng).
 // Đây là tối ưu phía người dùng, không phải ràng buộc: server vẫn kiểm tra như cũ (validateUpload: ảnh tối đa 10 MB).
 
 export type UploadPurpose = 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'comment_image';
@@ -59,6 +62,24 @@ export interface CompressDeps {
   decode(file: File): Promise<DecodedImage>;
   /** Xuất ảnh theo `type`. Trình duyệt không hỗ trợ định dạng đó thì trả blob loại khác (thường là PNG) hoặc null. */
   encode(source: CanvasImageSource, width: number, height: number, quality: number, type: OutputType): Promise<Blob | null>;
+  /** Mã hóa WebP không nhờ canvas, dùng khi `encode` không xuất được WebP. Không có, trả null hoặc lỗi thì xuất JPEG. */
+  encodeWebpSoftware?(source: CanvasImageSource, width: number, height: number, quality: number): Promise<Blob | null>;
+}
+
+/** Vẽ ảnh lên canvas mới ở kích thước đích. `background` là màu nền đổ trước khi vẽ; bỏ trống thì giữ nền trong suốt. */
+function drawToCanvas(source: CanvasImageSource, width: number, height: number, background?: string): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, 0, 0, width, height);
+  return { canvas, ctx };
 }
 
 async function decodeWithImage(file: File): Promise<DecodedImage> {
@@ -74,6 +95,9 @@ async function decodeWithImage(file: File): Promise<DecodedImage> {
   return { width: img.naturalWidth, height: img.naturalHeight, source: img, release: () => URL.revokeObjectURL(url) };
 }
 
+/** Đã thấy canvas của trình duyệt này không xuất được WebP (Safari trả về PNG): các ảnh sau bỏ qua lượt thử vô ích đó. */
+let canvasLacksWebp = false;
+
 const browserDeps: CompressDeps = {
   async decode(file) {
     // createImageBitmap giải mã nhanh và tự xoay ảnh chụp điện thoại theo EXIF; không dùng được thì rơi xuống <img>.
@@ -86,24 +110,38 @@ const browserDeps: CompressDeps = {
     return decodeWithImage(file);
   },
   async encode(source, width, height, quality, type) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
     // JPEG không có kênh trong suốt: đổ nền trắng trước, nếu không PNG trong suốt sẽ ra nền đen. WebP giữ được nền trong suốt.
-    if (type === 'image/jpeg') {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, width, height);
-    }
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(source, 0, 0, width, height);
-    return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+    if (type === 'image/webp' && canvasLacksWebp) return null;
+    const drawn = drawToCanvas(source, width, height, type === 'image/jpeg' ? '#fff' : undefined);
+    if (!drawn) return null;
+    const blob = await new Promise<Blob | null>((resolve) => drawn.canvas.toBlob(resolve, type, quality));
+    if (type === 'image/webp' && blob && blob.type !== 'image/webp') canvasLacksWebp = true;
+    return blob;
+  },
+  async encodeWebpSoftware(source, width, height, quality) {
+    const drawn = drawToCanvas(source, width, height);
+    if (!drawn) return null;
+    const pixels = drawn.ctx.getImageData(0, 0, width, height);
+    // Nạp lúc cần: chỉ trình duyệt không tự xuất được WebP mới tải bộ mã hóa (vài trăm KB), và chỉ tải một lần.
+    const { encodeWebp } = await import('./webp-encoder');
+    return encodeWebp(pixels, quality);
   },
 };
 
+/** Gọi bộ mã hóa WebP dự phòng. Mọi trục trặc (không có, lỗi tải, lỗi mã hóa, ra tệp rỗng) đều thành null để rơi xuống JPEG. */
+async function softwareWebp(deps: CompressDeps, source: CanvasImageSource, width: number, height: number): Promise<Blob | null> {
+  if (!deps.encodeWebpSoftware) return null;
+  try {
+    const blob = await deps.encodeWebpSoftware(source, width, height, WEBP_QUALITY);
+    return blob && blob.type === 'image/webp' && blob.size > 0 ? blob : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Thu nhỏ về `maxSide` và đổi sang WebP; trình duyệt không xuất được WebP thì đổi sang JPEG. Trả lại đúng tệp gốc khi:
+ * Thu nhỏ về `maxSide` và đổi sang WebP: bằng canvas, không được thì bằng bộ mã hóa WebAssembly, vẫn không được thì đổi sang JPEG.
+ * Trả lại đúng tệp gốc khi:
  * không phải JPEG/PNG/WebP (GIF, tài liệu), giải mã hoặc mã hóa lỗi, hoặc ảnh gốc đã là WebP, chưa cần thu nhỏ mà bản nén lại nặng hơn.
  * Ảnh JPEG/PNG nhỏ vẫn được đổi sang WebP để mọi ảnh trong hội cùng một định dạng.
  */
@@ -113,12 +151,14 @@ export async function compressImage(file: File, maxSide: number, deps: CompressD
   try {
     decoded = await deps.decode(file);
     const { width, height, resized } = fitWithin(decoded.width, decoded.height, maxSide);
-    const webp = await deps.encode(decoded.source, width, height, WEBP_QUALITY, 'image/webp');
-    if (webp && webp.type === 'image/webp') {
+    const native = await deps.encode(decoded.source, width, height, WEBP_QUALITY, 'image/webp');
+    // Trình duyệt không xuất được WebP (Safari trả về PNG): thử bộ mã hóa WebAssembly trước khi chịu dùng JPEG.
+    const webp = native && native.type === 'image/webp' ? native : await softwareWebp(deps, decoded.source, width, height);
+    if (webp) {
       if (file.type === 'image/webp' && !resized && webp.size >= file.size) return file;
       return new File([webp], outputName(file.name, 'image/webp'), { type: 'image/webp', lastModified: file.lastModified });
     }
-    // Trình duyệt không xuất được WebP (Safari trả về PNG): dùng JPEG như trước, máy chủ sẽ chuyển sang WebP.
+    // Không cách nào ra được WebP: dùng JPEG như trước, máy chủ sẽ chuyển sang WebP bằng Cloudflare Images.
     const jpeg = await deps.encode(decoded.source, width, height, JPEG_QUALITY, 'image/jpeg');
     if (!jpeg || jpeg.type !== 'image/jpeg') return file;
     if (!resized && jpeg.size >= file.size) return file;
