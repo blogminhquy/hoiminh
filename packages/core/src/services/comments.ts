@@ -1,5 +1,6 @@
 // Bình luận lồng nhau (bài viết, bài học, sự kiện), ghim, thích; phản ứng cho bài viết.
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import type { ReactionKind } from '@hoiminh/contracts';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { comments, communityMembers, events, lessons, posts, reactions, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
@@ -32,8 +33,10 @@ export async function listComments(ctx: Ctx, targetType: 'post' | 'lesson' | 'ev
     .leftJoin(communityMembers, and(eq(communityMembers.communityId, comments.communityId), eq(communityMembers.userId, comments.authorUserId)))
     .where(and(eq(comments.targetType, targetType), eq(comments.targetId, targetId), isNull(comments.deletedAt)))
     .orderBy(desc(comments.pinned), q.sort === 'newest' ? desc(comments.createdAt) : desc(comments.likeCount), asc(comments.createdAt));
-  const liked = ctx.actor.type === 'user' ? new Set((await ctx.db.query.reactions.findMany({ where: and(eq(reactions.userId, ctx.actor.userId), eq(reactions.targetType, 'comment')) })).map((r) => r.targetId)) : new Set<string>();
-  const items = rows.map((r) => ({ ...r.c, author: { ...r.author, level: r.level ?? 1, isAdmin: r.role === 'owner' || r.role === 'admin' }, liked: liked.has(r.c.id), replies: [] as Array<typeof rows[number]['c'] & { author: typeof rows[number]['author'] & { level: number; isAdmin: boolean }; liked: boolean; replies: never[] }> }));
+  const ids = rows.map((r) => r.c.id);
+  const mine = new Map<string, string>(ctx.actor.type === 'user' && ids.length ? (await ctx.db.query.reactions.findMany({ where: and(eq(reactions.userId, ctx.actor.userId), eq(reactions.targetType, 'comment'), inArray(reactions.targetId, ids)) })).map((r) => [r.targetId, r.reaction] as const) : []);
+  const counts = await reactionCounts(ctx, 'comment', ids);
+  const items = rows.map((r) => ({ ...r.c, author: { ...r.author, level: r.level ?? 1, isAdmin: r.role === 'owner' || r.role === 'admin' }, liked: mine.has(r.c.id), myReaction: mine.get(r.c.id) ?? null, reactionCounts: counts.get(r.c.id) ?? {}, replies: [] as Array<typeof rows[number]['c'] & { author: typeof rows[number]['author'] & { level: number; isAdmin: boolean }; liked: boolean; myReaction: string | null; reactionCounts: Record<string, number>; replies: never[] }> }));
   const roots = items.filter((i) => !i.parentCommentId);
   for (const i of items) if (i.parentCommentId) {
     const parent = items.find((p) => p.id === i.parentCommentId);
@@ -84,20 +87,39 @@ export async function deleteComment(ctx: Ctx, commentId: string) {
   await releaseFiles(ctx, { urls: [c.imageUrl] }, { ownerUserIds: [c.authorUserId], communityId: c.communityId });
 }
 
-/** Thích/bỏ thích bài viết hoặc bình luận. Trả về trạng thái mới và số lượt. */
-export async function toggleReaction(ctx: Ctx, targetType: 'post' | 'comment', targetId: string) {
+/**
+ * Thả, đổi hoặc gỡ cảm xúc ở bài viết hoặc bình luận. Mỗi người một cảm xúc cho mỗi đối tượng.
+ * Không truyền `reaction`: bật tắt kiểu cũ (chưa thả thì Thích, đã thả thì gỡ). Truyền loại khác loại đang thả: đổi loại,
+ * tổng số không đổi. Truyền đúng loại đang thả: gỡ.
+ */
+export async function toggleReaction(ctx: Ctx, targetType: 'post' | 'comment', targetId: string, reaction?: ReactionKind) {
   const userId = requireUser(ctx);
   const communityId = targetType === 'post' ? await communityOfTarget(ctx, 'post', targetId) : (await ctx.db.query.comments.findFirst({ where: eq(comments.id, targetId), columns: { communityId: true } }))?.communityId ?? '';
   if (!communityId) throw notFound();
   await requireCommunityPermission(ctx, communityId, 'community.read');
   const existing = await ctx.db.query.reactions.findFirst({ where: and(eq(reactions.userId, userId), eq(reactions.targetType, targetType), eq(reactions.targetId, targetId)) });
   const table = targetType === 'post' ? posts : comments;
+  if (existing && reaction && existing.reaction !== reaction) {
+    await ctx.db.update(reactions).set({ reaction }).where(eq(reactions.id, existing.id));
+    const [row] = await ctx.db.select({ likeCount: table.likeCount }).from(table).where(eq(table.id, targetId));
+    return { liked: true, reaction, likeCount: row?.likeCount ?? 1 };
+  }
   if (existing) {
     await ctx.db.delete(reactions).where(eq(reactions.id, existing.id));
     const [row] = await ctx.db.update(table).set({ likeCount: sql`greatest(${table.likeCount} - 1, 0)` }).where(eq(table.id, targetId)).returning({ likeCount: table.likeCount });
-    return { liked: false, likeCount: row?.likeCount ?? 0 };
+    return { liked: false, reaction: null, likeCount: row?.likeCount ?? 0 };
   }
-  await ctx.db.insert(reactions).values({ userId, targetType, targetId });
+  const kind: ReactionKind = reaction ?? 'like';
+  await ctx.db.insert(reactions).values({ userId, targetType, targetId, reaction: kind });
   const [row] = await ctx.db.update(table).set({ likeCount: sql`${table.likeCount} + 1` }).where(eq(table.id, targetId)).returning({ likeCount: table.likeCount });
-  return { liked: true, likeCount: row?.likeCount ?? 1 };
+  return { liked: true, reaction: kind, likeCount: row?.likeCount ?? 1 };
+}
+
+/** Số cảm xúc theo từng loại của một nhóm bài viết hoặc bình luận, để hiện mấy biểu tượng nhiều nhất cạnh tổng số. */
+export async function reactionCounts(ctx: Ctx, targetType: 'post' | 'comment', ids: string[]): Promise<Map<string, Record<string, number>>> {
+  const out = new Map<string, Record<string, number>>();
+  if (!ids.length) return out;
+  const rows = await ctx.db.select({ id: reactions.targetId, kind: reactions.reaction, n: sql<number>`count(*)::int` }).from(reactions).where(and(eq(reactions.targetType, targetType), inArray(reactions.targetId, ids))).groupBy(reactions.targetId, reactions.reaction);
+  for (const r of rows) out.set(r.id, { ...(out.get(r.id) ?? {}), [r.kind]: r.n });
+  return out;
 }

@@ -9,6 +9,7 @@ import { canUseStatusBg, excerptOf } from '../lib/markdown';
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess, type CommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { reactionCounts } from './comments';
 import { broadcastKey } from '../jobs/broadcast';
 import { scheduleJob } from '../jobs/schedule';
 import { releaseFiles } from './files';
@@ -49,7 +50,8 @@ export async function feed(ctx: Ctx, communityId: string, q: { spaceId?: string;
   const ids = page.items.map((p) => p.id);
   const [images, likes, pollRows] = ids.length ? await Promise.all([ctx.db.query.postImages.findMany({ where: inArray(postImages.postId, ids), orderBy: asc(postImages.sortOrder) }), ctx.actor.type === 'user' ? ctx.db.query.reactions.findMany({ where: and(eq(reactions.userId, ctx.actor.userId), eq(reactions.targetType, 'post'), inArray(reactions.targetId, ids)) }) : [], loadPolls(ctx, ids)]) : [[], [], new Map()];
   const spaceList = await ctx.db.query.spaces.findMany({ where: eq(spaces.communityId, communityId), orderBy: asc(spaces.sortOrder) });
-  return { ...page, items: page.items.map((p) => ({ ...p, images: images.filter((i) => i.postId === p.id), liked: likes.some((l) => l.targetId === p.id), poll: pollRows.get(p.id) ?? null })), spaces: spaceList, access: { role: access.role, canBroadcast: access.permissions.has('post.broadcast'), canModerate: access.permissions.has('post.moderate') } };
+  const counts = await reactionCounts(ctx, 'post', ids);
+  return { ...page, items: page.items.map((p) => ({ ...p, images: images.filter((i) => i.postId === p.id), liked: likes.some((l) => l.targetId === p.id), myReaction: likes.find((l) => l.targetId === p.id)?.reaction ?? null, reactionCounts: counts.get(p.id) ?? {}, poll: pollRows.get(p.id) ?? null })), spaces: spaceList, access: { role: access.role, canBroadcast: access.permissions.has('post.broadcast'), canModerate: access.permissions.has('post.moderate') } };
 }
 
 async function loadPolls(ctx: Ctx, postIds: string[]) {
@@ -160,7 +162,7 @@ export async function getPost(ctx: Ctx, postId: string) {
   ]);
   const likers = await ctx.db.select({ ...authorCols }).from(reactions).innerJoin(users, eq(users.id, reactions.userId)).where(and(eq(reactions.targetType, 'post'), eq(reactions.targetId, postId))).orderBy(desc(reactions.createdAt)).limit(3);
   const headings = [...row.p.contentMd.matchAll(/^##?\s+(.+)$/gm)].map((m) => m[1]!.trim());
-  return { ...row.p, author: { ...row.author, level: member?.level ?? 1, joinedAt: member?.joinedAt ?? null, postCount: authorPosts[0]?.c ?? 0, tierId: member?.tierId ?? null }, space: row.space, community: row.community, images, liked: Boolean(liked), poll: pollMap.get(postId) ?? null, likers, related, headings, access: { canModerate: access.permissions.has('post.moderate'), isAuthor: ctx.actor.type === 'user' && ctx.actor.userId === row.p.authorUserId } };
+  return { ...row.p, author: { ...row.author, level: member?.level ?? 1, joinedAt: member?.joinedAt ?? null, postCount: authorPosts[0]?.c ?? 0, tierId: member?.tierId ?? null }, space: row.space, community: row.community, images, liked: Boolean(liked), myReaction: liked?.reaction ?? null, reactionCounts: (await reactionCounts(ctx, 'post', [postId])).get(postId) ?? {}, poll: pollMap.get(postId) ?? null, likers, related, headings, access: { canModerate: access.permissions.has('post.moderate'), isAuthor: ctx.actor.type === 'user' && ctx.actor.userId === row.p.authorUserId } };
 }
 
 /** Sửa bài (tác giả hoặc quản trị), ghim (quản trị). */

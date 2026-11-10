@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.22.0 - 2026-11-10
+
+Bài viết trên Bảng tin mở trong khung bật lên kiểu Facebook, và cảm xúc có sáu loại thay cho một nút Thích.
+
+### Tính năng
+
+- **Khung bật lên cho bài viết.** Ở Bảng tin, bấm vào tiêu đề, ảnh, "Xem thêm", số bình luận hoặc nút Bình luận thì bài mở ngay trên Bảng tin. Đóng bằng nút X, phím Esc, bấm ra ngoài khung hoặc nút Quay lại của trình duyệt, và vẫn ở đúng chỗ đang đọc. Số bình luận trên thẻ bài cập nhật ngay khi đóng.
+- **Ô viết bình luận ghim ở đáy khung.** Đầu khung (tên tác giả, nút X) và ô viết đứng yên; bài viết rồi tới các bình luận cuộn ở giữa. Ô viết là một dòng bo tròn, tự cao lên khi gõ nhiều; Enter để gửi, Shift Enter để xuống dòng (trên điện thoại gửi bằng nút mũi tên). Gửi xong, khung tự cuộn tới bình luận vừa gửi.
+- **Sáu cảm xúc**: Thích, Yêu thích, Haha, Wow, Buồn, Phẫn nộ, cho cả bài viết lẫn bình luận. Bấm nút là Thích, bấm lần nữa là gỡ. Rê chuột lên nút (điện thoại: nhấn giữ) thì thanh cảm xúc bật ra để chọn; chọn loại khác là đổi, không cộng thêm lượt. Cạnh tổng số hiện ba cảm xúc nhiều nhất.
+- Trên điện thoại khung phủ kín màn hình. Nút mở rộng ở góc trái khung dẫn tới trang riêng của bài (có mục lục và bài liên quan).
+
+### Thay đổi
+
+- Dưới mỗi bài là hàng nút như Facebook: Thích, Bình luận, và Chia sẻ (ở trang bài và trong khung). Nút Chia sẻ luôn chép địa chỉ trang riêng của bài.
+- Bình luận gọn lại: bóng chữ ôm theo nội dung, cảm xúc hiện ở góc bóng chữ, bỏ khung thẻ bao quanh khi ở trong khung bật lên. Kiểu mới áp dụng cho cả thảo luận bài học và sự kiện.
+- Bỏ nút "Lưu" dưới bài viết và ba biểu tượng ảnh, tệp, @ trong ô bình luận: các nút này chỉ để trang trí, bấm vào không lưu hay đính kèm được gì.
+- Bài đang mở nằm trên địa chỉ (`/bang-tin?bai=<id>`), nên tải lại trang vẫn giữ khung. Trang riêng `/bai-viet/<id>` giữ nguyên cho link chia sẻ, thông báo và email.
+- Các chỗ bấm trên thẻ bài vẫn là link thật: bấm giữa hoặc Ctrl bấm vẫn mở trang riêng ở tab mới.
+- API `POST /v1/reactions/toggle` nhận thêm `reaction` (một trong sáu loại); bảng tin, bài viết và bình luận trả thêm `myReaction` và `reactionCounts`. Không cần migration: cột `reactions.reaction` đã có sẵn. Lượt thích cũ được tính là Thích.
+
 ## 1.21.3 - 2026-11-10
 
 Sửa logo khó nhìn ở giao diện tối.

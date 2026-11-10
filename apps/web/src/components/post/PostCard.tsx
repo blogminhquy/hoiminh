@@ -1,12 +1,14 @@
 // Thẻ bài viết trên Bảng tin: có tiêu đề + trích đoạn + lưới ảnh, hoặc status ngắn với nền màu.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CATEGORY_COLORS, T, Tag, statusBg } from '@hoiminh/ui';
-import { Heart, MessageCircle, MoreHorizontal, Pin } from 'lucide-react';
+import { MessageCircle, MoreHorizontal, Pin } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { PhotoGrid, type GridImage } from './PhotoGrid';
 import { PollBox, type Poll } from './PollBox';
+import { ReactionButton, ReactionSummary } from './Reactions';
 import { UserAvatar, UserName, type UserLite } from '../UserLink';
 
 export interface FeedPost {
@@ -19,6 +21,8 @@ export interface FeedPost {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  myReaction?: string | null;
+  reactionCounts?: Record<string, number>;
   createdAt: string;
   lastCommentAt: string | null;
   author: UserLite;
@@ -39,14 +43,6 @@ export function StatusBox({ text, bgKey, height = 240, fontSize = 28 }: { text: 
   );
 }
 
-export function useToggleLike(targetType: 'post' | 'comment') {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (targetId: string) => api.post<{ liked: boolean; likeCount: number }>('/v1/reactions/toggle', { targetType, targetId }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['feed'] }); void qc.invalidateQueries({ queryKey: ['post'] }); void qc.invalidateQueries({ queryKey: ['comments'] }); },
-  });
-}
-
 /** Duyệt / từ chối bài chờ duyệt (người kiểm duyệt). */
 export function useModeratePost() {
   const qc = useQueryClient();
@@ -56,13 +52,19 @@ export function useModeratePost() {
   });
 }
 
-export function PostCard({ post, slug, onMenu, canModerate }: { post: FeedPost; slug: string; onMenu?: (post: FeedPost) => void; canModerate?: boolean }) {
-  const like = useToggleLike('post');
+/**
+ * `onOpen`: Bảng tin mở bài trong khung bật lên thay vì chuyển trang. Các chỗ bấm vẫn là link thật tới trang riêng của bài,
+ * nên bấm giữa, Ctrl bấm hay "mở trong tab mới" vẫn chạy như cũ; chỉ lượt bấm thường mới bị chặn lại để mở khung.
+ */
+export function PostCard({ post, slug, onMenu, canModerate, onOpen }: { post: FeedPost; slug: string; onMenu?: (post: FeedPost) => void; canModerate?: boolean; onOpen?: (post: FeedPost) => void }) {
   const moderate = useModeratePost();
   const pending = post.moderationStatus === 'pending';
   const cat = CATEGORY_COLORS[post.space.colorKey] ?? CATEGORY_COLORS.neutral!;
   const href = `/${slug}/bai-viet/${post.id}`;
   const isStatus = Boolean(post.statusBgKey) && !post.title && post.images.length === 0;
+  const open = onOpen
+    ? (e: MouseEvent) => { if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); onOpen(post); }
+    : undefined;
   return (
     <article className="card px-6 py-5 flex flex-col gap-3" style={post.pinned ? { borderColor: T.gold } : undefined}>
       {pending && (
@@ -95,36 +97,37 @@ export function PostCard({ post, slug, onMenu, canModerate }: { post: FeedPost; 
         )}
       </div>
       {isStatus ? (
-        <Link to={href}>
+        <Link to={href} onClick={open}>
           <StatusBox text={post.contentMd} bgKey={post.statusBgKey} />
         </Link>
       ) : (
         <>
           {post.title && (
             <h2 className="serif m-0 text-[20px] leading-[1.3] font-bold">
-              <Link to={href} style={{ color: T.ink }}>{post.title}</Link>
+              <Link to={href} onClick={open} style={{ color: T.ink }}>{post.title}</Link>
             </h2>
           )}
           <p className="m-0 text-[14px] leading-[1.6]" style={{ color: T.ink2 }}>
-            {post.excerpt}{post.excerpt.endsWith('…') && <> <Link to={href} className="font-semibold">Xem thêm</Link></>}
+            {post.excerpt}{post.excerpt.endsWith('…') && <> <Link to={href} onClick={open} className="font-semibold">Xem thêm</Link></>}
           </p>
           {post.images.length > 0 && (
-            <Link to={href}>
+            <Link to={href} onClick={open}>
               <PhotoGrid images={post.images} />
             </Link>
           )}
           {post.poll && <PollBox poll={post.poll} />}
         </>
       )}
-      <div className="flex items-center gap-5 pt-1.5 text-[13px] font-medium" style={{ borderTop: `1px solid ${T.line}`, color: T.ink2 }}>
-        <button type="button" className="inline-flex items-center gap-1.5" onClick={() => like.mutate(post.id)} style={{ color: post.liked ? T.accentText : T.ink2 }} aria-pressed={post.liked}>
-          <Heart size={18} fill={post.liked ? T.accent : 'none'} /> {post.likeCount}
-        </button>
-        <Link to={href} className="inline-flex items-center gap-1.5" style={{ color: T.ink2 }}>
-          <MessageCircle size={18} /> {post.commentCount} bình luận
-        </Link>
-        <span className="flex-grow" />
-        {post.lastCommentAt && <span className="muted hide-mobile">Bình luận mới nhất {timeAgo(post.lastCommentAt)}</span>}
+      {(post.likeCount > 0 || post.commentCount > 0) && (
+        <div className="flex items-center gap-3 text-[14px]" style={{ color: T.ink2 }}>
+          <ReactionSummary counts={post.reactionCounts} total={post.likeCount} />
+          <span className="flex-grow" />
+          {post.commentCount > 0 && <Link to={href} onClick={open} style={{ color: T.ink2 }}>{post.commentCount} bình luận</Link>}
+        </div>
+      )}
+      <div className="post-actions" style={{ borderBottom: 0, paddingBottom: 0 }}>
+        <ReactionButton targetType="post" targetId={post.id} mine={post.myReaction ?? (post.liked ? 'like' : null)} />
+        <Link to={href} onClick={open} className="post-action" style={{ color: T.ink2 }}><MessageCircle size={18} /> Bình luận</Link>
       </div>
     </article>
   );

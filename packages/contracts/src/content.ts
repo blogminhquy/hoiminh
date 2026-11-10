@@ -43,10 +43,14 @@ export const createCommentSchema = z.object({
 });
 
 export const reactionTargetSchema = z.enum(['post', 'comment']);
+/** Các loại cảm xúc cho bài viết và bình luận (giống thanh cảm xúc của Facebook). */
+export const REACTION_KINDS = ['like', 'love', 'haha', 'wow', 'sad', 'angry'] as const;
+export type ReactionKind = (typeof REACTION_KINDS)[number];
 export const toggleReactionSchema = z.object({
   targetType: reactionTargetSchema,
   targetId: idSchema,
-  reaction: z.enum(['like']).default('like'),
+  /** Bỏ trống: bật tắt kiểu cũ (chưa thả thì Thích, đã thả thì gỡ). Có giá trị: thả đúng loại đó, đổi loại, hoặc gỡ nếu trùng loại đang thả. */
+  reaction: z.enum(REACTION_KINDS).optional(),
 });
 
 export const voteSchema = z.object({ optionIds: z.array(idSchema).min(1).max(8) });

@@ -55,5 +55,5 @@ contentRoutes.delete('/comments/:id', requireAuth, async (c) => {
 });
 contentRoutes.post('/reactions/toggle', requireAuth, async (c) => {
   const input = await parse(toggleReactionSchema, await body(c));
-  return c.json(await comments.toggleReaction(c.get('ctx'), input.targetType, input.targetId));
+  return c.json(await comments.toggleReaction(c.get('ctx'), input.targetType, input.targetId, input.reaction));
 });
