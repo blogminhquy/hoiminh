@@ -1,4 +1,4 @@
-// Khung quản trị hệ thống (saShell trong build.mjs): sidebar #14110E, nhóm Vận hành / Cấu hình / Giám sát.
+// Khung quản trị hệ thống (saShell trong build.mjs): sidebar màu sideDark, nhóm Vận hành / Cấu hình / Giám sát.
 import { BadgeCheck, FileText, House, KeyRound, MessageCircle, Rocket, Search, Settings, Trophy, User, Users, Wallet } from 'lucide-react';
 import { Logo, T, Tag } from '@hoiminh/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -21,7 +21,7 @@ function AdminSearch() {
     navigate(`${to}?q=${encodeURIComponent(term)}`);
   };
   return (
-    <form className="input search hide-mobile" style={{ width: 420 }} onSubmit={(e) => { e.preventDefault(); go(); }}>
+    <form className="input search hidden md:flex" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); go(); }}>
       <Search size={18} style={{ color: T.ink3 }} />
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm hội, người dùng, giao dịch, email…" className="flex-grow min-w-0" />
     </form>
@@ -53,7 +53,7 @@ export function AdminShell() {
   const unmatched = todo.data?.todo.unmatched ?? 0;
   return (
     <div className="flex min-h-screen" style={{ background: T.bg }}>
-      <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: '#14110E', color: T.sideText, padding: '16px 12px' }}>
+      <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.sideDark, color: T.sideText, padding: '16px 12px' }}>
         <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
           <svg width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill={T.gold} /><circle cx="17" cy="13" r="7" fill={T.teal} fillOpacity="0.85" /></svg>
           <div className="flex-grow"><div className="serif font-bold text-[14px]" style={{ color: T.invertInk }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>

@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 1.17.0 - 2026-11-10
+
+Giao diện "Sáng và rõ" trên máy tính: chữ dễ đọc, thanh bên chia nhóm như điện thoại, hết tràn ngang ở máy tính nhỏ.
+
+### Giao diện
+
+- **Chữ trên máy tính.** Không chữ nào dưới 14px, chữ nội dung 16px, nút và ô nhập cao 44px (trước: chữ nền 14px, nút 40px). Đo ở khổ 1360px trên 37 màn hình của thành viên, chủ hội và quản trị: trước đây 26 màn có hơn nửa lượng chữ nhỏ hơn 14px (cao nhất 83%); nay cao nhất là 17% và 34 màn từ 10% trở xuống, phần còn lại chủ yếu là tiêu đề cột viết hoa 13px.
+- **Thanh bên** chia theo đúng nhóm của điện thoại: Hôm nay, Hội (Bảng tin, Sự kiện, Thành viên, Xếp hạng cộng sự), Học (Khóa học, Cửa hàng). Thêm nút "Viết bài" ở cuối thanh bên.
+- **Trang Hôm nay** chia hai cột: việc hôm nay và tiến độ bên trái, sự kiện và bàn luận bên phải.
+- **Bài học**: tiêu đề và nút cùng một hàng, nội dung bài nằm dưới và rộng đủ đọc (trước đây bị hai nút bóp còn khoảng 240px). Giáo trình chỉ đứng cạnh nội dung từ 1024px; hẹp hơn thì thu thành dòng "Danh sách bài".
+- Trong thẻ nền tối (gói VIP, Premium, Học tiếp), liên kết và dấu tích màu ngọc sáng lên để đọc được.
+- Khung quản trị hệ thống dùng màu thanh bên theo bảng màu mới.
+
+### Tính năng
+
+- **Đăng xuất trên máy tính**: nằm cuối nav Tài khoản (bản điện thoại đã có ở 1.16.0).
+
+### Sửa lỗi
+
+- Trang Cài đặt giá tràn ngang (thẻ VIP bị đẩy ra ngoài màn hình) ở mọi máy tính.
+- Ở máy tính nhỏ (1024px) tràn ngang ở Bài học, Tài khoản / Cộng sự, Cài đặt tổng quan, Cài đặt cộng sự; ở 820px thêm Tin nhắn, Tạo sự kiện và mọi trang của chủ hội, quản trị do ô tìm kiếm ở đầu trang có bề rộng cố định.
+- Ô tìm kiếm của khung quản trị bị vỡ (biểu tượng nằm trên dòng chữ).
+- Nút "Đăng ký" ở dòng sự kiện lúc cùng hàng lúc xuống dòng.
+- Trang Khám phá trên điện thoại lệch 10px ở đầu trang.
+
 ## 1.16.0 - 2026-11-09
 
 Đợt 2 của trải nghiệm thành viên trên điện thoại: điều hướng gọn lại và trang Hôm nay.

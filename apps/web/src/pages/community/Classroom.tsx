@@ -1,5 +1,5 @@
 // Lớp học (classroomMain / classroomFreeMain): breadcrumb + tiến độ, giáo trình 360px bên trái, player/nội dung, tài liệu, thảo luận.
-// Điện thoại: video lên đầu, giáo trình thu thành một dòng "Danh sách bài" bấm mới mở, nút hoàn thành ghim ở đáy màn hình.
+// Dưới 1024px: video lên đầu, giáo trình thu thành một dòng "Danh sách bài" bấm mới mở. Điện thoại: nút hoàn thành ghim ở đáy màn hình.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Prog, T } from '@hoiminh/ui';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock } from 'lucide-react';
@@ -26,7 +26,7 @@ function Curriculum({ d, lessonHref, className = '' }: { d: LessonDto; lessonHre
   const lockedCount = d.course.modules.flatMap((m) => m.lessons).filter((l) => l.locked).length;
   let noticeShown = false;
   return (
-    <div className={`card w-full md:w-[360px] flex-shrink-0 p-2 flex-col overflow-hidden ${className}`}>
+    <div className={`card w-full lg:w-[360px] flex-shrink-0 p-2 flex-col overflow-hidden ${className}`}>
       {d.course.modules.map((m, mi) => {
         const isOpen = open[m.id] ?? false;
         const showNotice = lockedCount > 0 && !noticeShown && m.lessons.some((l) => l.locked);
@@ -89,26 +89,26 @@ export default function Page() {
               <span className="flex-grow" />
               <div className="flex items-center gap-3 w-full md:w-[300px]"><span className="muted text-[13px] whitespace-nowrap">{p ? `${p.completedLessons}/${p.totalLessons} bài · ${p.percent}%` : `${d.course.lessonCount} bài`}</span><Prog value={p?.percent ?? 0} className="flex-grow" /></div>
             </div>
-            <div className="flex gap-6 flex-col md:flex-row">
-              <Curriculum d={d} lessonHref={links.lesson} className="hidden md:flex" />
+            {/* Giáo trình chỉ đứng cạnh nội dung từ 1024px; hẹp hơn thì thu thành dòng "Danh sách bài" như điện thoại. */}
+            <div className="flex gap-6 flex-col lg:flex-row">
+              <Curriculum d={d} lessonHref={links.lesson} className="hidden lg:flex" />
               <div className="flex-grow flex flex-col gap-4 min-w-0">
                 {d.locked ? <LockedPlayer d={d} slug={slug} courseHref={links.course(d.course.id)} /> : d.embed ? (
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '16 / 9', background: T.player }}><iframe src={d.embed.embedUrl} title={d.lesson.title} className="absolute inset-0 w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
                 ) : null}
-                <div className="flex items-start gap-4 flex-col md:flex-row">
-                  <div className="flex-grow min-w-0">
-                    <h1 className="serif m-0 mb-1.5 text-[24px] font-bold" style={{ color: d.locked ? T.ink3 : T.ink }}>{d.lesson.title}</h1>
-                    {d.locked ? <p className="m-0 text-[14px]" style={{ color: T.ink3, maxWidth: 620 }}>Nội dung xem trước: {d.lesson.contentMd}</p> : <div style={{ maxWidth: 720 }}><Markdown md={d.lesson.contentMd} /></div>}
-                  </div>
+                {/* Tiêu đề và nút cùng một hàng; nội dung bài nằm ở hàng dưới để không bị nút bóp hẹp. */}
+                <div className="flex items-start gap-4 flex-wrap">
+                  <h1 className="serif m-0 text-[24px] font-bold flex-1 min-w-[240px]" style={{ color: d.locked ? T.ink3 : T.ink }}>{d.lesson.title}</h1>
                   {!d.locked && (
-                    <div className="hidden md:flex gap-2 flex-shrink-0">
+                    <div className="hidden md:flex gap-2 flex-wrap">
                       {d.next && <Link to={links.lesson(d.next.id)} className="btn btn-ghost">Bài tiếp theo <ChevronRight size={16} /></Link>}
                       <Button variant="primary" loading={complete.isPending} disabled={d.done} onClick={() => complete.mutate()}><Check size={18} />{d.done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</Button>
                     </div>
                   )}
                 </div>
+                {d.locked ? <p className="m-0 text-[14px]" style={{ color: T.ink3, maxWidth: 620 }}>Nội dung xem trước: {d.lesson.contentMd}</p> : <div style={{ maxWidth: 760 }}><Markdown md={d.lesson.contentMd} /></div>}
                 {/* Điện thoại: giáo trình nằm dưới nội dung bài, mặc định thu gọn để video và bài đọc lên đầu. */}
-                <div className="md:hidden flex flex-col gap-2">
+                <div className="lg:hidden flex flex-col gap-2">
                   <button type="button" onClick={() => setListOpen((v) => !v)} aria-expanded={listOpen} className="card flex items-center gap-3 w-full text-left px-4 min-h-[56px]">
                     <List size={20} style={{ color: T.ink2 }} />
                     <span className="flex-grow font-semibold text-[15px]">Danh sách bài ({d.course.lessonCount})</span>

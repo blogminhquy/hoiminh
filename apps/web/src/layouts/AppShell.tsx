@@ -1,8 +1,8 @@
 // Khung ứng dụng hội. Máy tính: sidebar 264px + header 64px. Điện thoại: header gọn có tìm kiếm, thanh dưới 4 mục
 // (Hôm nay, Học, Hội, Tôi) với nút viết bài ở giữa, và hàng tab con cho nhóm Hội (Bảng tin, Sự kiện, Thành viên,
 // Xếp hạng) và nhóm Học (Khóa học, Cửa hàng).
-import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
-import { Button, CommunityMark, Logo, T } from '@hoiminh/ui';
+import { Bell, BookOpen, Calendar, ChevronDown, FileText, House, Lock, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
+import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
@@ -43,23 +43,24 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
         </button>
         {switching && <CommunitySwitcher current={s} onClose={() => setSwitching(false)} />}
       </div>
-      <div className="nav-group">Cộng đồng</div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 pt-3">
         <NavItem to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />
+      </div>
+      <div className="nav-group">Hội</div>
+      <div className="flex flex-col gap-0.5">
         {tabs.feed !== false && <NavItem to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
-        {tabs.members !== false && <NavItem to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
         {tabs.events !== false && <NavItem to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
+        {tabs.members !== false && <NavItem to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
         {tabs.affiliate !== false && <NavItem to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng cộng sự" />}
       </div>
-      <div className="nav-group">Học tập</div>
-      <div className="flex flex-col gap-0.5">
-        {tabs.courses !== false && <NavItem to={`/${s}/khoa-hoc`} icon={<BookOpen size={20} />} label="Khóa học" extra={shell.coursePercent !== null ? <span className="text-[12px] font-semibold" style={{ color: T.teal }}>{shell.coursePercent}%</span> : undefined} />}
-        {tabs.resources && <NavItem to={`/${s}/khoa-hoc`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
-      </div>
-      {tabs.store !== false && (
+      {(tabs.courses !== false || tabs.store !== false) && (
         <>
-          <div className="nav-group">Mua sắm</div>
-          <div className="flex flex-col gap-0.5"><NavItem to={`/${s}/cua-hang`} icon={<Store size={20} />} label="Cửa hàng" /></div>
+          <div className="nav-group">Học</div>
+          <div className="flex flex-col gap-0.5">
+            {tabs.courses !== false && <NavItem to={`/${s}/khoa-hoc`} icon={<BookOpen size={20} />} label="Khóa học" extra={shell.coursePercent !== null ? <span className="text-[12px] font-semibold" style={{ color: T.sideText }}>{shell.coursePercent}%</span> : undefined} />}
+            {tabs.resources && <NavItem to={`/${s}/khoa-hoc`} icon={<FileText size={20} />} label="Tài nguyên" extra={shell.viewer.tier?.key === 'standard' ? <Lock size={16} style={{ color: T.sideMuted }} /> : undefined} />}
+            {tabs.store !== false && <NavItem to={`/${s}/cua-hang`} icon={<Store size={20} />} label="Cửa hàng" />}
+          </div>
         </>
       )}
       {manage && (
@@ -72,7 +73,10 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
         </>
       )}
       <div className="flex-grow" />
-      <Button variant="primary" block icon={<Plus size={18} />} onClick={onInvite}>Mời thành viên</Button>
+      <div className="flex flex-col gap-2">
+        {tabs.feed !== false && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full"><Pencil size={18} />Viết bài</Link>}
+        <button type="button" className="btn w-full" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} onClick={onInvite}><Plus size={18} />Mời thành viên</button>
+      </div>
     </aside>
   );
 }
@@ -95,7 +99,7 @@ function Header({ shell }: { shell: Shell }) {
           <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={32} />
           <span className="font-semibold text-[14px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
         </Link>
-        <form className="input search ml-6" style={{ width: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <form className="input search ml-6" style={{ flex: '1 1 420px', minWidth: 0, maxWidth: 420 }} onSubmit={(e) => { e.preventDefault(); submit(); }}>
           <Search size={18} style={{ color: T.ink3 }} />
           <input placeholder="Tìm trong bảng tin…" aria-label="Tìm trong bảng tin" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>

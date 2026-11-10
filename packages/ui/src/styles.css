@@ -40,14 +40,14 @@ html { color-scheme: light; }
   --shimmer: #1D2B29; --focus-ring: rgba(127, 219, 224, 0.22);
 }
 html[data-theme='dark'] { color-scheme: dark; }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: var(--teal); text-decoration: none; }
 a:hover { color: var(--teal-text); }
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: 0; padding: 0; }
 .serif { letter-spacing: -0.015em; font-family: var(--font-display); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: filter .12s, background .12s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: filter .12s, background .12s; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn:not(:disabled):hover { filter: brightness(0.96); }
 .btn-primary { background: var(--primary); color: var(--on-primary); }
@@ -56,25 +56,31 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 /* Nút vàng: việc nên làm ngay hôm nay. Nút nhạt: việc phụ bên cạnh một dòng. */
 .btn-gold { background: var(--gold); color: #1F1B17; }
 .btn-soft { background: var(--primary-soft); color: var(--primary-text); }
-.btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
-.btn-lg { height: 48px; padding: 0 24px; font-size: 15px; border-radius: 12px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); font-size: 13px; font-weight: 500; color: var(--ink2); white-space: nowrap; cursor: pointer; }
+.btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 9px; }
+.btn-lg { height: 50px; padding: 0 26px; font-size: 16px; border-radius: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); font-size: 14px; font-weight: 500; color: var(--ink2); white-space: nowrap; cursor: pointer; }
 .chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.tag { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
-.nav-item { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: var(--side-text); font-weight: 500; font-size: 14px; cursor: pointer; }
+/* Thẻ hay bị đặt cao và cỡ chữ cứng ngay trong mã (height: 18, fontSize: 11), nên cần !important mới nâng được lên 14px. */
+.tag { display: inline-flex; align-items: center; gap: 4px; height: auto !important; min-height: 24px; padding: 1px 8px !important; border-radius: 6px; font-size: 14px !important; font-weight: 600; white-space: nowrap; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; min-width: 0; }
+/*
+ * Cột chia đều (flex-1) được phép co hẹp hơn nội dung của nó. Mặc định trình duyệt không cho, nên một dòng
+ * chữ dài hay ô nhập rộng đẩy cả hàng thẻ ra ngoài màn hình ở máy tính nhỏ. Lớp min-w-[...] của Tailwind vẫn thắng.
+ */
+.flex-1 { min-width: 0; }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-radius: 10px; color: var(--side-text); font-weight: 500; font-size: 15px; cursor: pointer; }
 .nav-item:hover { background: rgba(255,255,255,0.07); color: #FFFFFF; }
 .nav-item.on { background: rgba(255,255,255,0.13); color: #FFFFFF; }
-.nav-group { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--side-muted); font-weight: 600; padding: 18px 12px 6px; }
+.nav-group { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--side-muted); font-weight: 600; padding: 18px 12px 6px; }
 .avatar { border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: #FFFFFF; flex-shrink: 0; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
 .muted { color: var(--ink3); }
-.input { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 14px; width: 100%; }
+.input { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; width: 100%; }
 .input:focus-within { border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }
 .input input, .input textarea, .input select { flex-grow: 1; min-width: 0; background: transparent; border: 0; outline: 0; height: 100%; color: var(--ink); }
 .input input::placeholder, .input textarea::placeholder { color: var(--ink3); }
 .input.textarea { height: auto; align-items: flex-start; padding: 10px 14px; }
 .input.textarea textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
-.th { font-size: 12px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; }
+.th { font-size: 13px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.05em; }
 .row { display: flex; align-items: center; }
 .stack { display: flex; flex-direction: column; }
 .prog { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
@@ -101,14 +107,14 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .md li { margin: 4px 0; }
 .md li::marker { color: var(--primary); font-weight: 700; }
 .md blockquote { margin: 20px 0; padding: 14px 20px; border-left: 3px solid var(--primary); background: var(--primary-soft); border-radius: 0 12px 12px 0; color: var(--ink2); font-style: italic; }
-.md code { font-family: Consolas, 'Courier New', monospace; font-size: 14px; background: var(--bg); padding: 2px 6px; border-radius: 6px; }
+.md code { font-family: Consolas, 'Courier New', monospace; font-size: 15px; background: var(--bg); padding: 2px 6px; border-radius: 6px; }
 .md pre { background: var(--bg); padding: 14px 16px; border-radius: 12px; overflow-x: auto; }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
 .md img { max-width: 100%; border-radius: 14px; display: block; margin: 20px 0 6px; }
 .md figure { margin: 20px 0; }
-.md figcaption { font-size: 13px; color: var(--ink3); text-align: center; padding-top: 8px; }
+.md figcaption { font-size: 14px; color: var(--ink3); text-align: center; padding-top: 8px; }
 .md a { font-weight: 600; text-decoration: underline; text-decoration-color: var(--teal-soft); text-underline-offset: 3px; }
-.md.sm { font-size: 14px; }
+.md.sm { font-size: 15px; }
 .md.sm p { margin: 0 0 8px; }
 .md.sm h2, .md.sm h3 { font-size: 16px; margin: 12px 0 6px; }
 .two-col { display: flex; gap: 32px; align-items: flex-start; }
@@ -116,7 +122,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .two-col > .main.wide { width: 780px; }
 .two-col > .rail { width: 312px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
 .settings-page { display: flex; gap: 32px; align-items: flex-start; }
-.settings-page > .settings-nav { width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.settings-page > .settings-nav { width: 232px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .settings-page > .settings-main { flex-grow: 1; display: flex; flex-direction: column; gap: 20px; max-width: 880px; min-width: 0; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 /* Lưới Khu học tập: tự xuống hàng theo bề rộng, không cần media query riêng. */
@@ -129,6 +135,14 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(8,24,23,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; z-index: 40; overflow-y: auto; }
 .modal { box-shadow: 0 24px 60px rgba(8,24,23,0.28); width: 100%; }
+/*
+ * Cỡ chữ ở mọi bề rộng: không chữ nào dưới 14px. Giao diện viết cỡ chữ bằng lớp Tailwind cố định
+ * (text-[12px], text-[13px]...) ở khoảng 600 chỗ; nâng ở đây một lần thay vì sửa từng chỗ. `html` đứng trước
+ * để thắng lớp tiện ích của Tailwind (nạp sau tệp này). Điện thoại nâng thêm một bậc ở khối 767px bên dưới.
+ */
+html .text-\[11px\], html .text-\[12px\], html .text-\[12\.5px\], html .text-\[13px\] { font-size: 14px; }
+html .text-\[14px\] { font-size: 15px; }
+html .text-\[15px\] { font-size: 16px; }
 .mobile-tabs { display: none; }
 .hide-mobile { display: initial; }
 .only-mobile { display: none !important; }
@@ -162,13 +176,9 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   .chip-row::-webkit-scrollbar { display: none; }
 
   /*
-   * Chữ và vùng chạm trên điện thoại: chữ nội dung 16px, không chữ nào dưới 14px, nút và ô nhập từ 44px.
-   * Giao diện viết cỡ chữ bằng lớp Tailwind cố định (text-[12px], text-[13px]...) ở vài trăm chỗ; nâng ở đây
-   * một lần thay vì sửa từng chỗ. `html` đứng trước để thắng lớp tiện ích của Tailwind (nạp sau tệp này).
+   * Điện thoại: chữ nội dung 16px, nút và ô nhập từ 44px (các cỡ nhỏ đã lên 14px ở quy tắc chung phía trên).
    * Ô nhập 16px còn để iPhone không tự phóng to trang khi chạm vào ô.
    */
-  body { font-size: 16px; }
-  html .text-\[11px\], html .text-\[12px\], html .text-\[12\.5px\], html .text-\[13px\] { font-size: 14px; }
   html .text-\[14px\] { font-size: 16px; }
   html .text-\[15px\] { font-size: 16.5px; }
   html .text-\[16px\] { font-size: 17px; }
@@ -178,8 +188,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
   .btn { height: 46px; font-size: 16px; }
   .btn-sm { height: 40px; padding: 0 14px; font-size: 15px; border-radius: 10px; }
   .btn-lg { height: 52px; font-size: 17px; }
-  /* Thẻ và chip hay bị đặt cao/cỡ chữ cứng ngay trong mã, nên cần !important mới nâng được. */
-  .tag { height: auto !important; min-height: 24px; padding: 2px 8px !important; font-size: 14px !important; }
+  /* Chip hay bị đặt cao/cỡ chữ cứng ngay trong mã, nên cần !important mới nâng được. */
+  .tag { padding: 2px 8px !important; }
   .chip { height: 40px !important; padding: 0 14px !important; font-size: 15px !important; }
   .input { height: 48px; font-size: 16px; }
   .input.textarea { height: auto; }
@@ -211,6 +221,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 
 /* Trang Tôi trên điện thoại: danh sách mục lớn dễ chạm. Nav ngang của khung Tài khoản chỉ còn trên máy tính. */
 .account-back { display: none; min-height: 44px; }
+button.settings-nav-item { background: none; border: 0; font: inherit; width: 100%; }
 @media (max-width: 900px) { .settings-page > .account-nav { display: none; } .account-back { display: inline-flex; } }
 .me-list { display: flex; flex-direction: column; }
 .me-row { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 6px 4px; color: var(--ink); font-size: 16px; font-weight: 600; width: 100%; text-align: left; }
@@ -223,6 +234,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 
 /* Thẻ nhấn nền tối: giữ tối ở cả hai giao diện (gói Premium, học tiếp, hạng nhất bảng xếp hạng). */
 .card-invert { background: var(--invert-bg); color: var(--invert-ink); border-color: var(--invert-line); }
+/* Trong thẻ nền tối, màu ngọc và chữ phụ phải sáng lên mới đọc được (liên kết, dấu tích, thanh tiến độ, đường kẻ). */
+.card-invert { --teal: #8FE0E4; --teal-text: #BFE3E1; --ink2: #D6E7E6; --ink3: #A9C6C7; --line: rgba(255, 255, 255, 0.16); --line2: rgba(255, 255, 255, 0.26); }
 /* Nút chính trên thẻ nền tối dùng vàng: ngọc trên ngọc đậm thì chìm. */
 .card-invert .btn-primary { background: var(--gold); color: #1F1B17; }
 .card-invert .muted { color: color-mix(in srgb, var(--invert-ink) 62%, transparent); }

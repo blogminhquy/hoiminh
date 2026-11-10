@@ -1,5 +1,6 @@
 // Trang "Hôm nay": mở app là thấy việc của riêng mình trong ngày. Ba việc nhỏ (ghé hội, học một bài,
 // sự kiện hôm nay hoặc góp ý một bài), tiến độ khóa đang học nói bằng lời, sự kiện sắp tới và điều đang được bàn.
+// Máy tính: hai cột (việc hôm nay và tiến độ bên trái; sự kiện, bàn luận bên phải). Điện thoại: một cột.
 // Mọi dấu "đã xong" lấy từ dữ liệu thật: GET /v1/communities/:id/today, danh sách khóa học, sự kiện, bảng tin.
 import { useQuery } from '@tanstack/react-query';
 import { DateBlock, Prog, T } from '@hoiminh/ui';
@@ -70,7 +71,8 @@ export default function Page() {
   const talking = [...posts].sort((a, b) => b.commentCount - a.commentCount).filter((p) => p.commentCount > 0 && p.id !== discuss?.id).slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-4 w-full" style={{ maxWidth: 740 }}>
+    <div className="two-col">
+      <div className="main">
       <section className="card card-invert today-head">
         <span className="muted text-[14px]">{fmtLongDate(now)}</span>
         <h1 className="serif m-0 text-[26px] font-extrabold leading-tight">Chào {user?.name ?? 'bạn'}</h1>
@@ -103,6 +105,8 @@ export default function Page() {
         </section>
       )}
 
+      </div>
+      <aside className="rail">
       {later.length > 0 && (
         <section className="card p-4 flex flex-col gap-1">
           <div className="flex items-center"><h2 className="m-0 font-bold text-[17px] flex-grow">Sự kiện sắp tới</h2><Link to={`/${slug}/su-kien`} className="text-[14px] font-semibold inline-flex items-center min-h-[44px]">Tất cả</Link></div>
@@ -127,6 +131,7 @@ export default function Page() {
           ))}
         </section>
       )}
+      </aside>
     </div>
   );
 }

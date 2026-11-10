@@ -48,7 +48,7 @@ export function WhenBlock({ f, patch }: { f: EventForm; patch: Patch }) {
   return (
     <div className="card p-6 flex flex-col gap-[18px]">
       <div className="font-bold text-[15px]">Khi nào</div>
-      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3.5">
         <Field label="Ngày"><Input type="date" value={f.date} onChange={(e) => patch({ date: e.target.value })} left={<Calendar size={16} />} /></Field>
         <Field label="Bắt đầu"><Input type="time" value={f.start} onChange={(e) => patch({ start: e.target.value })} /></Field>
         <Field label="Kết thúc"><Input type="time" value={f.end} onChange={(e) => patch({ end: e.target.value })} right={<span className="muted text-[12px]">{durationLabel(f.start, f.end)}</span>} /></Field>

@@ -1,9 +1,10 @@
 // Khung Tài khoản (accountNav trong build.mjs): nav 220px 8 mục bên trái, nội dung trang con bên phải.
 // Điện thoại: nav ẩn, trang /tai-khoan (AccountHome) là danh sách mục, trang con có lối quay lại "Tôi".
 import { T, THEME_KEY, applyTheme, readTheme, type ThemeChoice } from '@hoiminh/ui';
-import { ChevronLeft, Monitor, Moon, Sun } from 'lucide-react';
+import { ChevronLeft, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
 
 const CHOICES: Array<{ key: ThemeChoice; label: string; icon: typeof Sun }> = [
   { key: 'light', label: 'Sáng', icon: Sun },
@@ -20,7 +21,7 @@ export function ThemeChoices() {
     try { localStorage.setItem(THEME_KEY, next); } catch { /* chế độ riêng tư: vẫn đổi cho phiên này */ }
   };
   return (
-    <div className="flex gap-1.5 flex-shrink-0" role="radiogroup" aria-label="Giao diện">
+    <div className="flex gap-1.5 flex-wrap" role="radiogroup" aria-label="Giao diện">
       {CHOICES.map(({ key, label, icon: Icon }) => (
         <button key={key} type="button" role="radio" aria-checked={theme === key} onClick={() => pick(key)} className={`chip${theme === key ? ' on' : ''}`} style={{ height: 28, fontSize: 12, padding: '0 10px' }}>
           <Icon size={13} />{label}
@@ -41,6 +42,8 @@ function ThemeItem() {
 
 export default function Page() {
   const { pathname, hash } = useLocation();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const isAccount = pathname === '/tai-khoan/ho-so' && hash === '#tai-khoan';
   const items: Array<{ label: string; to: string; on: boolean }> = [
     { label: 'Cộng đồng của tôi', to: '/admin', on: false },
@@ -57,12 +60,13 @@ export default function Page() {
   const atHome = pathname === '/tai-khoan';
   return (
     <div className="settings-page">
-      {!atHome && <Link to="/tai-khoan" className="account-back inline-flex items-center gap-1 font-semibold" style={{ color: T.ink2 }}><ChevronLeft size={18} />Tôi</Link>}
+      {!atHome && <Link to="/tai-khoan" className="account-back items-center gap-1 font-semibold" style={{ color: T.ink2 }}><ChevronLeft size={18} />Tôi</Link>}
       <nav className="settings-nav account-nav" aria-label="Tài khoản">
         {items.map((it) => (
           <Link key={it.label} to={it.to} className={`settings-nav-item${it.on ? ' on' : ''}`}>{it.label}</Link>
         ))}
         <ThemeItem />
+        <button type="button" className="settings-nav-item inline-flex items-center gap-2 text-left" style={{ color: T.accentText }} onClick={() => { void logout().then(() => navigate('/dang-nhap')); }}><LogOut size={18} />Đăng xuất</button>
       </nav>
       <div className="settings-main">
         <Outlet />
