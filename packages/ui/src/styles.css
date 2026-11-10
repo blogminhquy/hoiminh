@@ -335,3 +335,74 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 /* Nút chính trên thẻ nền tối dùng vàng: ngọc trên ngọc đậm thì chìm. */
 .card-invert .btn-primary { background: var(--gold); color: #1F1B17; }
 .card-invert .muted { color: color-mix(in srgb, var(--invert-ink) 62%, transparent); }
+
+/* Trình phát YouTube của bài học (apps/web/src/components/YouTubePlayer.tsx). Màu cố định vì luôn nằm trên nền video tối. */
+.ytl { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #000; color: #fff; user-select: none; -webkit-user-select: none; }
+.ytl-stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+/* Khung YouTube cao gấp nhiều lần vùng nhìn thấy: video vẫn nằm giữa, còn tên video, logo và dải "Video khác" bám mép trên, mép dưới của khung nên nằm ngoài vùng nhìn. */
+.ytl-frame { position: absolute; left: 0; top: -163.3333%; width: 100%; height: 426.6667%; pointer-events: none; }
+.ytl-frame iframe { display: block; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.ytl-cover { position: absolute; inset: 0; background: var(--player); }
+.ytl-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ytl-shade { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.28); }
+.ytl-shade-end { background: rgba(0, 0, 0, 0.66); }
+/* Lớp chắn: nhận mọi lượt bấm, không lượt nào xuống tới khung YouTube. */
+.ytl-surface { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; cursor: pointer; }
+.ytl-surface:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+.ytl-center { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.ytl-play { display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 999px; background: var(--primary); color: var(--on-primary); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+.ytl-replay { display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px; border-radius: 999px; background: #fff; color: #10201F; font-size: 17px; font-weight: 700; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); }
+.ytl-unmute { position: absolute; top: 12px; left: 12px; z-index: 4; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: #fff; color: #10201F; font-size: 15px; font-weight: 700; }
+.ytl-bar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; flex-direction: column; gap: 2px; padding: 28px 10px 6px; background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0)); transition: opacity .2s; }
+.ytl-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.ytl-btn { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; color: #fff; }
+.ytl-btn:hover { background: rgba(255, 255, 255, 0.16); }
+.ytl-btn:focus-visible, .ytl-unmute:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+/* Bảng Cài đặt (chất lượng, tốc độ): mở từ nút bánh răng, nằm gọn trong trình phát và tự cuộn khi trình phát thấp. */
+.ytl-menu { position: absolute; right: 8px; bottom: 8px; z-index: 6; display: flex; flex-direction: column; min-width: 232px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); overflow-y: auto; padding: 6px; border-radius: 12px; background: rgba(14, 22, 22, 0.97); color: #fff; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); }
+.ytl-menu-item { display: flex; align-items: center; gap: 8px; flex-shrink: 0; width: 100%; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 500; text-align: left; white-space: nowrap; }
+.ytl-menu-item:hover { background: rgba(255, 255, 255, 0.14); }
+.ytl-menu-item:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.ytl-menu-head { font-weight: 700; padding-left: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px 8px 0 0; margin-bottom: 4px; }
+.ytl-menu-value { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding-left: 16px; color: rgba(255, 255, 255, 0.74); font-variant-numeric: tabular-nums; }
+.ytl-menu-check { display: inline-flex; flex-shrink: 0; width: 20px; color: var(--gold); }
+.ytl-menu-grid { display: flex; flex-direction: column; }
+.ytl-time { padding: 0 8px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ytl-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+.ytl-range:disabled { cursor: default; opacity: .5; }
+.ytl-range::-webkit-slider-runnable-track { height: 5px; border-radius: 999px; background: linear-gradient(to right, var(--gold) var(--p, 0%), rgba(255, 255, 255, 0.6) var(--p, 0%), rgba(255, 255, 255, 0.6) var(--l, 0%), rgba(255, 255, 255, 0.28) var(--l, 0%)); }
+.ytl-range::-moz-range-track { height: 5px; border-radius: 999px; background: linear-gradient(to right, var(--gold) var(--p, 0%), rgba(255, 255, 255, 0.6) var(--p, 0%), rgba(255, 255, 255, 0.6) var(--l, 0%), rgba(255, 255, 255, 0.28) var(--l, 0%)); }
+.ytl-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -6.5px; border: 0; border-radius: 999px; background: var(--gold); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.ytl-range::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 999px; background: var(--gold); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.ytl-range:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+.ytl-volume { width: 84px; flex-shrink: 0; margin: 0 6px 0 2px; }
+.ytl-error { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; text-align: center; font-size: 16px; background: var(--player); color: #fff; }
+/* Đang phát mà không động tới: ẩn thanh điều khiển và con trỏ. Thanh vẫn hiện khi đang dùng bàn phím trong đó. */
+.ytl-idle { cursor: none; }
+.ytl-idle .ytl-surface { cursor: none; }
+.ytl-idle .ytl-bar:not(:focus-within) { opacity: 0; pointer-events: none; }
+/* Video dọc (link /shorts/): khung theo tỉ lệ 9:16, cao vừa màn hình. */
+.ytl-vertical { aspect-ratio: auto; }
+.ytl-vertical .ytl-stage { width: auto; height: min(78vh, 640px); max-width: 100%; aspect-ratio: 9 / 16; }
+.ytl-vertical .ytl-frame { top: -50%; height: 200%; }
+/* Toàn màn hình: thật (:fullscreen) hoặc phủ kín trang trên máy không hỗ trợ (.ytl-fs-pseudo). */
+.ytl-fs { border-radius: 0; aspect-ratio: auto; }
+.ytl-fs .ytl-stage { width: min(100vw, calc(100vh * 16 / 9)); height: auto; aspect-ratio: 16 / 9; }
+.ytl-fs.ytl-vertical .ytl-stage { width: auto; height: min(100vh, calc(100vw * 16 / 9)); max-width: none; }
+.ytl-fs .ytl-bar { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+.ytl-fs-pseudo { position: fixed; inset: 0; z-index: 60; height: 100vh; height: 100dvh; }
+@media (max-width: 639px) {
+  /* Điện thoại: bỏ nút lùi, tới 10 giây và thanh âm lượng (đã có thanh tua và nút âm lượng của máy) để các nút còn lại đủ to. */
+  .ytl-wide { display: none; }
+  /* Trình phát trên điện thoại chỉ cao khoảng 200px: các mức chất lượng, tốc độ xếp lưới 3 cột để thấy hết không phải cuộn; mức đang chọn tô vàng thay cho dấu tích. */
+  .ytl-menu { left: 6px; right: 6px; bottom: 4px; min-width: 0; max-height: calc(100% - 8px); }
+  .ytl-menu-head { min-height: 36px; margin-bottom: 2px; }
+  .ytl-menu-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .ytl-menu-grid .ytl-menu-item { justify-content: center; padding: 0 4px; font-size: 15px; background: rgba(255, 255, 255, 0.08); }
+  .ytl-menu-grid .ytl-menu-item[aria-checked="true"] { background: var(--gold); color: #1F1B17; font-weight: 700; }
+  .ytl-menu-grid .ytl-menu-check { display: none; }
+  .ytl { border-radius: 12px; }
+  .ytl-fs { border-radius: 0; }
+  .ytl-range::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7.5px; }
+  .ytl-range::-moz-range-thumb { width: 20px; height: 20px; }
+}
