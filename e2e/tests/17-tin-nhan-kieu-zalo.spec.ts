@@ -1,7 +1,7 @@
 // Tin nhắn kiểu Zalo: khung ba cột lấp đầy màn hình; gửi (Enter), trả lời trích dẫn, thả cảm xúc, thu hồi, ghim;
 // điện thoại vào thấy danh sách trước, mở hội thoại thì khung chat chiếm trọn màn (ẩn thanh tab dưới), có nút quay lại.
 import { expect, test, type Page } from '@playwright/test';
-import { USERS, login } from '../helpers';
+import { USERS, apiJson, apiToken, login } from '../helpers';
 
 /** Khung chat nằm sát đáy header, chạm đáy màn hình (hoặc đỉnh thanh tab dưới) và trang không cuộn dọc. */
 async function expectFillsScreen(page: Page): Promise<void> {
@@ -18,36 +18,45 @@ async function expectFillsScreen(page: Page): Promise<void> {
   expect(m.scrollWidth).toBeLessThanOrEqual(m.width);
 }
 
-test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả cảm xúc, thu hồi, ghim', async ({ page }) => {
+test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả cảm xúc, thu hồi, ghim', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await login(page, USERS.owner);
+  // Dùng tài khoản thành viên, không dùng chủ hội: các test ngay trước đã đăng nhập chủ hội nhiều lần, thêm một lần nữa
+  // trong cùng phút là chạm hạn mức 10 lần đăng nhập mỗi phút cho một email và bị giữ lại ở trang đăng nhập.
+  // Thành viên mới chỉ có hội thoại với chủ hội, nên nhờ Hoàng Vũ nhắn một tin để có hội thoại thứ hai (thử ghim).
+  const me = await apiJson<{ userId: string }>(request, await apiToken(request, USERS.member), 'GET', '/v1/me/id');
+  await apiJson(request, await apiToken(request, USERS.affiliate), 'POST', '/v1/me/messages', { recipientUserId: me.userId, body: 'Chào Công, mình là Vũ bên nhóm cộng sự' });
+  await login(page, USERS.member);
   await page.goto('/tin-nhan');
   const list = page.getByRole('region', { name: 'Danh sách hội thoại' });
-  await list.getByRole('button', { name: /Hồng Kim/ }).first().click();
-  const thread = page.getByRole('region', { name: 'Hội thoại với Hồng Kim' });
-  await expect(thread.locator('.chat-row')).toHaveCount(2);
+  await list.getByRole('button', { name: /Minh Quý/ }).first().click();
+  const thread = page.getByRole('region', { name: 'Hội thoại với Minh Quý' });
+  await expect(thread.locator('.chat-row')).toHaveCount(1);
   await expectFillsScreen(page);
   // Bảng thông tin hội thoại là cột thứ ba; tin mới nhất nằm sát ô nhập (luồng dồn về đáy).
   await expect(page.getByRole('complementary', { name: 'Thông tin hội thoại' })).toBeVisible();
   const gap = await page.evaluate(() => document.querySelector('.chat-composer')!.getBoundingClientRect().top - [...document.querySelectorAll('.chat-row')].at(-1)!.getBoundingClientRect().bottom);
   expect(gap).toBeLessThan(80);
+  const theirs = thread.locator('.chat-row:not(.mine)').first();
 
-  // Gửi bằng Enter; link trong tin bấm được; dòng xem trước có "Bạn: ".
+  // Gửi bằng Enter; link trong tin bấm được, link ngoài mở tab mới; dòng xem trước có "Bạn: ".
   const input = thread.getByRole('textbox', { name: /Nhập tin nhắn tới/ });
-  await input.fill('Bản ghi đây nhé: https://example.com/qa-tuan-nay');
+  await input.fill('Em cảm ơn anh, em gửi link nhé: https://example.com/qa-tuan-nay và http://localhost:5173/minhquy/bang-tin');
   await input.press('Enter');
   await expect(thread.getByRole('link', { name: 'https://example.com/qa-tuan-nay' })).toHaveAttribute('target', '_blank');
+  // Link trong chính Hội Mình mở ngay tại chỗ, không mở tab mới.
+  const inner = thread.getByRole('link', { name: 'http://localhost:5173/minhquy/bang-tin' });
+  await expect(inner).toHaveAttribute('href', '/minhquy/bang-tin');
+  await expect(inner).not.toHaveAttribute('target', '_blank');
   await expect(thread.getByText('Đã gửi')).toBeVisible();
-  await expect(list.getByRole('button', { name: /Hồng Kim/ }).first()).toContainText('Bạn: Bản ghi đây nhé');
+  await expect(list.getByRole('button', { name: /Minh Quý/ }).first()).toContainText('Bạn: Em cảm ơn anh');
 
-  // Trả lời trích dẫn tin của Hồng Kim.
-  const theirs = thread.locator('.chat-row:not(.mine)').first();
+  // Trả lời trích dẫn tin của chủ hội.
   await theirs.hover();
   await theirs.getByRole('button', { name: 'Trả lời' }).click();
-  await expect(thread.locator('.chat-replying')).toContainText('Trả lời Hồng Kim');
-  await input.fill('Có rồi em nhé');
+  await expect(thread.locator('.chat-replying')).toContainText('Trả lời Minh Quý');
+  await input.fill('Em vào được rồi ạ');
   await input.press('Enter');
-  await expect(thread.locator('.chat-row.mine .chat-quote').last()).toContainText('Anh ơi bản ghi buổi Q&A');
+  await expect(thread.locator('.chat-row.mine .chat-quote').last()).toContainText('Chào Công, chào mừng bạn');
 
   // Thả cảm xúc: rê vào nút thích để chọn; cảm xúc của mình hiện ngay trên tin.
   await theirs.hover();
@@ -61,20 +70,21 @@ test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả 
   await mine.hover();
   await mine.getByRole('button', { name: 'Thu hồi tin nhắn' }).click();
   await expect(mine).toContainText('Tin nhắn đã được thu hồi');
-  await expect(thread.getByText('Có rồi em nhé')).toHaveCount(0);
-  await expect(list.getByRole('button', { name: /Hồng Kim/ }).first()).toContainText('Tin nhắn đã được thu hồi');
+  await expect(thread.getByText('Em vào được rồi ạ')).toHaveCount(0);
+  await expect(list.getByRole('button', { name: /Minh Quý/ }).first()).toContainText('Tin nhắn đã được thu hồi');
 
   // Ghim từ menu của dòng hội thoại: lên đầu danh sách, khung chat vẫn ở hội thoại đang mở.
-  const row = list.locator('.chat-convo', { hasText: 'Thu Lan' });
+  const row = list.locator('.chat-convo', { hasText: 'Hoàng Vũ' });
+  await expect(list.locator('.chat-convo').first()).toContainText('Minh Quý');
   await row.hover();
   await row.getByRole('button', { name: /Thao tác với hội thoại/ }).click();
   await page.getByRole('menuitem', { name: 'Ghim hội thoại' }).click();
-  await expect(list.locator('.chat-convo').first()).toContainText('Thu Lan');
+  await expect(list.locator('.chat-convo').first()).toContainText('Hoàng Vũ');
   await expect(thread).toBeVisible();
   await row.hover();
   await row.getByRole('button', { name: /Thao tác với hội thoại/ }).click();
   await page.getByRole('menuitem', { name: 'Bỏ ghim hội thoại' }).click();
-  await expect(list.locator('.chat-convo').first()).not.toContainText('Thu Lan');
+  await expect(list.locator('.chat-convo').first()).toContainText('Minh Quý');
 });
 
 test('điện thoại: danh sách trước, mở hội thoại chiếm trọn màn hình, quay lại được', async ({ browser }) => {
