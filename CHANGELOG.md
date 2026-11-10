@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.21.2 - 2026-11-10
+
+Cơ sở dữ liệu chuyển từ Seoul về Singapore để gần người dùng Việt Nam hơn.
+
+### Thay đổi
+
+- **Database mới ở Singapore** (dự án Supabase "HoiMinh SG", vùng `ap-southeast-1`), thay cho dự án cũ ở Seoul. Mỗi lượt gọi API bớt được quãng đường Việt Nam tới Seoul, còn Việt Nam tới Singapore.
+- `apps/api/wrangler.toml`: `[placement] region = "aws:ap-southeast-1"`, để phần xử lý tiếp tục chạy cạnh database. Bước "Kiểm tra trang live" giờ mong đợi `remote-SIN`.
+- Hyperdrive `hoiminh-db` trỏ sang máy chủ database mới, giữ nguyên tài khoản và mật khẩu của `hoiminh_app`.
+- Cách chuyển: cấu trúc bảng được dựng lại từ chính database cũ rồi so từng mục (cột, ràng buộc, chỉ mục, chính sách bảo mật, hàm: 1.731 mục khớp hết); dữ liệu chép thẳng giữa hai máy chủ rồi so số dòng và mã kiểm tra của cả 96 bảng.
+- Dự án cũ ở Seoul được giữ lại vài ngày để quay lại được nếu cần.
+
 ## 1.21.1 - 2026-11-10
 
 Sửa tải dữ liệu chậm trên bản chạy thật: Worker chạy cạnh cơ sở dữ liệu thay vì cạnh người dùng.
