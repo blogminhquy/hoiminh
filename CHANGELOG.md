@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.24.0 - 2026-11-11
+## 1.26.0 - 2026-11-11
 
 Nhập bài từ link YouTube lấy luôn tên bài, mô tả và thời lượng; ảnh bìa khóa học hiện trọn, không còn chữ đè lên; đổi được tên module ngay trong cột giáo trình.
 
@@ -26,6 +26,61 @@ Nhập bài từ link YouTube lấy luôn tên bài, mô tả và thời lượn
 - **Secret tùy chọn `YOUTUBE_API_KEY`** (key của YouTube Data API v3, miễn phí 10.000 lượt mỗi ngày, mỗi video tốn 1 lượt): có key thì tên, mô tả, thời lượng lấy qua API chính thức. Đặt bằng `wrangler secret put YOUTUBE_API_KEY` ở Worker `hoiminh-api`. Key sai hoặc hết hạn mức thì ghi log `video_meta.youtube_api_failed` rồi lấy theo cách không cần key.
 - Không có key: tên lấy từ oEmbed của YouTube, mô tả và thời lượng đọc từ trang xem video. Thử với YouTube thật từ máy chủ đặt ở trung tâm dữ liệu: oEmbed trả tên đúng, còn trang xem bị YouTube chuyển sang trang kiểm tra robot, nên không có key thì nhiều khả năng bài chỉ có tên. Không lấy được cả tên thì `meta` là null và bài giữ tên tạm.
 - Đường dẫn này không mở transaction database (`NO_DB_PATHS` trong `apps/api/src/middleware/auth.ts`), để không giữ một kết nối database trong lúc chờ YouTube trả lời.
+## 1.25.0 - 2026-11-10
+
+Safari tự đổi ảnh sang WebP ngay trên máy người dùng, nên việc chuyển ảnh không còn phụ thuộc hạn mức Cloudflare Images.
+
+### Tính năng
+
+- **Bộ mã hóa WebP riêng cho trình duyệt không tự xuất được WebP** (Safari trên iPhone và máy Mac). Trước đây các máy này gửi JPEG lên, máy chủ chuyển sang WebP bằng Cloudflare Images, mỗi ảnh tốn một lượt trong 5.000 lượt miễn phí mỗi tháng. Nay thứ tự khi tải ảnh lên là:
+  1. Trình duyệt tự đổi sang WebP bằng canvas (Chrome, Edge, Firefox, Android), như trước.
+  2. Không tự đổi được thì web dùng bộ mã hóa WebAssembly (libwebp, gói `@jsquash/webp`), vẫn chạy trên máy người dùng.
+  3. Cả hai không được thì gửi JPEG, máy chủ chuyển bằng Cloudflare Images như trước.
+- Bước 1 và 2 không tốn lượt chuyển đổi nào của Cloudflare, bao nhiêu người dùng cũng vậy. Cloudflare Images chỉ còn là lưới an toàn cho bước 3.
+- Ảnh PNG nền trong suốt giữ được nền trong suốt ở cả ba bước.
+
+### Thay đổi
+
+- Bộ mã hóa chỉ được tải khi cần: Chrome, Edge, Firefox, Android không tải thêm gì. Safari tải một lần khoảng 130 KB (đã nén) ở ảnh đầu tiên, các ảnh sau dùng lại.
+- Sau lần đầu thấy canvas không xuất được WebP, các ảnh sau bỏ qua lượt thử đó, đi thẳng tới bộ mã hóa.
+- Bộ mã hóa tải hỏng (rớt mạng) thì ảnh đó đi theo bước 3, ảnh sau thử tải lại.
+- Thêm thư viện `@jsquash/webp` cho `apps/web`. Không đổi gì ở máy chủ, database hay cấu hình Cloudflare.
+
+### Đã kiểm
+
+- Chạy mã thật trong Chromium, ép canvas trả PNG khi xin WebP để giả Safari, trên cả bản dev lẫn bản build: ảnh PNG 3000x2000 nặng 3,5 MB ra WebP 1200x800 nặng 165 KB, bằng đúng dung lượng Chrome tự nén; vùng trong suốt giữ nguyên; avatar ra 512px. Riêng bước mã hóa ảnh 1200x800 mất khoảng 140 ms (bản SIMD) và 200 ms (bản không SIMD) trên máy thử.
+- Mở trang bình thường không tải tệp nào của bộ mã hóa.
+
+### Chưa kiểm chứng được
+
+- Chưa chạy trên Safari thật (máy thử chỉ có Chromium). Thời gian nén trên iPhone đời cũ chưa đo. Sau khi lên bản này, tải một ảnh từ iPhone và xem đường dẫn ảnh kết thúc bằng `.webp`.
+
+## 1.24.0 - 2026-11-10
+
+Video YouTube trong bài học chạy bằng trình phát riêng: người học không bấm sang YouTube được và không thấy video gợi ý.
+
+### Tính năng
+
+- **Trình phát riêng cho video YouTube của bài học.** Người học xem video ngay trong trang bài học. Tên video, logo YouTube, nút "Xem trên YouTube" không còn hiện, và bấm vào đâu trên video cũng không mở YouTube.
+- **Không còn video gợi ý.** Dải "Video khác" khi tạm dừng nằm ngoài vùng nhìn. Gần hết video thì trang tự dừng và hiện nút "Xem lại", nên màn hình gợi ý cuối video của YouTube không kịp hiện.
+- Các nút do trang tự dựng: phát và tạm dừng, thanh tua, lùi và tới 10 giây, âm lượng, Cài đặt, toàn màn hình. Thanh điều khiển tự ẩn khi đang phát.
+- **Nút Cài đặt (bánh răng) có hai mục: Chất lượng và Tốc độ.** Chất lượng gồm "Tự động" và các mức video có (1080p, 720p, 480p, 360p...); để Tự động thì hiện kèm mức đang phát, ví dụ "Tự động (720p)". Mức đã chọn được nhớ ở máy cho các bài sau. Tốc độ từ 0,75x tới 2x. Các mức xếp một cột dọc như YouTube, mức đang chọn có dấu tích. Trên điện thoại bảng Cài đặt mở từ đáy màn hình, chạm ra ngoài là đóng.
+- Phím tắt trên máy tính: Space hoặc K để phát và tạm dừng, mũi tên trái phải tua 5 giây, J và L tua 10 giây, M tắt tiếng, F toàn màn hình.
+- Điện thoại: mỗi nút cao và rộng 44px, chạm lần đầu để gọi thanh điều khiển, chạm lần nữa để tạm dừng. Toàn màn hình xoay ngang trên Android; iPhone dùng kiểu phủ kín trang.
+- Video dọc (link `/shorts/`) hiện trong khung 9:16.
+
+### Thay đổi
+
+- Chỉ áp dụng cho video YouTube ở trang bài học. Video từ Vimeo, Loom, Bunny, TikTok, Facebook giữ khung nhúng gốc của các nền tảng đó. Video giới thiệu ở trang bán hàng và ô xem trước trong trang soạn khóa học cũng giữ nguyên.
+- Tạm dừng giữa chừng thì không có gì đè lên khung hình, để người học dừng lại đọc slide.
+- Nếu trình duyệt chặn phát có tiếng, sau 4 giây video phát tắt tiếng và hiện nút "Chạm để bật tiếng".
+- Video bị gỡ, để riêng tư hoặc bị chủ video tắt quyền nhúng thì hiện lời báo bằng tiếng Việt kèm nút "Thử lại", thay cho màn hình lỗi có link của YouTube.
+
+### Kiểm thử
+
+- `apps/web/src/lib/youtube.test.ts`: tham số nhúng, đồng hồ, danh sách tốc độ và chất lượng, ngưỡng dừng trước giây cuối.
+- `e2e/tests/16-bai-hoc-video-youtube.spec.ts` chạy với YouTube giả (`e2e/helpers/youtube.ts`): bấm khắp mặt trình phát và đi Tab hết các nút mà không lượt nào vào được khung YouTube; link sang YouTube và dải "Video khác" nằm ngoài vùng nhìn ở cả video ngang lẫn video dọc; chọn chất lượng và tốc độ trong bảng Cài đặt; hết video hiện "Xem lại".
+- Chưa chạy được với YouTube thật trong môi trường kiểm thử (máy chạy thử bị chặn mạng tới YouTube). Cần xem lại trên máy thật sau khi deploy, nhất là việc đổi chất lượng: YouTube không còn cam kết giữ lệnh này cho trình phát nhúng.
 
 ## 1.23.0 - 2026-11-10
 

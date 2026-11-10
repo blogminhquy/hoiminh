@@ -2,8 +2,9 @@
 //   - R2Provider: R2 qua giao thức S3 (aws4fetch), trình duyệt tải thẳng lên R2 bằng URL ký. Cần 4 secret R2_*.
 //   - R2BindingProvider: R2 qua binding `FILES` của Worker, không cần secret; tệp đi qua API (/files/upload, /files).
 //   - LocalMediaProvider: thư mục .data/files cho dev/test.
-// Ảnh công khai (bài viết, bình luận, tin nhắn, bìa, avatar) lưu ở dạng WebP: trình duyệt nén trước, ảnh nào tới
-// máy chủ vẫn là JPEG/PNG thì CloudflareImageOptimizer (binding `IMAGES` của Worker) chuyển nốt trước khi ghi vào R2.
+// Ảnh công khai (bài viết, bình luận, tin nhắn, bìa, avatar) lưu ở dạng WebP: trình duyệt đổi sang WebP trước khi gửi
+// (canvas, hoặc bộ mã hóa WebAssembly với Safari). Ảnh nào tới máy chủ vẫn là JPEG/PNG (trình duyệt làm không được,
+// client cũ, gọi API trực tiếp) thì CloudflareImageOptimizer (binding `IMAGES` của Worker) chuyển nốt trước khi ghi vào R2.
 import { AwsClient } from 'aws4fetch';
 
 /** Cạnh dài tối đa của ảnh công khai, và của avatar/logo. Khớp với bước nén ở trình duyệt (apps/web/src/lib/image-compress.ts). */

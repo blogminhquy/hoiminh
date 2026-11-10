@@ -63,7 +63,8 @@ binding = "FILES"
 bucket_name = "hoiminh-files"
 
 # Cloudflare Images: ảnh JPEG/PNG tải lên được chuyển sang WebP (cạnh dài tối đa 1200px, avatar 512px) trước khi
-# ghi vào R2. Trình duyệt nào tự xuất được WebP thì ảnh đã là WebP từ trước, không tốn lượt chuyển đổi.
+# ghi vào R2. Đây là lưới an toàn cuối: trình duyệt đã tự đổi sang WebP trước khi gửi (Safari dùng bộ mã hóa WebAssembly
+# của web, apps/web/src/lib/webp-encoder.ts), ảnh đã là WebP thì không tốn lượt chuyển đổi nào.
 # Gói Images miễn phí cho 5.000 lượt chuyển đổi mỗi tháng; hết lượt thì ảnh lưu nguyên dạng JPEG, không lỗi.
 [images]
 binding = "IMAGES"
