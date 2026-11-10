@@ -53,6 +53,12 @@ id = "f4c98cf06b33403caab8d1a68e89ab0a"
 binding = "FILES"
 bucket_name = "hoiminh-files"
 
+# Cloudflare Images: ảnh JPEG/PNG tải lên được chuyển sang WebP (cạnh dài tối đa 1200px, avatar 512px) trước khi
+# ghi vào R2. Trình duyệt nào tự xuất được WebP thì ảnh đã là WebP từ trước, không tốn lượt chuyển đổi.
+# Gói Images miễn phí cho 5.000 lượt chuyển đổi mỗi tháng; hết lượt thì ảnh lưu nguyên dạng JPEG, không lỗi.
+[images]
+binding = "IMAGES"
+
 # Chỉ gửi job vào hàng đợi; hoiminh-jobs là nơi xử lý.
 [[queues.producers]]
 queue = "hoiminh-jobs"

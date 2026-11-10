@@ -4,7 +4,7 @@ import { loadEnv } from '@hoiminh/config';
 import { createApp, type App, type InMemoryQueue } from '@hoiminh/core';
 import { connect, runMigrations } from '@hoiminh/db';
 import { seedAll } from '@hoiminh/db/seed';
-import { fakeBucket } from '@hoiminh/media/testing';
+import { fakeBucket, fakeImages } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
 import { resetMemoryLimits, TIERS } from './middleware/rate-limit';
@@ -230,6 +230,69 @@ describe('API', () => {
     const signed = await withR2.ctx.media.getSignedUrl('private/digital_product/x.pdf', 60);
     expect((await h1.request(signed)).status).toBe(200);
     });
+  it('ảnh tải lên thành WebP: JPEG, PNG được máy chủ chuyển trước khi vào R2; WebP và GIF đi thẳng; không nhận video', async () => {
+    const dbHandle = (app.ctx as { db: unknown }).db as never;
+    const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    const bucket = fakeBucket();
+    const images = fakeImages();
+    const h = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket, images }));
+    const auth = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const ask = (fileName: string, mimeType: string, purpose = 'post_image') => h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName, mimeType, sizeBytes: 5, purpose, communityId }) });
+    type Asked = { fileId: string; upload: { url: string; headers: Record<string, string> }; url: string };
+    /** Tải một tệp 5 byte như trình duyệt: xin URL, PUT, xác nhận. Trả về URL công khai và kết quả PUT. */
+    const upload = async (fileName: string, mimeType: string, purpose = 'post_image') => {
+      const r = (await (await ask(fileName, mimeType, purpose)).json()) as Asked;
+      const put = (await (await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) })).json()) as { contentType: string; bytes: number };
+      const done = (await (await h.request(`/v1/files/${r.fileId}/complete`, { method: 'POST', headers: auth, body: JSON.stringify({ width: 10, height: 10 }) })).json()) as { url: string };
+      return { url: done.url, put };
+    };
+    const served = async (url: string) => { const res = await h.request(url); return { type: res.headers.get('content-type'), text: new TextDecoder().decode(await res.arrayBuffer()) }; };
+
+    // JPEG từ trình duyệt không xuất được WebP (Safari): key đuôi .webp, máy chủ chuyển rồi mới ghi vào R2.
+    const jpeg = await upload('IMG_1.JPG', 'image/jpeg');
+    expect(jpeg.url).toMatch(/^https:\/\/api\.test\/files\/public\/post_image\/.+\.webp$/);
+    expect(jpeg.put).toEqual(expect.objectContaining({ contentType: 'image/webp', bytes: 6 }));
+    expect(await served(jpeg.url)).toEqual({ type: 'image/webp', text: 'webp:5' });
+    expect(images.calls[0]).toEqual({ transform: { width: 1200, height: 1200, fit: 'scale-down' }, output: { format: 'image/webp', quality: 80 }, inputBytes: 5 });
+
+    // Avatar, logo: cạnh dài tối đa 512px.
+    const avatar = await upload('me.png', 'image/png', 'avatar');
+    expect(avatar.url).toMatch(/\/public\/avatar\/.+\.webp$/);
+    expect(images.calls[1]?.transform).toEqual({ width: 512, height: 512, fit: 'scale-down' });
+
+    // Trình duyệt đã nén sẵn thành WebP: đi thẳng vào kho, không tốn lượt chuyển đổi.
+    const webp = await upload('san.webp', 'image/webp');
+    expect(webp.url).toMatch(/\.webp$/);
+    expect(webp.put.contentType).toBe('image/webp');
+    expect((await served(webp.url)).text).not.toContain('webp:');
+    // GIF giữ nguyên để không mất chuyển động.
+    const gif = await upload('vui.gif', 'image/gif');
+    expect(gif.url).toMatch(/\.gif$/);
+    expect((await served(gif.url)).type).toBe('image/gif');
+    expect(images.calls).toHaveLength(2);
+
+    // Không nhận tệp video ở mục nào, kể cả tài liệu bài học và tệp số.
+    for (const purpose of ['post_image', 'lesson_resource', 'digital_product']) {
+      const video = await ask('clip.mp4', 'video/mp4', purpose);
+      expect(video.status).toBeGreaterThanOrEqual(400);
+      expect(((await video.json()) as { message: string }).message).toContain('Không nhận tệp video');
+    }
+
+    // Cloudflare từ chối chuyển (hết hạn mức): lượt tải lên vẫn thành công, ảnh lưu đúng dạng nhận được.
+    const failing = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket, images: fakeImages({ fail: true }) }));
+    const r = (await (await failing.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName: 'a.jpg', mimeType: 'image/jpeg', sizeBytes: 5, purpose: 'post_image', communityId }) })).json()) as Asked;
+    const put = await failing.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) });
+    expect(put.status).toBe(200);
+    expect(((await put.json()) as { contentType: string }).contentType).toBe('image/jpeg');
+    const back = await failing.request(r.url);
+    expect(back.headers.get('content-type')).toBe('image/jpeg');
+    expect(new Uint8Array(await back.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+
+    // Không có binding Images (cấu hình cũ): JPEG giữ đuôi và định dạng như trước.
+    const plain = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket }));
+    const old = (await (await plain.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName: 'a.jpg', mimeType: 'image/jpeg', sizeBytes: 5, purpose: 'post_image', communityId }) })).json()) as Asked;
+    expect(old.url).toMatch(/\.jpg$/);
+  });
   it('đổi avatar qua HTTP dọn tệp cũ trên R2; DELETE /v1/files/:id chỉ hủy được ảnh chưa dùng của chính mình', async () => {
     const dbHandle = (app.ctx as { db: unknown }).db as never;
     const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };

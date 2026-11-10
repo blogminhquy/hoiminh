@@ -1,7 +1,7 @@
 // Gói nền tảng, API key, webhook gửi đi, tệp, hồ sơ công khai, sức khỏe.
 import { createApiKeySchema, createWebhookSchema } from '@hoiminh/contracts';
 import { apiKeys, filesService, platformBilling, users, webhooksOut } from '@hoiminh/core';
-import { ProxiedMediaProvider } from '@hoiminh/media';
+import { ProxiedMediaProvider, webpTarget } from '@hoiminh/media';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -54,10 +54,19 @@ localFilesRoutes.put('/upload/*', async (c) => {
   const u = new URL(c.req.url);
   if (!(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'URL tải lên không hợp lệ hoặc đã hết hạn' }, 403);
   const type = c.req.header('content-type') ?? 'application/octet-stream';
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
-  if (media.store) await media.store.put(key, bytes, type);
-  else await persistLocal(key, bytes, type);
-  return c.json({ ok: true, key, bytes: bytes.byteLength });
+  let bytes: Uint8Array = new Uint8Array(await c.req.arrayBuffer());
+  let stored = type;
+  // Ảnh công khai còn là JPEG/PNG (trình duyệt không tự xuất được WebP, ví dụ Safari): chuyển sang WebP trước khi ghi vào kho.
+  // Không chuyển được (hết hạn mức Images, ảnh hỏng) thì lưu đúng tệp nhận được, lượt tải lên vẫn thành công.
+  const target = media.images ? webpTarget(key, type) : null;
+  if (target && media.images) {
+    const webp = await media.images.toWebp(bytes, target);
+    if (webp) { bytes = webp; stored = 'image/webp'; }
+  }
+  if (media.store) await media.store.put(key, bytes, stored);
+  else await persistLocal(key, bytes, stored);
+  if (stored !== type) await filesService.recordStoredObject(c.get('ctx'), key, { mimeType: stored, sizeBytes: bytes.byteLength });
+  return c.json({ ok: true, key, bytes: bytes.byteLength, contentType: stored });
 });
 localFilesRoutes.get('/*', async (c) => {
   const media = proxied(c);

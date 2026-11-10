@@ -88,7 +88,7 @@ export const api = {
    * Không ném lỗi: tệp đã được dùng thì server từ chối (409) và giữ nguyên, đó là kết quả đúng.
    */
   discardUpload: (fileId: string): Promise<void> => request<unknown>('DELETE', `/v1/files/${fileId}`).then(() => undefined, () => undefined),
-  /** Tải tệp: nén ảnh (JPEG, cạnh dài tối đa 1200px, avatar 512px) → xin URL ký → PUT → xác nhận. Trả về { fileId, url }. */
+  /** Tải tệp: nén ảnh (WebP, cạnh dài tối đa 1200px, avatar 512px) → xin URL ký → PUT → xác nhận. Trả về { fileId, url }. */
   async upload(original: File, purpose: UploadPurpose, scope: { communityId?: string | null; workspaceId?: string | null } = {}): Promise<{ fileId: string; url: string | null; width: number | null; height: number | null }> {
     const file = await compressForUpload(original, purpose);
     const r = await request<{ fileId: string; upload: { url: string; headers: Record<string, string> }; url: string | null }>('POST', '/v1/files/upload-url', { fileName: file.name, mimeType: file.type || 'application/octet-stream', sizeBytes: file.size, purpose, ...scope });

@@ -2,7 +2,7 @@
 import type { Env } from '@hoiminh/config';
 import { connect, runMigrations, type Database } from '@hoiminh/db';
 import { RecordingSender, SwitchableSender, createEmailSender, type EmailMessage } from '@hoiminh/email';
-import { createMediaProvider, type R2BucketLike } from '@hoiminh/media';
+import { CloudflareImageOptimizer, createMediaProvider, type ImagesBindingLike, type R2BucketLike } from '@hoiminh/media';
 import { createPaymentRouter } from '@hoiminh/payments';
 import { emailLogs } from '@hoiminh/db';
 import { LocalAuthProvider, SupabaseAuthProvider, type AuthProvider } from './auth/providers';
@@ -23,6 +23,8 @@ export interface CreateAppOptions {
   onEmail?: (m: EmailMessage) => void;
   /** Binding R2 của Worker (`FILES`): có nó thì tệp lên R2 mà không cần secret R2_*. */
   r2Bucket?: R2BucketLike | null;
+  /** Binding Images của Worker (`IMAGES`): có nó thì ảnh JPEG/PNG tải lên được chuyển sang WebP trước khi vào R2. */
+  images?: ImagesBindingLike | null;
   /** Bộ đẩy sự kiện thời gian thực (Durable Object `REALTIME` của Worker). */
   realtime?: RealtimePublisher | null;
 }
@@ -60,7 +62,7 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
       await rootDb.insert(emailLogs).values({ toEmail: m.to, template: m.template, subject: m.subject, status: r.status, providerMessageId: r.providerMessageId ?? null, error: r.error ?? null });
     },
   );
-  const media = createMediaProvider({ r2: { accountId: env.R2_ACCOUNT_ID, accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY, bucket: env.R2_BUCKET, publicBaseUrl: env.R2_PUBLIC_BASE_URL }, r2Bucket: opts.r2Bucket ?? null, apiUrl: env.API_URL, secret: env.AUTH_JWT_SECRET });
+  const media = createMediaProvider({ r2: { accountId: env.R2_ACCOUNT_ID, accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY, bucket: env.R2_BUCKET, publicBaseUrl: env.R2_PUBLIC_BASE_URL }, r2Bucket: opts.r2Bucket ?? null, images: opts.images ? new CloudflareImageOptimizer(opts.images, (err) => log.warn('image.webp_failed', { err: String(err) })) : null, apiUrl: env.API_URL, secret: env.AUTH_JWT_SECRET });
   const payments = createPaymentRouter(env, `${env.API_URL}/pay/simulator`);
   const events = createEventBus((name, err) => log.error('event.handler_failed', { name, err: String(err) }));
   const queue = opts.queue ?? new InMemoryQueue();

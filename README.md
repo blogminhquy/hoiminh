@@ -88,6 +88,8 @@ infra           deploy.mjs
 
 Kiểm tra nhanh hạ tầng đã nối chưa: `curl https://api.hoiminh.com/health` trả `email` (Resend hay log), `media` (R2 (binding), R2 (S3) hay đĩa local) và `version`.
 
+Ảnh tải lên được chuyển sang WebP: trình duyệt nén trước, ảnh nào tới máy chủ còn là JPEG hoặc PNG thì binding `IMAGES` (Cloudflare Images, khai báo trong `apps/api/wrangler.toml`) chuyển nốt. Không cần bật gì thêm: gói Images miễn phí cho 5.000 lượt chuyển đổi mỗi tháng, hết lượt thì ảnh lưu nguyên dạng JPEG. Kiểm: tải một ảnh từ iPhone, đường dẫn ảnh phải kết thúc bằng `.webp`.
+
 ### Hai Worker
 
 | Worker | Thư mục | Làm gì | Tên miền |

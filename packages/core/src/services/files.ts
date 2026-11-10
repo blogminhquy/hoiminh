@@ -1,7 +1,7 @@
 // Tệp và ảnh: xin URL tải lên (presigned), ghi nhận sau khi tải xong, URL ký cho tệp riêng,
 // và dọn tệp trên R2 khi ảnh bị gỡ (xem releaseFiles).
 import { randomToken } from '@hoiminh/config';
-import { validateUpload } from '@hoiminh/media';
+import { validateUpload, webpKeyFor } from '@hoiminh/media';
 import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import { files } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -23,11 +23,20 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
   if (!v.ok) throw invalid(v.reason);
   if (['post_image', 'avatar', 'cover', 'message_image', 'comment_image'].includes(input.purpose) && v.kind !== 'image') throw invalid('Mục này chỉ nhận ảnh');
   const visibility = input.purpose === 'lesson_resource' || input.purpose === 'digital_product' ? 'private' : 'public';
-  const ext = input.fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? 'bin';
+  // Ảnh công khai lưu ở dạng WebP: tệp đã là WebP, hoặc máy chủ chuyển được JPEG/PNG lúc nhận tệp (xem route PUT /files/upload).
+  const ext = visibility === 'public' && webpKeyFor(input.mimeType, ctx.media.convertsToWebp) ? 'webp' : input.fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? 'bin';
   const objectKey = `${visibility}/${input.purpose}/${new Date().toISOString().slice(0, 10)}/${randomToken(12)}.${ext}`;
   const presigned = await ctx.media.presignUpload(objectKey, input.mimeType);
   const [row] = await ctx.db.insert(files).values({ workspaceId: input.workspaceId ?? null, communityId: input.communityId ?? null, ownerUserId: userId, objectKey, url: visibility === 'public' ? ctx.media.getUrl(objectKey) : null, mimeType: input.mimeType, sizeBytes: input.sizeBytes, originalName: input.fileName, visibility, status: 'pending' }).returning();
   return { fileId: row!.id, upload: presigned, url: row!.url };
+}
+
+/**
+ * Máy chủ vừa chuyển ảnh sang WebP lúc nhận tệp: ghi lại loại tệp và dung lượng thật đang nằm trong kho.
+ * Chỉ đụng tới dòng còn `pending` (chưa xác nhận) của đúng object key đó.
+ */
+export async function recordStoredObject(ctx: Ctx, objectKey: string, stored: { mimeType: string; sizeBytes: number }): Promise<void> {
+  await ctx.db.update(files).set({ mimeType: stored.mimeType, sizeBytes: stored.sizeBytes }).where(and(eq(files.objectKey, objectKey), eq(files.status, 'pending')));
 }
 
 /** Bước 2: xác nhận đã tải xong (kèm kích thước ảnh nếu có). */

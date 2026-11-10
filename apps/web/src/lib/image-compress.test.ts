@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AVATAR_MAX_SIDE, IMAGE_MAX_SIDE, JPEG_QUALITY, compressForUpload, compressImage, fitWithin, jpegName, maxSideFor, type CompressDeps } from './image-compress';
+import { AVATAR_MAX_SIDE, IMAGE_MAX_SIDE, JPEG_QUALITY, WEBP_QUALITY, compressForUpload, compressImage, fitWithin, jpegName, maxSideFor, outputName, type CompressDeps, type OutputType } from './image-compress';
 
 const source = {} as CanvasImageSource;
 const fileOf = (name: string, type: string, bytes: number) => new File([new Uint8Array(bytes)], name, { type });
 
-/** Giải mã/mã hóa giả: ghi lại kích thước được yêu cầu vẽ, trả về blob `outBytes` byte. */
-function fakeDeps(dims: { width: number; height: number }, outBytes = 100_000, outType = 'image/jpeg') {
+/**
+ * Giải mã/mã hóa giả: ghi lại kích thước được yêu cầu vẽ, trả về blob `outBytes` byte.
+ * `webp: true` giống Chrome, Firefox (xuất được WebP); `webp: false` giống Safari (xin WebP thì nhận về PNG, JPEG vẫn xuất được).
+ */
+function fakeDeps(dims: { width: number; height: number }, outBytes = 100_000, opts: { webp?: boolean } = {}) {
+  const canWebp = opts.webp ?? true;
   const release = vi.fn();
   const decode = vi.fn(async (_file: File) => ({ ...dims, source, release }));
-  const encode = vi.fn(async (_s: CanvasImageSource, _w: number, _h: number, _q: number): Promise<Blob | null> => new Blob([new Uint8Array(outBytes)], { type: outType }));
+  const encode = vi.fn(async (_s: CanvasImageSource, _w: number, _h: number, _q: number, type: OutputType): Promise<Blob | null> => new Blob([new Uint8Array(outBytes)], { type: type === 'image/webp' && !canWebp ? 'image/png' : type }));
   const deps: CompressDeps = { decode, encode };
   return { deps, decode, encode, release };
 }
@@ -30,12 +34,13 @@ describe('fitWithin', () => {
   });
 });
 
-describe('jpegName', () => {
-  it('đổi đuôi tệp sang .jpg', () => {
-    expect(jpegName('anh dep.PNG')).toBe('anh dep.jpg');
+describe('outputName', () => {
+  it('đổi đuôi tệp theo định dạng xuất', () => {
+    expect(outputName('anh dep.PNG', 'image/webp')).toBe('anh dep.webp');
+    expect(outputName('a.b.jpg', 'image/webp')).toBe('a.b.webp');
+    expect(outputName('khong-duoi', 'image/webp')).toBe('khong-duoi.webp');
+    expect(outputName('', 'image/webp')).toBe('image.webp');
     expect(jpegName('a.b.webp')).toBe('a.b.jpg');
-    expect(jpegName('khong-duoi')).toBe('khong-duoi.jpg');
-    expect(jpegName('')).toBe('image.jpg');
   });
 });
 
@@ -54,34 +59,57 @@ describe('maxSideFor', () => {
 });
 
 describe('compressImage', () => {
-  it('thu nhỏ ảnh lớn về 1200px và đổi sang JPEG', async () => {
+  it('thu nhỏ ảnh lớn về 1200px và đổi sang WebP', async () => {
     const { deps, encode } = fakeDeps({ width: 4000, height: 3000 });
     const out = await compressImage(fileOf('IMG_1.PNG', 'image/png', 5_000_000), IMAGE_MAX_SIDE, deps);
-    expect(encode).toHaveBeenCalledWith(source, 1200, 900, JPEG_QUALITY);
-    expect(out.name).toBe('IMG_1.jpg');
-    expect(out.type).toBe('image/jpeg');
+    expect(encode).toHaveBeenCalledTimes(1);
+    expect(encode).toHaveBeenCalledWith(source, 1200, 900, WEBP_QUALITY, 'image/webp');
+    expect(out.name).toBe('IMG_1.webp');
+    expect(out.type).toBe('image/webp');
     expect(out.size).toBe(100_000);
   });
 
-  it('ảnh nhỏ hơn giới hạn không bị phóng to nhưng vẫn đổi sang JPEG khi nhẹ hơn', async () => {
+  it('ảnh nhỏ hơn giới hạn không bị phóng to nhưng vẫn đổi sang WebP', async () => {
     const { deps, encode } = fakeDeps({ width: 800, height: 600 }, 60_000);
-    const out = await compressImage(fileOf('a.png', 'image/png', 900_000), IMAGE_MAX_SIDE, deps);
-    expect(encode).toHaveBeenCalledWith(source, 800, 600, JPEG_QUALITY);
-    expect(out.type).toBe('image/jpeg');
+    const out = await compressImage(fileOf('a.jpg', 'image/jpeg', 900_000), IMAGE_MAX_SIDE, deps);
+    expect(encode).toHaveBeenCalledWith(source, 800, 600, WEBP_QUALITY, 'image/webp');
+    expect(out.type).toBe('image/webp');
     expect(out.size).toBe(60_000);
   });
 
-  it('giữ ảnh gốc khi nén xong lại nặng hơn mà không phải thu nhỏ', async () => {
-    const original = fileOf('nho.png', 'image/png', 3_000);
+  it('JPEG, PNG luôn thành WebP dù byte không giảm, để mọi ảnh trong hội cùng một định dạng', async () => {
+    const { deps } = fakeDeps({ width: 64, height: 64 }, 5_000);
+    const out = await compressImage(fileOf('nho.png', 'image/png', 3_000), IMAGE_MAX_SIDE, deps);
+    expect(out.type).toBe('image/webp');
+    expect(out.name).toBe('nho.webp');
+  });
+
+  it('ảnh gốc đã là WebP, chưa cần thu nhỏ mà nén lại nặng hơn thì giữ nguyên tệp gốc', async () => {
+    const original = fileOf('san.webp', 'image/webp', 3_000);
     const { deps } = fakeDeps({ width: 64, height: 64 }, 5_000);
     expect(await compressImage(original, IMAGE_MAX_SIDE, deps)).toBe(original);
   });
 
   it('đã thu nhỏ thì dùng bản nén dù byte không giảm, để cạnh không vượt giới hạn', async () => {
     const { deps } = fakeDeps({ width: 3000, height: 2000 }, 120_000);
-    const out = await compressImage(fileOf('a.jpg', 'image/jpeg', 100_000), IMAGE_MAX_SIDE, deps);
+    const out = await compressImage(fileOf('a.webp', 'image/webp', 100_000), IMAGE_MAX_SIDE, deps);
     expect(out.size).toBe(120_000);
+    expect(out.type).toBe('image/webp');
+  });
+
+  it('trình duyệt không xuất được WebP (Safari) thì xuất JPEG, máy chủ sẽ chuyển sang WebP', async () => {
+    const { deps, encode } = fakeDeps({ width: 4000, height: 3000 }, 100_000, { webp: false });
+    const out = await compressImage(fileOf('IMG_2.HEIC.jpg', 'image/jpeg', 5_000_000), IMAGE_MAX_SIDE, deps);
+    expect(encode).toHaveBeenNthCalledWith(1, source, 1200, 900, WEBP_QUALITY, 'image/webp');
+    expect(encode).toHaveBeenNthCalledWith(2, source, 1200, 900, JPEG_QUALITY, 'image/jpeg');
+    expect(out.name).toBe('IMG_2.HEIC.jpg');
     expect(out.type).toBe('image/jpeg');
+  });
+
+  it('không xuất được WebP và bản JPEG nặng hơn ảnh chưa cần thu nhỏ thì giữ ảnh gốc', async () => {
+    const original = fileOf('nho.png', 'image/png', 3_000);
+    const { deps } = fakeDeps({ width: 64, height: 64 }, 5_000, { webp: false });
+    expect(await compressImage(original, IMAGE_MAX_SIDE, deps)).toBe(original);
   });
 
   it('GIF giữ nguyên để không mất chuyển động, không giải mã', async () => {
@@ -105,17 +133,12 @@ describe('compressImage', () => {
     expect(await compressImage(original, IMAGE_MAX_SIDE, deps)).toBe(original);
   });
 
-  it('mã hóa không ra được ảnh thì tải ảnh gốc', async () => {
+  it('mã hóa không ra được ảnh nào thì tải ảnh gốc', async () => {
     const original = fileOf('a.png', 'image/png', 1_000_000);
     const { deps, encode } = fakeDeps({ width: 2000, height: 2000 });
-    encode.mockResolvedValueOnce(null);
+    encode.mockResolvedValue(null);
     expect(await compressImage(original, IMAGE_MAX_SIDE, deps)).toBe(original);
-  });
-
-  it('trình duyệt trả định dạng khác JPEG thì tải ảnh gốc', async () => {
-    const original = fileOf('a.png', 'image/png', 1_000_000);
-    const { deps } = fakeDeps({ width: 2000, height: 2000 }, 100, 'image/png');
-    expect(await compressImage(original, IMAGE_MAX_SIDE, deps)).toBe(original);
+    expect(encode).toHaveBeenCalledTimes(2);
   });
 
   it('luôn giải phóng ảnh đã giải mã, kể cả khi mã hóa lỗi', async () => {
@@ -134,13 +157,13 @@ describe('compressForUpload', () => {
   it('ảnh bài viết nén về 1200px', async () => {
     const { deps, encode } = fakeDeps({ width: 4000, height: 3000 });
     await compressForUpload(fileOf('a.jpg', 'image/jpeg', 3_000_000), 'post_image', deps);
-    expect(encode).toHaveBeenCalledWith(source, 1200, 900, JPEG_QUALITY);
+    expect(encode).toHaveBeenCalledWith(source, 1200, 900, WEBP_QUALITY, 'image/webp');
   });
 
   it('avatar nén về 512px', async () => {
     const { deps, encode } = fakeDeps({ width: 1254, height: 1254 });
     await compressForUpload(fileOf('me.png', 'image/png', 2_061_641), 'avatar', deps);
-    expect(encode).toHaveBeenCalledWith(source, 512, 512, JPEG_QUALITY);
+    expect(encode).toHaveBeenCalledWith(source, 512, 512, WEBP_QUALITY, 'image/webp');
   });
 
   it('tài liệu và tệp số không đụng tới dù là ảnh', async () => {
