@@ -46,18 +46,26 @@ test('chủ hội sửa logo, ảnh bìa, ảnh và video trang giới thiệu; 
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
   await expect(page.getByText('Đã lưu').first()).toBeVisible();
 
-  // Thêm hai ảnh một lượt, rồi một video. Link không phải video thì báo lỗi, không thêm.
+  // Chưa có gì: khung to mời thêm ảnh. Thêm hai ảnh một lượt thì khung to hiện ảnh vừa thêm, bên dưới là hàng ảnh nhỏ.
+  await expect(card.getByRole('button', { name: 'Thêm ảnh' })).toBeVisible();
   await card.locator('input[type=file]').nth(0).setInputFiles([await png(page, 'a.png', '#0b6f75'), await png(page, 'b.png', '#d4593a')]);
   await expect(card.getByText('2/12')).toBeVisible();
+  await expect(card.getByRole('img', { name: 'Xem trước ảnh số 1' })).toBeVisible();
+  await card.getByRole('button', { name: 'Chọn ảnh số 2' }).click();
+  await expect(card.getByRole('img', { name: 'Xem trước ảnh số 2' })).toBeVisible();
+
+  // Ô "Thêm video" nằm cuối hàng ảnh nhỏ. Link không phải video thì báo lỗi, không thêm.
   const link = card.getByRole('textbox', { name: 'Link video' });
-  await link.fill('https://example.com/khong-phai-video');
   await card.getByRole('button', { name: 'Thêm video' }).click();
+  await link.fill('https://example.com/khong-phai-video');
+  await card.getByRole('button', { name: 'Thêm', exact: true }).click();
   await expect(card.getByText('Link này chưa nhận diện được')).toBeVisible();
   await link.fill('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
-  await card.getByRole('button', { name: 'Thêm video' }).click();
+  await card.getByRole('button', { name: 'Thêm', exact: true }).click();
   await expect(card.getByText('3/12')).toBeVisible();
+  await expect(link).toHaveCount(0);
 
-  // Đưa video lên đầu, sửa link của nó, rồi xóa ảnh cuối.
+  // Video vừa thêm đang được chọn: đưa lên đầu (khung to đi theo nó), sửa link, rồi chọn ảnh cuối và xóa.
   await card.getByRole('button', { name: 'Đưa video số 3 lên trước' }).click();
   await card.getByRole('button', { name: 'Đưa video số 2 lên trước' }).click();
   await expect(card.getByRole('button', { name: 'Sửa link video số 1' })).toBeEnabled();
@@ -65,9 +73,11 @@ test('chủ hội sửa logo, ảnh bìa, ảnh và video trang giới thiệu; 
   await expect(link).toHaveValue('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
   await link.fill('https://youtu.be/dQw4w9WgXcQ');
   await card.getByRole('button', { name: 'Cập nhật link' }).click();
-  await expect(card.getByRole('button', { name: 'Thêm video' })).toBeVisible();
+  await expect(link).toHaveCount(0);
+  await card.getByRole('button', { name: 'Chọn ảnh số 3' }).click();
   await card.getByRole('button', { name: 'Xóa ảnh số 3' }).click();
   await expect(card.getByText('2/12')).toBeVisible();
+  await expect(page.locator('#anh-video [aria-label^="Chọn "]')).toHaveCount(2);
 
   // Tải lại trang: mọi thay đổi đã được lưu.
   await page.reload();

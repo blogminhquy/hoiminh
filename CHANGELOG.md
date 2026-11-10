@@ -6,7 +6,7 @@ Chủ hội tự sửa được ảnh và video của trang giới thiệu, ản
 
 ### Tính năng
 
-- **Ảnh và video trang giới thiệu** (Cài đặt, Hội, Thông tin). Chủ hội và quản trị thêm tối đa 12 ảnh và video, đổi ảnh, sửa link video, xếp thứ tự bằng hai nút mũi tên và xóa. Mỗi thay đổi lưu ngay, không cần bấm "Lưu thay đổi". Chọn được nhiều ảnh một lượt. Video dùng link YouTube, Vimeo, Loom, TikTok, Facebook hoặc Bunny (không tải tệp video lên); link không nhận diện được thì báo ngay và không thêm.
+- **Ảnh và video trang giới thiệu** (Cài đặt, Hội, Thông tin). Bố cục giống chính trang giới thiệu: một khung to hiện mục đang chọn, bên dưới là hàng ảnh nhỏ, cuối hàng là hai ô "Thêm ảnh" và "Thêm video". Chủ hội và quản trị thêm tối đa 12 ảnh và video; chọn một ảnh nhỏ rồi bấm "Lên trước", "Ra sau", "Đổi ảnh" (hoặc "Sửa link") hay "Xóa". Mỗi thay đổi lưu ngay, không cần bấm "Lưu thay đổi". Chọn được nhiều ảnh một lượt. Video dùng link YouTube, Vimeo, Loom, TikTok, Facebook hoặc Bunny (không tải tệp video lên); link không nhận diện được thì báo ngay và không thêm.
 - **Trang giới thiệu hiện đúng bộ ảnh và video đó.** Mục số 1 hiện đầu tiên. Ảnh hiện trọn, không bị cắt; video có nút phát, bấm là phát ngay trong trang; video YouTube có ảnh xem trước. Có nút mũi tên hai bên để lướt và hàng ảnh nhỏ bên dưới. Hội chưa thêm gì thì giữ như cũ: nền màu của hội kèm ảnh bìa ba khóa học đầu.
 - **Ảnh bìa của hội** (cùng trang Cài đặt). Ảnh ngang 16:9, hiện ở thẻ hội bên phải trang giới thiệu và trên thẻ hội ở trang Khám phá. Chưa có ảnh thì thẻ vẫn hiện nền màu kèm tên hội.
 - Chủ hội và quản trị mở trang giới thiệu sẽ thấy nút "Sửa ảnh và video" ở góc khung ảnh, dẫn thẳng tới mục đó trong Cài đặt. Hội chưa có ảnh nào thì có thêm một dòng nhắc (chỉ quản trị thấy).
