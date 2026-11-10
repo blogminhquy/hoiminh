@@ -2,8 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App, type InMemoryQueue } from '@hoiminh/core';
-import { connect, runMigrations } from '@hoiminh/db';
-import { seedAll } from '@hoiminh/db/seed';
+import { openSeededTestDb } from '@hoiminh/db/testing';
 import { fakeBucket, fakeImages } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp } from './app';
@@ -23,9 +22,7 @@ const json = async (path: string, init: RequestInit & { auth?: string } = {}) =>
 
 beforeAll(async () => {
   const env = loadEnv({ APP_ENV: 'test', DATABASE_URL: 'pglite://memory', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' });
-  const handle = await connect(env.DATABASE_URL);
-  await runMigrations(handle);
-  const seed = await seedAll(handle.db, { encryptionKey: env.ENCRYPTION_KEY, appUrl: env.APP_URL });
+  const { handle, seed } = await openSeededTestDb({ encryptionKey: env.ENCRYPTION_KEY, appUrl: env.APP_URL });
   communityId = seed.communityId;
   app = await createApp({ env, db: handle.db });
   hono = createHonoApp(app);
