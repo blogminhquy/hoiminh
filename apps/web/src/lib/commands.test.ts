@@ -15,7 +15,7 @@ describe('fold', () => {
 describe('ownerCommands', () => {
   it('chủ hội có đủ việc làm ngay, nơi đi tới và cài đặt, mọi đường dẫn nằm trong hội đang mở', () => {
     const list = ownerCommands(owner);
-    expect(ids(list)).toEqual(expect.arrayContaining(['post', 'invite', 'approve', 'course', 'event', 'product', 'payouts', 'withdraw', 'refund', 'go-money', 'set-pricing', 'set-dev', 'set-plan']));
+    expect(ids(list)).toEqual(expect.arrayContaining(['post', 'invite', 'approve', 'course', 'event', 'product', 'payouts', 'withdraw', 'refund', 'go-money', 'set-pricing', 'set-dev', 'set-plan', 'set-sources', 'set-automation', 'set-contacts']));
     expect(list.find((c) => c.id === 'payouts')?.to).toBe('/minhquy/cong-su');
     expect(list.find((c) => c.id === 'approve')?.to).toBe('/minhquy/thanh-vien?trang-thai=pending');
     expect(new Set(ids(list)).size).toBe(list.length);
@@ -58,6 +58,12 @@ describe('searchCommands', () => {
   it('tìm bằng từ khóa khi tên lệnh không chứa chữ đó', () => {
     expect(ids(searchCommands(list, 'domain'))).toEqual(['set-domain']);
     expect(ids(searchCommands(list, 'zoom'))).toEqual(['event']);
+  });
+  it('thẻ và quy tắc tự động tìm được bằng "webcake", "tag", "tu dong"', () => {
+    expect(ids(searchCommands(list, 'webcake'))).toEqual(['set-sources']);
+    expect(ids(searchCommands(list, 'tag'))).toEqual(expect.arrayContaining(['set-sources', 'set-automation', 'set-contacts']));
+    expect(searchCommands(list, 'quy tac tu dong')[0]?.id).toBe('set-automation');
+    expect(searchCommands(list, 'quy tac tu dong')[0]?.to).toBe('/minhquy/cai-dat/quy-tac');
   });
   it('mọi từ đều phải có mặt, không cần đúng thứ tự', () => {
     expect(ids(searchCommands(list, 'hoc khoa'))).toContain('course');

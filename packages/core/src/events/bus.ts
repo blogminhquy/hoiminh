@@ -26,6 +26,7 @@ export interface DomainEvents {
   'platform.subscription_activated': { workspaceId: string; cycle: 'monthly' | 'yearly'; periodEnd: string };
   'platform.locked': { workspaceId: string };
   'user.registered': { userId: string; email: string; ref: string | null; communitySlug: string | null };
+  'user.email_verified': { userId: string; email: string };
 }
 
 export type EventName = keyof DomainEvents;

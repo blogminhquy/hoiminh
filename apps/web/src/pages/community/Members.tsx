@@ -1,5 +1,5 @@
 // Thành viên: quản trị (bộ lọc 5 trạng thái, tìm, xuất CSV, mời, bảng + modal 4 tab) hoặc danh bạ cho thành viên thường.
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Avatar, Button, Chip, Empty, ErrorBox, Select, T, Tag } from '@hoiminh/ui';
 import { Download, ListFilter, MessageCircle, Plus, Search, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -12,7 +12,7 @@ import { fmtDate, timeAgo } from '@/lib/format';
 import { Directory, MessageModal, type MemberUser } from './MembersExtra';
 import { MemberModal, tierTone } from './MembersParts';
 
-export interface MemberRow { id: string; role: string; status: string; joinedAt: string; lastActiveAt: string | null; lifetimeValueCents: number; source: string; user: MemberUser; tier: { key: string; name: string } | null }
+export interface MemberRow { id: string; role: string; status: string; joinedAt: string; lastActiveAt: string | null; lifetimeValueCents: number; source: string; user: MemberUser; tier: { key: string; name: string } | null; tags?: string[] }
 interface MembersPage { items: MemberRow[]; nextCursor: string | null; counts: Record<string, number> }
 
 const STATUSES: Array<[string, string]> = [['active', 'Đang hoạt động'], ['pending', 'Chờ duyệt'], ['cancelling', 'Đang hủy'], ['churned', 'Đã rời'], ['banned', 'Bị chặn']];
@@ -26,8 +26,11 @@ export default function Page() {
 }
 
 function ManageMembers({ communityId, slug }: { communityId: string; slug: string }) {
-  const [filter, setFilter] = useState({ tierKey: '', role: '', source: '' });
+  const can = useCan();
+  const [filter, setFilter] = useState({ tierKey: '', role: '', source: '', tag: '' });
   const [filterOpen, setFilterOpen] = useState(false);
+  // Thẻ đồng bộ từ landing (Cài đặt, Liên hệ và thẻ): lọc thành viên theo thẻ của email trùng với tài khoản.
+  const tagList = useQuery({ queryKey: ['automation-tags', communityId], queryFn: () => api.get<Array<{ id: string; name: string; contactCount: number }>>(`/v1/communities/${communityId}/automation/tags`), enabled: can('settings.manage'), staleTime: 60_000 });
   // ?moi=1: mở sẵn khung mời (mục "Mời thành viên" ở Cài đặt và ô lệnh dẫn tới đây).
   // ?trang-thai=pending: mở thẳng danh sách chờ duyệt (việc "Cần xử lý" trên Bàn điều khiển dẫn tới đây).
   const [search] = useSearchParams();
@@ -77,7 +80,8 @@ function ManageMembers({ communityId, slug }: { communityId: string; slug: strin
               <label className="flex flex-col gap-1 text-[13px] font-semibold">Gói<Select value={filter.tierKey} onChange={(e) => setFilter({ ...filter, tierKey: e.target.value })}><option value="">Tất cả</option><option value="standard">Tiêu chuẩn</option><option value="premium">Premium</option><option value="vip">VIP</option></Select></label>
               <label className="flex flex-col gap-1 text-[13px] font-semibold">Vai trò<Select value={filter.role} onChange={(e) => setFilter({ ...filter, role: e.target.value })}><option value="">Tất cả</option><option value="owner">Chủ hội</option><option value="admin">Quản trị</option><option value="moderator">Điều phối</option><option value="member">Thành viên</option></Select></label>
               <label className="flex flex-col gap-1 text-[13px] font-semibold">Nguồn<Select value={filter.source} onChange={(e) => setFilter({ ...filter, source: e.target.value })}><option value="">Tất cả</option><option value="direct">Trực tiếp</option><option value="invite">Lời mời</option><option value="affiliate">Cộng sự giới thiệu</option><option value="discovery">Khám phá</option></Select></label>
-              <div className="flex gap-2"><Button size="sm" onClick={() => setFilter({ tierKey: '', role: '', source: '' })}>Bỏ lọc</Button><Button size="sm" variant="dark" onClick={() => setFilterOpen(false)}>Xong</Button></div>
+              {(tagList.data?.length ?? 0) > 0 && <label className="flex flex-col gap-1 text-[13px] font-semibold">Thẻ<Select value={filter.tag} onChange={(e) => setFilter({ ...filter, tag: e.target.value })}><option value="">Tất cả</option>{tagList.data!.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}</Select></label>}
+              <div className="flex gap-2"><Button size="sm" onClick={() => setFilter({ tierKey: '', role: '', source: '', tag: '' })}>Bỏ lọc</Button><Button size="sm" variant="dark" onClick={() => setFilterOpen(false)}>Xong</Button></div>
             </div>
           )}
         </div>
@@ -94,7 +98,7 @@ function ManageMembers({ communityId, slug }: { communityId: string; slug: strin
               <div key={m.id} style={{ ...GRID, padding: '12px 20px', borderTop: `1px solid ${T.line}` }}>
                 <button type="button" className="flex items-center gap-3 text-left min-w-0" onClick={() => setOpenId(m.id)}>
                   <Avatar name={m.user.name} src={m.user.avatarUrl} color={m.user.coverColor} size={36} />
-                  <span className="min-w-0"><span className="block font-semibold truncate">{m.user.name}</span><span className="block muted text-[12px] truncate">@{m.user.handle}</span></span>
+                  <span className="min-w-0"><span className="block font-semibold truncate">{m.user.name}</span><span className="block muted text-[12px] truncate" title={m.tags?.length ? `Thẻ: ${m.tags.join(', ')}` : undefined}>@{m.user.handle}{m.tags?.length ? ` · thẻ: ${m.tags.join(', ')}` : ''}</span></span>
                 </button>
                 <span><Tag tone={tierTone(m.tier?.key)}>{m.role === 'owner' ? 'Chủ hội' : m.role === 'admin' ? 'Quản trị' : m.tier?.name ?? 'Miễn phí'}</Tag></span>
                 <span className="text-[13px]" style={{ color: T.ink2 }}>{fmtDate(m.joinedAt)}</span>

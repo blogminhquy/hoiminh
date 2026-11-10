@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.20.1 - 2026-11-10
+## 1.21.1 - 2026-11-10
 
 Sửa tải dữ liệu chậm trên bản chạy thật: Worker chạy cạnh cơ sở dữ liệu thay vì cạnh người dùng.
 
@@ -13,6 +13,32 @@ Sửa tải dữ liệu chậm trên bản chạy thật: Worker chạy cạnh c
 ### Thay đổi
 
 - Bước "Kiểm tra trang live" sau deploy in thêm nơi Worker đang chạy (header `cf-placement`): `remote-ICN` là đã chạy cạnh database ở Seoul.
+## 1.21.0 - 2026-11-10
+
+Thẻ và quy tắc tự động: landing bắn đơn về kèm thẻ, thẻ tự cho khách vào hội, mở khóa học hoặc gửi email. Khách chưa cần có tài khoản.
+
+### Tính năng
+
+- **Nguồn đồng bộ** (Cài đặt, nhóm Tự động và kết nối). Mỗi nguồn là một địa chỉ nhận dạng `https://api.hoiminh.com/webhooks/in/<khóa>` để dán vào phần Webhook của form đặt hàng trên landing (Webcake hoặc công cụ khác). Nhận JSON, form thường và cả thẻ gắn ngay trên địa chỉ (`?tag=paid`). Dữ liệu cần có email; thẻ lấy từ trường `tag` hoặc `tags`, thẻ cần gỡ lấy từ `remove_tag`.
+- **Bắn thử rồi ghép trường.** Mỗi lượt nhận được ghi lại nguyên dữ liệu. Bên gửi đặt tên trường khác thường thì chủ hội mở lượt nhận gần nhất, chọn trường nào là email, trường nào là thẻ, rồi bấm Xử lý lại. Nguồn còn có ô "Thẻ luôn gắn" cho landing không truyền được trường thẻ.
+- **Quy tắc tự động**: "KHI một người được gắn thẻ X THÌ ...". Ba việc làm được: cho vào hội (chọn hội, gói, thời hạn 30 ngày tới 1 năm hoặc không giới hạn), mở một khóa học, gửi email (biến `{{name}}`, `{{email}}`, `{{tag}}`, `{{access_link}}`). Một quy tắc gộp được nhiều việc. Có nhật ký chạy từng lượt.
+- **Không bắt khách tạo tài khoản trước.** Khách chưa có tài khoản thì quyền được giữ theo email; email gửi đi có nút "Kích hoạt và vào xem" dẫn tới trang `/kich-hoat`, đặt mật khẩu một lần là vào được ngay. Khách đã có tài khoản (email đã xác minh) thì nhận quyền thẳng, không phải làm gì. Người tự đăng ký bằng đúng email đó thì nhận quyền ngay khi xác minh email.
+- **Gỡ thẻ là thu hồi** (bật sẵn, tắt được theo từng quy tắc): dùng cho hoàn tiền. Hội viên có thời hạn tự hết hạn qua cron hằng ngày: về gói mặc định ở hội miễn phí và freemium, rời hội ở hội thu phí.
+- **Liên hệ và thẻ**: danh sách người đã để lại email, thẻ của từng người, quyền đã cấp và quyền đang chờ kích hoạt; gắn và gỡ thẻ bằng tay (cũng chạy quy tắc, tiện để thử), gửi lại link kích hoạt, xóa liên hệ.
+- Trang Thành viên lọc được theo thẻ và hiện thẻ dưới tên thành viên. Ô lệnh có thêm ba dòng: Nhận đơn từ landing, Quy tắc tự động theo thẻ, Liên hệ và thẻ.
+
+### Thay đổi
+
+- Thẻ, liên hệ, nguồn và quy tắc thuộc về không gian làm việc, nên dùng chung cho mọi hội của cùng một chủ. Mỗi việc trong quy tắc chỉ rõ hội hoặc khóa học đích.
+- Tên thẻ được chuẩn hóa về chữ thường tiếng Anh không dấu, số, gạch dưới, gạch nối (`Paid FBAds` thành `paid_fbads`). Tên bảng, trường dữ liệu và biến email đều bằng tiếng Anh.
+- Gửi lặp lại cùng một đơn là vô hại: thẻ đã có thì không gắn lại, quy tắc không chạy lần hai.
+- Email của quy tắc đứng tên hội (không phải "Hội Mình"), chân thư có link "Ngừng nhận email". Người đã ngừng nhận vẫn nhận thư mời kích hoạt vì đó là thư giao hàng.
+- Migration `0005_tag_automation.sql`: 9 bảng mới (`contacts`, `tags`, `contact_tags`, `inbound_sources`, `inbound_events`, `automation_rules`, `automation_runs`, `automation_grants`, `contact_claims`), có policy RLS theo workspace. Entitlement có thêm nguồn `automation`.
+- `/kich-hoat` và `/hoc` vào danh sách đường dẫn không được đặt làm tên hội.
+
+### Chưa kiểm chứng được
+
+- Dạng dữ liệu thật mà Webcake gửi về chưa có tài liệu công khai, nên chưa thử được với landing thật. Vì thế mới có bước bắn thử rồi ghép trường. Lần đầu nối, cần đặt một đơn thử và xem lượt nhận.
 
 ## 1.20.0 - 2026-11-10
 

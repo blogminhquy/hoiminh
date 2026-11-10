@@ -10,6 +10,7 @@ import { errorHandler, requestLog } from './middleware/common';
 import { publicCache } from './middleware/public-cache';
 import { rateLimit } from './middleware/rate-limit';
 import { adminRoutes } from './routes/admin';
+import { activationRoutes, automationRoutes, inboundRoutes } from './routes/automation';
 import { authRoutes } from './routes/auth';
 import { commerceRoutes } from './routes/commerce';
 import { communityRoutes } from './routes/communities';
@@ -57,6 +58,8 @@ export function createHonoApp(app: App): Hono<Env> {
   h.route('/v1/realtime', realtimeRoutes);
   h.route('/v1/communities', communityRoutes);
   h.route('/v1/communities', memberRoutes);
+  h.route('/v1/communities', automationRoutes);
+  h.route('/v1/activation', activationRoutes);
   h.route('/v1', contentRoutes);
   h.route('/v1', learningRoutes);
   h.route('/v1', eventRoutes);
@@ -64,6 +67,8 @@ export function createHonoApp(app: App): Hono<Env> {
   h.route('/v1', payerRoutes);
   h.route('/v1', platformRoutes);
   h.route('/v1/admin', adminRoutes);
+  // Trước webhookRoutes: địa chỉ nhận của chủ hội có hạn mức riêng, không dùng chung bộ đếm với cổng thanh toán.
+  h.route('/webhooks', inboundRoutes);
   h.route('/webhooks', webhookRoutes);
   h.route('/pay/simulator', simulatorRoutes);
   h.route('/r', refRoutes);

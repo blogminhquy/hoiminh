@@ -3,6 +3,7 @@
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
+import { expireAutomationGrants } from '../services/automation-engine';
 import { expireEntitlements } from '../services/entitlements';
 import { reconcileEventReminders } from '../services/event-reminders';
 import { sweepAbandonedUploads } from '../services/files';
@@ -63,6 +64,10 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
       const b = await runPlatformBillingCron(ctx);
       out.trialReminded = b.reminded;
       out.workspacesLocked = b.locked;
+    });
+    // Quyền do quy tắc tự động cấp có hạn dùng (hội viên N ngày): quá hạn thì thu hồi. Bước riêng để lỗi ở đây không chặn bước tiền.
+    await step('automation', async (ctx) => {
+      out.automationGrantsExpired = await expireAutomationGrants(ctx);
     });
     // Đối soát: sự kiện sắp diễn ra mà chưa có job nhắc (tạo trước khi có cơ chế hẹn lúc tạo, hoặc hẹn bị lỡ).
     await step('reconcile', async (ctx) => {
