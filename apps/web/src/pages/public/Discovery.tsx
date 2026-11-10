@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 import { fmtCount } from '@/lib/format';
 
 export interface DiscoverCommunity {
-  id: string; name: string; slug: string; shortDescription: string; category: string; logoMark: string; logoColor: string; coverColor: string; coverUrl: string | null; memberCount: number; pricingMode: string; priceLabel: string; activity7d: number;
+  id: string; name: string; slug: string; shortDescription: string; category: string; logoMark: string; logoColor: string; logoUrl?: string | null; coverColor: string; coverUrl: string | null; memberCount: number; pricingMode: string; priceLabel: string; activity7d: number;
 }
 
 const CATEGORIES = Object.entries(COMMUNITY_CATEGORY_LABELS) as Array<[string, string]>;
@@ -31,7 +31,7 @@ function CommCard({ c }: { c: DiscoverCommunity }) {
       <div style={{ height: 150, background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }} />
       <div className="p-4 flex flex-col gap-2">
         <div className="flex items-center gap-2.5">
-          <CommunityMark mark={c.logoMark} color={T.side} size={36} radius={10} />
+          <CommunityMark mark={c.logoMark} color={T.side} url={c.logoUrl} size={36} radius={10} />
           <span className="font-semibold text-[16px] truncate">{c.name}</span>
         </div>
         <div className="text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription || 'Chưa có mô tả'}</div>

@@ -195,6 +195,58 @@ describe('đổi hoặc gỡ ảnh', () => {
     expect(bucket.objects.has(cover1.key)).toBe(false);
   });
 
+  it('bộ ảnh và video trang giới thiệu: thêm, xếp lại, đổi link, và bỏ ảnh thì tệp bị xóa', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const a = await upload(mq, 'cover', { communityId: kd });
+    const b = await upload(mq, 'cover', { communityId: kd });
+    const first = await communities.updateAboutMedia(mq, kd, { items: [{ kind: 'image', fileId: a.fileId }, { kind: 'video', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }, { kind: 'image', fileId: b.fileId }] });
+    expect(first.map((m) => [m.kind, m.url])).toEqual([['image', a.url], ['video', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'], ['image', b.url]]);
+    // Trang giới thiệu công khai trả đúng bộ này.
+    const about = await communities.aboutPage(app.anon(), 'minhquy');
+    expect(about.community.aboutMedia).toEqual(first);
+
+    // Xếp lại: ảnh b lên đầu; mục giữ nguyên id, không tệp nào bị xóa.
+    const reordered = await communities.updateAboutMedia(mq, kd, { items: [{ kind: 'image', fileId: b.fileId }, { kind: 'image', fileId: a.fileId }, { kind: 'video', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] });
+    expect(reordered.map((m) => m.id)).toEqual([first[2]!.id, first[0]!.id, first[1]!.id]);
+    await runJobs();
+    expect(bucket.objects.has(a.key)).toBe(true);
+    expect(bucket.objects.has(b.key)).toBe(true);
+
+    // Ảnh đang nằm trong bộ thì người tải lên không tự hủy được.
+    await expect(filesSvc.discardUpload(mq, a.fileId)).rejects.toMatchObject({ code: 'conflict' });
+
+    // Bỏ ảnh a, đổi link video: tệp a bị xóa, tệp b còn.
+    const trimmed = await communities.updateAboutMedia(mq, kd, { items: [{ kind: 'image', fileId: b.fileId }, { kind: 'video', url: 'https://vimeo.com/123456789' }] });
+    expect(trimmed.map((m) => m.kind)).toEqual(['image', 'video']);
+    await runJobs();
+    expect(bucket.objects.has(a.key)).toBe(false);
+    expect(await fileRow(a.fileId)).toBeUndefined();
+    expect(bucket.objects.has(b.key)).toBe(true);
+
+    await communities.updateAboutMedia(mq, kd, { items: [] });
+    await runJobs();
+    expect(bucket.objects.has(b.key)).toBe(false);
+    expect((await communities.getCommunityById(mq, kd)).aboutMedia).toEqual([]);
+  });
+
+  it('bộ ảnh trang giới thiệu: từ chối link không phải video, ảnh của người ngoài hội, và người không có quyền', async () => {
+    const mq = await app.as('minhquy');
+    const duy = await app.as('duy');
+    const kd = await app.ids(KD);
+    await expect(communities.updateAboutMedia(mq, kd, { items: [{ kind: 'video', url: 'https://example.com/khong-phai-video' }] })).rejects.toMatchObject({ code: 'validation_error' });
+    // Ảnh đại diện riêng của Duy (không gắn với hội): chủ hội không lấy vào bộ ảnh được.
+    const foreign = await upload(duy, 'avatar');
+    await expect(communities.updateAboutMedia(mq, kd, { items: [{ kind: 'image', fileId: foreign.fileId }] })).rejects.toMatchObject({ code: 'validation_error' });
+    // Ảnh chưa tải xong.
+    const pending = await upload(mq, 'cover', { communityId: kd, complete: false });
+    await expect(communities.updateAboutMedia(mq, kd, { items: [{ kind: 'image', fileId: pending.fileId }] })).rejects.toMatchObject({ code: 'validation_error' });
+    // Thành viên thường không sửa được.
+    const own = await upload(duy, 'cover', { communityId: kd });
+    await expect(communities.updateAboutMedia(duy, kd, { items: [{ kind: 'image', fileId: own.fileId }] })).rejects.toMatchObject({ code: 'forbidden' });
+    expect((await communities.getCommunityById(mq, kd)).aboutMedia).toEqual([]);
+  });
+
   it('đổi ảnh bìa khóa học xóa ảnh cũ; xóa khóa học xóa ảnh bìa', async () => {
     const mq = await app.as('minhquy');
     const kd = await app.ids(KD);

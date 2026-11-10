@@ -6,7 +6,7 @@ import { api, hasSession, migrateLegacySession } from './api';
 import { usePollInterval, useRealtime } from './realtime';
 
 export interface MyCommunity {
-  id: string; name: string; slug: string; logoMark: string; logoColor: string; memberCount: number; status: string; role: string; memberStatus: string; pinned: boolean;
+  id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; memberCount: number; status: string; role: string; memberStatus: string; pinned: boolean;
 }
 interface MeResponse {
   user: AuthUser;

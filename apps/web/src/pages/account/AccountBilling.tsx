@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { fmtDate } from '@/lib/format';
 import { HistoryTable, InvoiceModal, RefundModal, providerLabel, type BillingHistoryRow } from './AccountBillingParts';
 
-interface CommunityLite { id: string; name: string; slug: string; logoMark: string; logoColor: string }
+interface CommunityLite { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null }
 interface Sub { id: string; status: 'active' | 'cancelling' | 'past_due'; billingCycle: 'monthly' | 'yearly'; amountMinor: number; currentPeriodEnd: string; cancelAtPeriodEnd: boolean; provider: string | null; community: CommunityLite | null; tier: { name: string; key: string } | null }
 interface Billing { subscriptions: Sub[]; lifetime: Array<{ orderId: string; community: CommunityLite | null; amountMinor: number; paidAt: string | null }>; history: BillingHistoryRow[] }
 
@@ -19,7 +19,7 @@ function SubRow({ s, onToggle, pending }: { s: Sub; onToggle: () => void; pendin
   const ending = s.status === 'cancelling' || s.cancelAtPeriodEnd;
   return (
     <div className="flex items-center gap-4 py-4 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
-      {s.community && <CommunityMark mark={s.community.logoMark} color={s.community.logoColor} size={44} radius={12} />}
+      {s.community && <CommunityMark mark={s.community.logoMark} color={s.community.logoColor} url={s.community.logoUrl} size={44} radius={12} />}
       <div className="flex-grow flex flex-col gap-0.5 min-w-0">
         <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold">{s.community?.name ?? 'Hội Mình'}</span><span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{s.tier?.name ?? 'Gói'}</span>{s.status === 'past_due' && <span className="tag" style={{ background: T.accentSoft, color: T.accentText }}>Quá hạn</span>}</div>
         <div className="muted text-[13px]">{money(s.amountMinor)}/{cycle} · {ending ? `kết thúc ${fmtDate(s.currentPeriodEnd)}` : `gia hạn ${fmtDate(s.currentPeriodEnd)}`} · {providerLabel(s.provider)}</div>
@@ -52,7 +52,7 @@ export default function Page() {
               {d.subscriptions.map((s) => <SubRow key={s.id} s={s} pending={toggle.isPending} onToggle={() => toggle.mutate(s)} />)}
               {d.lifetime.map((l) => (
                 <div key={l.orderId} className="flex items-center gap-4 py-4" style={{ borderTop: `1px solid ${T.line}` }}>
-                  {l.community && <CommunityMark mark={l.community.logoMark} color={l.community.logoColor} size={44} radius={12} />}
+                  {l.community && <CommunityMark mark={l.community.logoMark} color={l.community.logoColor} url={l.community.logoUrl} size={44} radius={12} />}
                   <div className="flex-grow"><div className="flex items-center gap-2"><span className="font-semibold">{l.community?.name}</span><span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>Trọn đời</span></div><div className="muted text-[13px]">Đã trả {money(l.amountMinor)} · không cần gia hạn</div></div>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => { const r = d.history.find((h) => h.orderId === l.orderId); if (r) setInvoice(r); }}>Hóa đơn</button>
                 </div>

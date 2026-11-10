@@ -5,7 +5,7 @@ import { bundleItems, communities, communityMembers, courseModules, courseProgre
 import type { Ctx } from '../context';
 import { requireUser } from '../permissions';
 
-const communityCols = { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, pricingMode: communities.pricingMode, doorsOpen: communities.doorsOpen };
+const communityCols = { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, logoUrl: communities.logoUrl, pricingMode: communities.pricingMode, doorsOpen: communities.doorsOpen };
 
 /** Nguồn quyền: mua lẻ, nằm trong combo, gói đăng ký, hoặc chủ hội cấp tay. */
 export type LibrarySource = 'purchase' | 'bundle' | 'subscription' | 'granted';

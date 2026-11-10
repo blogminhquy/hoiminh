@@ -224,7 +224,7 @@ export async function myWallet(ctx: Ctx, programId: string) {
 export async function myPrograms(ctx: Ctx) {
   const userId = requireUser(ctx);
   const platform = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
-  const rows = await ctx.db.select({ p: affiliatePrograms, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor } }).from(communityMembers).innerJoin(affiliatePrograms, eq(affiliatePrograms.communityId, communityMembers.communityId)).innerJoin(communities, eq(communities.id, communityMembers.communityId)).where(and(eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling']), eq(affiliatePrograms.status, 'active')));
+  const rows = await ctx.db.select({ p: affiliatePrograms, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, logoUrl: communities.logoUrl } }).from(communityMembers).innerJoin(affiliatePrograms, eq(affiliatePrograms.communityId, communityMembers.communityId)).innerJoin(communities, eq(communities.id, communityMembers.communityId)).where(and(eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling']), eq(affiliatePrograms.status, 'active')));
   return [...(platform ? [{ id: platform.id, name: 'Nền tảng Hội Mình', scope: 'platform' as const, community: null, rateBps: platform.commissionRateBps }] : []), ...rows.map((r) => ({ id: r.p.id, name: r.c.name, scope: 'community' as const, community: r.c, rateBps: r.p.commissionRateBps }))];
 }
 

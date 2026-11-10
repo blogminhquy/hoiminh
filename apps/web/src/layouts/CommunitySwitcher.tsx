@@ -24,7 +24,7 @@ export function CommunitySwitcher({ current, onClose }: { current: string; onClo
     <div ref={box} role="menu" className="community-switcher" onMouseLeave={onClose}>
       {communities.map((c) => (
         <Link key={c.id} role="menuitem" to={`/${c.slug}/hom-nay`} onClick={onClose} aria-current={c.slug === current ? 'true' : undefined} className="community-switcher-row">
-          <CommunityMark mark={c.logoMark} color={c.logoColor} size={30} radius={8} />
+          <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={30} radius={8} />
           <span className="flex-grow min-w-0 truncate font-semibold">{c.name}</span>
           <span className="text-[14px] flex-shrink-0" style={{ color: T.sideMuted }}>{c.role === 'owner' ? 'Chủ hội' : c.role === 'admin' ? 'Quản trị' : ''}</span>
         </Link>
