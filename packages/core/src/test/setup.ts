@@ -1,13 +1,14 @@
 // Khởi tạo app test: PGlite trong bộ nhớ đã có migration + seed (nạp từ bản chụp của lượt test, xem @hoiminh/db/testing),
 // email ghi log, hàng đợi in-memory.
 import { loadEnv } from '@hoiminh/config';
-import { sid } from '@hoiminh/db/seed';
+import { SEED_BANK_WEBHOOK_TOKEN, sid } from '@hoiminh/db/seed';
 import { openSeededTestDb } from '@hoiminh/db/testing';
 import type { EmailMessage } from '@hoiminh/email';
 import type { R2BucketLike } from '@hoiminh/media';
 import { createApp, type App } from '../app';
 import type { Ctx } from '../context';
 import { InMemoryQueue } from '../jobs/queue';
+import { handleOwnerBankWebhook } from '../services/owner-payout';
 
 export interface TestApp extends App {
   emails: EmailMessage[];
@@ -40,4 +41,13 @@ export async function createTestApp(opts: { r2Bucket?: R2BucketLike } = {}): Pro
     anon: () => ({ ...app.ctx, actor: { type: 'anonymous' }, requestId: 'test-anon' }),
     system: () => ({ ...app.ctx, actor: { type: 'system' }, requestId: 'test-system' }),
   };
+}
+
+/**
+ * Giả lập ngân hàng của chủ hội chính (Minh Quý) báo có tiền vào: dịch vụ báo có gọi về địa chỉ riêng của hội.
+ * Đơn của hội trả thẳng vào tài khoản chủ hội, nên đây là đường xác nhận tự động của các đơn đó trong test.
+ */
+export function ownerBankPaid(app: TestApp, reference: string, amount: number, opts: { token?: string; id?: number } = {}) {
+  const body = { id: opts.id ?? Math.floor(Math.random() * 1e9), gateway: 'Vietcombank', transactionDate: '2026-11-11 09:03:11', accountNumber: '0071000999888', code: null, content: `NGUYEN VAN A ck ${reference}`, transferType: 'in', transferAmount: amount, accumulated: 0, subAccount: null, referenceCode: `MBVCB.${Math.random()}`, description: '' };
+  return handleOwnerBankWebhook(app.system(), opts.token ?? SEED_BANK_WEBHOOK_TOKEN, { headers: {}, rawBody: JSON.stringify(body), query: {} });
 }

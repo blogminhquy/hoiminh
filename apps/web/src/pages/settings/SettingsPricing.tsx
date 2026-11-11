@@ -1,6 +1,6 @@
 // Cài đặt · Giá và gói (pricingMain): kiểu thu phí, 3 thẻ gói, cách thanh toán, xếp thành viên trả phí cũ; nút Đóng cổng / Xem trước / Lưu.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Chip, Select, T } from '@hoiminh/ui';
+import { Button, Select, T } from '@hoiminh/ui';
 import { Globe, Lock, QrCode, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,8 +10,6 @@ import { shellKey, useShell } from '@/lib/community';
 import { DEFAULT_TIERS, ModePicker, TierCard, type Mode, type Tier } from './SettingsPricingParts';
 
 interface Pricing { pricingMode: Mode; doorsOpen: boolean; enabledProviders: string[]; tiers: Tier[]; paidMembersCount: number }
-type Provider = 'sepay' | 'momo' | 'vnpay' | 'paypal';
-const PROVIDERS: Array<[Provider, string]> = [['sepay', 'Chuyển khoản QR'], ['momo', 'MoMo'], ['vnpay', 'VNPAY'], ['paypal', 'PayPal (quốc tế)']];
 
 export default function Page() {
   const shell = useShell();
@@ -28,7 +26,6 @@ export default function Page() {
   if (!f) return <LoadingBlock rows={4} />;
   const patch = (p: Partial<Pricing>) => setF({ ...f, ...p });
   const setTier = (t: Tier) => patch({ tiers: f.tiers.map((x) => (x.key === t.key ? t : x)) });
-  const toggleProvider = (p: Provider) => patch({ enabledProviders: f.enabledProviders.includes(p) ? f.enabledProviders.filter((x) => x !== p) : [...f.enabledProviders, p] });
   const paid = f.pricingMode !== 'free';
   return (
     <>
@@ -45,8 +42,14 @@ export default function Page() {
       {paid && <div className="flex gap-4 flex-wrap">{f.tiers.map((t) => <TierCard key={t.key} t={t} mode={f.pricingMode} onChange={setTier} />)}</div>}
       {f.pricingMode === 'free' && <div className="muted text-[13px]">Hội miễn phí: mọi thành viên ở gói Tiêu chuẩn, vẫn có thể bán khóa học lẻ trong Cửa hàng.</div>}
       <div className="card flex flex-col gap-3.5" style={{ padding: '16px 20px' }}>
-        <div className="flex items-center gap-2.5 flex-wrap"><span className="font-semibold">Cách thanh toán</span><span className="muted text-[13px]">Người mua tự chọn ở bước thanh toán</span></div>
-        <div className="flex gap-2 flex-wrap">{PROVIDERS.map(([k, l]) => <Chip key={k} on={f.enabledProviders.includes(k)} onClick={() => toggleProvider(k)}>{k === 'sepay' && <QrCode size={14} />}{l}</Chip>)}</div>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <QrCode size={18} className="flex-shrink-0" />
+          <div className="flex flex-col flex-grow min-w-0" style={{ flexBasis: 240 }}>
+            <span className="font-semibold">Cách thanh toán: chuyển khoản tới tài khoản của bạn</span>
+            <span className="muted text-[14px]">{shell.community.paymentsReady ? 'Người mua quét mã QR, tiền về thẳng tài khoản bạn đã cài.' : 'Hội chưa cài nhận tiền nên các nút mua đang khóa.'}</span>
+          </div>
+          <Link to={`/${shell.community.slug}/cai-dat/nhan-tien`} className={`btn btn-sm ${shell.community.paymentsReady ? 'btn-ghost' : 'btn-primary'}`}>{shell.community.paymentsReady ? 'Tài khoản nhận tiền' : 'Cài nhận tiền'}</Link>
+        </div>
         {f.paidMembersCount > 0 && (
           <div className="flex items-center gap-2.5 text-[13px] pt-3 flex-wrap" style={{ color: T.ink2, borderTop: `1px solid ${T.line}` }}><Users size={16} />{f.paidMembersCount} thành viên trả phí từ trước sẽ được xếp vào gói <Select aria-label="Gói cho thành viên trả phí từ trước" value={migrate} onChange={(e) => setMigrate(e.target.value as typeof migrate)} style={{ width: 'fit-content', minWidth: 150 }}>{f.tiers.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</Select></div>
         )}

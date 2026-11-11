@@ -17,18 +17,23 @@ test.describe('điện thoại', () => {
     // Danh sách "Cần xử lý" luôn có nội dung: hoặc việc cần làm, hoặc dòng báo đã xong hết.
     const todo = page.getByRole('region', { name: 'Cần xử lý' });
     await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|hết hạn|Hội đã đủ|Mọi việc đã xong/).first()).toBeVisible();
-    await expect(page.getByText('Có thể rút')).toBeVisible();
+    // Tiền bán hàng về thẳng tài khoản chủ hội: không còn "Có thể rút" hay "Đang giữ 14 ngày".
+    await expect(page.getByText('Đã thu 30 ngày')).toBeVisible();
+    await expect(page.getByText('Có thể rút')).toHaveCount(0);
     await expect(page.getByText('Ghé hội hôm nay')).toHaveCount(0);
     await expectNoSideScroll(page, 390);
 
     const nav = page.getByRole('navigation', { name: 'Điều hướng chính' });
     await expect(nav.getByRole('link', { name: 'Quản lý', exact: true })).toHaveAttribute('aria-current', 'page');
 
-    // Ô lối tắt: Tiền gom số dư và giao dịch về một trang, vẫn thuộc tab Quản lý.
+    // Ô lối tắt: Tiền gom phần nhận tiền và giao dịch về một trang, vẫn thuộc tab Quản lý.
     await page.getByRole('navigation', { name: 'Quản lý hội' }).getByRole('link', { name: 'Tiền' }).click();
     await expect(page).toHaveURL(/\/minhquy\/tien$/);
     await expect(page.getByRole('heading', { name: 'Tiền', exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Số dư' }).getByText('Có thể rút')).toBeVisible();
+    const money = page.getByRole('region', { name: 'Nhận tiền' });
+    await expect(money.getByText('Đã thu 30 ngày')).toBeVisible();
+    await expect(money.getByText(/chuyển khoản thẳng tới Vietcombank 0071000999888/)).toBeVisible();
+    await expect(money.getByRole('link', { name: 'Tài khoản nhận tiền' })).toHaveAttribute('href', '/minhquy/cai-dat/nhan-tien');
     await expect(page.getByRole('heading', { name: 'Doanh thu' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Quản lý', exact: true })).toHaveAttribute('aria-current', 'page');
     await expectNoSideScroll(page, 390);

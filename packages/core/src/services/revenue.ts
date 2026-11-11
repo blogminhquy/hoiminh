@@ -4,6 +4,7 @@ import { communities, communityMembers, onboardingProgress, orders, payments, po
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { requireCommunityPermission } from '../permissions';
+import { paymentsReady, payoutSetup } from './owner-payout';
 
 function since(days: number, now: Date): Date {
   return new Date(now.getTime() - days * 86_400_000);
@@ -60,7 +61,7 @@ export async function settingsOverview(ctx: Ctx, communityId: string, q: { days?
     { key: 'logo', label: 'Thêm logo và mô tả', done: doneKeys.has('logo') || Boolean(community?.logoUrl) || (community?.shortDescription?.length ?? 0) > 0 },
     { key: 'first_post', label: 'Tạo bài viết đầu tiên', done: doneKeys.has('first_post') || (postsAny?.c ?? 0) > 0 },
     { key: 'first_course', label: 'Tạo khóa học đầu tiên', done: doneKeys.has('first_course') || courseCount > 0 },
-    { key: 'payout_connected', label: 'Kết nối nhận tiền', done: doneKeys.has('payout_connected') },
+    { key: 'payout_connected', label: 'Cài tài khoản nhận tiền', done: await paymentsReady(ctx, communityId) },
     { key: 'invite_5', label: 'Mời 5 thành viên', done: (community?.memberCount ?? 0) >= 6 },
     { key: 'welcome_dm', label: 'Bật tin nhắn chào tự động', done: Boolean((welcome[0] as { enabled: boolean } | undefined)?.enabled) },
   ];
@@ -77,21 +78,31 @@ export async function settingsOverview(ctx: Ctx, communityId: string, q: { days?
   };
 }
 
-/** Cài đặt · Thanh toán: số dư (tổng đã vào, đang giữ 14 ngày với chuyển khoản), lịch sử rút của chủ hội (tiền vào tài khoản Hội Mình rồi chủ hội rút). */
+/**
+ * Trang Tiền và Bàn điều khiển của chủ hội: hội đã cài nhận tiền chưa, đã thu bao nhiêu trong 30 ngày, còn bao nhiêu
+ * đơn chờ chủ hội xác nhận, và yêu cầu rút của cộng sự. Tiền bán hàng về thẳng tài khoản của chủ hội nên không còn
+ * "có thể rút" hay "đang giữ 14 ngày".
+ */
 export async function payoutSettings(ctx: Ctx, communityId: string) {
   const access = await requireCommunityPermission(ctx, communityId, 'billing.manage');
-  const c = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId) });
+  const setup = await payoutSetup(ctx, communityId);
   const r = await raw(ctx.db, sql`
-    select (select coalesce(sum(total_minor),0)::bigint from orders where community_id = ${communityId} and status = 'paid' and paid_at < now() - interval '14 days') as available,
-           (select coalesce(sum(total_minor),0)::bigint from orders where community_id = ${communityId} and status = 'paid' and paid_at >= now() - interval '14 days') as holding,
-           (select coalesce(sum(a.amount_minor),0)::bigint from affiliate_withdrawal_requests a join affiliate_programs p on p.id = a.program_id where p.community_id = ${communityId} and a.status in ('requested','reviewing')) as affiliate_pending,
+    select (select coalesce(sum(a.amount_minor),0)::bigint from affiliate_withdrawal_requests a join affiliate_programs p on p.id = a.program_id where p.community_id = ${communityId} and a.status in ('requested','reviewing')) as affiliate_pending,
            (select count(*)::int from affiliate_withdrawal_requests a join affiliate_programs p on p.id = a.program_id where p.community_id = ${communityId} and a.status in ('requested','reviewing')) as affiliate_pending_count`);
   const s = r[0] as Record<string, string | number>;
   const ownerRow = await raw(ctx.db, sql`select owner_user_id from workspaces where id = ${access.workspaceId}`);
   const ownerId = (ownerRow[0] as { owner_user_id: string }).owner_user_id;
   const owner = await ctx.db.query.users.findFirst({ where: eq(users.id, ownerId) });
-  const providers = (['sepay', 'momo', 'vnpay', 'paypal'] as const).map((p) => ({ provider: p, enabled: c?.enabledProviders.includes(p) ?? false, platformEnabled: true }));
-  return { availableMinor: Number(s.available), holdingMinor: Number(s.holding), withdrawnThisMonthMinor: 0, affiliatePendingMinor: Number(s.affiliate_pending), affiliatePendingCount: Number(s.affiliate_pending_count), providers, ownerName: owner?.name ?? '', enabledProviders: c?.enabledProviders ?? [] };
+  return {
+    ready: setup.ready,
+    account: setup.account ? { bankName: setup.account.bankName, accountNumber: setup.account.accountNumber, accountHolder: setup.account.accountHolder, confirmMode: setup.account.confirmMode } : null,
+    received30Minor: setup.received30Minor,
+    pendingCount: setup.pending.length,
+    pendingMinor: setup.pending.reduce((n, p) => n + p.amountMinor, 0),
+    affiliatePendingMinor: Number(s.affiliate_pending),
+    affiliatePendingCount: Number(s.affiliate_pending_count),
+    ownerName: owner?.name ?? '',
+  };
 }
 
 /** Bật/tắt cách khách thanh toán cho hội. */

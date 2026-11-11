@@ -32,6 +32,18 @@ describe('buildOwnerTodos', () => {
     expect(list[1]?.to).toBe('/minhquy/bang-tin');
   });
 
+  it('nhận tiền: hội có bán mà chưa cài thì nhắc cài, hội miễn phí không bán gì thì không nhắc', () => {
+    const [t] = buildOwnerTodos({ ...base, payout: { ready: false, pendingCount: 0, pendingMinor: 0, sells: true } });
+    expect(t).toMatchObject({ key: 'payout', title: 'Hội chưa cài nhận tiền', to: '/minhquy/cai-dat/nhan-tien', urgent: true });
+    expect(buildOwnerTodos({ ...base, payout: { ready: false, pendingCount: 0, pendingMinor: 0, sells: false } })).toEqual([]);
+  });
+
+  it('nhận tiền: có đơn chờ chủ hội bấm "Đã nhận tiền" thì nêu số đơn và tổng tiền', () => {
+    const [t] = buildOwnerTodos({ ...base, payout: { ready: true, pendingCount: 2, pendingMinor: 648_000, sells: true } });
+    expect(t).toMatchObject({ key: 'orders', title: '2 đơn chờ bạn xác nhận đã nhận tiền', to: '/minhquy/tien', label: 'Xác nhận', urgent: true });
+    expect(t?.hint).toContain('648.000');
+  });
+
   it('việc gấp đứng trước việc thường', () => {
     const list = buildOwnerTodos({ ...base, pendingMembers: 3, affiliatePayouts: { count: 1, amountMinor: 500_000 } });
     expect(list.map((t) => t.key)).toEqual(['payouts', 'members']);

@@ -17,7 +17,7 @@ export interface AboutPage {
   referrer: { name: string } | null;
   stats: { members: number; online: number; courses: number; paid: number };
   viewer: { role: string; memberStatus: string | null; tierId: string | null } | null;
-  pricing: { mode: string; doorsOpen: boolean; premiumMonthlyMinor: number | null; premiumYearlyMinor: number | null; oneTimeMinor: number | null };
+  pricing: { mode: string; doorsOpen: boolean; paymentsReady: boolean; premiumMonthlyMinor: number | null; premiumYearlyMinor: number | null; oneTimeMinor: number | null };
 }
 
 export function categoryLabel(key: string): string {

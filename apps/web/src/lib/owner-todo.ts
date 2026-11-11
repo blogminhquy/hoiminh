@@ -12,8 +12,10 @@ export interface OwnerTodoInput {
   pendingMembers: number | null;
   pendingPosts: number | null;
   plan: OwnerPlan | null;
+  /** Nhận tiền của hội: đã cài chưa, bao nhiêu đơn chờ chủ hội bấm "Đã nhận tiền", hội có bán gì không. */
+  payout?: { ready: boolean; pendingCount: number; pendingMinor: number; sells: boolean } | null;
 }
-export interface OwnerTodo { key: 'plan' | 'payouts' | 'members' | 'posts'; title: string; hint: string; to: string; label: string; urgent: boolean }
+export interface OwnerTodo { key: 'plan' | 'payout' | 'orders' | 'payouts' | 'members' | 'posts'; title: string; hint: string; to: string; label: string; urgent: boolean }
 
 /** Số ngày còn lại tới một thời điểm, làm tròn lên. Đã qua thì trả 0. */
 export function daysLeft(until: string | Date, now: Date): number {
@@ -38,6 +40,13 @@ export function buildOwnerTodos(input: OwnerTodoInput): OwnerTodo[] {
   const out: OwnerTodo[] = [];
   const plan = input.plan ? planTodo(input.plan, input.slug, input.now) : null;
   if (plan) out.push(plan);
+  // Tiền bán hàng về thẳng tài khoản chủ hội: chưa cài thì nút mua khóa; có đơn chờ thì người mua đang đợi được mở quyền.
+  if (input.payout && !input.payout.ready && input.payout.sells) {
+    out.push({ key: 'payout', title: 'Hội chưa cài nhận tiền', hint: 'Các nút mua đang khóa, nhập tài khoản ngân hàng của bạn để mở', to: `${base}/cai-dat/nhan-tien`, label: 'Cài ngay', urgent: true });
+  }
+  if (input.payout && input.payout.pendingCount > 0) {
+    out.push({ key: 'orders', title: `${input.payout.pendingCount} đơn chờ bạn xác nhận đã nhận tiền`, hint: `Tổng ${money(input.payout.pendingMinor)}, người mua đang chờ được mở quyền`, to: `${base}/tien`, label: 'Xác nhận', urgent: true });
+  }
   if (input.affiliatePayouts && input.affiliatePayouts.count > 0) {
     out.push({ key: 'payouts', title: `${input.affiliatePayouts.count} yêu cầu rút của cộng sự`, hint: `Cần chuyển ${money(input.affiliatePayouts.amountMinor)}`, to: `${base}/cong-su`, label: 'Xử lý', urgent: true });
   }

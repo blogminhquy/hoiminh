@@ -25,7 +25,8 @@ export function ownerCommands(scope: CommandScope): Command[] {
     can('event.manage') && tab('events') && { id: 'event', group: 'Làm ngay', label: 'Tạo sự kiện', hint: 'Buổi trực tuyến hoặc gặp mặt', to: `${b}/su-kien/moi`, keywords: 'lich zoom livestream hop' },
     can('store.manage') && tab('store') && { id: 'product', group: 'Làm ngay', label: 'Thêm sản phẩm vào cửa hàng', to: `${b}/cua-hang/moi`, keywords: 'ban combo tai lieu' },
     can('affiliates.manage') && { id: 'payouts', group: 'Làm ngay', label: 'Trả hoa hồng cho cộng sự', hint: 'Xử lý yêu cầu rút', to: `${b}/cong-su`, keywords: 'yeu cau rut chuyen khoan affiliate' },
-    can('billing.manage') && { id: 'withdraw', group: 'Làm ngay', label: 'Rút tiền về tài khoản', to: `${b}/tien`, keywords: 'so du' },
+    can('billing.manage') && { id: 'payout-account', group: 'Làm ngay', label: 'Cài tài khoản nhận tiền', hint: 'Tiền bán hàng về thẳng tài khoản của bạn', to: `${b}/cai-dat/nhan-tien`, keywords: 'rut tien ngan hang so tai khoan thanh toan qr' },
+    can('billing.manage') && { id: 'confirm-orders', group: 'Làm ngay', label: 'Xác nhận đơn đã nhận tiền', to: `${b}/tien`, keywords: 'da nhan tien don cho chuyen khoan' },
     can('billing.manage') && { id: 'refund', group: 'Làm ngay', label: 'Hoàn tiền một giao dịch', to: `${b}/tien`, keywords: 'tra lai tien' },
     can('revenue.read') && { id: 'export-revenue', group: 'Làm ngay', label: 'Xuất giao dịch ra CSV', to: `${b}/tien`, keywords: 'doanh thu bao cao excel' },
 
@@ -36,7 +37,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     tab('affiliate') && { id: 'go-rank', group: 'Đi tới', label: 'Xếp hạng cộng sự', to: `${b}/xep-hang` },
     tab('courses') && { id: 'go-courses', group: 'Đi tới', label: 'Khóa học', to: `${b}/khoa-hoc` },
     tab('store') && { id: 'go-store', group: 'Đi tới', label: 'Cửa hàng', to: `${b}/cua-hang`, keywords: 'san pham' },
-    money && { id: 'go-money', group: 'Đi tới', label: 'Tiền', hint: 'Số dư, doanh thu, giao dịch', to: `${b}/tien`, keywords: 'doanh thu thanh toan' },
+    money && { id: 'go-money', group: 'Đi tới', label: 'Tiền', hint: 'Đơn chờ xác nhận, doanh thu, giao dịch', to: `${b}/tien`, keywords: 'doanh thu thanh toan' },
     { id: 'go-about', group: 'Đi tới', label: 'Trang giới thiệu của hội', to: b, keywords: 'cong khai landing' },
     { id: 'go-messages', group: 'Đi tới', label: 'Tin nhắn', to: '/tin-nhan', keywords: 'chat' },
     { id: 'go-notifications', group: 'Đi tới', label: 'Thông báo', to: '/thong-bao' },

@@ -5,6 +5,7 @@ import { auditLogs, communities, emailLogs, orders, payments, providerAccounts, 
 import { emailProviderLabel, sendImmediately, templates } from '@hoiminh/email';
 import { actorUserId, type Ctx } from '../context';
 import { raw } from '../lib/db';
+import { isOwnerPayee } from '../lib/payee';
 import { envWithProviderAccounts, paymentsFor } from '../lib/payment-accounts';
 import { invalidState, notFound } from '../errors';
 import { requireSuperAdmin } from '../permissions';
@@ -199,6 +200,8 @@ export async function matchReconciliation(ctx: Ctx, itemId: string, paymentRefer
   const payment = await ctx.db.query.payments.findFirst({ where: eq(payments.reference, formatted) });
   if (!payment) throw notFound('Không tìm thấy đơn với mã này');
   if (payment.status === 'succeeded') throw invalidState('Đơn đã được thanh toán trước đó');
+  // Giao dịch ở đây là tiền vào tài khoản Hội Mình. Đơn của hội thì phải trả vào tài khoản chủ hội, nên không ghép được.
+  if (isOwnerPayee(payment)) throw invalidState('Đơn này trả thẳng vào tài khoản của chủ hội, không ghép với tiền vào tài khoản Hội Mình được. Hoàn lại cho người chuyển nhầm.');
   if (item.amountMinor < payment.amountMinor) throw invalidState(`Số tiền nhận ${item.amountMinor.toLocaleString('vi-VN')}đ nhỏ hơn số tiền đơn ${payment.amountMinor.toLocaleString('vi-VN')}đ`);
   await confirmPayment(ctx, payment.id, { providerPaymentId: item.providerTransactionId, rawStatus: 'manual_match', paidAt: item.transactionAt });
   await ctx.db.update(reconciliationItems).set({ status: 'matched', paymentId: payment.id, orderId: payment.orderId, matchedByUserId: ctx.actor.type === 'user' ? ctx.actor.userId : null, matchedAt: ctx.now(), note: 'Ghép thủ công' }).where(eq(reconciliationItems.id, itemId));

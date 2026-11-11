@@ -9,6 +9,7 @@ import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
 import { releaseFiles } from './files';
+import { paymentsReady } from './owner-payout';
 import { ownerHasFreeCommunity, requirePlanFeature } from './plans';
 import { ensureWorkspace } from './workspaces';
 
@@ -100,7 +101,7 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     courses: courseList, sampleMembers: members.map((m) => m.u), joinQuestions: questions, referrer,
     stats: { members: c.memberCount, online: online?.c ?? 0, courses: courseList.length, paid: c.paidMemberCount },
     viewer: access ? { role: access.role, memberStatus: access.memberStatus, tierId: access.tierId } : null,
-    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null },
+    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null },
   };
 }
 

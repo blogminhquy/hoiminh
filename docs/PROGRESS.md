@@ -91,10 +91,11 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 |---|---|---|
 | 1. Đăng ký → xác minh → tham gia miễn phí → tin nhắn chào | ✅ | 01-dang-ky-tham-gia |
 | 2. Nâng cấp Premium qua SePay, idempotent, mở khóa | ✅ | 02-premium-sepay |
-| 3. Mua lẻ qua MoMo và hoàn tiền 7 ngày | ✅ | 03-cua-hang-momo-hoan-tien |
+| 3. Mua lẻ bằng chuyển khoản tới chủ hội và hoàn tiền 7 ngày | ✅ | 03-cua-hang-chuyen-khoan-hoan-tien |
 | 4. Cộng sự: hold → available → rút → xem xét → trả/từ chối | ✅ | 04-cong-su-rut-tien |
 | 5. Chủ hội tạo hội → khóa học → sự kiện lặp | ✅ | 05-chu-hoi-tao-hoi-khoa-hoc-su-kien |
 | 6. Gói cho hội: Miễn phí → mua gói → nâng gói tặng ngày; trần thành viên; khóa tính năng; bảng gói quản trị | ✅ | 06-goi-nen-tang, 20-tran-thanh-vien-va-khoa-tinh-nang, 21-bang-goi-quan-tri |
+| Nhận tiền của chủ hội: cài tài khoản, khóa nút mua khi chưa cài, chủ hội bấm "Đã nhận tiền", tự xác nhận qua báo có | ✅ | 02-premium-sepay, 03-cua-hang-chuyen-khoan-hoan-tien, 22-nhan-tien-chu-hoi |
 | 7. Quản trị hệ thống: đối soát, tắt cổng, khóa hội | ✅ | 07-quan-tri-he-thong |
 
 ## Đã kiểm chứng

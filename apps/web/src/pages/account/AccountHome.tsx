@@ -44,7 +44,7 @@ export default function Page() {
       {shell && (canSettings || canRevenue) && (
         <nav className="card px-3 py-1 me-list" aria-label={`Quản lý ${shell.community.name}`}>
           <Row to={`/${shell.community.slug}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" hint={shell.community.name} />
-          {canRevenue && <Row to={`/${shell.community.slug}/tien`} icon={<Wallet size={20} />} label="Tiền" hint="Số dư, rút tiền, giao dịch, hoàn tiền" />}
+          {canRevenue && <Row to={`/${shell.community.slug}/tien`} icon={<Wallet size={20} />} label="Tiền" hint="Nhận tiền, đơn chờ xác nhận, giao dịch" />}
           {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint="Hội, bán hàng, cộng sự, kết nối" />}
         </nav>
       )}

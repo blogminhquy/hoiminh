@@ -86,7 +86,9 @@ export async function seedCommerce(db: Database, base: Date, U: Record<string, S
     await db.insert(orderItems).values({ id: await sid(`orderitem:${t.key}`), orderId, resourceType: t.type, resourceId: t.target, name: t.item, unitMinor: t.amount, totalMinor: t.amount }).onConflictDoNothing();
     await db
       .insert(payments)
-      .values({ id: paymentId, workspaceId: c.workspaceId, communityId: c.id, orderId, customerUserId: U[t.who]!.id, provider: t.provider, providerPaymentId: `${t.provider}-${n}${t.key}`, amountMinor: t.amount, status: t.status === 'paid' ? 'succeeded' : t.status === 'refunded' ? 'refunded' : 'pending', paymentMethod: t.provider === 'sepay' ? 'bank_transfer' : t.provider, refundedMinor: t.status === 'refunded' ? t.amount : 0, reference, paidAt: t.status === 'pending' ? null : at, createdAt: at })
+      .values({ id: paymentId, workspaceId: c.workspaceId, communityId: c.id, orderId, customerUserId: U[t.who]!.id, provider: t.provider, providerPaymentId: `${t.provider}-${n}${t.key}`, amountMinor: t.amount, status: t.status === 'paid' ? 'succeeded' : t.status === 'refunded' ? 'refunded' : 'pending', paymentMethod: t.provider === 'sepay' ? 'bank_transfer' : t.provider, refundedMinor: t.status === 'refunded' ? t.amount : 0, reference, paidAt: t.status === 'pending' ? null : at, createdAt: at,
+        // Đơn chuyển khoản của hội trả thẳng vào tài khoản chủ hội; đơn đang chờ sẽ hiện ở "Đơn chờ bạn xác nhận".
+        instruction: t.provider === 'sepay' ? { kind: 'bank_qr', payee: 'owner', confirmMode: 'auto', bankCode: 'VCB', bankName: 'Vietcombank', accountNumber: '0071000999888', accountHolder: 'NGUYEN MINH QUY', amountMinor: t.amount, transferContent: reference, qrImageUrl: '' } : {} })
       .onConflictDoNothing();
     if (t.status !== 'pending') {
       await db.insert(invoices).values({ id: await sid(`invoice:${t.key}`), workspaceId: c.workspaceId, orderId, userId: U[t.who]!.id, number: `HM-2026-${String(1000 + n)}`, amountMinor: t.amount, description: `${t.item} · ${c.name}`, issuedAt: at }).onConflictDoNothing();

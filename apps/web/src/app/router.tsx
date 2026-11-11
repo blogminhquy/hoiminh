@@ -119,6 +119,7 @@ const communityRoutes: RouteObject = {
             { path: 'chung', element: page(() => import('@/pages/settings/SettingsGeneral')) },
             { path: 'bang-tin', element: page(() => import('@/pages/settings/SettingsFeed')) },
             { path: 'gia', element: page(() => import('@/pages/settings/SettingsPricing')) },
+            { path: 'nhan-tien', element: page(() => import('@/pages/settings/SettingsPayout')) },
             { path: 'cong-su', element: <FeatureGate feature="affiliate">{page(() => import('@/pages/settings/SettingsAffiliate'))}</FeatureGate> },
             { path: 'tien-ich', element: page(() => import('@/pages/settings/SettingsPlugins')) },
             { path: 'nguon-dong-bo', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsSources'))}</FeatureGate> },

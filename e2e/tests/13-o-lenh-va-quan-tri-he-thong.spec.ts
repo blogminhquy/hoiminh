@@ -107,7 +107,9 @@ test.describe('điện thoại', () => {
     await page.getByRole('button', { name: 'Bạn muốn làm gì?' }).click();
     const palette = page.getByRole('dialog', { name: 'Bạn muốn làm gì?' });
     await palette.getByRole('combobox').fill('rut tien');
-    await palette.getByRole('option', { name: /Rút tiền về tài khoản/ }).click();
-    await expect(page).toHaveURL(/\/minhquy\/tien$/);
+    // Người quen chữ "rút tiền" vẫn tìm ra chỗ cài tài khoản nhận tiền.
+    await palette.getByRole('option', { name: /Cài tài khoản nhận tiền/ }).click();
+    await expect(page).toHaveURL(/\/minhquy\/cai-dat\/nhan-tien$/);
+    await expect(page.getByRole('heading', { name: 'Nhận tiền' })).toBeVisible();
   });
 });

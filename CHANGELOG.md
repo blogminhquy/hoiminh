@@ -2,7 +2,7 @@
 
 ## 1.32.0 - 2026-11-11
 
-Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng.
+Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng. Tiền bán hàng của hội về thẳng tài khoản ngân hàng của chủ hội, không còn đi qua Hội Mình.
 
 ### Tính năng
 
@@ -15,12 +15,17 @@ Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho
 - **Khóa tính năng trả phí.** Trong Cài đặt hội, các mục Nguồn đồng bộ, Quy tắc tự động, Liên hệ và thẻ, Mức hoa hồng, Nhà phát triển và ô Tên miền riêng vẫn hiện nhưng kèm ổ khóa; bấm vào thì thấy lời mời nâng gói. Máy chủ chặn thật ở mọi đường (trả lỗi `plan_locked`).
 - **Bảng bốn gói của quản trị** (Hệ thống, Gói nền tảng): nhập giá mỗi tháng và trần thành viên, bật tắt bốn tính năng cho từng gói, giá 3 tháng và 1 năm tự tính, lưu cả bảng một lần.
 - **Bảng giá công khai (`/tao-hoi/goi`)** hiện bốn gói, nút "Tạo hội miễn phí".
+- **Chủ hội cài nhận tiền** (Cài đặt, Bán hàng, Nhận tiền): nhập ngân hàng, số tài khoản, tên chủ tài khoản. Người mua thấy mã QR chuyển khoản tới đúng tài khoản đó, kèm nội dung có mã đơn. Hội chưa cài thì các nút mua và nút tham gia hội thu phí bị khóa, ghi "Hội chưa mở thanh toán".
+- **Hai cách xác nhận đơn.** "Tôi tự bấm đã nhận tiền": người mua bấm "Tôi đã chuyển khoản" thì chủ hội nhận thông báo, vào danh sách "Đơn chờ bạn xác nhận" bấm "Đã nhận tiền" là người mua được mở quyền ngay. "Tự xác nhận": chủ hội dán địa chỉ báo có riêng của hội vào dịch vụ báo biến động số dư của mình (định dạng SePay), tiền về đúng mã và đủ số là đơn tự chuyển sang đã trả.
 
 ### Thay đổi
 
 - **Bỏ dùng thử.** Không còn 14 ngày dùng thử, không còn email nhắc dùng thử, không còn khóa cả tài khoản khi hết hạn. Hội miễn phí của tài khoản dùng vĩnh viễn; gói trả phí hết hạn thì hội tự về gói Miễn phí, thành viên và dữ liệu giữ nguyên.
 - **Gói cũ 499.000đ ngừng bán.** Tài khoản đang trả gói cũ còn hạn thì mọi hội của tài khoản đó được gói Không giới hạn tới hết kỳ đã trả.
 - **Bỏ thu tiền gói bằng link thanh toán ngoài** (thêm ở 1.31.0): bảng bốn gói chỉ thu qua thanh toán trong Hội Mình. Ba cột của tính năng này còn trong database, bật lại được nếu cần.
+- **Tiền bán hàng không còn đi qua Hội Mình.** Bỏ "Có thể rút", "Đang giữ 14 ngày" và nút "Rút tiền" ở trang Tiền và Bàn điều khiển; thay bằng "Đã thu 30 ngày" và "Đơn chờ xác nhận". Đơn của hội (gói thành viên, sản phẩm) chỉ trả bằng chuyển khoản tới tài khoản chủ hội; MoMo, VNPAY, PayPal và tài khoản SePay của Hội Mình chỉ còn dùng cho đơn mua gói Hội Mình. Mục "Cách thanh toán" ở Giá và gói thành đường dẫn sang Nhận tiền.
+- Đơn chủ hội tự bấm xác nhận được giữ 24 giờ (đơn khác vẫn 30 phút); chủ hội xác nhận được trong 7 ngày kể từ lúc đơn được tạo.
+- Hoàn tiền đơn của hội: hệ thống ghi sổ và thu hồi quyền, chủ hội tự chuyển lại tiền cho người mua (như chuyển khoản trước đây).
 - **Bỏ email thông báo của hội.** Công tắc "Gửi email cho tất cả thành viên" khi đăng bài nay là "Báo cho tất cả thành viên": mỗi thành viên nhận một thông báo trong ứng dụng, không còn email. Công tắc cùng tên ở màn tạo sự kiện được gỡ vì trước giờ bật lên không gửi gì. Email hệ thống giữ nguyên: xác minh tài khoản, đặt lại mật khẩu, biên nhận thanh toán, nhắc gia hạn gói, nhắc sự kiện.
 - Email nhắc gia hạn gói ghi rõ tên hội và tên gói, gửi trước 7, 3, 1 ngày và một lần khi hết hạn.
 - Thẻ "Gói nền tảng của bạn" ở Hội của tôi thành "Gói của các hội": mỗi hội một dòng.
@@ -28,12 +33,15 @@ Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho
 ### Kỹ thuật
 
 - Migration `0011_plans_per_community`: thêm bốn dòng gói; `communities` có `plan_key`, `plan_ends_at`, `is_free_slot`; `platform_subscriptions` chuyển từ một dòng mỗi workspace sang một dòng mỗi hội (`community_id`); xóa trạng thái dùng thử và khóa của workspace. Chạy lại được. **Phải áp dụng lên database thật trước khi merge.**
+- Migration `0012_owner_payout`: bảng `community_payout_accounts` (mỗi hội một dòng: ngân hàng, số tài khoản, tên chủ tài khoản, cách xác nhận, mã bí mật của địa chỉ báo có), có policy RLS theo workspace. Chạy lại được. **Cũng phải áp dụng lên database thật trước khi merge.**
+- `packages/core/src/services/owner-payout.ts`: cài tài khoản, dựng mã VietQR, danh sách đơn chờ, `confirmOwnerOrder`, `handleOwnerBankWebhook`. Thanh toán của đơn hội mang `instruction.payee = 'owner'`; webhook của tài khoản Hội Mình và việc ghép tay ở đối soát không xác nhận được các đơn này.
+- API mới: `GET/PUT /v1/communities/:id/payout-account`, `POST /v1/communities/:id/payout-account/rotate-webhook`, `POST /v1/communities/:id/orders/:orderId/confirm-received`, `POST /webhooks/bank/:token`. `GET /v1/communities/:id/payout` đổi dữ liệu trả về (bỏ số dư, thêm `ready`, `received30Minor`, `pendingCount`). Khung hội và trang giới thiệu trả thêm `paymentsReady`.
 - Luật giá, chu kỳ, ngày tặng nằm ở `packages/contracts/src/plans.ts` (hàm thuần `planQuote`), API và web dùng chung.
 - `packages/core/src/services/plans.ts`: gói đang có hiệu lực của một hội tính theo thời điểm hiện tại (không chờ cron), các hàm chặn `requirePlanFeature`, `assertRoomForMember`, `assertCommunityHasPlan`.
 - API: `GET /v1/plans` trả bốn gói; `GET /v1/communities/:id/plan`; `PUT /v1/admin/plans` lưu cả bảng (thay `PATCH /v1/admin/plans/:key`); đích thanh toán `platform` nhận `communityId`, `planKey`, `cycle`; bỏ `GET /v1/workspaces/:id/platform`. Mã lỗi mới `member_cap` (409).
 - Khung hội (`/shell`) trả thêm `plan` cho người quản lý hội.
 - Ngày bắt đầu kỳ tính từ lúc gói được kích hoạt, không tính từ giờ giao dịch ngân hàng.
-- Test: core `plans.test.ts` (17), web `platform-plan.test.ts` (10) và `owner-todo.test.ts`, e2e luồng 5, 6, 20, 21.
+- Test: core `plans.test.ts` (17) và `owner-payout.test.ts` (8), web `platform-plan.test.ts` (10) và `owner-todo.test.ts`, e2e luồng 2, 3, 5, 6, 7, 9, 20, 21, 22.
 
 ## 1.31.2 - 2026-11-11
 

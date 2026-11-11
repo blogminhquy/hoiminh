@@ -2,7 +2,7 @@
 import { boolean, index, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, money, timestamps, ts } from './_helpers';
 import { orders, payments } from './commerce';
-import { workspaces } from './tenant';
+import { communities, workspaces } from './tenant';
 import { users } from './users';
 
 export type ReconciliationStatus = 'matched' | 'unmatched' | 'amount_mismatch' | 'duplicate' | 'manual_review' | 'missing_code' | 'wrong_content';
@@ -27,6 +27,29 @@ export const providerAccounts = pgTable(
     ...timestamps(),
   },
   (t) => [uniqueIndex('provider_accounts_uq').on(t.provider, t.scopeType, t.workspaceId)],
+);
+
+/**
+ * Tài khoản nhận tiền của chủ hội (kế hoạch 11/11/2026): tiền bán hàng của hội về thẳng tài khoản này, không đi qua
+ * Hội Mình. Mỗi hội một dòng; hội chưa có dòng thì chưa bật được thanh toán. Số tài khoản không mã hóa vì người mua
+ * nào cũng thấy nó trên mã QR. `webhookToken` là bí mật của đường báo có tự động, không bao giờ trả ra cho người mua.
+ */
+export const communityPayoutAccounts = pgTable(
+  'community_payout_accounts',
+  {
+    id: id(),
+    communityId: uuid('community_id').notNull().references(() => communities.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    bankCode: text('bank_code').notNull(),
+    accountNumber: text('account_number').notNull(),
+    accountHolder: text('account_holder').notNull(),
+    /** 'manual' = chủ hội bấm "Đã nhận tiền" từng đơn; 'auto' = dịch vụ báo có của chủ hội gọi về `/webhooks/bank/<token>`. */
+    confirmMode: text('confirm_mode').$type<'manual' | 'auto'>().notNull().default('manual'),
+    webhookToken: text('webhook_token').notNull(),
+    lastWebhookAt: ts('last_webhook_at'),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('community_payout_accounts_community_uq').on(t.communityId), uniqueIndex('community_payout_accounts_token_uq').on(t.webhookToken)],
 );
 
 export const webhookEvents = pgTable(

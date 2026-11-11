@@ -24,6 +24,8 @@ function OrderView({ orderId }: { orderId: string }) {
     if (o?.status === 'paid') { const t = setTimeout(() => { window.location.assign(o.nextUrl); }, 2500); return () => clearTimeout(t); }
     return undefined;
   }, [o?.status, o?.nextUrl]);
+  // Đơn trả thẳng chủ hội mà chủ hội tự bấm xác nhận: không có gì tự đối chiếu, người mua chờ chủ hội.
+  const ownerManual = o?.instruction?.kind === 'bank_qr' && o.instruction.payee === 'owner' && o.instruction.confirmMode !== 'auto';
   const back = o?.nextUrl ?? '/kham-pha';
   if (q.isLoading) return <CheckoutFrame backTo="/kham-pha"><LoadingBlock /></CheckoutFrame>;
   if (q.isError || !o) return <CheckoutFrame backTo="/kham-pha"><ErrorBox message={errorMessage(q.error)} onRetry={() => void q.refetch()} /></CheckoutFrame>;
@@ -58,9 +60,9 @@ function OrderView({ orderId }: { orderId: string }) {
                 <a href={o.instruction.url} className="btn btn-dark" style={{ height: 48, fontSize: 15 }}><ExternalLink size={16} /> Mở trang {p.name} để thanh toán</a>
               )}
               {o.instruction?.kind === 'bank_qr' && (
-                <Button variant="primary" size="lg" className="mt-1.5" loading={processing.isPending} disabled={o.paymentStatus === 'processing'} onClick={() => processing.mutate()}>{o.paymentStatus === 'processing' ? 'Đã ghi nhận, đang đối chiếu' : 'Tôi đã chuyển khoản'}</Button>
+                <Button variant="primary" size="lg" className="mt-1.5" loading={processing.isPending} disabled={o.paymentStatus === 'processing'} onClick={() => processing.mutate()}>{o.paymentStatus === 'processing' ? (ownerManual ? 'Đã báo chủ hội, chờ xác nhận' : 'Đã ghi nhận, đang đối chiếu') : 'Tôi đã chuyển khoản'}</Button>
               )}
-              <Waiting />
+              <Waiting text={ownerManual ? 'Chủ hội kiểm tra tài khoản rồi xác nhận. Bạn đóng trang được, khi được xác nhận bạn sẽ nhận thông báo.' : undefined} />
             </>
           )}
         </div>

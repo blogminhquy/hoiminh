@@ -5,8 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as checkout from '../services/checkout';
 import * as entitlementSvc from '../services/entitlements';
 import * as learner from '../services/learner';
-import * as paymentsSvc from '../services/payments';
-import { createTestApp, type TestApp } from './setup';
+import { createTestApp, ownerBankPaid, type TestApp } from './setup';
 
 let app: TestApp;
 beforeAll(async () => {
@@ -137,8 +136,7 @@ describe('mua lẻ không còn bị tự thêm vào hội (mục 153)', () => {
     await app.ctx.db.delete(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.resourceId, productId)));
 
     const session = await checkout.createCheckout(ctx, { target: { type: 'product', productId }, provider: 'sepay' });
-    const body = { id: Math.floor(Math.random() * 1e9), gateway: 'Vietcombank', transactionDate: '2026-09-15 09:03:11', accountNumber: '0071000123456', code: null, content: `CK ${session.reference}`, transferType: 'in', transferAmount: session.amountMinor, accumulated: 0, subAccount: null, referenceCode: `MB.${Date.now()}`, description: '' };
-    const r = await paymentsSvc.handleWebhook(app.system(), 'sepay', { headers: { authorization: `Apikey ${app.ctx.env.SEPAY_API_KEY}` }, rawBody: JSON.stringify(body), query: {} });
+    const r = await ownerBankPaid(app, session.reference, session.amountMinor);
     expect(r.result).toBe('processed');
 
     expect(await entitlementSvc.ownsProduct(ctx, userId, productId)).toBe(true);

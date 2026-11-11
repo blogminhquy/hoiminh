@@ -43,6 +43,7 @@ export * as messaging from './services/messaging';
 export * as notifications from './services/notifications';
 export * as safety from './services/safety';
 export * as platformBilling from './services/platform-billing';
+export * as ownerPayout from './services/owner-payout';
 export * as admin from './services/admin';
 export * as revenue from './services/revenue';
 export * as apiKeys from './services/api-keys';

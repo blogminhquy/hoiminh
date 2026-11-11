@@ -7,7 +7,7 @@ import { api } from './api';
 export interface ShellPlan { key: PlanKey; name: string; memberCap: number | null; features: PlanFeature[]; endsAt: string | null; needsPlan: boolean; full: boolean; isFreeSlot: boolean }
 
 export interface Shell {
-  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; logoMark: string; logoColor: string; logoUrl: string | null; coverColor: string; coverUrl: string | null; coverTagline: string; tabs: Record<string, boolean>; status: string; pricingMode: string; doorsOpen: boolean; customDomain: string | null; memberCount: number; requireSpace: boolean; enabledProviders: string[] };
+  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; logoMark: string; logoColor: string; logoUrl: string | null; coverColor: string; coverUrl: string | null; coverTagline: string; tabs: Record<string, boolean>; status: string; pricingMode: string; doorsOpen: boolean; /** Hội đã cài tài khoản nhận tiền chưa: chưa thì các nút mua bị khóa. */ paymentsReady: boolean; customDomain: string | null; memberCount: number; requireSpace: boolean; enabledProviders: string[] };
   /** Gói đang có hiệu lực của hội. Chỉ người quản lý hội mới nhận được, thành viên thường là null. */
   plan: ShellPlan | null;
   viewer: { role: string; memberId: string | null; memberStatus: string | null; tier: { key: string; name: string } | null; permissions: string[]; isMember: boolean };

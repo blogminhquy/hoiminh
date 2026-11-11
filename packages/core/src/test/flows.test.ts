@@ -1,8 +1,6 @@
 // Kiểm tra các luồng nghiệp vụ chính ở tầng service (mục 6 của prompt), chạy trên PGlite với dữ liệu seed.
-import { hmacHex } from '@hoiminh/config';
-import { MomoAdapter } from '@hoiminh/payments';
 import { and, eq } from 'drizzle-orm';
-import { affiliateCommissions, communityMembers, entitlements, orders, payments } from '@hoiminh/db';
+import { affiliateCommissions, communities as communitiesTable, communityMembers, entitlements, orders, payments } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register, login, verifyEmail, forgotPassword, resetPassword, verifyTwoFactor } from '../auth/service';
 import * as totp from '../auth/totp';
@@ -20,7 +18,7 @@ import * as paymentsSvc from '../services/payments';
 import * as posts from '../services/posts';
 import * as withdrawals from '../services/withdrawals';
 import * as admin from '../services/admin';
-import { createTestApp, type TestApp } from './setup';
+import { createTestApp, ownerBankPaid, type TestApp } from './setup';
 
 let app: TestApp;
 const KD = 'community:kd';
@@ -31,6 +29,11 @@ beforeAll(async () => {
 afterAll(async () => {
   await app.close();
 });
+
+/** Chủ hội Thảo Vy (hội gói Miễn phí), dùng cho các bài mua gói Hội Mình. */
+async function vyOwner() {
+  return { ...app.system(), actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
+}
 
 /** Đăng nhập và khẳng định tài khoản không bật hai lớp (đa số test dùng dạng này). */
 async function loginOk(...args: Parameters<typeof login>) {
@@ -100,10 +103,17 @@ describe('Luồng 2: nâng cấp Premium qua SePay, idempotent, mở khóa khóa
     expect(session.instruction.kind).toBe('bank_qr');
     expect(session.amountMinor).toBe(249_000);
     expect(session.referredBy).toBe('Hoàng Vũ');
-    const r1 = await sepayPaid(session.reference, 249_000);
+    // Tiền của đơn này về thẳng tài khoản của chủ hội, không phải tài khoản Hội Mình.
+    expect(session.instruction).toMatchObject({ payee: 'owner', accountNumber: '0071000999888', accountHolder: 'NGUYEN MINH QUY', transferContent: session.reference });
+    // Chuyển nhầm vào tài khoản Hội Mình với đúng mã đơn: không được tính là đã trả cho chủ hội.
+    expect((await sepayPaid(session.reference, 249_000)).result).toBe('unmatched');
+    expect((await app.ctx.db.query.orders.findFirst({ where: eq(orders.id, session.orderId) }))?.status).toBe('pending');
+    // Thiếu tiền thì chưa xác nhận; đủ tiền thì xác nhận; báo có lần hai cho đơn đã trả thì bỏ qua.
+    expect((await ownerBankPaid(app, session.reference, 200_000)).result).toBe('unmatched');
+    const r1 = await ownerBankPaid(app, session.reference, 249_000);
     expect(r1.result).toBe('processed');
-    const r2 = await sepayPaid(session.reference, 249_000);
-    expect(r2.result).toBe('unmatched'); // đơn đã thanh toán, giao dịch thứ hai vào đối soát chứ không mở lại
+    const r2 = await ownerBankPaid(app, session.reference, 249_000);
+    expect(r2.result).toBe('ignored');
     const order = await app.ctx.db.query.orders.findFirst({ where: eq(orders.id, session.orderId) });
     expect(order?.status).toBe('paid');
     const after = await entitlementSvc.canAccessCourse(kien, kien.actor.type === 'user' ? kien.actor.userId : '', fmm);
@@ -127,15 +137,15 @@ describe('Luồng 2: nâng cấp Premium qua SePay, idempotent, mở khóa khóa
   });
 });
 
-describe('Luồng 3: mua lẻ trong Cửa hàng qua MoMo và hoàn tiền trong 7 ngày', () => {
-  it('mua khóa AI Agent, nhận IPN MoMo đúng chữ ký, rồi hoàn tiền khi xem < 20%', async () => {
+describe('Luồng 3: mua lẻ trong Cửa hàng bằng chuyển khoản tới chủ hội và hoàn tiền trong 7 ngày', () => {
+  it('mua khóa AI Agent, ngân hàng của chủ hội báo có, rồi hoàn tiền khi xem < 20%', async () => {
     const duy = await app.as('duy');
     const productId = await app.ids('product:aiagent');
-    const session = await checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'momo' });
-    expect(session.instruction.kind).toBe('redirect');
-    const p = { partnerCode: app.ctx.env.MOMO_PARTNER_CODE, orderId: session.reference, requestId: 'r1', amount: session.amountMinor, orderInfo: 'x', orderType: 'momo_wallet', transId: 999, resultCode: 0, message: 'Successful.', payType: 'qr', responseTime: Date.now(), extraData: '', signature: '' };
-    p.signature = await hmacHex(app.ctx.env.MOMO_SECRET_KEY, MomoAdapter.ipnSignatureString(app.ctx.env.MOMO_ACCESS_KEY, p));
-    const r = await paymentsSvc.handleWebhook(app.system(), 'momo', { headers: {}, rawBody: JSON.stringify(p), query: {} });
+    // Cổng của Hội Mình (MoMo, VNPAY, PayPal) không dùng cho đơn của hội: tiền qua đó về tài khoản Hội Mình.
+    await expect(checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'momo' })).rejects.toThrow(/chuyển khoản ngân hàng/);
+    const session = await checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'sepay' });
+    expect(session.instruction).toMatchObject({ kind: 'bank_qr', payee: 'owner' });
+    const r = await ownerBankPaid(app, session.reference, session.amountMinor);
     expect(r.result).toBe('processed');
     const owned = await entitlementSvc.ownsProduct(duy, await app.ids('user:duy'), productId);
     expect(owned).toBe(true);
@@ -197,7 +207,7 @@ describe('Luồng 4: cộng sự · hold → available → rút ≥ 500k → xem
     const cong = await app.as('cong');
     const kd = await app.ids(KD);
     const session = await checkout.createCheckout(cong, { target: { type: 'tier', communityId: kd, tierKey: 'premium', cycle: 'monthly' }, provider: 'sepay' });
-    await sepayPaid(session.reference, 249_000);
+    await ownerBankPaid(app, session.reference, 249_000);
     const comm = await app.ctx.db.query.affiliateCommissions.findFirst({ where: eq(affiliateCommissions.orderId, session.orderId) });
     expect(comm?.status).toBe('pending');
     await paymentsSvc.adminRefund(await app.as('minhquy'), session.orderId, 'Khách yêu cầu');
@@ -283,25 +293,33 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
 });
 
 describe('Luồng 7: quản trị hệ thống', () => {
-  it('đối soát: chuyển khoản sai nội dung được ghép thủ công và mở quyền', async () => {
-    const dien = await app.as('dien');
-    const session = await checkout.createCheckout(dien, { target: { type: 'product', productId: await app.ids('product:prompts') }, provider: 'sepay' });
-    const r = await sepayPaid(session.reference, 199_000, 'chuyen tien khong ma');
+  it('đối soát: chuyển khoản mua gói sai nội dung được ghép thủ công và gói được kích hoạt; đơn của hội thì không ghép được', async () => {
+    // Tiền mua gói Hội Mình về tài khoản của Hội Mình, nên quản trị hệ thống đối soát và ghép tay được.
+    const vyHoi = await app.ids('community:vy');
+    const session = await checkout.createCheckout(await vyOwner(), { target: { type: 'platform', communityId: vyHoi, planKey: 'starter', cycle: 'quarterly' }, provider: 'sepay' });
+    const r = await sepayPaid(session.reference, 297_000, 'chuyen tien khong ma');
     expect(r.result).toBe('unmatched');
     const adminCtx = await app.as('admin');
     const recon = await admin.reconciliation(adminCtx, { status: 'unmatched' });
-    const item = recon.items.find((i) => i.amountMinor === 199_000 && i.bankContent.includes('khong ma'));
+    const item = recon.items.find((i) => i.amountMinor === 297_000 && i.bankContent.includes('khong ma'));
     expect(item).toBeTruthy();
     const m = await admin.matchReconciliation(adminCtx, item!.id, session.reference);
     expect(m.orderId).toBe(session.orderId);
-    expect(await entitlementSvc.ownsProduct(dien, await app.ids('user:dien'), await app.ids('product:prompts'))).toBe(true);
+    expect((await app.ctx.db.query.communities.findFirst({ where: eq(communitiesTable.id, vyHoi) }))?.planKey).toBe('starter');
+    // Đơn của hội trả thẳng vào tài khoản chủ hội: tiền chuyển nhầm vào tài khoản Hội Mình không ghép được với đơn đó.
+    const dien = await app.as('dien');
+    const hoiOrder = await checkout.createCheckout(dien, { target: { type: 'product', productId: await app.ids('product:prompts') }, provider: 'sepay' });
+    await sepayPaid(hoiOrder.reference, 199_000, 'chuyen nham khong ghi ma');
+    const wrong = (await admin.reconciliation(adminCtx, { status: 'unmatched' })).items.find((i) => i.amountMinor === 199_000 && i.bankContent.includes('chuyen nham'));
+    expect(wrong).toBeTruthy();
+    await expect(admin.matchReconciliation(adminCtx, wrong!.id, hoiOrder.reference)).rejects.toThrow(/tài khoản của chủ hội/);
+    expect(await entitlementSvc.ownsProduct(dien, await app.ids('user:dien'), await app.ids('product:prompts'))).toBe(false);
     await expect(admin.reconciliation(dien, {})).rejects.toThrow();
   });
-  it('tắt cổng thanh toán thì checkout qua cổng đó bị chặn', async () => {
+  it('tắt cổng thanh toán của Hội Mình thì mua gói qua cổng đó bị chặn', async () => {
     const adminCtx = await app.as('admin');
     await admin.updateProvider(adminCtx, 'vnpay', { enabled: false });
-    const duy = await app.as('duy');
-    await expect(checkout.createCheckout(duy, { target: { type: 'product', productId: await app.ids('product:fbads') }, provider: 'vnpay' })).rejects.toThrow(/tạm tắt/);
+    await expect(checkout.createCheckout(await vyOwner(), { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'pro', cycle: 'quarterly' }, provider: 'vnpay' })).rejects.toThrow(/tạm tắt/);
     await admin.updateProvider(adminCtx, 'vnpay', { enabled: true });
   });
   it('khóa hội bị báo cáo và ghi audit', async () => {

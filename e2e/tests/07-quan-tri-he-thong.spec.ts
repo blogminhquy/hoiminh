@@ -3,9 +3,11 @@ import { expect, test } from '@playwright/test';
 import { API, USERS, apiJson, apiToken, login, sepayWebhook } from '../helpers';
 
 test('đối soát ghép thủ công và khóa hội', async ({ page, request }) => {
-  const member = await apiToken(request, USERS.member2);
-  const shell = await apiJson<{ community: { id: string } }>(request, member, 'GET', '/v1/communities/by-slug/minhquy/shell');
-  const session = await apiJson<{ orderId: string; reference: string; amountMinor: number }>(request, member, 'POST', '/v1/checkout', { target: { type: 'tier', communityId: shell.community.id, tierKey: 'premium', cycle: 'monthly' }, provider: 'sepay' });
+  // Tiền mua gói Hội Mình về tài khoản của Hội Mình, nên quản trị hệ thống đối soát được. (Đơn của hội thì trả thẳng
+  // vào tài khoản chủ hội và do chủ hội tự xác nhận.) Chủ hội Vy chuyển khoản mua gói nhưng quên ghi mã đơn.
+  const member = await apiToken(request, USERS.freeOwner);
+  const shell = await apiJson<{ community: { id: string } }>(request, member, 'GET', '/v1/communities/by-slug/ngoai-ngu-vy/shell');
+  const session = await apiJson<{ orderId: string; reference: string; amountMinor: number }>(request, member, 'POST', '/v1/checkout', { target: { type: 'platform', communityId: shell.community.id, planKey: 'pro', cycle: 'quarterly' }, provider: 'sepay' });
   expect(await sepayWebhook(request, 'DUY NGUYEN chuyen tien hoc phi', session.amountMinor)).toBe(200);
 
   await login(page, USERS.admin);

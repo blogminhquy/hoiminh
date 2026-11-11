@@ -1,7 +1,7 @@
 // Workspace, hội, tier, chuyên mục, plugin, thành viên, câu hỏi khi tham gia.
 import type { Database } from '../client';
 import {
-  communities, communityJoinQuestions, communityMembers, communityPlugins, communityTiers, memberJoinAnswers, spaces,
+  communities, communityJoinQuestions, communityMembers, communityPayoutAccounts, communityPlugins, communityTiers, memberJoinAnswers, spaces,
   userCommunityPrefs, workspaceMembers, workspaces,
 } from '../schema';
 import { daysFrom, sid } from './ids';
@@ -32,12 +32,14 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
       { label: 'Zalo hỗ trợ', url: 'https://zalo.me/minhquy' },
     ],
     customDomain: 'hoc.minhquy.vn', freeSlot: true, plan: { key: 'pro', cycle: 'quarterly', daysLeft: 17 },
+    payout: { bankCode: 'VCB', accountNumber: '0071000999888', accountHolder: 'NGUYEN MINH QUY', confirmMode: 'auto', webhookToken: SEED_BANK_WEBHOOK_TOKEN },
   });
   // Hội thứ hai (đã trả gói Khởi đầu) và hội thứ ba đang chờ thanh toán của Minh Quý (màn "Hội của tôi").
   const congsu = await createCommunity(db, base, {
     key: 'congsu', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'Cộng sự MMO', slug: 'cong-su-mmo', mark: 'AF', color: '#0E8E96',
     coverColor: '#25201B', tagline: 'Cộng sự', short: 'Nhóm kín cho cộng sự bán khóa học AI.', description: 'Nhóm kín cho cộng sự.',
     category: 'kinh-doanh', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 58, paidCount: 58, discoverable: false, plan: { key: 'starter', cycle: 'yearly', daysLeft: 120 },
+    payout: { bankCode: 'VCB', accountNumber: '0071000999888', accountHolder: 'NGUYEN MINH QUY', confirmMode: 'manual' },
   });
   const draft = await createCommunity(db, base, {
     key: 'aiagent', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'AI Agent cho chủ shop', slug: 'ai-agent-shop', mark: 'AI', color: '#7A5C3E',
@@ -48,16 +50,19 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
     key: 'yt', owner: U.huan!, workspaceKey: 'huan', name: 'Faceless YouTube Foundation', slug: 'faceless-yt', mark: 'YT', color: '#0E8E96', coverColor: '#D4593A',
     tagline: 'Faceless\nYouTube', short: 'Xây kênh không lộ mặt từ ý tưởng đến kiếm tiền.', description: 'Xây kênh YouTube không lộ mặt.',
     category: 'sang-tao-noi-dung', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 1204, paidCount: 1204, freeSlot: true, plan: { key: 'pro', cycle: 'yearly', daysLeft: 200 },
+    payout: { bankCode: 'TCB', accountNumber: '19031234567890', accountHolder: 'TRAN GIA HUAN', confirmMode: 'manual' },
   });
   const qt = await createCommunity(db, base, {
     key: 'qt', owner: U.thanhlong!, workspaceKey: 'thanhlong', name: 'Quản trị cảm xúc', slug: 'quan-tri-cam-xuc', mark: 'QT', color: '#7A5C3E', coverColor: '#7A5C3E',
     tagline: 'Quản trị\ncảm xúc', short: 'Làm chủ cảm xúc để làm chủ cuộc đời, 23 bài theo lộ trình.', description: 'Làm chủ cảm xúc.',
     category: 'phat-trien-ban-than', pricingMode: 'one_time', oneTime: 990_000, memberCount: 176, paidCount: 176, freeSlot: true, plan: { key: 'starter', cycle: 'yearly', daysLeft: 150 },
+    payout: { bankCode: 'MB', accountNumber: '0988123456', accountHolder: 'LE THANH LONG', confirmMode: 'manual' },
   });
   const yoga = await createCommunity(db, base, {
     key: 'yoga', owner: U.lehanh!, workspaceKey: 'lehanh', name: 'Yoga sáng 6 giờ', slug: 'yoga-6h', mark: 'YG', color: '#5C7A3E', coverColor: '#5C7A3E',
     tagline: 'Yoga sáng', short: 'Tập cùng nhau mỗi sáng 6 giờ, 21 ngày đổi thói quen.', description: 'Yoga buổi sáng.',
     category: 'suc-khoe', pricingMode: 'subscription', monthly: 99_000, yearly: 990_000, memberCount: 128, paidCount: 128, freeSlot: true, plan: { key: 'starter', cycle: 'yearly', daysLeft: 300 },
+    payout: { bankCode: 'ACB', accountNumber: '123456789', accountHolder: 'LE THI HANH', confirmMode: 'manual' },
   });
   const vy = await createCommunity(db, base, {
     key: 'vy', owner: U.thaovy!, workspaceKey: 'thaovy', name: 'Ngoại ngữ cùng Vy', slug: 'ngoai-ngu-vy', mark: 'NV', color: '#3E5C7A', coverColor: '#3E5C7A',
@@ -78,6 +83,9 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
   return { main, others: [congsu, draft, yt, qt, yoga, vy, shopee, crypto] };
 }
 
+/** Mã bí mật của địa chỉ báo có của hội chính trong dữ liệu mẫu, để test giả lập ngân hàng báo tiền về. */
+export const SEED_BANK_WEBHOOK_TOKEN = '5eed'.repeat(10);
+
 export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'quarterly' | 'yearly'; daysLeft: number }
 
 interface CommunitySpec {
@@ -90,6 +98,8 @@ interface CommunitySpec {
   freeSlot?: boolean;
   /** Gói trả phí đang dùng; không có thì hội ở gói Miễn phí. */
   plan?: SeedPlan;
+  /** Tài khoản nhận tiền của chủ hội; không có thì hội chưa mở thanh toán (nút mua bị khóa). */
+  payout?: { bankCode: string; accountNumber: string; accountHolder: string; confirmMode: 'manual' | 'auto'; webhookToken?: string };
 }
 
 async function createCommunity(db: Database, base: Date, s: CommunitySpec): Promise<SeedCommunity> {
@@ -115,6 +125,9 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
     })
     .onConflictDoNothing();
 
+  if (s.payout) {
+    await db.insert(communityPayoutAccounts).values({ id: await sid(`payout:${s.key}`), communityId, workspaceId, bankCode: s.payout.bankCode, accountNumber: s.payout.accountNumber, accountHolder: s.payout.accountHolder, confirmMode: s.payout.confirmMode, webhookToken: s.payout.webhookToken ?? (await sid(`payout-token:${s.key}`)).replace(/-/g, '').padEnd(40, '0').slice(0, 40) }).onConflictDoNothing();
+  }
   const tiers = { standard: await sid(`tier:${s.key}:standard`), premium: await sid(`tier:${s.key}:premium`), vip: await sid(`tier:${s.key}:vip`) };
   const hasFree = s.pricingMode === 'free' || s.pricingMode === 'freemium';
   await db

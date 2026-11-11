@@ -1,9 +1,9 @@
-// Tiền (/:slug/tien): gom "Doanh thu" và "Cài đặt, Thanh toán" về một trang. Trên cùng là số dư (có thể rút, đang giữ,
-// đã rút tháng này) và nút Rút tiền, dưới là số liệu theo kỳ và bảng giao dịch (hoàn tiền, xuất CSV).
-// Số dư cần quyền billing.manage, giao dịch cần quyền revenue.read: thiếu quyền nào thì phần đó không hiện.
+// Tiền (/:slug/tien). Tiền bán hàng của hội về thẳng tài khoản của chủ hội, nên trang này không còn số dư hay nút rút.
+// Trên cùng: hội đã cài nhận tiền chưa, đã thu 30 ngày, các đơn chờ chủ hội bấm "Đã nhận tiền". Dưới là số liệu theo kỳ
+// và bảng giao dịch (hoàn tiền, xuất CSV). Phần trên cần quyền billing.manage, giao dịch cần quyền revenue.read.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Chip, StatCard, StatusTag, T, money } from '@hoiminh/ui';
-import { Clock, Download, Handshake, ShieldCheck, Wallet } from 'lucide-react';
+import { Clock, Download, Handshake, Lock, ShieldCheck, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
@@ -11,9 +11,10 @@ import { UserAvatar, type UserLite } from '@/components/UserLink';
 import { api, errorMessage } from '@/lib/api';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate } from '@/lib/format';
+import { PendingOrders, payoutSetupQuery } from '@/pages/settings/PayoutParts';
 import { AdminRefundModal, type RefundTarget } from './RevenueParts';
 
-interface Payout { availableMinor: number; holdingMinor: number; withdrawnThisMonthMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number; ownerName: string }
+interface Payout { ready: boolean; account: { bankName: string; accountNumber: string; accountHolder: string; confirmMode: 'manual' | 'auto' } | null; received30Minor: number; pendingCount: number; pendingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number; ownerName: string }
 interface Tx { orderId: string; at: string; customer: UserLite; title: string; method: string; provider: string; amountMinor: number; commissionMinor: number; reversedCommissionMinor: number; status: string }
 interface Revenue { stats: { grossMinor: number; txCount: number; netMinor: number; refundedMinor: number; refundCount: number; owedToAffiliatesMinor: number; referredCount: number }; items: Tx[] }
 const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý'], [365, 'Năm']];
@@ -24,27 +25,33 @@ function toCsv(items: Tx[]): string {
   return rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
 }
 
+/** Khối đầu trang: hội đã cài nhận tiền chưa, đã thu bao nhiêu, và các đơn đang chờ chủ hội xác nhận. */
 function Balance() {
   const shell = useShell();
-  const q = useQuery({ queryKey: ['payout-settings', shell.community.id], queryFn: () => api.get<Payout>(`/v1/communities/${shell.community.id}/payout`) });
+  const cid = shell.community.id;
+  const q = useQuery({ queryKey: ['payout-settings', cid], queryFn: () => api.get<Payout>(`/v1/communities/${cid}/payout`) });
+  const setup = useQuery(payoutSetupQuery(cid));
   const label = 'muted text-[13px] font-semibold uppercase tracking-[0.06em]';
+  const settings = `/${shell.community.slug}/cai-dat/nhan-tien`;
   return (
     <QueryState q={q} rows={2}>
       {(d) => (
         <>
-          <section className="card card-invert flex flex-col gap-4" style={{ padding: '20px 22px' }} aria-label="Số dư">
+          <section className="card card-invert flex flex-col gap-4" style={{ padding: '20px 22px' }} aria-label="Nhận tiền">
             <div className="flex items-end gap-x-8 gap-y-4 flex-wrap">
-              <div><div className={label}>Có thể rút</div><div className="serif text-[30px] font-extrabold leading-tight">{money(d.availableMinor)}</div></div>
-              <div><div className={label}>Đang giữ 14 ngày</div><div className="serif text-[22px] font-extrabold">{money(d.holdingMinor)}</div></div>
-              <div><div className={label}>Đã rút tháng này</div><div className="serif text-[22px] font-extrabold">{money(d.withdrawnThisMonthMinor)}</div></div>
+              <div><div className={label}>Đã thu 30 ngày</div><div className="serif text-[30px] font-extrabold leading-tight">{money(d.received30Minor)}</div></div>
+              <div><div className={label}>Đơn chờ xác nhận</div><div className="serif text-[22px] font-extrabold">{d.pendingCount}{d.pendingCount > 0 ? ` · ${money(d.pendingMinor)}` : ''}</div></div>
               <span className="flex-grow" />
-              <a href="mailto:hotro@hoiminh.vn?subject=Rut%20tien%20chu%20hoi" className="btn btn-gold w-full sm:w-auto"><Wallet size={18} />Rút tiền</a>
+              <Link to={settings} className="btn btn-gold w-full sm:w-auto"><Wallet size={18} />{d.ready ? 'Tài khoản nhận tiền' : 'Cài nhận tiền'}</Link>
             </div>
             <div className="muted text-[14px] flex flex-col gap-1">
-              <span className="flex items-start gap-1.5"><Clock size={16} className="flex-shrink-0 mt-0.5" />Rút tiền được xử lý trong 1 ngày làm việc, tối thiểu 500.000đ, miễn phí.</span>
-              <span className="flex items-start gap-1.5"><ShieldCheck size={16} className="flex-shrink-0 mt-0.5" />Khách trả vào tài khoản Hội Mình, chuyển cho {d.ownerName || 'chủ hội'} theo yêu cầu rút. Hội Mình không thu phí giao dịch.</span>
+              {d.ready && d.account
+                ? <span className="flex items-start gap-1.5"><ShieldCheck size={16} className="flex-shrink-0 mt-0.5" />Người mua chuyển khoản thẳng tới {d.account.bankName} {d.account.accountNumber} ({d.account.accountHolder}). Hội Mình không giữ tiền và không thu phí trên doanh thu.</span>
+                : <span className="flex items-start gap-1.5" style={{ color: T.gold }}><Lock size={16} className="flex-shrink-0 mt-0.5" />Hội chưa cài nhận tiền nên các nút mua đang khóa. Nhập tài khoản ngân hàng của bạn để mở thanh toán.</span>}
+              {d.ready && d.account && <span className="flex items-start gap-1.5"><Clock size={16} className="flex-shrink-0 mt-0.5" />{d.account.confirmMode === 'auto' ? 'Đơn tự xác nhận khi dịch vụ báo có của bạn gọi về.' : 'Bạn kiểm tra tài khoản rồi bấm "Đã nhận tiền" cho từng đơn.'}</span>}
             </div>
           </section>
+          {d.ready && setup.data?.account && setup.data.pending.length > 0 && <PendingOrders communityId={cid} orders={setup.data.pending} mode={setup.data.account.confirmMode} />}
           {d.affiliatePendingCount > 0 && (
             <Link to={`/${shell.community.slug}/cong-su`} className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-[15px] font-semibold" style={{ background: T.accentSoft, color: T.accentText }}>
               <Handshake size={18} className="flex-shrink-0" /><span className="flex-grow">{d.affiliatePendingCount} yêu cầu rút của cộng sự đang chờ, cần chuyển {money(d.affiliatePendingMinor)}</span><span className="whitespace-nowrap">Xử lý</span>
@@ -88,7 +95,7 @@ function Transactions() {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard label="Tổng thu" value={money(d.stats.grossMinor)} sub={`${d.stats.txCount} giao dịch · không phí giao dịch`} />
-              <StatCard label="Đã vào số dư" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
+              <StatCard label="Đã thu" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
               <StatCard label="Nợ cộng sự" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
               <StatCard label="Hoàn tiền" value={money(d.stats.refundedMinor)} sub={`${d.stats.refundCount} giao dịch`} subColor={T.ink3} />
             </div>
@@ -136,7 +143,7 @@ export default function Page() {
     <div className="flex flex-col gap-4" style={{ maxWidth: 1080 }}>
       <div>
         <h1 className="serif m-0 text-[28px] font-extrabold">Tiền</h1>
-        <div className="muted text-[15px]">Số dư, rút tiền, giao dịch và hoàn tiền. Cách khách thanh toán chỉnh ở <Link to={`/${shell.community.slug}/cai-dat/gia`} className="font-semibold">Cài đặt, mục Bán hàng</Link>.</div>
+        <div className="muted text-[15px]">Nhận tiền, đơn chờ xác nhận, giao dịch và hoàn tiền. Cách khách thanh toán chỉnh ở <Link to={`/${shell.community.slug}/cai-dat/gia`} className="font-semibold">Cài đặt, mục Bán hàng</Link>.</div>
       </div>
       {canBalance && <Balance />}
       {canTx && <Transactions />}
