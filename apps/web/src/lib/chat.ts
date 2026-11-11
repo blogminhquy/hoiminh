@@ -1,4 +1,5 @@
-// Phần tính toán thuần của màn Tin nhắn (không đụng DOM): tách link, gom nhóm tin liền nhau, trạng thái truy cập, đếm cảm xúc.
+// Phần tính toán thuần của màn Tin nhắn (không đụng DOM): tách link, gom nhóm tin liền nhau, trạng thái truy cập, đếm cảm xúc,
+// kiểm tệp đính kèm trước khi tải lên, trạng thái đã gửi / đã nhận / đã xem.
 
 export interface ChatMessageLike { senderUserId: string; createdAt: string; automated: boolean }
 
@@ -60,4 +61,46 @@ export function reactionSummary(reactions: Record<string, string> | undefined): 
   for (const e of Object.values(reactions ?? {})) count.set(e, (count.get(e) ?? 0) + 1);
   const emojis = [...count].sort((a, b) => b[1] - a[1]).map(([e]) => e);
   return { emojis, total: [...count.values()].reduce((s, n) => s + n, 0) };
+}
+
+/** Tệp đính kèm trong tin nhắn tối đa 5MB (khớp MESSAGE_FILE_MAX_BYTES ở máy chủ; máy chủ vẫn kiểm lại). */
+export const MESSAGE_FILE_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Loại tệp đính kèm nhận được, tra theo đuôi tệp: trình duyệt báo loại tệp không ổn định
+ * (zip trên Windows là application/x-zip-compressed, máy không cài Office thì .docx không có loại).
+ */
+const ATTACHMENT_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  zip: 'application/zip',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+/** Giá trị `accept` của ô chọn tệp đính kèm (ảnh cũng chọn được ở đây, sẽ đi đường gửi ảnh). */
+export const ATTACHMENT_ACCEPT = [...Object.keys(ATTACHMENT_TYPES).map((e) => `.${e}`), 'image/*'].join(',');
+
+/** Kiểm tệp trước khi tải lên: đúng loại và không quá 5MB. Trả về loại tệp chuẩn để gửi cho máy chủ. */
+export function checkAttachment(file: { name: string; size: number }): { ok: true; mimeType: string } | { ok: false; reason: string } {
+  const ext = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
+  const mimeType = ATTACHMENT_TYPES[ext];
+  if (!mimeType) return { ok: false, reason: 'Loại tệp này chưa gửi được. Tệp đính kèm nhận PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), văn bản (.txt) và .zip.' };
+  if (file.size > MESSAGE_FILE_MAX_BYTES) return { ok: false, reason: `Tệp nặng ${fileSizeLabel(file.size)}, vượt giới hạn 5MB của tệp đính kèm.` };
+  if (file.size === 0) return { ok: false, reason: 'Tệp trống, không gửi được.' };
+  return { ok: true, mimeType };
+}
+
+/** 820 KB, 1,2 MB: dung lượng tệp viết theo kiểu Việt Nam (dấu phẩy thập phân). */
+export function fileSizeLabel(bytes: number): string {
+  if (bytes < 1024) return `${Math.max(bytes, 0)} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+/** Ba trạng thái của tin mình gửi (cộng "Đang gửi" lúc chưa lên tới máy chủ). */
+export function deliveryStatus(m: { pending?: boolean; deliveredAt: string | null; readAt: string | null }): 'Đang gửi' | 'Đã gửi' | 'Đã nhận' | 'Đã xem' {
+  if (m.pending) return 'Đang gửi';
+  if (m.readAt) return 'Đã xem';
+  return m.deliveredAt ? 'Đã nhận' : 'Đã gửi';
 }

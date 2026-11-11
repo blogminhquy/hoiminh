@@ -1,7 +1,7 @@
 // Tệp và ảnh: xin URL tải lên (presigned), ghi nhận sau khi tải xong, URL ký cho tệp riêng,
 // và dọn tệp trên R2 khi ảnh bị gỡ (xem releaseFiles).
 import { randomToken } from '@hoiminh/config';
-import { validateUpload, webpKeyFor } from '@hoiminh/media';
+import { MESSAGE_FILE_MAX_BYTES, validateUpload, webpKeyFor } from '@hoiminh/media';
 import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import { files } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -12,7 +12,7 @@ import { raw } from '../lib/db';
 import { requireUser } from '../permissions';
 
 /** Bước 1: xin presigned URL. Ảnh bài viết/avatar là public; tài liệu khóa học, tệp số là private. */
-export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'comment_image'; communityId?: string | null; workspaceId?: string | null }) {
+export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'message_file' | 'comment_image'; communityId?: string | null; workspaceId?: string | null }) {
   const userId = requireUser(ctx);
   // Provider local ghi tệp bằng node:fs. Cloudflare Workers không có hệ tệp nên tệp "tải xong"
   // rồi biến mất ngay (đã xảy ra với avatar quản trị ngày 16/09). Chặn sớm và nói đúng nguyên nhân.
@@ -22,7 +22,12 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
   const v = validateUpload(input.mimeType, input.sizeBytes);
   if (!v.ok) throw invalid(v.reason);
   if (['post_image', 'avatar', 'cover', 'message_image', 'comment_image'].includes(input.purpose) && v.kind !== 'image') throw invalid('Mục này chỉ nhận ảnh');
-  const visibility = input.purpose === 'lesson_resource' || input.purpose === 'digital_product' ? 'private' : 'public';
+  // Tệp đính kèm tin nhắn: chỉ tài liệu (ảnh đi đường gửi ảnh), tối đa 5MB, và là tệp riêng: chỉ hai người trong hội thoại lấy được link tải.
+  if (input.purpose === 'message_file') {
+    if (v.kind !== 'document') throw invalid('Tệp đính kèm nhận PDF, Word, Excel, PowerPoint, văn bản và zip. Ảnh thì gửi bằng nút ảnh.');
+    if (input.sizeBytes > MESSAGE_FILE_MAX_BYTES) throw invalid('Tệp đính kèm trong tin nhắn tối đa 5MB');
+  }
+  const visibility = input.purpose === 'lesson_resource' || input.purpose === 'digital_product' || input.purpose === 'message_file' ? 'private' : 'public';
   // Ảnh công khai lưu ở dạng WebP: tệp đã là WebP, hoặc máy chủ chuyển được JPEG/PNG lúc nhận tệp (xem route PUT /files/upload).
   const ext = visibility === 'public' && webpKeyFor(input.mimeType, ctx.media.convertsToWebp) ? 'webp' : input.fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? 'bin';
   const objectKey = `${visibility}/${input.purpose}/${new Date().toISOString().slice(0, 10)}/${randomToken(12)}.${ext}`;
@@ -84,6 +89,7 @@ export const FILE_REFERENCES = [
   { table: 'product_pages', column: 'cover_image_url', kind: 'url' },
   { table: 'comments', column: 'image_url', kind: 'url' },
   { table: 'messages', column: 'image_url', kind: 'url' },
+  { table: 'messages', column: 'file_url', kind: 'url' },
   { table: 'post_images', column: 'url', kind: 'url' },
   { table: 'post_images', column: 'file_id', kind: 'id' },
   { table: 'lesson_resources', column: 'url', kind: 'url' },

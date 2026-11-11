@@ -146,6 +146,7 @@ const adminRoutes: RouteObject = {
     { path: 'ha-tang', element: page(() => import('@/pages/admin/AdminInfra')) },
     { path: 'nhat-ky', element: page(() => import('@/pages/admin/AdminLogs')) },
     { path: 'ho-tro', element: page(() => import('@/pages/admin/AdminCommunities')) },
+    { path: 'bao-cao', element: page(() => import('@/pages/admin/AdminUserReports')) },
   ],
 };
 

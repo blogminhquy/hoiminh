@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AVATAR_MAX_SIDE, CloudflareImageOptimizer, IMAGE_MAX_SIDE, LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, WEBP_QUALITY, createMediaProvider, validateUpload, webpKeyFor, webpTarget, type ImageTransformerLike, type ImagesBindingLike } from './index';
+import { AVATAR_MAX_SIDE, MESSAGE_FILE_MAX_BYTES, attachmentDisposition, maxBytesForKey, CloudflareImageOptimizer, IMAGE_MAX_SIDE, LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, WEBP_QUALITY, createMediaProvider, validateUpload, webpKeyFor, webpTarget, type ImageTransformerLike, type ImagesBindingLike } from './index';
 import { fakeBucket, fakeImages } from './testing';
 
 describe('media', () => {
@@ -120,5 +120,31 @@ describe('ảnh WebP', () => {
     expect(createMediaProvider({ r2: {}, r2Bucket: fakeBucket(), images: new CloudflareImageOptimizer(fakeImages()), ...base }).convertsToWebp).toBe(true);
     // Đủ 4 biến R2_* thì trình duyệt tải thẳng lên R2, máy chủ không chạm vào byte nên không chuyển được.
     expect(createMediaProvider({ r2: { accountId: 'a', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b' }, r2Bucket: fakeBucket(), images: new CloudflareImageOptimizer(fakeImages()), ...base }).convertsToWebp).toBe(false);
+  });
+});
+
+describe('tệp đính kèm tin nhắn', () => {
+  it('giới hạn 5MB áp theo nơi lưu của tệp', () => {
+    expect(MESSAGE_FILE_MAX_BYTES).toBe(5 * 1024 * 1024);
+    expect(maxBytesForKey('private/message_file/2026-11-11/abc.pdf')).toBe(MESSAGE_FILE_MAX_BYTES);
+    expect(maxBytesForKey('private/lesson_resource/2026-11-11/abc.pdf')).toBeNull();
+    expect(maxBytesForKey('public/message_image/2026-11-11/abc.webp')).toBeNull();
+  });
+  it('tên tải về giữ dấu tiếng Việt, không lọt ký tự phá header hay đường dẫn', () => {
+    expect(attachmentDisposition('Bảng giá 2026.pdf')).toBe(`attachment; filename="Bang gia 2026.pdf"; filename*=UTF-8''${encodeURIComponent('Bảng giá 2026.pdf')}`);
+    const odd = attachmentDisposition('a"b\r\nSet-Cookie: x=1/../c.txt');
+    expect(odd).not.toMatch(/[\r\n]/);
+    expect(odd).toContain('filename="abSet-Cookie: x=1..c.txt"');
+    expect(attachmentDisposition('')).toContain('filename="tep"');
+  });
+  it('URL ký có tên tải về: qua API là tham số download, qua S3 là response-content-disposition nằm trong chữ ký', async () => {
+    const local = new LocalMediaProvider('http://localhost:8787', 'secret');
+    const u = new URL(await local.getSignedUrl('private/message_file/x.pdf', 300, 'Báo giá.pdf'));
+    expect(u.searchParams.get('download')).toBe('Báo giá.pdf');
+    expect(await local.verify('private/message_file/x.pdf', u.searchParams.get('expires')!, u.searchParams.get('sig')!)).toBe(true);
+    const s3 = new R2Provider({ accountId: 'acc', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b', publicBaseUrl: '' });
+    const signed = new URL(await s3.getSignedUrl('private/message_file/x.pdf', 300, 'Báo giá.pdf'));
+    expect(signed.searchParams.get('response-content-disposition')).toContain("filename*=UTF-8''");
+    expect(signed.searchParams.get('X-Amz-SignedHeaders')).toBeTruthy();
   });
 });

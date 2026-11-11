@@ -52,10 +52,14 @@ test.describe('máy tính', () => {
     await side.getByRole('link', { name: 'Hội và người dùng' }).click();
     await expect(page).toHaveURL(/\/he-thong\/hoi$/);
     const tabs = page.getByRole('navigation', { name: 'Hội và người dùng' });
-    await expect(tabs.getByRole('link')).toHaveCount(3);
-    await tabs.getByRole('link', { name: 'Người dùng' }).click();
+    await expect(tabs.getByRole('link')).toHaveCount(4);
+    // Tab "Báo cáo người dùng": các báo cáo thành viên gửi từ khung chat.
+    await tabs.getByRole('link', { name: 'Báo cáo người dùng' }).click();
+    await expect(page).toHaveURL(/\/he-thong\/bao-cao$/);
+    await expect(page.getByRole('heading', { name: 'Báo cáo người dùng' })).toBeVisible();
+    await tabs.getByRole('link', { name: 'Người dùng', exact: true }).click();
     await expect(page).toHaveURL(/\/he-thong\/nguoi-dung$/);
-    await expect(page.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Người dùng', exact: true })).toBeVisible();
     await expect(side.getByRole('link', { name: 'Hội và người dùng' })).toHaveAttribute('aria-current', 'page');
 
     // Đường dẫn cũ vẫn mở đúng trang và đúng nhóm.

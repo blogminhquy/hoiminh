@@ -1,4 +1,4 @@
-// Tin nhắn (kiểu Zalo): ba cột liền nhau lấp đầy màn hình. Trái là danh sách hội thoại (tìm, lọc, ghim), giữa là khung chat,
+// Tin nhắn (kiểu Zalo): ba cột liền nhau lấp đầy màn hình. Trái là danh sách hội thoại (tìm, lọc, ghim, tab Lưu trữ), giữa là khung chat,
 // phải là "Thông tin hội thoại". Điện thoại: vào thấy danh sách trước, chạm một hội thoại mới mở khung chat (có nút quay lại).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, Search } from 'lucide-react';
@@ -12,11 +12,12 @@ import { ConvoRow, type Conversation } from './MessagesParts';
 import { ThreadView } from './MessagesThread';
 
 interface ConvoList { items: Conversation[]; unreadConversations: number }
-type Filter = 'all' | 'unread' | 'automated';
+type Filter = 'all' | 'unread' | 'automated' | 'archived';
 
-const MOBILE = '(max-width: 767px)';
+/** Dưới bề rộng này (điện thoại, máy tính bảng dọc) mỗi lúc chỉ hiện một màn: danh sách hoặc khung chat. Khớp với styles.css. */
+const MOBILE = '(max-width: 1023px)';
 /** Từ bề rộng này bảng thông tin đứng thành cột thứ ba; hẹp hơn thì nó trượt đè lên khung chat, nên mặc định đóng. */
-const WIDE = '(min-width: 1280px)';
+const WIDE = '(min-width: 1536px)';
 
 function useMedia(query: string): boolean {
   return useSyncExternalStore((l) => { const m = window.matchMedia(query); m.addEventListener('change', l); return () => m.removeEventListener('change', l); }, () => window.matchMedia(query).matches, () => false);
@@ -57,7 +58,7 @@ export default function Page() {
   const [info, setInfo] = useState(() => window.matchMedia(WIDE).matches);
   const mobile = useMedia(MOBILE);
   const wide = useMedia(WIDE);
-  // Thu hẹp cửa sổ xuống dưới 1280px thì bảng thông tin sẽ đè lên khung chat: tự đóng lại, cần thì bấm mở.
+  // Thu hẹp cửa sổ xuống dưới 1536px thì bảng thông tin sẽ đè lên khung chat: tự đóng lại, cần thì bấm mở.
   useEffect(() => { if (!wide) setInfo(false); }, [wide]);
   const frame = useRef<HTMLDivElement>(null);
   const refetchInterval = usePollInterval(15_000);
@@ -75,7 +76,7 @@ export default function Page() {
   useFillViewport(frame, open);
   const reload = () => void qc.invalidateQueries({ queryKey: ['conversations'] });
   const pin = useMutation({ mutationFn: (c: Conversation) => api.post(`/v1/me/conversations/${c.id}/pin`, { pinned: !c.pinned }), onSuccess: (_r, c) => { reload(); void qc.invalidateQueries({ queryKey: ['thread', c.id] }); } });
-  const archive = useMutation({ mutationFn: (c: Conversation) => api.post(`/v1/me/conversations/${c.id}/archive`, {}), onSuccess: (_r, c) => { reload(); if (c.id === selected) leave(c.id); } });
+  const archive = useMutation({ mutationFn: (c: Conversation) => api.post(`/v1/me/conversations/${c.id}/archive`, { archived: !c.archived }), onSuccess: (_r, c) => { reload(); void qc.invalidateQueries({ queryKey: ['thread', c.id] }); if (!c.archived && c.id === selected) leave(c.id); } });
   const tab = (key: Filter, label: string) => <button type="button" role="tab" aria-selected={filter === key} className={`chat-tab${filter === key ? ' on' : ''}`} onClick={() => setFilter(key)}>{label}</button>;
   return (
     <div ref={frame} className={`chat-page${open ? ' open' : ''}`}>
@@ -88,9 +89,10 @@ export default function Page() {
           {tab('all', 'Tất cả')}
           {tab('unread', `Chưa đọc${q.data?.unreadConversations ? ` (${q.data.unreadConversations})` : ''}`)}
           {tab('automated', 'Tự động')}
+          {tab('archived', 'Lưu trữ')}
         </div>
         <div className="chat-convos">
-          <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={filter === 'all' && !search ? { title: 'Chưa có tin nhắn', hint: 'Nhắn cho thành viên từ trang hồ sơ hoặc danh sách thành viên' } : { title: 'Không có hội thoại nào khớp', hint: 'Thử bỏ bộ lọc hoặc đổi từ khóa tìm kiếm' }}>
+          <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={filter === 'all' && !search ? { title: 'Chưa có tin nhắn', hint: 'Nhắn cho thành viên từ trang hồ sơ hoặc danh sách thành viên' } : filter === 'archived' && !search ? { title: 'Chưa lưu trữ hội thoại nào', hint: 'Hội thoại bạn lưu trữ sẽ nằm ở đây, và tự trở lại danh sách chính khi có tin mới' } : { title: 'Không có hội thoại nào khớp', hint: 'Thử bỏ bộ lọc hoặc đổi từ khóa tìm kiếm' }}>
             {(d) => <>{d.items.map((c) => <ConvoRow key={c.id} c={c} on={c.id === selected} onClick={() => select(c.id)} onPin={() => pin.mutate(c)} onArchive={() => archive.mutate(c)} />)}</>}
           </QueryState>
         </div>
