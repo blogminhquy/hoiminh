@@ -1,7 +1,7 @@
 // Gói Hội Mình (/admin/goi): một cột dọc ở giữa, cả trên máy tính. Từ trên xuống: gói đang dùng, hai tab chu kỳ
 // (tháng, năm), thẻ gói với giá của tab đang chọn. Bấm nút trên thẻ thì khung thanh toán bật lên: chọn cách trả
 // → POST /v1/checkout → /thanh-toan/:orderId. Khi quản trị cài gói thu tiền bằng link ngoài (Hệ thống, Gói nền tảng)
-// thì khung bật lên chỉ còn một nút dẫn sang link đó, và chỉ hiện chu kỳ nào có link.
+// thì nút trên thẻ dẫn thẳng sang link đó (không có khung bật lên), và chỉ hiện chu kỳ nào có link.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, Modal, money, OptionCard, Skeleton, T, Tag } from '@hoiminh/ui';
 import { Check, ChevronLeft, ExternalLink, Sparkles } from 'lucide-react';
@@ -42,24 +42,18 @@ function CurrentPlan({ d, v }: { d: WorkspaceHome; v: PlanView }) {
 
 function PayModal({ open, onClose, workspaceId, plan, cycle, renewing }: { open: boolean; onClose: () => void; workspaceId: string; plan: PlanPrice; cycle: Cycle; renewing: boolean }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [provider, setProvider] = useState<Provider>('sepay');
   const m = useMutation({
     mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', { target: { type: 'platform', workspaceId, cycle }, provider }),
     onSuccess: (r) => navigate(`/thanh-toan/${r.orderId}`),
   });
   const total = money(cycle === 'yearly' ? plan.yearlyMinor : plan.monthlyMinor);
-  // Gói thu tiền bằng link ngoài: không chọn cổng, chỉ dẫn sang trang thanh toán của hệ thống đó.
-  const payUrl = externalPayUrl(plan, cycle, { workspaceId, email: user?.email ?? '' });
-  const external = plan.paymentMode === 'link';
   return (
     <Modal open={open} onClose={onClose} title="Thanh toán gói Hội Mình" width={480} footer={(
       <div className="flex flex-col gap-2.5 px-5 py-4" style={{ borderTop: `1px solid ${T.line}` }}>
         {m.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
-        {external
-          ? payUrl && <a href={payUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg w-full" onClick={onClose}>Tới trang thanh toán<ExternalLink size={18} /></a>
-          : <Button variant="primary" size="lg" block loading={m.isPending} onClick={() => m.mutate()}>Thanh toán {total}</Button>}
-        <div className="muted text-[13px] text-center">{external ? 'Gói được kích hoạt sau khi Hội Mình ghi nhận thanh toán của bạn.' : renewing ? 'Thời hạn mới được cộng nối vào ngày hết hạn hiện tại.' : 'Gói có hiệu lực ngay khi tiền về.'}</div>
+        <Button variant="primary" size="lg" block loading={m.isPending} onClick={() => m.mutate()}>Thanh toán {total}</Button>
+        <div className="muted text-[13px] text-center">{renewing ? 'Thời hạn mới được cộng nối vào ngày hết hạn hiện tại.' : 'Gói có hiệu lực ngay khi tiền về.'}</div>
       </div>
     )}>
       <div className="p-5 flex flex-col gap-4">
@@ -68,20 +62,17 @@ function PayModal({ open, onClose, workspaceId, plan, cycle, renewing }: { open:
           <span className="flex-grow" />
           <span className="serif text-[20px] font-extrabold">{total}</span>
         </div>
-        {external ? (
-          <div className="text-[14px]" style={{ color: T.ink2 }}>Bạn sẽ được chuyển sang trang thanh toán mở ở thẻ mới. Trả xong, quay lại đây để xem gói.</div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <span className="text-[13px] font-semibold">Cách thanh toán</span>
-            <div className="grid-2">{PROVIDERS.map(([k, l]) => <OptionCard key={k} on={provider === k} onClick={() => setProvider(k)} title={l} />)}</div>
-          </div>
-        )}
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] font-semibold">Cách thanh toán</span>
+          <div className="grid-2">{PROVIDERS.map(([k, l]) => <OptionCard key={k} on={provider === k} onClick={() => setProvider(k)} title={l} />)}</div>
+        </div>
       </div>
     </Modal>
   );
 }
 
 function PlanOffer({ workspaceId, plan, plansFailed, onRetry, v }: { workspaceId: string; plan: PlanPrice | null; plansFailed: boolean; onRetry: () => void; v: PlanView }) {
+  const { user } = useAuth();
   const [picked, setCycle] = useState<Cycle>(v.cycle);
   const [paying, setPaying] = useState(false);
   // Link ngoài: chỉ bán chu kỳ nào quản trị đã cài link; chu kỳ đang chọn không còn bán thì lấy chu kỳ đầu.
@@ -89,6 +80,10 @@ function PlanOffer({ workspaceId, plan, plansFailed, onRetry, v }: { workspaceId
   const cycle = cycles.includes(picked) ? picked : cycles[0] ?? picked;
   const saving = plan ? yearlySaving(plan) : null;
   const yearly = cycle === 'yearly';
+  // Gói thu tiền bằng link ngoài: nút trên thẻ dẫn thẳng sang trang thanh toán đó, không qua khung bật lên.
+  const external = plan?.paymentMode === 'link';
+  const payUrl = plan ? externalPayUrl(plan, cycle, { workspaceId, email: user?.email ?? '' }) : null;
+  const cta = `${v.needsPayment ? 'Thanh toán' : 'Gia hạn'} gói ${CYCLE_NAME[cycle]}`;
   const tab = (k: Cycle, label: string) => (
     <button type="button" role="tab" aria-selected={cycle === k} className={cycle === k ? 'on' : undefined} onClick={() => setCycle(k)}>{label}</button>
   );
@@ -127,9 +122,16 @@ function PlanOffer({ workspaceId, plan, plansFailed, onRetry, v }: { workspaceId
           </div>
         )}
         {plan && cycles.length === 0 && <div className="text-[13px]" style={{ color: T.accentText }}>Gói đang tạm ngừng nhận thanh toán. Liên hệ Hội Mình để được hỗ trợ.</div>}
-        <Button variant="primary" size="lg" block disabled={!plan || cycles.length === 0} onClick={() => setPaying(true)}>{v.needsPayment ? 'Thanh toán' : 'Gia hạn'} gói {CYCLE_NAME[cycle]}</Button>
+        {external && payUrl ? (
+          <div className="flex flex-col gap-2.5">
+            <a href={payUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg w-full">{cta}<ExternalLink size={18} /></a>
+            <div className="muted text-[13px] text-center">Trang thanh toán mở ở thẻ mới. Gói được kích hoạt sau khi Hội Mình ghi nhận thanh toán của bạn.</div>
+          </div>
+        ) : (
+          <Button variant="primary" size="lg" block disabled={!plan || cycles.length === 0} onClick={() => setPaying(true)}>{cta}</Button>
+        )}
       </div>
-      {plan && <PayModal open={paying} onClose={() => setPaying(false)} workspaceId={workspaceId} plan={plan} cycle={cycle} renewing={v.state === 'active'} />}
+      {plan && !external && <PayModal open={paying} onClose={() => setPaying(false)} workspaceId={workspaceId} plan={plan} cycle={cycle} renewing={v.state === 'active'} />}
     </>
   );
 }

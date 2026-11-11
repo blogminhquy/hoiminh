@@ -7,7 +7,7 @@ Gói Hội Mình thu tiền được bằng link thanh toán ngoài, do quản t
 ### Tính năng
 
 - **Chọn cách thu tiền gói Hội Mình** (Hệ thống, Gói nền tảng, "Sửa gói"): "Thanh toán trong Hội Mình" (chuyển khoản QR, MoMo, VNPAY, PayPal, như trước) hoặc "Link thanh toán ngoài". Chọn link ngoài thì nhập link cho gói tháng, gói năm; để trống chu kỳ nào thì chu kỳ đó không bán. Thẻ gói ghi rõ đang thu tiền theo cách nào.
-- **Chủ hội ở chế độ link ngoài:** trang Gói Hội Mình chỉ hiện chu kỳ có link; bấm nút thanh toán thì khung bật lên còn một nút "Tới trang thanh toán" mở link ở thẻ mới.
+- **Chủ hội ở chế độ link ngoài:** trang Gói Hội Mình chỉ hiện chu kỳ có link; nút thanh toán trên thẻ gói dẫn thẳng sang link đó (mở ở thẻ mới), không qua khung bật lên.
 - **Link điền sẵn người trả.** Viết `{workspace_id}`, `{email}`, `{cycle}` vào link thì Hội Mình điền mã hội, email chủ hội, chu kỳ (`monthly` hoặc `yearly`) khi mở. Link không có `{workspace_id}` thì tự thêm `hm_ws` và `hm_cycle` vào cuối, để hệ thống ngoài luôn biết hội nào trả. Email chỉ được gửi đi khi link có ghi `{email}`.
 - **Chưa có:** Hội Mình chưa tự kích hoạt gói khi khách trả qua link ngoài (phần nhận webhook từ hệ thống ngoài chưa xây). Ô cài đặt có ghi rõ điều này.
 
@@ -32,7 +32,7 @@ Gói Hội Mình thu tiền được bằng link thanh toán ngoài, do quản t
 - Migration `0010_plan_payment_link.sql`: thêm ba cột vào bảng `plans` (`payment_mode` mặc định `gateway`, `monthly_pay_url`, `yearly_pay_url`). Chỉ thêm cột, viết `IF NOT EXISTS`. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy**, vì mọi truy vấn lấy gói đều đọc các cột này.
 - `PATCH /v1/admin/plans/:key` nhận thêm `paymentMode`, `monthlyPayUrl`, `yearlyPayUrl`. Link phải là `https`, dài tối đa 500 ký tự; chế độ link mà không có link nào thì bị từ chối. `GET /v1/plans` trả thêm ba trường này.
 - `POST /v1/checkout` với gói nền tảng bị từ chối khi gói đang ở chế độ link ngoài, để lựa chọn của quản trị không bị vượt qua bằng cách gọi thẳng API.
-- Test e2e luồng 20: quản trị cài link, chủ hội thấy nút dẫn sang link có mã hội, quản trị trả về như cũ.
+- Test e2e luồng 20: quản trị cài link, nút thanh toán của chủ hội dẫn thẳng sang link có mã hội, quản trị trả về như cũ.
 - Test e2e luồng 6 đi qua trang mới: bấm liên kết "Thanh toán gói" ở `/admin`, sang `/admin/goi`, đổi tab năm rồi về tab tháng, mở khung thanh toán, thanh toán.
 
 ## 1.30.0 - 2026-11-11
