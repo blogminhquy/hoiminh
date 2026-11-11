@@ -36,7 +36,8 @@ export async function uniqueHandle(ctx: Ctx, name: string): Promise<string> {
   return `${base}-${randomCode(4).toLowerCase()}`;
 }
 
-async function issueSession(ctx: Ctx, provider: AuthProvider, user: typeof users.$inferSelect, remember: boolean, meta?: { userAgent?: string }): Promise<AuthSession> {
+/** Mở một phiên đăng nhập mới cho người dùng đã được xác thực bằng cách khác (mật khẩu, link một lần...). */
+export async function issueSession(ctx: Ctx, provider: AuthProvider, user: typeof users.$inferSelect, remember: boolean, meta?: { userAgent?: string }): Promise<AuthSession> {
   const refresh = await newRefreshToken();
   const [session] = await ctx.db
     .insert(authSessions)

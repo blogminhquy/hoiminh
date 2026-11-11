@@ -2,7 +2,7 @@
 
 ## 1.32.0 - 2026-11-11
 
-Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng. Tiền bán hàng của hội về thẳng tài khoản ngân hàng của chủ hội, không còn đi qua Hội Mình.
+Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng. Tiền bán hàng của hội về thẳng tài khoản ngân hàng của chủ hội, không còn đi qua Hội Mình. Trên điện thoại, thành viên có thể được yêu cầu thêm Hội Mình ra màn hình chính (quản trị hệ thống bật tắt, mặc định đang tắt) và nhận thông báo đẩy.
 
 ### Tính năng
 
@@ -17,6 +17,10 @@ Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho
 - **Bảng giá công khai (`/tao-hoi/goi`)** hiện bốn gói, nút "Tạo hội miễn phí".
 - **Chủ hội cài nhận tiền** (Cài đặt, Bán hàng, Nhận tiền): nhập ngân hàng, số tài khoản, tên chủ tài khoản. Người mua thấy mã QR chuyển khoản tới đúng tài khoản đó, kèm nội dung có mã đơn. Hội chưa cài thì các nút mua và nút tham gia hội thu phí bị khóa, ghi "Hội chưa mở thanh toán".
 - **Hai cách xác nhận đơn.** "Tôi tự bấm đã nhận tiền": người mua bấm "Tôi đã chuyển khoản" thì chủ hội nhận thông báo, vào danh sách "Đơn chờ bạn xác nhận" bấm "Đã nhận tiền" là người mua được mở quyền ngay. "Tự xác nhận": chủ hội dán địa chỉ báo có riêng của hội vào dịch vụ báo biến động số dư của mình (định dạng SePay), tiền về đúng mã và đủ số là đơn tự chuyển sang đã trả.
+- **Cài Hội Mình ra màn hình chính.** Hội Mình nay cài được như một ứng dụng: có biểu tượng riêng, mở toàn màn hình. Khi quản trị bật công tắc, thành viên đã đăng nhập dùng điện thoại, từ lần vào thứ hai, sẽ thấy màn hướng dẫn thay cho ứng dụng: iPhone có 3 bước của nút Chia sẻ; Android có nút "Cài ứng dụng" một lần bấm rồi mời bật thông báo. Lần vào đầu tiên, máy tính, các trang công khai, trang thanh toán và máy không cài được thì vẫn dùng bình thường.
+- **Mở từ Zalo, Facebook, Messenger.** Trình duyệt trong các ứng dụng này không cài được, nên màn hướng dẫn ghi "Mở bằng Safari hoặc Chrome" kèm nút "Sao chép link đăng nhập". Dán link vào Safari hoặc Chrome là vào thẳng tài khoản, không gõ lại mật khẩu. Link dùng được một lần, trong 10 phút.
+- **Thông báo đẩy ra điện thoại.** Mọi thông báo trong ứng dụng (trả lời bình luận, bài mới của chủ hội, nhắc sự kiện, đơn chờ xác nhận...) được đẩy ra điện thoại đã bật. Bật tắt ở trang Thông báo, dòng "Đẩy trên điện thoại"; dòng này nói rõ khi thiết bị chưa nhận được và vì sao. Hội Mình chỉ hỏi bật thông báo đúng lúc: ngay sau khi cài trên Android, hoặc sau khi bạn vừa bình luận, và không hỏi lại trong 14 ngày nếu bạn chọn "Để sau".
+- **Công tắc toàn hệ thống** ở Hệ thống, Gói nền tảng: "Bắt cài ra màn hình chính trên điện thoại". Mặc định tắt. Quản trị hệ thống không bao giờ bị chặn, để luôn tắt được công tắc từ điện thoại.
 
 ### Thay đổi
 
@@ -42,6 +46,12 @@ Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho
 - Khung hội (`/shell`) trả thêm `plan` cho người quản lý hội.
 - Ngày bắt đầu kỳ tính từ lúc gói được kích hoạt, không tính từ giờ giao dịch ngân hàng.
 - Test: core `plans.test.ts` (17) và `owner-payout.test.ts` (8), web `platform-plan.test.ts` (10) và `owner-todo.test.ts`, e2e luồng 2, 3, 5, 6, 7, 9, 20, 21, 22.
+- Migration `0013_install_gate_push`: bảng `push_subscriptions` (thiết bị đã bật thông báo đẩy) và `login_links` (link đăng nhập một lần, chỉ lưu mã băm), đều có policy RLS theo người dùng; thêm cờ `install_gate` (mặc định tắt). Chạy lại được.
+- Thông báo đẩy tự viết bằng WebCrypto để chạy trên Cloudflare Workers (`packages/core/src/lib/web-push.ts`): mã hóa nội dung theo RFC 8291, xác thực máy chủ theo RFC 8292. Test đối chiếu với thư viện `http_ece` độc lập. Gửi qua hàng đợi (`push.send`); thiết bị dịch vụ đẩy báo đã chết thì tự gỡ.
+- Cần hai secret mới cho thông báo đẩy: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, tạo bằng `node scripts/generate-vapid.mjs`. Thiếu thì không gửi thông báo đẩy, mọi thứ khác vẫn chạy.
+- API mới: `GET /v1/me/push`, `POST /v1/me/push/subscribe`, `POST /v1/me/push/unsubscribe`, `POST /v1/auth/login-link`, `POST /v1/auth/login-link/consume`. `GET /v1/me` trả thêm `app` (công tắc bắt cài, khóa công khai của thông báo đẩy). Trang mới `/vao` nhận link đăng nhập một lần.
+- Web: `manifest.webmanifest`, bộ biểu tượng, service worker `/sw.js` chỉ lo thông báo đẩy (không lưu đệm trang, nên cơ chế tự cập nhật phiên bản giữ nguyên). Luật của màn bắt cài là hàm thuần `gateScreen` (`apps/web/src/lib/install-gate.ts`).
+- Test thêm: core `web-push.test.ts` (6), `install-push.test.ts` (10); web `install-gate.test.ts` (10); e2e luồng 23 (4 trường hợp).
 
 ## 1.31.2 - 2026-11-11
 

@@ -1,0 +1,18 @@
+{
+  "name": "Hội Mình",
+  "short_name": "Hội Mình",
+  "description": "Hội của mình, do mình dựng: học theo lộ trình, hỏi là có người trả lời.",
+  "lang": "vi",
+  "id": "/",
+  "start_url": "/?nguon=man-hinh-chinh",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C4A4F",
+  "theme_color": "#0C4A4F",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

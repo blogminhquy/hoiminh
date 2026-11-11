@@ -12,3 +12,12 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Service worker và khai báo ứng dụng phải luôn là bản mới, không cache.
+/sw.js
+  Cache-Control: no-cache, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
+  Content-Type: application/manifest+json; charset=utf-8

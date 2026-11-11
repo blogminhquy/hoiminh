@@ -10,6 +10,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } 
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
 import { InviteModal } from '@/components/InviteModal';
+import { PushPrompt } from '@/components/PushPrompt';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
@@ -302,6 +303,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
         {drawer && <MobileDrawer shell={data} onInvite={() => setInvite(true)} onClose={() => setDrawer(false)} />}
         {canManage(data) && <OwnerCommandPalette shell={data} open={command} onClose={() => setCommand(false)} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
+        <PushPrompt />
       </div>
     </ShellProvider>
   );

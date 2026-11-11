@@ -1,6 +1,6 @@
 // /v1/auth: đăng ký, đăng nhập, Google, làm mới, đăng xuất, xác minh email, quên/đặt lại mật khẩu.
 import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from '@hoiminh/contracts';
-import { auth, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core';
+import { auth, loginLinks, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { rateLimit } from '../middleware/rate-limit';
@@ -88,6 +88,16 @@ authRoutes.post('/forgot-password', rateLimit('auth'), async (c) => {
 authRoutes.post('/reset-password', async (c) => {
   const input = await parse(resetPasswordSchema, await body(c));
   return respondSession(c, await auth.resetPassword(c.get('ctx'), c.get('app').auth, input.token, input.password, input.logoutOthers));
+});
+
+/**
+ * Link đăng nhập một lần: người đang đăng nhập trong trình duyệt của Zalo, Facebook, Messenger lấy link, dán vào Safari
+ * hoặc Chrome là vào thẳng tài khoản. Tạo link cần đang đăng nhập; đổi link lấy phiên thì không (đó là việc của link).
+ */
+authRoutes.post('/login-link', rateLimit('auth'), async (c) => c.json(await loginLinks.createLoginLink(c.get('ctx')), 201));
+authRoutes.post('/login-link/consume', rateLimit('auth'), async (c) => {
+  const { token } = await parse(z.object({ token: z.string().min(10).max(100) }), await body(c));
+  return respondSession(c, await loginLinks.consumeLoginLink(c.get('ctx'), c.get('app').auth, token, { userAgent: c.req.header('user-agent') }));
 });
 
 function getCookie(header: string | undefined, name: string): string | null {

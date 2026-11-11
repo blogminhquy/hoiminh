@@ -13,6 +13,8 @@ export interface JobMap {
   'event.remind.batch': { eventId: string; label: string; jobKey: string; userIds: string[] };
   'leaderboard.snapshot': { communityId: string };
   'course.recount': { courseId: string };
+  /** Gửi một thông báo đẩy (Web Push) tới mọi thiết bị đã đăng ký của một người. */
+  'push.send': { userId: string; title: string; body: string; link: string | null; tag: string };
   /** Chạy một dòng scheduled_jobs (welcome DM, xóa tệp, nhắc sự kiện...). */
   'scheduled.run': { jobId: string };
 }

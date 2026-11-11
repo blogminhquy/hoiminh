@@ -10,6 +10,7 @@ import { runPostBroadcast, runPostBroadcastBatch } from './broadcast';
 import { runEventReminder, runEventReminderBatch } from './event-reminders';
 import type { Job } from './queue';
 import { runScheduledJob } from './scheduled';
+import { sendPushToUser } from '../services/push';
 
 /** Tạo handler cho hàng đợi. */
 export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
@@ -45,6 +46,9 @@ export function createJobHandler(app: AppContext): (job: Job) => Promise<void> {
         return;
       case 'event.remind.batch':
         await runEventReminderBatch(ctx, job.payload);
+        return;
+      case 'push.send':
+        await sendPushToUser(ctx, job.payload.userId, { title: job.payload.title, body: job.payload.body, link: job.payload.link, tag: job.payload.tag });
         return;
       case 'scheduled.run': {
         const result = await runScheduledJob(ctx, job.payload.jobId);

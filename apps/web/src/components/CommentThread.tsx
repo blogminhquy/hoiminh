@@ -5,6 +5,7 @@ import { ChevronDown, Pin, SendHorizontal } from 'lucide-react';
 import { useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
+import { askForPushSoon } from '@/lib/pwa';
 import { useAuth } from '@/lib/auth';
 import { timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
@@ -126,7 +127,7 @@ export function CommentThread({ targetType, targetId, title, extraHeader, placeh
   const create = useMutation({
     mutationFn: (input: { contentMd: string; parentCommentId?: string }) => api.post<{ id: string }>('/v1/comments', { targetType, targetId, ...input }),
     // Bình luận vừa gửi có thể nằm ngoài tầm nhìn (danh sách xếp theo tương tác): chờ danh sách tải lại rồi cuộn tới nó.
-    onSuccess: async (row) => { await invalidate(); requestAnimationFrame(() => document.getElementById(`binh-luan-${row.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); },
+    onSuccess: async (row) => { askForPushSoon('comment'); await invalidate(); requestAnimationFrame(() => document.getElementById(`binh-luan-${row.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); },
   });
   const pin = useMutation({ mutationFn: (v: { id: string; pinned: boolean }) => api.post(`/v1/comments/${v.id}/pin`, { pinned: v.pinned }), onSuccess: invalidate });
   const del = useMutation({ mutationFn: (id: string) => api.del(`/v1/comments/${id}`), onSuccess: invalidate });

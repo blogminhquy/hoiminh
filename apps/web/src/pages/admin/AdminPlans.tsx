@@ -23,6 +23,9 @@ const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời g
 const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
 /** Cờ của tính năng chưa xây (thuộc V2): bật hay tắt chưa đổi gì, nên không hiện để khỏi gây hiểu nhầm. */
 const NO_EFFECT = new Set(['realtime_chat', 'go_live', 'gamification']);
+/** Công tắc toàn hệ thống (không phải tính năng của hội): có thẻ riêng ở trang Gói nền tảng, không nằm trong danh sách tính năng. */
+const INSTALL_GATE = 'install_gate';
+const isFeature = (f: { key: string }) => !NO_EFFECT.has(f.key) && f.key !== INSTALL_GATE;
 
 /** Luật đã chốt trong kế hoạch 11/11/2026: nằm trong mã, không sửa ở màn này. */
 const FIXED_RULES = [
@@ -110,6 +113,7 @@ export default function Page() {
   const flags = useQuery({ queryKey: ['admin', 'flags'], queryFn: () => api.get<Flag[]>('/v1/admin/flags') });
   const aff = useQuery({ queryKey: ['admin', 'affiliate'], queryFn: () => api.get<AffiliateInfo>('/v1/admin/affiliate') });
   const setFlag = useMutation({ mutationFn: (p: { key: string; enabled: boolean }) => api.put(`/v1/admin/flags/${p.key}`, { enabled: p.enabled }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'flags'] }) });
+  const gate = flags.data?.find((f) => f.key === INSTALL_GATE);
   const box = (label: string, value: string, sub: string) => <div className="flex-1 px-4 py-3.5 rounded-xl" style={{ background: 'rgba(255,253,249,0.08)' }}><div className="text-[12px]" style={{ color: T.sideText }}>{label}</div><div className="serif text-[26px] font-extrabold">{value}</div><div className="text-[12px]" style={{ color: T.sideText }}>{sub}</div></div>;
   if (featuresView) {
     return (
@@ -118,7 +122,7 @@ export default function Page() {
         <div className="card flex flex-col gap-2.5" style={{ padding: '18px 20px', maxWidth: 720 }}>
           <span className="font-semibold">Tính năng đang bật theo giai đoạn</span>
           <QueryState q={flags} rows={3} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có cờ tính năng' }}>
-            {(list) => <>{list.filter((f) => !NO_EFFECT.has(f.key)).map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
+            {(list) => <>{list.filter(isFeature).map((f) => <div key={f.key} className="flex items-start gap-2.5 text-[13px]"><span className="flex-grow flex flex-col"><span>{FLAG_LABEL[f.key] ?? f.key}</span>{FLAG_EFFECT[f.key] && <span className="muted text-[11px]">{FLAG_EFFECT[f.key]}</span>}</span><span className="muted text-[12px]">{f.enabled ? 'Bật cho mọi hội' : `Tắt${f.description ? ` · ${f.description}` : ''}`}</span><Toggle on={f.enabled} disabled={setFlag.isPending} onChange={(v) => setFlag.mutate({ key: f.key, enabled: v })} /></div>)}</>}
           </QueryState>
           <div className="muted text-[13px] pt-2" style={{ borderTop: `1px solid ${T.line}` }}>Không hiện 3 cờ của tính năng chưa xây (tin nhắn thời gian thực, phát trực tiếp, điểm và cấp độ): bật hay tắt chưa đổi gì.</div>
         </div>
@@ -140,6 +144,17 @@ export default function Page() {
           </>
         )}
       </QueryState>
+      <div className="card flex flex-col gap-3" style={{ padding: '18px 20px' }}>
+        <span className="font-semibold text-[16px]">Công tắc toàn hệ thống</span>
+        <div className="flex items-start gap-3">
+          <span className="flex-shrink-0 pt-1"><Toggle on={gate?.enabled === true} disabled={!gate || setFlag.isPending} label="Bắt cài ra màn hình chính trên điện thoại" onChange={(v) => setFlag.mutate({ key: INSTALL_GATE, enabled: v })} /></span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[16px] font-semibold">Bắt cài ra màn hình chính trên điện thoại</span>
+            <span className="text-[14px]" style={{ color: T.ink2 }}>Thành viên đã đăng nhập, từ lần vào thứ hai, phải thêm Hội Mình vào màn hình chính mới dùng tiếp. Tắt ngay nếu số người quay lại hội tụt.</span>
+            <span className="text-[14px] font-semibold" role="status" style={{ color: gate?.enabled ? T.tealText : T.ink3 }}>{!gate ? 'Đang tải...' : gate.enabled ? 'Đang bật' : 'Đang tắt'}</span>
+          </div>
+        </div>
+      </div>
       <div className="card flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
         <span className="font-semibold text-[16px]">Luật cố định, không sửa ở đây</span>
         {FIXED_RULES.map((r) => (
@@ -156,7 +171,7 @@ export default function Page() {
         <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
           <span className="font-semibold">Tính năng</span>
           <QueryState q={flags} rows={1}>
-            {(list) => { const real = list.filter((f) => !NO_EFFECT.has(f.key)); return <div className="text-[13px]">{real.filter((f) => f.enabled).length} trên {real.length} tính năng đang bật cho mọi hội.</div>; }}
+            {(list) => { const real = list.filter(isFeature); return <div className="text-[13px]">{real.filter((f) => f.enabled).length} trên {real.length} tính năng đang bật cho mọi hội.</div>; }}
           </QueryState>
           <Link to="/he-thong/tinh-nang" className="btn btn-ghost btn-sm self-start">Bật tắt tính năng</Link>
         </div>

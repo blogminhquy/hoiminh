@@ -2,13 +2,14 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Chip, CommunityMark, Select, T, Toggle } from '@hoiminh/ui';
 import { AtSign, Bell, BellOff, Calendar, CheckCheck, CircleDollarSign, Heart, Mail, Megaphone, MessageCircle, UserPlus } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fmtDate, timeAgo } from '@/lib/format';
+import { disablePush, enablePush, pushEnabledHere, pushPermission, pushSupported } from '@/lib/pwa';
 
 interface Notif { id: string; kind: string; category: string; title: string; body: string | null; link: string | null; actionLabel: string | null; readAt: string | null; createdAt: string; actor: { name: string; avatarUrl: string | null; coverColor: string | null } | null; community: { name: string; slug: string } | null }
 interface List { items: Notif[]; nextCursor: string | null; unreadCount: number }
@@ -37,6 +38,38 @@ function Row({ n, onRead }: { n: Notif; onRead: () => void }) {
   const cls = 'flex gap-3.5 items-start px-5 py-3.5 text-left w-full';
   const style = { borderTop: `1px solid ${T.line}`, background: unread ? T.surface : T.bg };
   return n.link ? <Link to={n.link} className={cls} style={style} onClick={onRead}>{inner}</Link> : <button type="button" className={cls} style={style} onClick={onRead}>{inner}</button>;
+}
+
+/**
+ * Dòng "Đẩy trên điện thoại". Thông báo đẩy gắn với từng thiết bị: bật ở đây là xin quyền của trình duyệt và đăng ký
+ * thiết bị này; tắt là gỡ thiết bị này và ngừng đẩy cho tài khoản. Thiết bị không nhận được thì nói rõ vì sao.
+ */
+function PushRow({ on, save }: { on: boolean; save: (v: boolean) => void }) {
+  const { app } = useAuth();
+  const [here, setHere] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => { void pushEnabledHere().then(setHere, () => setHere(false)); }, []);
+  const available = app.push.enabled && Boolean(app.push.publicKey) && pushSupported();
+  const why = !app.push.enabled ? 'Hệ thống chưa bật thông báo đẩy.'
+    : !pushSupported() ? 'Trình duyệt này chưa nhận được thông báo đẩy. Trên iPhone, hãy thêm Hội Mình vào màn hình chính rồi mở từ biểu tượng đó.'
+    : pushPermission() === 'denied' ? 'Bạn đã chặn thông báo của Hội Mình trên trình duyệt này. Mở cài đặt của trình duyệt để cho phép lại.'
+    : on && here === false ? 'Thiết bị này chưa bật. Gạt lại công tắc để bật trên thiết bị này.'
+    : null;
+  const change = async (v: boolean) => {
+    setNote(null);
+    if (!v) { setBusy(true); await disablePush().catch(() => null); setBusy(false); setHere(false); save(false); return; }
+    setBusy(true);
+    const r = await enablePush(app.push.publicKey!).catch(() => 'denied' as const);
+    setBusy(false);
+    if (r === 'enabled') { setHere(true); save(true); setNote('Đã bật trên thiết bị này.'); } else setNote(r === 'denied' ? 'Chưa bật được vì trình duyệt không cho phép thông báo.' : 'Thiết bị này chưa nhận được thông báo đẩy.');
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2.5 text-[14px]"><span style={{ color: T.ink2 }}><Bell size={16} /></span><span className="flex-grow">Đẩy trên điện thoại</span><Toggle on={on && here === true} label="Đẩy trên điện thoại" disabled={busy || !available || pushPermission() === 'denied'} onChange={(v) => void change(v)} /></div>
+      {(note ?? why) && <span className="text-[13px]" role="status" style={{ color: T.ink3, paddingLeft: 26 }}>{note ?? why}</span>}
+    </div>
+  );
 }
 
 export default function Page() {
@@ -80,7 +113,8 @@ export default function Page() {
       <aside className="rail flex flex-col gap-4">
         <div className="card p-4 flex flex-col gap-3">
           <div className="font-semibold">Cài đặt nhanh</div>
-          {p && ([['emailDigest', <Mail size={16} key="m" />, 'Email tổng hợp mỗi sáng'], ['push', <Bell size={16} key="b" />, 'Đẩy trên điện thoại'], ['likes', <Heart size={16} key="h" />, 'Báo khi có lượt thích']] as Array<['emailDigest' | 'push' | 'likes', ReactNode, string]>).map(([k, ic, l]) => <div key={k} className="flex items-center gap-2.5 text-[13px]"><span style={{ color: T.ink2 }}>{ic}</span><span className="flex-grow">{l}</span><Toggle on={p[k]} onChange={(v) => savePrefs.mutate({ [k]: v })} /></div>)}
+          {p && ([['emailDigest', <Mail size={16} key="m" />, 'Email tổng hợp mỗi sáng'], ['likes', <Heart size={16} key="h" />, 'Báo khi có lượt thích']] as Array<['emailDigest' | 'likes', ReactNode, string]>).map(([k, ic, l]) => <div key={k} className="flex items-center gap-2.5 text-[14px]"><span style={{ color: T.ink2 }}>{ic}</span><span className="flex-grow">{l}</span><Toggle on={p[k]} label={l} onChange={(v) => savePrefs.mutate({ [k]: v })} /></div>)}
+          {p && <PushRow on={p.push} save={(v) => savePrefs.mutate({ push: v })} />}
         </div>
         <div className="card p-4 flex flex-col gap-2.5">
           <div className="font-semibold">Theo cộng đồng</div>

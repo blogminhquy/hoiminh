@@ -62,6 +62,7 @@ export async function seedPlatform(db: Database, base: Date, U: Record<string, S
       { key: 'mcp', description: 'MCP cho AI', enabled: true },
       { key: 'gamification', description: 'Điểm và cấp độ hoạt động (mục 65, để sau)', enabled: false },
       { key: 'paypal', description: 'Cổng PayPal', enabled: false },
+      { key: 'install_gate', description: 'Bắt thành viên đã đăng nhập trên điện thoại cài Hội Mình ra màn hình chính (từ lần vào thứ hai)', enabled: false },
     ])
     .onConflictDoNothing();
   for (const step of ['logo', 'first_post', 'first_course', 'payout_connected']) {

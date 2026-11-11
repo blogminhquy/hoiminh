@@ -95,6 +95,23 @@ export const passwordResets = pgTable(
   (t) => [uniqueIndex('password_resets_token_uq').on(t.tokenHash), index('password_resets_user_idx').on(t.userId)],
 );
 
+/**
+ * Link đăng nhập một lần: người đang đăng nhập trong trình duyệt của Zalo, Facebook, Messenger sao chép link này rồi dán
+ * vào Safari hoặc Chrome để vào thẳng tài khoản, không phải gõ lại mật khẩu. Chỉ lưu bản băm của mã, dùng một lần, hạn ngắn.
+ */
+export const loginLinks = pgTable(
+  'login_links',
+  {
+    id: id(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: ts('expires_at').notNull(),
+    consumedAt: ts('consumed_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('login_links_token_uq').on(t.tokenHash), index('login_links_user_idx').on(t.userId)],
+);
+
 /** Phiên đăng nhập (refresh token băm) để đăng xuất khỏi thiết bị khác. */
 export const authSessions = pgTable(
   'auth_sessions',

@@ -37,6 +37,14 @@ export const envSchema = z.object({
   YOUTUBE_API_KEY: z.string().default(''),
   EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
 
+  /**
+   * Tùy chọn: cặp khóa VAPID để gửi thông báo đẩy (Web Push). Tạo bằng `node scripts/generate-vapid.mjs`.
+   * Thiếu một trong hai khóa thì thông báo đẩy tắt hẳn, mọi thứ khác chạy bình thường.
+   */
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:hotro@hoiminh.vn'),
+
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),
   R2_SECRET_ACCESS_KEY: z.string().default(''),
@@ -159,6 +167,6 @@ export const BUSINESS = {
 /** Slug bị cấm dùng cho hội (trùng route hệ thống). */
 export const RESERVED_SLUGS = new Set([
   'admin', 'he-thong', 'api', 'v1', 'kham-pha', 'dang-nhap', 'dang-ky', 'quen-mat-khau', 'dat-lai-mat-khau',
-  'xac-minh-email', 'kich-hoat', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
+  'xac-minh-email', 'kich-hoat', 'vao', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
   'static', 'hoiminh', 'www', 'app', 'mail', 'support', 'help',
 ]);

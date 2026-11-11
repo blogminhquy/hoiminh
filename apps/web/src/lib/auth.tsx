@@ -12,12 +12,18 @@ interface MeResponse {
   user: AuthUser;
   profile: Record<string, unknown> & { bio: string; location: string; occupation: string; coverColor: string | null; coverUrl?: string | null; links: Array<{ kind: string; label: string; url: string }>; privacy: Record<string, boolean> };
   communities: MyCommunity[];
+  /** Cấu hình toàn hệ thống cho người đã đăng nhập. Bản API cũ không trả thì coi như tắt hết. */
+  app?: AppConfig;
 }
+export interface AppConfig { installGate: boolean; push: { enabled: boolean; publicKey: string | null } }
+const NO_APP: AppConfig = { installGate: false, push: { enabled: false, publicKey: null } };
 
 interface AuthContextValue {
   user: AuthUser | null;
   profile: MeResponse['profile'] | null;
   communities: MyCommunity[];
+  /** Công tắc bắt cài ra màn hình chính và khóa đăng ký thông báo đẩy. */
+  app: AppConfig;
   loading: boolean;
   setSession: (s: AuthSession) => void;
   logout: () => Promise<void>;
@@ -38,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setSession = useCallback((s: AuthSession) => {
     // API đã đặt cookie phiên; chỉ cần vẽ lại để đọc cờ đăng nhập mới.
     bump((n) => n + 1);
-    qc.setQueryData(['me'], (old: MeResponse | undefined) => ({ user: s.user, profile: old?.profile ?? ({} as MeResponse['profile']), communities: old?.communities ?? [] }));
+    qc.setQueryData(['me'], (old: MeResponse | undefined) => ({ user: s.user, profile: old?.profile ?? ({} as MeResponse['profile']), communities: old?.communities ?? [], app: old?.app }));
     void qc.invalidateQueries({ queryKey: ['me'] });
   }, [qc]);
   const logout = useCallback(async () => {
@@ -47,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/dang-nhap';
   }, [qc]);
   const refresh = useCallback(async () => { await qc.invalidateQueries({ queryKey: ['me'] }); }, [qc]);
-  const value = useMemo<AuthContextValue>(() => ({ user: enabled && q.data ? q.data.user : null, profile: q.data?.profile ?? null, communities: q.data?.communities ?? [], loading: !migrated || (enabled && q.isLoading), setSession, logout, refresh }), [migrated, enabled, q.data, q.isLoading, setSession, logout, refresh]);
+  const value = useMemo<AuthContextValue>(() => ({ user: enabled && q.data ? q.data.user : null, profile: q.data?.profile ?? null, communities: q.data?.communities ?? [], app: q.data?.app ?? NO_APP, loading: !migrated || (enabled && q.isLoading), setSession, logout, refresh }), [migrated, enabled, q.data, q.isLoading, setSession, logout, refresh]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -15,6 +15,8 @@ export const FLAG = {
   realtimeChat: 'realtime_chat',
   goLive: 'go_live',
   gamification: 'gamification',
+  /** Bắt thành viên đã đăng nhập trên điện thoại cài Hội Mình ra màn hình chính (từ lần vào thứ hai). Mặc định tắt. */
+  installGate: 'install_gate',
 } as const;
 export type FlagKey = (typeof FLAG)[keyof typeof FLAG];
 
