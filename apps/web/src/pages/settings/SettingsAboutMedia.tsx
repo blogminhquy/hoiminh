@@ -1,13 +1,14 @@
 // Cài đặt · Chung: bộ ảnh và video của trang giới thiệu hội. Bố cục giống chính trang giới thiệu: một khung to
 // hiện mục đang chọn, bên dưới là hàng ảnh nhỏ, cuối hàng là hai ô thêm ảnh và thêm video.
-// Thêm, đổi, xóa, xếp thứ tự; mỗi thay đổi lưu ngay (PUT /about-media).
+// Đổi thứ tự bằng cách nhấn giữ một ảnh nhỏ rồi kéo thả. Mỗi thay đổi lưu ngay (PUT /about-media).
 import { ABOUT_MEDIA_MAX, type AboutMediaItem } from '@hoiminh/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, T } from '@hoiminh/ui';
-import { ChevronLeft, ChevronRight, ImagePlus, Pencil, Play, Trash2, Video } from 'lucide-react';
+import { ImagePlus, Pencil, Play, Trash2, Video } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { VIDEO_SOURCES, videoInfo } from '@/lib/about-media';
 import { api, errorMessage } from '@/lib/api';
+import { moveItem, positionAfterMove, useDragSort } from '@/lib/use-drag-sort';
 
 const toPayload = (rows: AboutMediaItem[]) => ({ items: rows.map((r) => (r.kind === 'image' ? { kind: 'image' as const, fileId: r.fileId } : { kind: 'video' as const, url: r.url })) });
 /** Ảnh nhỏ tự chia đều theo bề ngang: điện thoại 3 ô một dòng, máy tính 7 đến 8 ô. */
@@ -105,14 +106,13 @@ export function AboutMediaCard({ communityId, initial }: { communityId: string; 
     if (await commit(next, editing ? at : rows.length)) closeLink();
   };
 
-  const move = (by: -1 | 1) => {
-    const j = at + by;
-    if (j < 0 || j >= rows.length) return;
-    const next = [...rows];
-    [next[at], next[j]] = [next[j]!, next[at]!];
+  /** Đưa mục ở vị trí `from` tới `to` (kéo thả, hoặc Shift + phím mũi tên). Khung to đi theo mục vừa chuyển. */
+  const moveTo = (from: number, to: number) => {
+    if (to < 0 || to >= rows.length || to === from) return;
     closeLink();
-    void commit(next, j);
+    void commit(moveItem(rows, from, to), to);
   };
+  const sort = useDragSort({ count: rows.length, disabled: busy, onDrop: moveTo });
 
   const remove = () => {
     if (!cur) return;
@@ -125,7 +125,9 @@ export function AboutMediaCard({ communityId, initial }: { communityId: string; 
   const curVideo = cur?.kind === 'video' ? videoInfo(cur.url) : null;
   const curName = cur ? nameOf(cur, at) : '';
   const tool = 'inline-flex items-center justify-center gap-1.5 rounded-[10px] text-[14px] font-semibold disabled:opacity-40 whitespace-nowrap';
-  const toolStyle = { height: 40, padding: '0 12px', background: T.bg, color: T.ink };
+  const toolStyle = { height: 40, padding: '0 12px', background: T.surface, color: T.ink, boxShadow: '0 2px 10px rgba(0,0,0,0.25)' };
+  const dragging = sort.drag ? rows[sort.drag.from] : undefined;
+  const dragBg = dragging ? (dragging.kind === 'image' ? dragging.url : videoInfo(dragging.url)?.thumb ?? null) : null;
   const addTile = 'rounded-[10px] flex flex-col items-center justify-center gap-0.5 text-[13px] font-semibold leading-tight disabled:opacity-40';
   const addTileStyle = { ...THUMB, border: `1.5px dashed ${T.line2}`, color: T.ink2 };
 
@@ -158,34 +160,46 @@ export function AboutMediaCard({ communityId, initial }: { communityId: string; 
           </>
         )}
         {cur && <span className="absolute left-3 top-3 rounded-full text-[13px] font-bold" style={{ padding: '4px 10px', background: 'rgba(0,0,0,0.6)', color: '#fff' }}>{at + 1}/{rows.length}</span>}
+        {cur && (
+          <div className="absolute right-3 top-3 flex gap-2">
+            <button type="button" className={tool} style={toolStyle} disabled={busy} aria-label={cur.kind === 'image' ? `Đổi ${curName}` : `Sửa link ${curName}`} onClick={() => { if (cur.kind === 'image') { closeLink(); swapRef.current?.click(); } else { setLinkMode('edit'); setLink(cur.url); setError(null); } }}><Pencil size={16} />{cur.kind === 'image' ? 'Đổi ảnh' : 'Sửa link'}</button>
+            <button type="button" className={tool} style={{ ...toolStyle, color: T.accentText }} disabled={busy} aria-label={`Xóa ${curName}`} onClick={remove}><Trash2 size={16} />Xóa</button>
+          </div>
+        )}
         {uploading && <span className="absolute inset-0 flex items-center justify-center text-[15px] font-semibold" style={{ background: 'rgba(0,0,0,0.45)', color: '#fff' }}>Đang tải ảnh lên…</span>}
       </div>
 
-      {/* Việc làm với mục đang chọn. */}
-      {cur && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-          <button type="button" className={tool} style={toolStyle} disabled={busy || at === 0} aria-label={`Đưa ${curName} lên trước`} onClick={() => move(-1)}><ChevronLeft size={18} />Lên trước</button>
-          <button type="button" className={tool} style={toolStyle} disabled={busy || at === rows.length - 1} aria-label={`Đưa ${curName} ra sau`} onClick={() => move(1)}>Ra sau<ChevronRight size={18} /></button>
-          <span className="hidden sm:block flex-grow" />
-          <button type="button" className={tool} style={toolStyle} disabled={busy} aria-label={cur.kind === 'image' ? `Đổi ${curName}` : `Sửa link ${curName}`} onClick={() => { if (cur.kind === 'image') { closeLink(); swapRef.current?.click(); } else { setLinkMode('edit'); setLink(cur.url); setError(null); } }}><Pencil size={16} />{cur.kind === 'image' ? 'Đổi ảnh' : 'Sửa link'}</button>
-          <button type="button" className={tool} style={{ ...toolStyle, color: T.accentText }} disabled={busy} aria-label={`Xóa ${curName}`} onClick={remove}><Trash2 size={16} />Xóa</button>
-        </div>
-      )}
-
-      {/* Hàng ảnh nhỏ: bấm để chọn; hai ô cuối để thêm. */}
+      {/* Hàng ảnh nhỏ: bấm để chọn, nhấn giữ rồi kéo để đổi thứ tự; hai ô cuối để thêm. */}
       {rows.length > 0 && (
-        <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))' }}>
+        <div ref={sort.container} className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))' }}>
           {rows.map((r, i) => {
             const bg = r.kind === 'image' ? r.url : videoInfo(r.url)?.thumb ?? null;
+            const held = sort.drag?.from === i;
+            const shown = sort.drag ? positionAfterMove(i, sort.drag.from, sort.drag.over) : i;
             return (
-              <button key={r.id} type="button" aria-label={`Chọn ${nameOf(r, i)}`} aria-current={i === at ? 'true' : undefined} onClick={() => select(i)} className="relative rounded-[10px] flex items-center justify-center" style={{ ...THUMB, backgroundColor: T.side, backgroundImage: bg ? `url(${bg})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', opacity: i === at ? 1 : 0.65, outline: i === at ? `2px solid ${T.ink}` : undefined, outlineOffset: 2 }}>
-                <span className="absolute left-1 top-1 inline-flex items-center justify-center rounded-full text-[12px] font-bold" style={{ minWidth: 20, height: 20, padding: '0 5px', background: 'rgba(0,0,0,0.6)', color: '#fff' }}>{i + 1}</span>
+              <button
+                key={r.id} type="button" {...sort.itemProps(i)}
+                aria-label={`Chọn ${nameOf(r, i)}`} aria-current={i === at ? 'true' : undefined} aria-keyshortcuts="Shift+ArrowLeft Shift+ArrowRight"
+                title={rows.length > 1 ? 'Nhấn giữ rồi kéo để đổi thứ tự' : undefined}
+                onClick={() => { if (!sort.wasDragged()) select(i); }}
+                onKeyDown={(e) => { if (!e.shiftKey || busy) return; if (e.key === 'ArrowLeft') { e.preventDefault(); moveTo(i, i - 1); } else if (e.key === 'ArrowRight') { e.preventDefault(); moveTo(i, i + 1); } }}
+                className="relative rounded-[10px] flex items-center justify-center"
+                style={{ ...THUMB, ...sort.itemStyle(i), backgroundColor: T.side, backgroundImage: bg ? `url(${bg})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', opacity: held ? 0.3 : i === at || sort.drag ? 1 : 0.65, outline: held ? `2px dashed ${T.ink2}` : i === at && !sort.drag ? `2px solid ${T.ink}` : undefined, outlineOffset: 2 }}
+              >
+                <span className="absolute left-1 top-1 inline-flex items-center justify-center rounded-full text-[12px] font-bold" style={{ minWidth: 20, height: 20, padding: '0 5px', background: 'rgba(0,0,0,0.6)', color: '#fff' }}>{shown + 1}</span>
                 {r.kind === 'video' && <span className="inline-flex items-center justify-center rounded-full" style={{ width: 26, height: 26, background: 'rgba(0,0,0,0.6)', color: '#fff' }}><Play size={13} /></span>}
               </button>
             );
           })}
-          <button type="button" className={addTile} style={addTileStyle} disabled={busy || full} onClick={() => addRef.current?.click()}><ImagePlus size={18} />Thêm ảnh</button>
-          <button type="button" className={addTile} style={addTileStyle} disabled={busy || full} onClick={() => { setLinkMode('add'); setLink(''); setError(null); }}><Video size={18} />Thêm video</button>
+          <button type="button" className={addTile} style={{ ...addTileStyle, order: rows.length }} disabled={busy || full} onClick={() => addRef.current?.click()}><ImagePlus size={18} />Thêm ảnh</button>
+          <button type="button" className={addTile} style={{ ...addTileStyle, order: rows.length + 1 }} disabled={busy || full} onClick={() => { setLinkMode('add'); setLink(''); setError(null); }}><Video size={18} />Thêm video</button>
+        </div>
+      )}
+      {rows.length > 1 && <span className="muted text-[13px]">Nhấn giữ một ảnh nhỏ rồi kéo để đổi thứ tự.</span>}
+      {/* Bản sao của ô đang kéo, đi theo ngón tay hoặc con trỏ. */}
+      {sort.drag && (
+        <div aria-hidden className="rounded-[10px] flex items-center justify-center" style={{ position: 'fixed', left: sort.drag.x - sort.drag.width / 2, top: sort.drag.y - sort.drag.height / 2, width: sort.drag.width, height: sort.drag.height, zIndex: 1000, pointerEvents: 'none', transform: 'scale(1.08)', backgroundColor: T.side, backgroundImage: dragBg ? `url(${dragBg})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', boxShadow: '0 12px 30px rgba(0,0,0,0.35)', outline: `2px solid ${T.surface}` }}>
+          {dragging?.kind === 'video' && <span className="inline-flex items-center justify-center rounded-full" style={{ width: 26, height: 26, background: 'rgba(0,0,0,0.6)', color: '#fff' }}><Play size={13} /></span>}
         </div>
       )}
 

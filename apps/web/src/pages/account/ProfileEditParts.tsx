@@ -1,8 +1,8 @@
 // Khối con của trang Hồ sơ: ảnh đại diện + ảnh bìa, Liên kết, Quyền riêng tư, Đổi mật khẩu, mục Tài khoản.
 import { useMutation } from '@tanstack/react-query';
 import { AVATAR_COLORS, Avatar, Button, Field, Input, Select, T, Tag, Toggle } from '@hoiminh/ui';
-import { ExternalLink, Eye, EyeOff, Globe, Image, MessageCircle, Plus, Video, X } from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
+import { Camera, ExternalLink, Eye, EyeOff, Globe, Image, MessageCircle, Plus, Trash2, Video, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { TwoFactorCard } from './TwoFactorCard';
@@ -20,29 +20,67 @@ export function linkIcon(kind: string, size = 16): ReactNode {
   return <Globe size={size} />;
 }
 
-export function AvatarCoverBlock({ name, avatarUrl, coverColor, uploading, onPick, onRemove, onCover }: { name: string; avatarUrl: string | null; coverColor: string; uploading: boolean; onPick: (file: File) => void; onRemove: () => void; onCover: (c: string) => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+const Spinner = ({ size = 16 }: { size?: number }) => <span className="inline-block rounded-full border-2 border-current border-t-transparent animate-spin" style={{ width: size, height: size }} />;
+
+/**
+ * Đầu trang Hồ sơ, bố cục như trang cá nhân Facebook: ảnh bìa nằm ngang ở trên, nút "Chỉnh sửa ảnh bìa" ở góc dưới phải,
+ * ảnh đại diện tròn đè lên mép dưới ảnh bìa và có nút máy ảnh để đổi. Chưa có ảnh bìa thì hiện nền màu.
+ */
+export function ProfileHeaderBlock({ name, handle, avatarUrl, coverUrl, coverColor, avatarUploading, coverUploading, onAvatar, onAvatarRemove, onCover, onCoverRemove, onCoverColor }: {
+  name: string; handle: string; avatarUrl: string | null; coverUrl: string | null; coverColor: string; avatarUploading: boolean; coverUploading: boolean;
+  onAvatar: (file: File) => void; onAvatarRemove: () => void; onCover: (file: File) => void; onCoverRemove: () => void; onCoverColor: (c: string) => void;
+}) {
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+  const menuBox = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const onDown = (e: PointerEvent) => { if (!menuBox.current?.contains(e.target as Node)) setMenu(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [menu]);
+  const item = 'flex items-center gap-2.5 w-full text-left text-[15px] font-semibold rounded-[8px] px-3';
   return (
-    <div className="flex gap-5 items-center flex-wrap">
-      <Avatar name={name} src={avatarUrl} color={T.side} size={88} />
-      <div className="flex flex-col gap-2">
-        <span className="font-semibold">Ảnh đại diện</span>
-        <div className="flex gap-2">
-          <Button size="sm" icon={<Image size={14} />} loading={uploading} onClick={() => fileRef.current?.click()}>Tải ảnh lên</Button>
-          <Button size="sm" onClick={onRemove} disabled={!avatarUrl}>Xóa</Button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
+    <div className="flex flex-col">
+      <div className="relative">
+        <div role="img" aria-label={coverUrl ? 'Ảnh bìa hồ sơ' : 'Nền màu của hồ sơ, chưa có ảnh bìa'} className="rounded-[14px]" style={{ width: '100%', aspectRatio: '3 / 1', minHeight: 132, backgroundColor: coverColor, backgroundImage: coverUrl ? `url(${coverUrl})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div ref={menuBox} className="absolute right-3 top-3 sm:top-auto sm:bottom-3" style={{ zIndex: 10 }}>
+          <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)} className="inline-flex items-center gap-2 rounded-[10px] text-[14px] font-semibold" style={{ height: 40, padding: '0 12px', background: T.surface, color: T.ink, boxShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>
+            {coverUploading ? <Spinner /> : <Camera size={17} />}Chỉnh sửa ảnh bìa
+          </button>
+          {menu && (
+            <div role="menu" className="card absolute right-0 flex flex-col p-1.5" style={{ top: 'calc(100% + 6px)', width: 250, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
+              <button type="button" role="menuitem" className={item} style={{ height: 44, color: T.ink }} onClick={() => { setMenu(false); coverRef.current?.click(); }}><Image size={18} />{coverUrl ? 'Tải ảnh khác lên' : 'Tải ảnh lên'}</button>
+              {coverUrl && <button type="button" role="menuitem" className={item} style={{ height: 44, color: T.accentText }} onClick={() => { setMenu(false); onCoverRemove(); }}><Trash2 size={18} />Gỡ ảnh bìa</button>}
+              <div className="flex flex-col gap-2 px-3 pt-2.5 pb-2 mt-1" style={{ borderTop: `1px solid ${T.line}` }}>
+                <span className="muted text-[13px]">Màu nền khi không dùng ảnh</span>
+                <div className="flex gap-2 flex-wrap">
+                  {AVATAR_COLORS.map((c) => (
+                    <button key={c} type="button" aria-label={`Màu bìa ${c}`} aria-pressed={c === coverColor} onClick={() => onCoverColor(c)} className="rounded-full" style={{ width: 24, height: 24, background: c, border: c === coverColor ? `2px solid ${T.ink}` : '2px solid transparent', outline: c === coverColor ? `2px solid ${T.surface}` : undefined, outlineOffset: -4 }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        <span className="muted text-[12px]">Vuông, tối thiểu 256px. Hiện ở bài viết, bình luận và bảng xếp hạng.</span>
       </div>
-      <div className="ml-auto px-3.5 py-3 rounded-xl flex flex-col gap-1.5" style={{ background: T.bg, minWidth: 200 }}>
-        <span className="muted text-[12px]">Ảnh bìa hồ sơ</span>
-        <div className="rounded-lg" style={{ height: 44, background: coverColor }} />
-        <div className="flex gap-1.5 flex-wrap">
-          {AVATAR_COLORS.map((c) => (
-            <button key={c} type="button" aria-label={`Màu bìa ${c}`} onClick={() => onCover(c)} className="rounded-full" style={{ width: 20, height: 20, background: c, border: c === coverColor ? `2px solid ${T.ink}` : '2px solid transparent', outline: c === coverColor ? `2px solid ${T.surface}` : undefined, outlineOffset: -4 }} />
-          ))}
+      <div className="relative flex items-end gap-3.5 flex-wrap px-2 sm:px-4" style={{ marginTop: -44 }}>
+        <span className="relative inline-flex rounded-full flex-shrink-0" style={{ border: `4px solid ${T.surface}`, background: T.surface }}>
+          <Avatar name={name} src={avatarUrl} color={T.side} size={112} />
+          <button type="button" aria-label="Đổi ảnh đại diện" onClick={() => avatarRef.current?.click()} className="absolute right-0 bottom-0 rounded-full inline-flex items-center justify-center" style={{ width: 38, height: 38, background: T.surface, color: T.ink, border: `1px solid ${T.line2}` }}>{avatarUploading ? <Spinner /> : <Camera size={18} />}</button>
+        </span>
+        <div className="flex-grow min-w-0 pb-1.5" style={{ flexBasis: 160 }}>
+          <div className="serif text-[22px] font-extrabold leading-tight" style={{ overflowWrap: 'anywhere' }}>{name || 'Tên của bạn'}</div>
+          <div className="muted text-[14px]">@{handle || 'ban'}</div>
         </div>
+        {avatarUrl && <div className="pb-1.5"><Button size="sm" onClick={onAvatarRemove}>Gỡ ảnh đại diện</Button></div>}
       </div>
+      <span className="muted text-[13px] leading-[1.6] mt-3">Ảnh bìa nên là ảnh ngang từ 1200 x 400px. Ảnh đại diện nên vuông, tối thiểu 256px, hiện ở bài viết, bình luận và bảng xếp hạng.</span>
+      <input ref={coverRef} type="file" accept="image/*" hidden aria-label="Tệp ảnh bìa" onChange={(e) => { const f = e.target.files?.[0]; if (f) onCover(f); e.target.value = ''; }} />
+      <input ref={avatarRef} type="file" accept="image/*" hidden aria-label="Tệp ảnh đại diện" onChange={(e) => { const f = e.target.files?.[0]; if (f) onAvatar(f); e.target.value = ''; }} />
     </div>
   );
 }
@@ -60,10 +98,17 @@ export function LinksCard({ links, onChange }: { links: ProfileLink[]; onChange:
       {links.map((l, i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="w-9 h-9 rounded-[10px] inline-flex items-center justify-center flex-shrink-0" style={{ background: T.bg, color: T.ink2 }}>{linkIcon(l.kind)}</span>
-          <Select value={l.kind} style={{ width: 130 }} className="flex-shrink-0" onChange={(e) => { const k = LINK_KINDS.find((x) => x.kind === e.target.value); update(i, { kind: e.target.value, label: k?.label ?? e.target.value }); }}>
-            {LINK_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
-          </Select>
-          <Input className="flex-grow" value={l.url} placeholder={l.kind === 'zalo' ? 'Số Zalo hoặc link zalo.me' : 'https://…'} maxLength={200} onChange={(e) => update(i, { url: e.target.value })} />
+          {/* Ô chọn loại rộng cố định, ô link lấy phần còn lại; màn hình hẹp thì ô link xuống dòng dưới. */}
+          <div className="flex-grow min-w-0 flex gap-2 flex-wrap">
+            <div style={{ flex: '0 0 140px' }}>
+              <Select value={l.kind} aria-label="Loại liên kết" onChange={(e) => { const k = LINK_KINDS.find((x) => x.kind === e.target.value); update(i, { kind: e.target.value, label: k?.label ?? e.target.value }); }}>
+                {LINK_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+              </Select>
+            </div>
+            <div className="min-w-0" style={{ flex: '1 1 180px' }}>
+              <Input value={l.url} aria-label="Địa chỉ liên kết" placeholder={l.kind === 'zalo' ? 'Số Zalo hoặc link zalo.me' : 'https://…'} maxLength={200} onChange={(e) => update(i, { url: e.target.value })} />
+            </div>
+          </div>
           <button type="button" aria-label="Xóa liên kết" style={{ color: T.ink3 }} onClick={() => onChange(links.filter((_, j) => j !== i))}><X size={16} /></button>
         </div>
       ))}

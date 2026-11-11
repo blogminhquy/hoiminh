@@ -37,7 +37,8 @@ test.describe.serial('thẻ và quy tắc tự động', () => {
     await modal.getByLabel('Thẻ kích hoạt').fill('Paid FBAds');
     await expect(modal.getByText('Sẽ lưu thành')).toContainText('paid_fbads');
     await modal.getByRole('button', { name: 'Mở khóa học' }).click();
-    await modal.getByLabel('Khóa học', { exact: true }).selectOption({ label: COURSE });
+    await modal.getByLabel('Khóa học', { exact: true }).click();
+    await page.getByRole('option', { name: COURSE, exact: true }).click();
     await modal.getByRole('button', { name: 'Gửi email' }).click();
     await modal.getByRole('button', { name: 'Lưu quy tắc' }).click();
     const rule = page.getByRole('region', { name: 'Quy tắc Mua khóa Facebook Ads' });

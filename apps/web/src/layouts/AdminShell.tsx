@@ -9,9 +9,11 @@ import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { CommandButton, CommandPalette, useCommandHotkey, type PaletteItem } from '@/components/CommandPalette';
 import { LoadingBlock } from '@/components/QueryState';
 import { api } from '@/lib/api';
+import { useSidebarCollapsed } from '@/lib/sidebar';
 import { useAuth } from '@/lib/auth';
 import { adminCommands } from '@/lib/commands';
 import { useVersionStatus } from '@/lib/version';
+import { SidebarToggle } from './SidebarToggle';
 
 /** Năm nhóm của khu quản trị (trước là 11 mục). Nhóm có hơn một trang thì hiện hàng tab con ngay trên nội dung. Đường dẫn giữ nguyên. */
 interface AdminGroup { key: string; label: string; icon: ReactNode; tabs: Array<{ label: string; to: string }> }
@@ -35,6 +37,7 @@ export function AdminShell() {
   const health = useQuery({ queryKey: ['health'], queryFn: () => fetch(`${api.url}/health`).then((r) => r.json() as Promise<{ status: string; env: string }>), staleTime: 60_000 });
   const todo = useQuery({ queryKey: ['admin', 'overview', 30], queryFn: () => api.get<{ todo: { unmatched: number } }>('/v1/admin/overview?days=30'), enabled: Boolean(user?.isSuperAdmin), staleTime: 60_000 });
   const [command, setCommand] = useState(false);
+  const [collapsed, toggleSide] = useSidebarCollapsed();
   const toggleCommand = useCallback(() => setCommand((v) => !v), []);
   useCommandHotkey(toggleCommand, Boolean(user?.isSuperAdmin));
   const commands = useMemo(() => adminCommands(), []);
@@ -48,21 +51,23 @@ export function AdminShell() {
   if (!user?.isSuperAdmin) return <Navigate to="/admin" replace />;
   const unmatched = todo.data?.todo.unmatched ?? 0;
   const group = adminGroupOf(location.pathname);
+  const statusText = health.data?.status === 'ok' ? 'Hệ thống ổn định' : health.isLoading ? 'Đang kiểm tra…' : 'Cần kiểm tra API';
   const badge = (g: AdminGroup) => (g.key === 'tien' && unmatched ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{unmatched}</span> : g.key === 'he-thong' && updateAvailable ? <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: T.accent }} /> : null);
   return (
     <div className="flex min-h-screen" style={{ background: T.bg }}>
-      <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" style={{ width: 264, background: T.sideDark, color: T.sideText, padding: '16px 12px' }}>
-        <div className="flex items-center gap-2.5 px-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
-          <svg width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill={T.gold} /><circle cx="17" cy="13" r="7" fill={T.teal} fillOpacity="0.85" /></svg>
-          <div className="flex-grow"><div className="serif font-bold text-[14px]" style={{ color: T.invertInk }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>
+      <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" data-collapsed={collapsed ? 'true' : undefined} style={{ background: T.sideDark, color: T.sideText, padding: '16px 12px' }}>
+        <div className="side-head flex items-center gap-2.5 pl-2 pt-1.5 pb-3.5" style={{ borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
+          <svg className="side-logo flex-shrink-0" width="36" height="36" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="13" r="7" fill={T.gold} /><circle cx="17" cy="13" r="7" fill={T.teal} fillOpacity="0.85" /></svg>
+          <div className="side-logo flex-grow min-w-0"><div className="serif font-bold text-[14px]" style={{ color: T.invertInk }}>Hội Mình</div><div className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}>Quản trị hệ thống</div></div>
+          <SidebarToggle collapsed={collapsed} onToggle={toggleSide} />
         </div>
         <nav className="flex flex-col gap-0.5 pt-3" aria-label="Quản trị hệ thống">
-          {GROUPS.map((g) => <Link key={g.key} to={g.tabs[0]!.to} aria-current={group.key === g.key ? 'page' : undefined} className={`nav-item${group.key === g.key ? ' on' : ''}`}>{g.icon}<span className="flex-grow">{g.label}</span>{badge(g)}</Link>)}
+          {GROUPS.map((g) => <Link key={g.key} to={g.tabs[0]!.to} aria-current={group.key === g.key ? 'page' : undefined} title={collapsed ? g.label : undefined} aria-label={collapsed ? g.label : undefined} className={`nav-item${group.key === g.key ? ' on' : ''}`}>{g.icon}<span className="nav-label flex-grow">{g.label}</span><span className="nav-extra inline-flex items-center">{badge(g)}</span></Link>)}
         </nav>
         <div className="flex-grow" />
-        <div className="p-3 rounded-[10px] text-[12px] flex items-center gap-2" style={{ background: 'rgba(255,253,249,0.06)', color: T.sideText }}>
-          <span className="w-2 h-2 rounded-full" style={{ background: health.data?.status === 'ok' ? T.teal : T.accent }} />
-          {health.data?.status === 'ok' ? 'Hệ thống ổn định' : health.isLoading ? 'Đang kiểm tra…' : 'Cần kiểm tra API'}
+        <div className="side-status p-3 rounded-[10px] text-[12px] flex items-center gap-2" title={collapsed ? statusText : undefined} style={{ background: 'rgba(255,253,249,0.06)', color: T.sideText }}>
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: health.data?.status === 'ok' ? T.teal : T.accent }} />
+          <span className="nav-label">{statusText}</span>
         </div>
       </aside>
       <div className="flex-grow flex flex-col min-w-0">

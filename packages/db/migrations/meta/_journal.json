@@ -61,8 +61,15 @@
     {
       "idx": 8,
       "version": "7",
-      "when": 1794346284439,
-      "tag": "0008_message_files_blocks",
+      "when": 1794344763739,
+      "tag": "0008_user_cover",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794355565176,
+      "tag": "0009_message_files_blocks",
       "breakpoints": true
     }
   ]

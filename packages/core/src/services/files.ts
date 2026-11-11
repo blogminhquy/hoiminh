@@ -79,6 +79,7 @@ export { FILE_DELETE_JOB };
  */
 export const FILE_REFERENCES = [
   { table: 'users', column: 'avatar_url', kind: 'url' },
+  { table: 'users', column: 'cover_url', kind: 'url' },
   { table: 'communities', column: 'logo_url', kind: 'url' },
   { table: 'communities', column: 'cover_url', kind: 'url' },
   { table: 'communities', column: 'about_media', kind: 'id-in-items' },

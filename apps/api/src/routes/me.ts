@@ -26,11 +26,9 @@ meRoutes.get('/integration', async (c) => {
 meRoutes.patch('/', async (c) => {
   const input = await parse(updateProfileSchema, await body(c));
   const ctx = c.get('ctx');
-  let avatarUrl: string | null | undefined;
-  if (input.avatarFileId !== undefined) {
-    avatarUrl = input.avatarFileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, input.avatarFileId) }))?.url ?? null) : null;
-  }
-  return c.json(await users.updateProfile(ctx, { ...input, avatarUrl }));
+  // undefined: không đổi; null: gỡ ảnh; id tệp: lấy địa chỉ của tệp vừa tải lên.
+  const urlOf = async (fileId: string | null | undefined): Promise<string | null | undefined> => (fileId === undefined ? undefined : fileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, fileId) }))?.url ?? null) : null);
+  return c.json(await users.updateProfile(ctx, { ...input, avatarUrl: await urlOf(input.avatarFileId), coverUrl: await urlOf(input.coverFileId) }));
 });
 meRoutes.post('/password', rateLimit('write'), async (c) => {
   const input = await parse(changePasswordSchema, await body(c));

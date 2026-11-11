@@ -1,7 +1,7 @@
 // Modal "Tạo bài viết", bản gọn: một ô viết, nút ảnh, nút Đăng. Chuyên mục tự chọn sẵn (vẫn đổi được);
 // tiêu đề, nền status, video, bình chọn, link và gửi email nằm sau nút "Thêm".
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar, Button, Modal, T, Toggle } from '@hoiminh/ui';
+import { Avatar, Button, Modal, Select, T, Toggle } from '@hoiminh/ui';
 import { BarChart3, ChevronDown, ChevronUp, Image as ImageIcon, Link as LinkIcon, Mail, Video } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -81,7 +81,6 @@ export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onC
     onSuccess: (p) => { rememberSpace(cid, spaceId); void qc.invalidateQueries({ queryKey: ['feed'] }); reset(); onClose(); navigate(`/${shell.community.slug}/bai-viet/${p.id}`); },
   });
   const valid = Boolean(spaceId) && len > 0 && (!poll || (poll.question.trim() && poll.options.filter((o) => o.trim()).length >= 2));
-  const spaceName = spaces.find((s) => s.id === spaceId)?.name;
 
   return (
     <Modal open={open} onClose={onClose} title="Tạo bài viết" width={620}>
@@ -90,14 +89,10 @@ export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onC
           <Avatar name={user?.name} src={user?.avatarUrl} size={44} />
           <div className="min-w-0">
             <div className="font-semibold truncate">{user?.name}</div>
-            <label className="chip relative mt-1" style={{ height: 30, fontSize: 13, background: T.primarySoft, color: T.primaryText, borderColor: T.primarySoft }}>
-              <span className="sr-only">Đăng vào chuyên mục</span>
-              {spaceName ?? (meta.isLoading ? 'Đang tải…' : 'Chọn chuyên mục')} <ChevronDown size={14} />
-              <select aria-label="Chuyên mục" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full">
-                {!spaceId && <option value="">Chọn chuyên mục</option>}
-                {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
+            <Select variant="chip" aria-label="Chuyên mục" className="mt-1" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} style={{ height: 32, fontSize: 14, maxWidth: '100%', background: T.primarySoft, color: T.primaryText, borderColor: T.primarySoft }}>
+              {!spaceId && <option value="">{meta.isLoading ? 'Đang tải…' : 'Chọn chuyên mục'}</option>}
+              {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </Select>
           </div>
         </div>
 

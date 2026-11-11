@@ -10,7 +10,7 @@ export interface MyCommunity {
 }
 interface MeResponse {
   user: AuthUser;
-  profile: Record<string, unknown> & { bio: string; location: string; occupation: string; coverColor: string | null; links: Array<{ kind: string; label: string; url: string }>; privacy: Record<string, boolean> };
+  profile: Record<string, unknown> & { bio: string; location: string; occupation: string; coverColor: string | null; coverUrl?: string | null; links: Array<{ kind: string; label: string; url: string }>; privacy: Record<string, boolean> };
   communities: MyCommunity[];
 }
 

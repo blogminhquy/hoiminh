@@ -85,7 +85,15 @@ export default function Page() {
         <div className="card p-4 flex flex-col gap-2.5">
           <div className="font-semibold">Theo cộng đồng</div>
           {communities.map((c) => { const lvl = p?.perCommunity[c.id] ?? 'all'; return (
-            <div key={c.id} className="flex items-center gap-2.5 text-[13px]"><CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={28} radius={8} /><span className="flex-grow truncate">{c.name}</span><Select value={lvl} onChange={(e) => savePrefs.mutate({ perCommunity: { [c.id]: e.target.value as 'all' | 'mentions' | 'off' } })} style={{ height: 28, fontSize: 12, width: 'fit-content' }}><option value="all">Tất cả</option><option value="mentions">Chỉ nhắc đến</option><option value="off">Tắt</option></Select><span style={{ color: lvl === 'off' ? T.ink3 : T.ink2 }}>{lvl === 'off' ? <BellOff size={16} /> : lvl === 'mentions' ? <AtSign size={16} /> : <Bell size={16} />}</span></div>
+            <div key={c.id} className="flex flex-col gap-2 text-[14px]" style={{ paddingTop: 10, borderTop: `1px solid ${T.line}` }}>
+              {/* Tên hội hiện đủ, dài thì xuống dòng; ô chọn mức thông báo nằm riêng một dòng bên dưới. */}
+              <div className="flex items-start gap-2.5">
+                <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={32} radius={9} />
+                <span className="flex-grow min-w-0 font-semibold leading-[1.4]" style={{ overflowWrap: 'anywhere', paddingTop: 5 }}>{c.name}</span>
+                <span className="flex-shrink-0" style={{ color: lvl === 'off' ? T.ink3 : T.ink2, paddingTop: 7 }}>{lvl === 'off' ? <BellOff size={18} /> : lvl === 'mentions' ? <AtSign size={18} /> : <Bell size={18} />}</span>
+              </div>
+              <Select value={lvl} aria-label={`Thông báo từ ${c.name}`} onChange={(e) => savePrefs.mutate({ perCommunity: { [c.id]: e.target.value as 'all' | 'mentions' | 'off' } })}><option value="all">Tất cả thông báo</option><option value="mentions">Chỉ khi nhắc đến tôi</option><option value="off">Tắt thông báo</option></Select>
+            </div>
           ); })}
           {communities.length === 0 && <span className="muted text-[13px]">Bạn chưa tham gia hội nào.</span>}
           <span className="muted text-[12px]">Cập nhật lần cuối {p ? fmtDate(new Date()) : '…'}</span>

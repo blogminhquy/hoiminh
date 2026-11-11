@@ -10,7 +10,7 @@ import { fmtDate, timeAgo } from '@/lib/format';
 import { MessageModal } from '@/pages/community/MessageModal';
 
 interface Profile {
-  user: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; bio: string | null; location: string | null; occupation: string | null; links: Array<{ kind: string; label: string; url: string }>; createdAt: string; lastSeenAt: string | null; privacy: { allowMessages: boolean }; isSelf: boolean };
+  user: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; coverUrl?: string | null; bio: string | null; location: string | null; occupation: string | null; links: Array<{ kind: string; label: string; url: string }>; createdAt: string; lastSeenAt: string | null; privacy: { allowMessages: boolean }; isSelf: boolean };
   stats: { posts: number; comments: number; coursesCompleted: number; coursesTotal: number; communities: number; referrals: number };
   memberships: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; role: string; tier: { key: string; name: string } | null; level: number; joinedAt: string }>;
   progress: Array<{ courseId: string; title: string; percent: number; completedAt: string | null }>;
@@ -36,7 +36,10 @@ export default function Page() {
           <div className="two-col">
             <div className="main flex flex-col gap-4">
               <div className="card overflow-hidden">
-                <div style={{ height: 120, background: u.coverColor ?? T.primary }} />
+                {/* Có ảnh bìa thì hiện ảnh ngang 3:1; chưa có thì dải nền màu như trước. */}
+                {u.coverUrl
+                  ? <div role="img" aria-label={`Ảnh bìa của ${u.name}`} style={{ width: '100%', aspectRatio: '3 / 1', minHeight: 120, background: `url(${u.coverUrl}) center/cover` }} />
+                  : <div style={{ height: 120, background: u.coverColor ?? T.primary }} />}
                 <div className="px-6 pb-5 flex flex-col gap-3.5">
                   <div className="flex items-end gap-4 flex-wrap" style={{ marginTop: -40 }}>
                     <span className="inline-flex rounded-full" style={{ border: `4px solid ${T.surface}` }}><Avatar name={u.name} src={u.avatarUrl} color={u.coverColor ?? T.accent} size={96} /></span>
