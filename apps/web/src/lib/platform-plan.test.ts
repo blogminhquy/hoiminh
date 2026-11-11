@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickPlan, planView, priceLabel, yearlySaving, type PlanInput } from './platform-plan';
+import { externalPayUrl, payCycles, pickPlan, planView, priceLabel, yearlySaving, type PlanInput } from './platform-plan';
 
 // Giữa trưa UTC: ngày hiển thị giống nhau ở mọi múi giờ từ UTC-11 tới UTC+11.
 const now = new Date('2026-11-10T12:00:00Z');
@@ -71,5 +71,33 @@ describe('giá gói', () => {
     expect(pickPlan([other, plan], 'la')).toBe(other);
     expect(pickPlan([], 'hoiminh')).toBeNull();
     expect(pickPlan(undefined, 'hoiminh')).toBeNull();
+  });
+});
+
+describe('gói thu tiền bằng link ngoài', () => {
+  const who = { workspaceId: 'ws-123', email: 'vy+test@gmail.com' };
+  const link = { ...plan, paymentMode: 'link' as const, monthlyPayUrl: 'https://pay.example.com/thang?ref={workspace_id}&email={email}&ky={cycle}', yearlyPayUrl: null };
+
+  it('thanh toán trong Hội Mình thì bán cả hai chu kỳ và không có link ngoài', () => {
+    expect(payCycles(plan)).toEqual(['monthly', 'yearly']);
+    expect(payCycles({ ...plan, paymentMode: 'gateway', monthlyPayUrl: 'https://pay.example.com' })).toEqual(['monthly', 'yearly']);
+    expect(externalPayUrl(plan, 'monthly', who)).toBeNull();
+  });
+
+  it('link ngoài chỉ bán chu kỳ đã cài link', () => {
+    expect(payCycles(link)).toEqual(['monthly']);
+    expect(payCycles({ ...link, yearlyPayUrl: 'https://pay.example.com/nam' })).toEqual(['monthly', 'yearly']);
+    expect(payCycles({ ...link, monthlyPayUrl: null })).toEqual([]);
+    expect(externalPayUrl(link, 'yearly', who)).toBeNull();
+  });
+
+  it('điền mã hội, email, chu kỳ vào chỗ trống, có mã hóa ký tự đặc biệt', () => {
+    expect(externalPayUrl(link, 'monthly', who)).toBe('https://pay.example.com/thang?ref=ws-123&email=vy%2Btest%40gmail.com&ky=monthly');
+  });
+
+  it('link không ghi mã hội thì tự thêm hm_ws và hm_cycle, giữ tham số sẵn có', () => {
+    const url = externalPayUrl({ ...link, yearlyPayUrl: 'https://pay.example.com/nam?utm=hm' }, 'yearly', who);
+    expect(url).toBe('https://pay.example.com/nam?utm=hm&hm_ws=ws-123&hm_cycle=yearly');
+    expect(url).not.toContain('gmail');
   });
 });

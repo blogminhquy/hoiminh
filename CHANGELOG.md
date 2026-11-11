@@ -1,8 +1,15 @@
 # CHANGELOG
 
-## 1.30.1 - 2026-11-11
+## 1.31.0 - 2026-11-11
 
-Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một trang riêng, một cột dọc ở giữa, có hai tab chu kỳ và khung thanh toán bật lên. Trước đây phần thanh toán bung ra ngay trong hàng thẻ của "Hội của tôi", ép ba thẻ vào một hàng làm chữ xuống dòng từng từ và nút tràn ra ngoài thẻ.
+Gói Hội Mình thu tiền được bằng link thanh toán ngoài, do quản trị hệ thống chọn. Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một trang riêng, một cột dọc ở giữa, có hai tab chu kỳ và khung thanh toán bật lên. Trước đây phần thanh toán bung ra ngay trong hàng thẻ của "Hội của tôi", ép ba thẻ vào một hàng làm chữ xuống dòng từng từ và nút tràn ra ngoài thẻ.
+
+### Tính năng
+
+- **Chọn cách thu tiền gói Hội Mình** (Hệ thống, Gói nền tảng, "Sửa gói"): "Thanh toán trong Hội Mình" (chuyển khoản QR, MoMo, VNPAY, PayPal, như trước) hoặc "Link thanh toán ngoài". Chọn link ngoài thì nhập link cho gói tháng, gói năm; để trống chu kỳ nào thì chu kỳ đó không bán. Thẻ gói ghi rõ đang thu tiền theo cách nào.
+- **Chủ hội ở chế độ link ngoài:** trang Gói Hội Mình chỉ hiện chu kỳ có link; bấm nút thanh toán thì khung bật lên còn một nút "Tới trang thanh toán" mở link ở thẻ mới.
+- **Link điền sẵn người trả.** Viết `{workspace_id}`, `{email}`, `{cycle}` vào link thì Hội Mình điền mã hội, email chủ hội, chu kỳ (`monthly` hoặc `yearly`) khi mở. Link không có `{workspace_id}` thì tự thêm `hm_ws` và `hm_cycle` vào cuối, để hệ thống ngoài luôn biết hội nào trả. Email chỉ được gửi đi khi link có ghi `{email}`.
+- **Chưa có:** Hội Mình chưa tự kích hoạt gói khi khách trả qua link ngoài (phần nhận webhook từ hệ thống ngoài chưa xây). Ô cài đặt có ghi rõ điều này.
 
 ### Thay đổi
 
@@ -21,7 +28,11 @@ Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một t
 ### Kỹ thuật
 
 - Trạng thái gói gom về một hàm thuần `planView` trong `apps/web/src/lib/platform-plan.ts` (có test), thẻ ở Hội của tôi và trang gói dùng chung.
-- Trang mới `apps/web/src/pages/owner/WorkspacePlan.tsx`; lớp `.seg` trong `@hoiminh/ui` cho hai tab dạng viên thuốc. Không đổi API, không có migration.
+- Trang mới `apps/web/src/pages/owner/WorkspacePlan.tsx`; lớp `.seg` trong `@hoiminh/ui` cho hai tab dạng viên thuốc.
+- Migration `0010_plan_payment_link.sql`: thêm ba cột vào bảng `plans` (`payment_mode` mặc định `gateway`, `monthly_pay_url`, `yearly_pay_url`). Chỉ thêm cột, viết `IF NOT EXISTS`. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy**, vì mọi truy vấn lấy gói đều đọc các cột này.
+- `PATCH /v1/admin/plans/:key` nhận thêm `paymentMode`, `monthlyPayUrl`, `yearlyPayUrl`. Link phải là `https`, dài tối đa 500 ký tự; chế độ link mà không có link nào thì bị từ chối. `GET /v1/plans` trả thêm ba trường này.
+- `POST /v1/checkout` với gói nền tảng bị từ chối khi gói đang ở chế độ link ngoài, để lựa chọn của quản trị không bị vượt qua bằng cách gọi thẳng API.
+- Test e2e luồng 20: quản trị cài link, chủ hội thấy nút dẫn sang link có mã hội, quản trị trả về như cũ.
 - Test e2e luồng 6 đi qua trang mới: bấm liên kết "Thanh toán gói" ở `/admin`, sang `/admin/goi`, đổi tab năm rồi về tab tháng, mở khung thanh toán, thanh toán.
 
 ## 1.30.0 - 2026-11-11

@@ -4,7 +4,13 @@ import { fmtDate, money } from './format';
 import { daysLeft } from './owner-todo';
 
 export type Cycle = 'monthly' | 'yearly';
-export interface PlanPrice { key: string; name: string; monthlyMinor: number; yearlyMinor: number }
+export interface PlanPrice {
+  key: string; name: string; monthlyMinor: number; yearlyMinor: number;
+  /** 'gateway' (mặc định) = thanh toán trong Hội Mình; 'link' = mở link của hệ thống thanh toán ngoài. */
+  paymentMode?: 'gateway' | 'link';
+  monthlyPayUrl?: string | null;
+  yearlyPayUrl?: string | null;
+}
 export interface PlanInput {
   sub: { status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'; billingCycle: Cycle; currentPeriodEnd: string; cancelAtPeriodEnd: boolean } | null;
   trialEndsAt: string | null;
@@ -71,4 +77,35 @@ export function yearlySaving(plan: PlanPrice): string | null {
 export function pickPlan<P extends PlanPrice>(plans: P[] | undefined, planKey: string | undefined): P | null {
   if (!plans?.length) return null;
   return plans.find((p) => p.key === planKey) ?? plans[0] ?? null;
+}
+
+/** Chu kỳ đang bán: thanh toán trong Hội Mình thì cả hai; link ngoài thì chỉ chu kỳ nào quản trị đã cài link. */
+export function payCycles(plan: PlanPrice): Cycle[] {
+  if (plan.paymentMode !== 'link') return ['monthly', 'yearly'];
+  const out: Cycle[] = [];
+  if (plan.monthlyPayUrl) out.push('monthly');
+  if (plan.yearlyPayUrl) out.push('yearly');
+  return out;
+}
+
+/**
+ * Link thanh toán ngoài của một chu kỳ, đã điền `{workspace_id}`, `{email}`, `{cycle}`. Link không ghi `{workspace_id}`
+ * thì tự thêm `hm_ws` và `hm_cycle` vào cuối, để hệ thống ngoài luôn biết hội nào trả. Gói không ở chế độ link
+ * hoặc chu kỳ chưa có link thì trả null.
+ */
+export function externalPayUrl(plan: PlanPrice, cycle: Cycle, who: { workspaceId: string; email: string }): string | null {
+  if (plan.paymentMode !== 'link') return null;
+  const template = cycle === 'yearly' ? plan.yearlyPayUrl : plan.monthlyPayUrl;
+  if (!template) return null;
+  const values: Record<string, string> = { workspace_id: who.workspaceId, email: who.email, cycle };
+  const filled = template.replace(/\{(workspace_id|email|cycle)\}/g, (_, k: string) => encodeURIComponent(values[k] ?? ''));
+  if (template.includes('{workspace_id}')) return filled;
+  try {
+    const url = new URL(filled);
+    url.searchParams.set('hm_ws', who.workspaceId);
+    url.searchParams.set('hm_cycle', cycle);
+    return url.toString();
+  } catch {
+    return filled;
+  }
 }

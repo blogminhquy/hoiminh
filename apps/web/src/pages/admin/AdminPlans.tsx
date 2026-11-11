@@ -1,7 +1,7 @@
 // Hệ thống · Gói nền tảng và Tính năng (hai tab của nhóm "Gói và tính năng"): thẻ gói duy nhất với 3 ô tháng/năm/dùng thử
-// (sửa giá), cộng sự nền tảng; tab Tính năng bật tắt các cờ có tác dụng thật.
+// (sửa giá, chọn cách thu tiền: thanh toán trong Hội Mình hoặc link ngoài), cộng sự nền tảng; tab Tính năng bật tắt các cờ có tác dụng thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Field, Input, T, Toggle, money } from '@hoiminh/ui';
+import { Button, Field, Input, OptionCard, T, Toggle, money } from '@hoiminh/ui';
 import { Check, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { fmtShortMoney } from '@/lib/format';
 
-interface Plan { key: string; name: string; description: string; monthlyMinor: number; yearlyMinor: number; trialDays: number; features: string[] }
+interface Plan { key: string; name: string; description: string; monthlyMinor: number; yearlyMinor: number; trialDays: number; features: string[]; paymentMode: 'gateway' | 'link'; monthlyPayUrl: string | null; yearlyPayUrl: string | null }
 interface Stats { plan: Plan | null; monthlyCount: number; yearlyCount: number; trialCount: number; expiredCount: number; mrrMonthlyMinor: number; mrrYearlyMinor: number; conversionRate: number }
 interface Flag { key: string; description: string; enabled: boolean; rules: Record<string, unknown> }
 interface AffiliateInfo { program: { commissionRateBps: number; commissionDurationMonths: number | null }; stats: { paidThisMonthMinor: number } }
@@ -23,12 +23,26 @@ const NO_EFFECT = new Set(['realtime_chat', 'go_live', 'gamification']);
 
 function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: plan.name, monthlyMinor: plan.monthlyMinor, yearlyMinor: plan.yearlyMinor, trialDays: plan.trialDays });
-  const m = useMutation({ mutationFn: () => api.patch(`/v1/admin/plans/${plan.key}`, f), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'plans'] }); onClose(); } });
+  const [f, setF] = useState({ name: plan.name, monthlyMinor: plan.monthlyMinor, yearlyMinor: plan.yearlyMinor, trialDays: plan.trialDays, paymentMode: plan.paymentMode ?? 'gateway', monthlyPayUrl: plan.monthlyPayUrl ?? '', yearlyPayUrl: plan.yearlyPayUrl ?? '' });
+  const link = f.paymentMode === 'link';
+  const m = useMutation({ mutationFn: () => api.patch(`/v1/admin/plans/${plan.key}`, f), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'plans'] }); void qc.invalidateQueries({ queryKey: ['plans'] }); onClose(); } });
   return (
     <div className="card p-5 flex flex-col gap-3">
       <span className="font-semibold">Sửa gói {plan.key}</span>
       <div className="grid-2"><Field label="Tên gói"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field><Field label="Ngày dùng thử"><Input type="number" min={0} value={f.trialDays} onChange={(e) => setF({ ...f, trialDays: Number(e.target.value) })} /></Field><Field label="Giá tháng (đ)"><Input type="number" min={0} step={1000} value={f.monthlyMinor} onChange={(e) => setF({ ...f, monthlyMinor: Number(e.target.value) })} /></Field><Field label="Giá năm (đ)" hint="Gợi ý = 10 tháng"><Input type="number" min={0} step={1000} value={f.yearlyMinor} onChange={(e) => setF({ ...f, yearlyMinor: Number(e.target.value) })} /></Field></div>
+      <div className="flex flex-col gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
+        <span className="text-[13px] font-semibold">Cách thu tiền gói</span>
+        <OptionCard on={!link} onClick={() => setF({ ...f, paymentMode: 'gateway' })} title="Thanh toán trong Hội Mình" sub="Chuyển khoản QR, MoMo, VNPAY, PayPal. Gói tự kích hoạt khi tiền về." />
+        <OptionCard on={link} onClick={() => setF({ ...f, paymentMode: 'link' })} title="Link thanh toán ngoài" sub="Chủ hội bấm thanh toán thì được dẫn sang trang của hệ thống khác." />
+      </div>
+      {link && (
+        <div className="flex flex-col gap-3">
+          <Field label="Link gói tháng"><Input type="url" inputMode="url" placeholder="https://..." value={f.monthlyPayUrl} onChange={(e) => setF({ ...f, monthlyPayUrl: e.target.value })} /></Field>
+          <Field label="Link gói năm" hint="Để trống chu kỳ nào thì chu kỳ đó không bán."><Input type="url" inputMode="url" placeholder="https://..." value={f.yearlyPayUrl} onChange={(e) => setF({ ...f, yearlyPayUrl: e.target.value })} /></Field>
+          <div className="muted text-[13px]">Viết {'{workspace_id}'}, {'{email}'}, {'{cycle}'} vào link để hệ thống ngoài biết ai trả và trả gói nào. Link không có {'{workspace_id}'} thì Hội Mình tự thêm hm_ws và hm_cycle vào cuối.</div>
+          <div className="text-[13px] rounded-[10px] px-3 py-2.5" style={{ background: T.goldSoft, color: T.goldText }}>Hội Mình chưa tự kích hoạt gói khi khách trả qua link ngoài: phần nhận webhook từ hệ thống đó chưa có.</div>
+        </div>
+      )}
       {m.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
       <div className="flex gap-2 justify-end"><Button size="sm" onClick={onClose}>Hủy</Button><Button size="sm" variant="dark" loading={m.isPending} onClick={() => m.mutate()}>Lưu gói</Button></div>
     </div>
@@ -72,6 +86,7 @@ export default function Page() {
                 {box('Theo năm · 2 tháng miễn phí', money(s.plan?.yearlyMinor ?? 0), `${s.yearlyCount} chủ hội · ${fmtShortMoney(s.mrrYearlyMinor)} MRR quy đổi`)}
                 {box('Dùng thử', `${s.plan?.trialDays ?? 14} ngày`, `${s.trialCount} đang thử · ${s.conversionRate}% chuyển trả phí`)}
               </div>
+              <div className="text-[13px]" style={{ color: T.sideText }}>Thu tiền: {s.plan?.paymentMode === 'link' ? `link thanh toán ngoài (${[s.plan.monthlyPayUrl && 'tháng', s.plan.yearlyPayUrl && 'năm'].filter(Boolean).join(', ')})` : 'thanh toán trong Hội Mình'}</div>
               <div className="grid grid-cols-1 md:grid-cols-2 text-[13px] pt-3" style={{ gap: '8px 24px', color: T.sideText, borderTop: '1px solid rgba(255,253,249,0.15)' }}>{(s.plan?.features?.length ? s.plan.features : FEATURES).map((f) => <div key={f} className="flex items-center gap-2"><span style={{ color: T.teal }}><Check size={14} /></span>{f}</div>)}</div>
             </div>
             <div className="flex-1 flex flex-col gap-3">
