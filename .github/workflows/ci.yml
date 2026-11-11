@@ -75,7 +75,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # --only-shell: test chạy không màn hình nên chỉ cần bản headless, khỏi tải cả Chromium đầy đủ.
-      - run: pnpm --filter @hoiminh/e2e exec playwright install --with-deps --only-shell chromium
+      # --with-deps cài thêm gói hệ thống qua apt. Máy chạy của GitHub đã có sẵn các thư viện trình duyệt cần, apt chỉ
+      # thêm vài gói font phụ. Ngày 11/11/2026 kho gói Ubuntu của máy chạy không tới được suốt nhiều giờ, apt treo
+      # 7 phút rồi làm đỏ cả job dù chưa chạy bài test nào. Vì vậy: cho apt tối đa 3 phút, không được thì tải riêng
+      # trình duyệt (từ máy chủ của Playwright, không qua apt). Thiếu thư viện thật thì bước test sẽ báo rõ khi mở trình duyệt.
+      - name: Cài trình duyệt cho e2e
+        run: |
+          if timeout 180 pnpm --filter @hoiminh/e2e exec playwright install --with-deps --only-shell chromium; then
+            exit 0
+          fi
+          echo "::warning::Không cài được gói hệ thống qua apt, tải riêng trình duyệt và dùng thư viện có sẵn trên máy chạy."
+          pnpm --filter @hoiminh/e2e exec playwright install --only-shell chromium
       - run: pnpm test:e2e
       # Khi đỏ: giữ báo cáo kèm ảnh chụp và trace để xem lại, khỏi phải chạy lại mới biết hỏng ở đâu.
       - name: Lưu báo cáo e2e khi đỏ
