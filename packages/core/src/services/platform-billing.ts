@@ -104,17 +104,42 @@ export function cleanPayUrl(value: string | null): string | null {
   return s;
 }
 
-/** Super admin: sửa giá gói và cách thu tiền (thanh toán trong Hội Mình, hoặc link của hệ thống ngoài). */
+/** Khóa của gói duy nhất hiện nay: workspace mới mặc định trỏ tới khóa này (cột `workspaces.plan_key`). */
+export const PLATFORM_PLAN_KEY = 'hoiminh';
+
+/** Tên, giá, ngày dùng thử hợp lệ: giá là số nguyên dương (đồng), dùng thử 0 tới 365 ngày. */
+function checkPlanBasics(v: { name?: string; monthlyMinor?: number; yearlyMinor?: number; trialDays?: number }): void {
+  if (v.name !== undefined && !v.name.trim()) throw invalid('Tên gói không được để trống');
+  for (const [label, n] of [['Giá tháng', v.monthlyMinor], ['Giá năm', v.yearlyMinor]] as const) {
+    if (n !== undefined && (!Number.isInteger(n) || n <= 0)) throw invalid(`${label} phải là số nguyên lớn hơn 0`);
+  }
+  if (v.trialDays !== undefined && (!Number.isInteger(v.trialDays) || v.trialDays < 0 || v.trialDays > 365)) throw invalid('Số ngày dùng thử phải từ 0 tới 365');
+}
+
+/**
+ * Super admin: thiết lập gói từ màn quản trị. Gói đã có thì sửa (giá, tên, ngày dùng thử, cách thu tiền);
+ * chưa có thì tạo mới, để database trống vẫn dựng được gói mà không phải thêm tay. Chỉ tạo được gói duy nhất
+ * `PLATFORM_PLAN_KEY`: chưa có quyết định mở gói thứ hai.
+ */
 export async function updatePlan(ctx: Ctx, key: string, input: UpdatePlanInput) {
   requireSuperAdmin(ctx);
+  checkPlanBasics(input);
   const current = await ctx.db.query.plans.findFirst({ where: eq(plans.key, key) });
-  if (!current) throw notFound();
   const set: UpdatePlanInput = { ...input };
+  if (input.name !== undefined) set.name = input.name.trim();
   if (input.monthlyPayUrl !== undefined) set.monthlyPayUrl = cleanPayUrl(input.monthlyPayUrl);
   if (input.yearlyPayUrl !== undefined) set.yearlyPayUrl = cleanPayUrl(input.yearlyPayUrl);
-  const next = { ...current, ...set };
+  const next = { paymentMode: 'gateway' as const, monthlyPayUrl: null, yearlyPayUrl: null, ...current, ...set };
   // Chế độ link mà không có link nào thì chủ hội không còn đường trả tiền.
   if (next.paymentMode === 'link' && !next.monthlyPayUrl && !next.yearlyPayUrl) throw invalid('Chọn link thanh toán ngoài thì cần ít nhất một link (tháng hoặc năm)');
+
+  if (!current) {
+    if (key !== PLATFORM_PLAN_KEY) throw notFound();
+    if (!set.name || set.monthlyMinor === undefined || set.yearlyMinor === undefined) throw invalid('Tạo gói cần đủ tên, giá tháng và giá năm');
+    const [created] = await ctx.db.insert(plans).values({ key, name: set.name, description: set.description ?? '', monthlyMinor: set.monthlyMinor, yearlyMinor: set.yearlyMinor, trialDays: set.trialDays ?? BUSINESS.platformTrialDays, paymentMode: next.paymentMode, monthlyPayUrl: next.monthlyPayUrl, yearlyPayUrl: next.yearlyPayUrl }).returning();
+    await audit(ctx, { action: 'plan.create', resourceType: 'plan', resourceId: key, metadata: { ...set } });
+    return created!;
+  }
   const [row] = await ctx.db.update(plans).set({ ...set, updatedAt: ctx.now() }).where(eq(plans.key, key)).returning();
   if (!row) throw notFound();
   await audit(ctx, { action: 'plan.update', resourceType: 'plan', resourceId: key, metadata: { ...set } });
@@ -132,7 +157,7 @@ export async function planStats(ctx: Ctx) {
       (select count(*)::int from platform_subscriptions where status in ('expired','past_due')) as expired_count,
       (select count(*)::int from platform_subscriptions where status = 'active' and workspace_id in (select workspace_id from platform_subscriptions)) as converted`);
   const row = r[0] as Record<string, number>;
-  const plan = await ctx.db.query.plans.findFirst({ where: eq(plans.key, 'hoiminh') });
+  const plan = await ctx.db.query.plans.findFirst({ where: eq(plans.key, PLATFORM_PLAN_KEY) });
   const monthly = Number(row.monthly_count), yearly = Number(row.yearly_count), trial = Number(row.trial_count);
   return { plan, monthlyCount: monthly, yearlyCount: yearly, trialCount: trial, expiredCount: Number(row.expired_count), mrrMonthlyMinor: monthly * (plan?.monthlyMinor ?? 0), mrrYearlyMinor: Math.round((yearly * (plan?.yearlyMinor ?? 0)) / 12), conversionRate: monthly + yearly + trial ? Math.round(((monthly + yearly) / (monthly + yearly + trial)) * 100) : 0 };
 }

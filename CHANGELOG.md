@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.31.1 - 2026-11-11
+## 1.31.2 - 2026-11-11
 
 Ảnh bìa của hội hiện trọn ở trang Khám phá và trang Tạo hội, đúng khung 16:9 của ảnh chủ hội tải lên. Hội chưa có ảnh bìa thì thẻ ở Khám phá hiện ảnh đại diện (logo) thay cho ô màu trống.
 
@@ -15,6 +15,20 @@
 - Tỉ lệ khung ảnh bìa gom về hằng `COVER_RATIO` trong `apps/web/src/pages/public/Discovery.tsx`, thẻ ở Khám phá và băng chuyền ở Tạo hội dùng chung.
 - Ảnh bìa ở hai trang này là thẻ `img` (có `alt`, Khám phá tải lười) thay cho ảnh nền CSS.
 - Dòng hướng dẫn ở Cài đặt chung, mục Ảnh bìa, ghi đúng những nơi ảnh hiện.
+
+## 1.31.1 - 2026-11-11
+
+Gói Hội Mình thiết lập được trọn vẹn trong quản trị hệ thống, kể cả khi database chưa có gói nào.
+
+### Sửa lỗi
+
+- **Database chưa có gói thì quản trị không làm gì được.** Database thật (tạo ngày 10/11) có bảng gói trống: chủ hội thấy giá "…", trang bảng giá công khai báo "Chưa có gói nào", người mới không bắt đầu dùng thử được, còn trang Hệ thống, Gói nền tảng hiện một thẻ toàn số 0 với nút "Sửa gói" bấm không ra gì. Nay trang này báo "Chưa có gói nào" và mở sẵn ô **Tạo gói**: tên, giá tháng, giá năm, ngày dùng thử (điền sẵn 499.000đ, 4.990.000đ, 14 ngày để kiểm tra lại) và cách thu tiền. Tạo xong là có thẻ gói và sửa tiếp được như thường.
+- **Giá gói nhận cả số 0, số âm, số lẻ.** Nay giá tháng và giá năm phải là số nguyên lớn hơn 0, ngày dùng thử từ 0 tới 365, tên gói không để trống; áp dụng cho cả tạo lẫn sửa.
+
+### Kỹ thuật
+
+- `PATCH /v1/admin/plans/:key` tạo gói khi chưa có (cần đủ tên, giá tháng, giá năm), có rồi thì sửa. Chỉ tạo được khóa `hoiminh` (`PLATFORM_PLAN_KEY`): chưa có quyết định mở gói thứ hai. Ghi nhật ký `plan.create`. Không có migration.
+- Test: core `plan-setup.test.ts` (7), e2e luồng 21.
 
 ## 1.31.0 - 2026-11-11
 
