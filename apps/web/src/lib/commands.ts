@@ -70,6 +70,7 @@ export function adminCommands(): Command[] {
     { id: 'a-communities', group: 'Hệ thống', label: 'Hội', hint: 'Tìm, khóa, mở khóa hội', to: `${b}/hoi` },
     { id: 'a-users', group: 'Hệ thống', label: 'Người dùng', to: `${b}/nguoi-dung`, keywords: 'tai khoan email' },
     { id: 'a-reported', group: 'Hệ thống', label: 'Hội bị báo cáo', to: `${b}/ho-tro`, keywords: 'ho tro khieu nai' },
+    { id: 'a-user-reports', group: 'Hệ thống', label: 'Báo cáo người dùng', to: `${b}/bao-cao`, keywords: 'bao cao chan spam quay roi lua dao' },
     { id: 'a-payments', group: 'Hệ thống', label: 'Thanh toán và đối soát', hint: 'Ghép chuyển khoản thiếu mã', to: `${b}/thanh-toan`, keywords: 'giao dich sepay' },
     { id: 'a-affiliate', group: 'Hệ thống', label: 'Cộng sự nền tảng', hint: 'Trả hoa hồng giới thiệu Hội Mình', to: `${b}/cong-su`, keywords: 'yeu cau rut' },
     { id: 'a-plans', group: 'Hệ thống', label: 'Gói nền tảng', hint: 'Giá tháng, giá năm, ngày dùng thử', to: `${b}/goi` },

@@ -85,8 +85,11 @@ export interface MediaProvider {
   presignUpload(objectKey: string, contentType: string, ttlSeconds?: number): Promise<PresignedUpload>;
   /** URL công khai (file public). */
   getUrl(objectKey: string): string;
-  /** URL ký có hạn (file riêng: tài liệu khóa học trả phí, tệp số). */
-  getSignedUrl(objectKey: string, ttlSeconds?: number): Promise<string>;
+  /**
+   * URL ký có hạn (file riêng: tài liệu khóa học trả phí, tệp số, tệp đính kèm tin nhắn).
+   * Có `downloadName` thì trình duyệt tải tệp về với đúng tên đó thay vì mở ngay trong tab.
+   */
+  getSignedUrl(objectKey: string, ttlSeconds?: number, downloadName?: string): Promise<string>;
   /** Xóa đối tượng; khóa không còn thì coi như xong, lỗi khác thì ném để người gọi thử lại. */
   delete(objectKey: string): Promise<void>;
 }
@@ -120,9 +123,10 @@ export class R2Provider implements MediaProvider {
   getUrl(objectKey: string): string {
     return `${this.cfg.publicBaseUrl.replace(/\/$/, '')}/${objectKey}`;
   }
-  async getSignedUrl(objectKey: string, ttlSeconds = 3600): Promise<string> {
+  async getSignedUrl(objectKey: string, ttlSeconds = 3600, downloadName?: string): Promise<string> {
     const url = new URL(`${this.endpoint}/${objectKey}`);
     url.searchParams.set('X-Amz-Expires', String(ttlSeconds));
+    if (downloadName) url.searchParams.set('response-content-disposition', attachmentDisposition(downloadName));
     const signed = await this.client.sign(new Request(url, { method: 'GET' }), { aws: { signQuery: true } });
     return signed.url;
   }
@@ -190,9 +194,10 @@ export abstract class ProxiedMediaProvider implements MediaProvider {
     // Có domain public gắn vào bucket thì phát thẳng từ CDN Cloudflare; không thì qua API.
     return this.publicBaseUrl ? `${this.publicBaseUrl.replace(/\/$/, '')}/${objectKey}` : `${this.apiUrl}/files/${objectKey}`;
   }
-  async getSignedUrl(objectKey: string, ttlSeconds = 3600): Promise<string> {
+  async getSignedUrl(objectKey: string, ttlSeconds = 3600, downloadName?: string): Promise<string> {
     const expires = Date.now() + ttlSeconds * 1000;
-    return `${this.apiUrl}/files/${objectKey}?expires=${expires}&sig=${await this.sign(`${objectKey}:${expires}`)}`;
+    // Tên tải về không nằm trong chữ ký: nó chỉ đổi tên tệp phía người đã cầm URL hợp lệ, và API làm sạch trước khi đặt vào header.
+    return `${this.apiUrl}/files/${objectKey}?expires=${expires}&sig=${await this.sign(`${objectKey}:${expires}`)}${downloadName ? `&download=${encodeURIComponent(downloadName)}` : ''}`;
   }
   async delete(objectKey: string): Promise<void> {
     await this.store?.delete(objectKey);
@@ -251,8 +256,25 @@ export function createMediaProvider(opts: { r2: Partial<R2Config>; r2Bucket?: R2
  */
 export const UPLOAD_RULES = {
   image: { mimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], maxBytes: 10 * 1024 * 1024 },
-  document: { mimes: ['application/pdf', 'text/plain', 'application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], maxBytes: 100 * 1024 * 1024 },
+  document: { mimes: ['application/pdf', 'text/plain', 'application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], maxBytes: 100 * 1024 * 1024 },
 } as const;
+
+/** Tệp đính kèm trong tin nhắn: tối đa 5MB (chủ dự án đặt ngày 11/11), nhỏ hơn hẳn tài liệu khóa học vì ai cũng gửi được cho ai. */
+export const MESSAGE_FILE_MAX_BYTES = 5 * 1024 * 1024;
+export const MESSAGE_FILE_PREFIX = 'private/message_file/';
+
+/** Dung lượng tối đa của một tệp theo nơi lưu (object key), null là chỉ theo UPLOAD_RULES. Dùng lúc API nhận byte thật của tệp. */
+export function maxBytesForKey(objectKey: string): number | null {
+  return objectKey.startsWith(MESSAGE_FILE_PREFIX) ? MESSAGE_FILE_MAX_BYTES : null;
+}
+
+/** Giá trị header Content-Disposition để trình duyệt tải tệp về với tên cho trước (tên có dấu tiếng Việt đi theo RFC 5987). */
+export function attachmentDisposition(name: string): string {
+  // Bỏ ký tự điều khiển, dấu nháy kép và dấu gạch chéo: chúng phá cú pháp header hoặc bị coi là đường dẫn.
+  const clean = [...name].filter((ch) => { const c = ch.charCodeAt(0); return c >= 32 && c !== 127 && ch !== '"' && ch !== '\\' && ch !== '/'; }).join('').slice(0, 200) || 'tep';
+  const ascii = [...clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')].map((ch) => (ch.charCodeAt(0) > 126 ? '_' : ch)).join('');
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(clean)}`;
+}
 
 export function validateUpload(mime: string, size: number): { ok: true; kind: 'image' | 'document' } | { ok: false; reason: string } {
   for (const [kind, rule] of Object.entries(UPLOAD_RULES) as Array<['image' | 'document', { mimes: readonly string[]; maxBytes: number }]>) {

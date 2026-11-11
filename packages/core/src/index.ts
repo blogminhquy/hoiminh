@@ -41,6 +41,7 @@ export * as affiliate from './services/affiliate';
 export * as withdrawals from './services/withdrawals';
 export * as messaging from './services/messaging';
 export * as notifications from './services/notifications';
+export * as safety from './services/safety';
 export * as platformBilling from './services/platform-billing';
 export * as admin from './services/admin';
 export * as revenue from './services/revenue';

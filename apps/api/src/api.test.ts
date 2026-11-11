@@ -257,6 +257,16 @@ describe('API', () => {
     };
     const served = async (url: string) => { const res = await h.request(url); return { type: res.headers.get('content-type'), text: new TextDecoder().decode(await res.arrayBuffer()) }; };
 
+    // Tệp đính kèm tin nhắn là tệp riêng, tối đa 5MB. Dung lượng lúc xin URL do client tự khai,
+    // nên khai nhỏ rồi gửi lên hơn 5MB vẫn bị từ chối lúc API nhận byte thật.
+    const doc = (await (await ask('Bảng giá.pdf', 'application/pdf', 'message_file')).json()) as Asked;
+    expect(new URL(doc.upload.url).pathname).toContain('/files/upload/private/message_file/');
+    expect(doc.url).toBeNull();
+    expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: new Uint8Array(5 * 1024 * 1024 + 1) })).status).toBe(413);
+    expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: new Uint8Array([1, 2, 3]) })).status).toBe(200);
+    const declaredTooBig = await h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName: 'to.pdf', mimeType: 'application/pdf', sizeBytes: 5 * 1024 * 1024 + 1, purpose: 'message_file' }) });
+    expect(declaredTooBig.status).toBe(422);
+
     // JPEG từ trình duyệt không xuất được WebP (Safari): key đuôi .webp, máy chủ chuyển rồi mới ghi vào R2.
     const jpeg = await upload('IMG_1.JPG', 'image/jpeg');
     expect(jpeg.url).toMatch(/^https:\/\/api\.test\/files\/public\/post_image\/.+\.webp$/);

@@ -451,7 +451,7 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   height: calc(100dvh - var(--chat-top, 64px) - var(--chat-bottom, 0px));
 }
 .chat-list { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
-.chat-main { position: relative; flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+.chat-main { position: relative; flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bg); container: chat / inline-size; }
 .chat-info { width: 344px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .chat-info-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .chat-icon.chat-info-close { display: none; position: absolute; right: 12px; }
@@ -464,8 +464,9 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-empty { margin: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--ink3); font-size: 15px; }
 
 /* Danh sách hội thoại: hàng tab gạch chân, mỗi dòng có ảnh đại diện, tên, giờ, dòng xem trước, số chưa đọc. */
-.chat-tabs { display: flex; gap: 20px; padding: 4px 16px 0; margin-top: 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
-.chat-tab { height: 40px; font-size: 15px; font-weight: 600; color: var(--ink3); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.chat-tabs { display: flex; gap: 14px; padding: 4px 16px 0; margin-top: 4px; border-bottom: 1px solid var(--line); flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+.chat-tabs::-webkit-scrollbar { display: none; }
+.chat-tab { flex-shrink: 0; height: 40px; font-size: 15px; font-weight: 600; color: var(--ink3); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
 .chat-tab.on { color: var(--primary-text); border-bottom-color: var(--primary); }
 .chat-convos { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 0; }
 .chat-convos > :not(.chat-convo) { margin: 12px 16px; }
@@ -478,19 +479,18 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-convo:hover .chat-convo-more, .chat-convo:focus-within .chat-convo-more, .chat-convo.menu-open .chat-convo-more { visibility: visible; }
 .chat-convo:hover .chat-convo-time, .chat-convo:focus-within .chat-convo-time, .chat-convo.menu-open .chat-convo-time { visibility: hidden; }
 .chat-menu { position: absolute; z-index: 11; top: 40px; right: 12px; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(8, 24, 23, 0.16); }
-.chat-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); }
-.chat-menu button:hover { background: var(--bg); }
+.chat-menu [role='menuitem'] { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); white-space: nowrap; }
+.chat-menu [role='menuitem']:hover { background: var(--bg); }
 
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
-.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
+.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
 .chat-scroll > :first-child { margin-top: auto; }
 .chat-scroll > .chat-empty { margin: auto; }
 .chat-day { display: flex; justify-content: center; margin: 14px 0 6px; }
 .chat-day span { padding: 2px 12px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 38%, transparent); color: #FFFFFF; font-size: 14px; }
-.chat-row { position: relative; display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; border-radius: 12px; }
+.chat-row { position: relative; display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; border-radius: 12px; }
 .chat-row.first { margin-top: 14px; }
 .chat-row.mine { flex-direction: row-reverse; }
-.chat-row.reacted { margin-bottom: 14px; }
 .chat-row.flash .chat-bubble { box-shadow: 0 0 0 3px var(--gold); }
 .chat-avatar { width: 36px; flex-shrink: 0; }
 .chat-body { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; max-width: min(560px, 76%); }
@@ -501,43 +501,50 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-bubble.recalled { color: var(--ink3); font-style: italic; }
 .chat-bubble.big, .chat-row.mine .chat-bubble.big { padding: 0 2px; background: transparent; border-color: transparent; font-size: 44px; line-height: 1.2; }
 .chat-link { color: var(--teal-text); text-decoration: underline; text-underline-offset: 2px; }
-.chat-time { display: block; margin-top: 4px; font-size: 14px; line-height: 1.2; color: var(--ink3); white-space: nowrap; }
-.chat-status { display: inline-flex; align-items: center; gap: 4px; padding: 1px 10px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 38%, transparent); color: #FFFFFF; font-size: 14px; }
-.chat-row.reacted .chat-status { margin-top: 14px; }
+/* Hàng dưới bong bóng: giờ gửi, trạng thái, cảm xúc đã thả, rồi các nút thao tác; thanh chọn cảm xúc nằm ở đầu bên kia của hàng.
+   Hàng rộng ít nhất bằng nội dung của nó nên tin ngắn vẫn đủ chỗ; tin dài thì thanh cảm xúc nằm sát mép xa của bong bóng. */
+.chat-meta { align-self: flex-start; display: flex; align-items: center; gap: 8px; width: max-content; min-width: 100%; min-height: 24px; font-size: 14px; line-height: 1.2; color: var(--ink3); }
+/* Tin của mình: hàng bám mép phải của bong bóng, có dài hơn bong bóng thì dài về bên trái (phía còn chỗ). */
+.chat-row.mine .chat-meta { align-self: flex-end; flex-direction: row-reverse; }
+.chat-time { white-space: nowrap; }
+.chat-status { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .chat-image { display: block; margin-bottom: 4px; }
 .chat-image img { display: block; max-width: min(320px, 100%); max-height: 360px; border-radius: 8px; }
+/* Tệp đính kèm: thẻ có biểu tượng, tên (cắt bằng dấu ba chấm khi dài), dung lượng và nút tải. */
+.chat-file { display: flex; align-items: center; gap: 10px; width: 100%; min-width: min(240px, 100%); max-width: 360px; margin-bottom: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); text-align: left; white-space: normal; color: var(--ink); }
+.chat-file:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.chat-file i { width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--surface); color: var(--primary-text); }
+.chat-file span > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 1.4; }
+.chat-file span > span { color: var(--ink3); }
+.chat-file:disabled { cursor: progress; }
+/* Đã chặn: thay ô nhập bằng một dòng báo, người chặn có nút bỏ chặn. */
+.chat-blocked { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px; text-align: center; font-size: 15px; color: var(--ink2); }
 .chat-quote { display: flex; flex-direction: column; width: 100%; margin-bottom: 6px; padding: 6px 10px; border-left: 3px solid var(--primary); border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); text-align: left; font-size: 14px; line-height: 1.4; white-space: normal; }
 .chat-quote > span { color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* Thao tác trên tin: nút cạnh bong bóng (trả lời, sao chép, thu hồi) và nút thích ở góc dưới, rê vào nút thích để chọn cảm xúc. */
-.chat-actions { align-self: center; display: flex; gap: 4px; flex-shrink: 0; visibility: hidden; }
-.chat-row:focus-within .chat-actions { visibility: visible; }
-.chat-actions button { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink2); }
-.chat-actions button:hover { color: var(--primary-text); border-color: var(--primary); }
-.chat-react { position: absolute; right: 8px; bottom: -14px; z-index: 1; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.chat-react-sum, .chat-react-btn { height: 26px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(8, 24, 23, 0.12); font-size: 14px; line-height: 1; color: var(--ink2); }
-.chat-react-sum { padding: 0 8px; }
+/* Thao tác trên tin: nút phẳng cạnh giờ gửi (trả lời, sao chép, thu hồi) và thanh sáu cảm xúc. Chỉ hiện khi rê chuột vào tin,
+   khi đi bằng bàn phím, hoặc khi chạm vào tin trên màn cảm ứng (lớp .active: trình duyệt cảm ứng giữ trạng thái rê sau khi chạm). */
+.chat-actions { display: flex; gap: 2px; margin-block: -2px; visibility: hidden; }
+.chat-actions button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink3); }
+.chat-actions button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.chat-react-sum { height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; line-height: 1; color: var(--ink2); white-space: nowrap; }
 .chat-react-sum b { font-weight: 600; }
-.chat-react-btn { width: 26px; visibility: hidden; }
-.chat-react-btn.has, .chat-row:focus-within .chat-react-btn { visibility: visible; }
-/* Rê chuột chỉ tính trên máy có chuột; màn cảm ứng "dính" trạng thái rê sau khi chạm nên dùng lớp .active (chạm vào tin). */
+.chat-react-bar { position: relative; z-index: 1; display: flex; align-items: center; margin: -8px 0 -8px auto; padding: 3px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(8, 24, 23, 0.14); visibility: hidden; }
+.chat-row.mine .chat-react-bar { margin: -8px auto -8px 0; }
+.chat-react-bar button { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 21px; line-height: 1; color: var(--ink3); transition: transform .1s; }
+.chat-react-bar button:hover { transform: scale(1.3); }
+.chat-react-bar button.clear:hover { transform: none; color: var(--ink); background: var(--bg); }
+.chat-react-bar button[aria-pressed='true'] { background: var(--primary-soft); }
+.chat-row:focus-within .chat-actions, .chat-row:focus-within .chat-react-bar { visibility: visible; }
 @media (hover: hover) {
-  .chat-row:hover .chat-actions, .chat-row:hover .chat-react-btn { visibility: visible; }
+  .chat-row:hover .chat-actions, .chat-row:hover .chat-react-bar { visibility: visible; }
 }
 @media (hover: none) {
-  .chat-row.active .chat-actions, .chat-row.active .chat-react-btn, .chat-row.active .chat-react-bar { visibility: visible; }
+  .chat-row.active .chat-actions, .chat-row.active .chat-react-bar { visibility: visible; }
 }
-.chat-react-pick { position: relative; display: inline-flex; }
-.chat-react-bar { position: absolute; bottom: 100%; left: 0; display: flex; visibility: hidden; padding-bottom: 6px; }
-.chat-react-pick:hover .chat-react-bar, .chat-react-pick:focus-within .chat-react-bar { visibility: visible; }
-.chat-react-bar button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; background: var(--surface); border-block: 1px solid var(--line); color: var(--ink2); transition: transform .1s; }
-.chat-react-bar button:first-child { border-left: 1px solid var(--line); border-radius: 999px 0 0 999px; padding-left: 4px; width: 44px; }
-.chat-react-bar button:last-child { border-right: 1px solid var(--line); border-radius: 0 999px 999px 0; padding-right: 4px; width: 44px; }
-.chat-react-bar button:hover { transform: scale(1.25); }
-.chat-react-bar button[aria-pressed='true'] { background: var(--primary-soft); }
 .chat-jump { position: absolute; left: 50%; bottom: 132px; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 14px; font-weight: 600; box-shadow: 0 6px 16px rgba(8, 24, 23, 0.22); }
 
-/* Ô nhập: thanh công cụ ở trên, ô chữ nhiều dòng không viền, nút gửi (hoặc nút thích khi chưa gõ gì). */
+/* Ô nhập: thanh công cụ ở trên, ô chữ nhiều dòng không viền, nút gửi ở góc phải (mờ khi chưa gõ gì). */
 .chat-composer { position: relative; flex-shrink: 0; background: var(--surface); border-top: 1px solid var(--line); }
 .chat-composer:focus-within { border-top-color: var(--primary); }
 .chat-tools { position: relative; display: flex; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
@@ -548,8 +555,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-input { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; padding: 8px 0; max-height: 132px; }
 .chat-input::placeholder { color: var(--ink3); }
 .chat-send { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--primary); color: var(--on-primary); }
-.chat-send.like { background: transparent; color: var(--gold-text); }
-.chat-send.like:hover { background: var(--gold-soft); }
 .chat-send:disabled { opacity: .55; cursor: not-allowed; }
 .chat-replying { display: flex; align-items: center; gap: 8px; padding: 8px 8px 0 16px; }
 .chat-replying .chat-quote { margin-bottom: 0; }
@@ -571,20 +576,27 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-linkrow span > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .chat-linkrow span > span { color: var(--teal-text); }
 
-/* Màn hẹp hơn 1280px: bảng thông tin trượt đè lên khung chat thay vì chiếm một cột. */
-@media (max-width: 1279px) {
+/* Màn hẹp hơn 1536px: bảng thông tin trượt đè lên khung chat thay vì chiếm một cột (để cột chat không bị bóp dưới khoảng 590px). */
+@media (max-width: 1535px) {
   .chat-info { position: absolute; top: 0; right: 0; bottom: 0; z-index: 5; width: min(344px, 100%); box-shadow: -12px 0 32px rgba(8, 24, 23, 0.16); }
   .chat-icon.chat-info-close { display: inline-flex; }
 }
+/* Dưới 1024px (điện thoại, máy tính bảng dọc): mỗi lúc một màn. Chưa chọn hội thoại thì thấy danh sách, chọn rồi thì khung chat chiếm cả vùng, có nút quay lại. */
 @media (max-width: 1023px) {
-  .chat-list { width: 300px; }
-}
-/* Điện thoại: mỗi lúc một màn. Chưa chọn hội thoại thì thấy danh sách, chọn rồi thì khung chat chiếm cả màn, có nút quay lại. */
-@media (max-width: 767px) {
-  .chat-page { border-inline: 0; }
   .chat-list { width: 100%; border-right: 0; }
   .chat-page.open .chat-list, .chat-page:not(.open) .chat-main { display: none; }
   .chat-icon.chat-back { display: inline-flex; }
+}
+/* Cột chat hẹp (điện thoại, hoặc cửa sổ máy tính hẹp): hàng dưới bong bóng không đủ chỗ cho cả nút thao tác lẫn thanh cảm xúc trên một dòng,
+   và giữ chỗ sẵn cho chúng thì hàng quá cao. Nên chúng chỉ hiện khi chạm (bấm) vào tin, thanh cảm xúc xuống dòng riêng. Đo theo bề rộng
+   của chính cột chat (container query), không theo màn hình, vì cột chat còn phụ thuộc thanh bên và danh sách hội thoại. */
+@container chat (max-width: 539px) {
+  .chat-meta { flex-wrap: wrap; width: auto; max-width: 100%; row-gap: 10px; }
+  .chat-actions, .chat-react-bar, .chat-row.mine .chat-react-bar { display: none; margin: 0; visibility: visible; }
+  .chat-row.active .chat-actions, .chat-row.active .chat-react-bar, .chat-row:focus-within .chat-actions, .chat-row:focus-within .chat-react-bar { display: flex; }
+}
+@media (max-width: 767px) {
+  .chat-page { border-inline: 0; }
   .chat-info { width: 100%; }
   .chat-head { padding: 0 12px; gap: 10px; }
   .chat-scroll { padding: 12px 10px 18px; }
@@ -593,12 +605,8 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .chat-icon, .chat-send { width: 44px; height: 44px; }
   .chat-convo-more { display: none; }
   .chat-convo:hover .chat-convo-time, .chat-convo:focus-within .chat-convo-time { visibility: visible; }
-  /* Không đủ chỗ cạnh bong bóng: thao tác nổi ngay phía trên tin đang chạm. */
-  .chat-actions { position: absolute; top: -34px; left: 44px; z-index: 2; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(8, 24, 23, 0.16); }
-  .chat-row.mine .chat-actions { left: auto; right: 0; }
-  .chat-actions button { width: 40px; height: 40px; border-color: transparent; }
-  .chat-react-sum, .chat-react-btn { height: 30px; }
-  .chat-react-btn { width: 30px; }
+  .chat-actions button { width: 40px; height: 40px; }
+  .chat-react-bar button { width: 38px; height: 38px; font-size: 24px; }
   .chat-emoji { grid-template-columns: repeat(6, 44px); }
   .chat-emoji button { width: 44px; height: 44px; }
 }
