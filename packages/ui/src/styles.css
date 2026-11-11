@@ -164,6 +164,11 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 /* Lưới Khu học tập: tự xuống hàng theo bề rộng, không cần media query riêng. */
 .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+/* Hai tab dạng viên thuốc (chu kỳ tháng, năm ở trang Gói Hội Mình); .seg-note là nhãn nhỏ gác lên góc trên bên phải. */
+.seg { position: relative; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.seg > button { flex: 1 1 0; min-height: 44px; padding: 0 28px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--ink2); white-space: nowrap; cursor: pointer; }
+.seg > button.on { background: var(--ink); color: var(--surface); }
+.seg > .seg-note { position: absolute; top: -14px; right: -12px; }
 .table-scroll { overflow-x: auto; }
 /* Hàng chip lọc: máy tính xuống dòng; điện thoại một hàng vuốt ngang để nội dung bên dưới lên cao hơn. */
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }

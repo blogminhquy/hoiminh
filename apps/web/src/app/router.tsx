@@ -44,7 +44,7 @@ const ownerRoutes: RouteObject = {
   children: [
     { path: '/admin', element: page(() => import('@/pages/owner/WorkspaceHome')) },
     { path: '/admin/tao-hoi', element: page(() => import('@/pages/owner/WorkspaceCreate')) },
-    { path: '/admin/goi', element: page(() => import('@/pages/owner/WorkspaceHome')) },
+    { path: '/admin/goi', element: page(() => import('@/pages/owner/WorkspacePlan')) },
     { path: '/admin/nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
   ],
 };

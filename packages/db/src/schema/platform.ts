@@ -13,6 +13,11 @@ export const plans = pgTable('plans', {
   trialDays: integer('trial_days').notNull().default(14),
   quotas: jsonb('quotas').$type<Record<string, number | null>>().notNull().default({}),
   features: jsonb('features').$type<string[]>().notNull().default([]),
+  /** Cách thu tiền gói: 'gateway' = thanh toán trong Hội Mình (QR, MoMo, VNPAY, PayPal); 'link' = mở link của hệ thống thanh toán ngoài. */
+  paymentMode: text('payment_mode').$type<'gateway' | 'link'>().notNull().default('gateway'),
+  /** Link thanh toán ngoài cho từng chu kỳ (chỉ dùng khi paymentMode = 'link'); rỗng thì chu kỳ đó không bán. */
+  monthlyPayUrl: text('monthly_pay_url'),
+  yearlyPayUrl: text('yearly_pay_url'),
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
   ...timestamps(),

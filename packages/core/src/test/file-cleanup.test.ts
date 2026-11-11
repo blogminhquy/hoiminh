@@ -468,6 +468,8 @@ describe('danh sách cột tham chiếu tệp', () => {
     'posts.video_url', 'posts.link_url', 'webhooks.url', 'files.url',
     // Tên và dung lượng của tệp đính kèm tin nhắn (chép lại để hiển thị); tham chiếu thật là messages.file_url.
     'messages.file_name', 'messages.file_size',
+    // Link thanh toán ngoài của gói nền tảng: địa chỉ trang của hệ thống khác, không phải tệp trên R2.
+    'plans.monthly_pay_url', 'plans.yearly_pay_url',
   ];
   const allColumns = (Object.values(schema) as unknown[]).filter((t): t is PgTable => typeof t === 'object' && t !== null && Object.getPrototypeOf(t) !== null && is(t, PgTable)).flatMap((t) => getTableConfig(t).columns.map((c) => `${getTableName(t)}.${c.name}`));
 

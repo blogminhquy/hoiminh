@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 1.31.0 - 2026-11-11
+
+Gói Hội Mình thu tiền được bằng link thanh toán ngoài, do quản trị hệ thống chọn. Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một trang riêng, một cột dọc ở giữa, có hai tab chu kỳ và khung thanh toán bật lên. Trước đây phần thanh toán bung ra ngay trong hàng thẻ của "Hội của tôi", ép ba thẻ vào một hàng làm chữ xuống dòng từng từ và nút tràn ra ngoài thẻ.
+
+### Tính năng
+
+- **Chọn cách thu tiền gói Hội Mình** (Hệ thống, Gói nền tảng, "Sửa gói"): "Thanh toán trong Hội Mình" (chuyển khoản QR, MoMo, VNPAY, PayPal, như trước) hoặc "Link thanh toán ngoài". Chọn link ngoài thì nhập link cho gói tháng, gói năm; để trống chu kỳ nào thì chu kỳ đó không bán. Thẻ gói ghi rõ đang thu tiền theo cách nào.
+- **Chủ hội ở chế độ link ngoài:** trang Gói Hội Mình chỉ hiện chu kỳ có link; nút thanh toán trên thẻ gói dẫn thẳng sang link đó (mở ở thẻ mới), không qua khung bật lên.
+- **Link điền sẵn người trả.** Viết `{workspace_id}`, `{email}`, `{cycle}` vào link thì Hội Mình điền mã hội, email chủ hội, chu kỳ (`monthly` hoặc `yearly`) khi mở. Link không có `{workspace_id}` thì tự thêm `hm_ws` và `hm_cycle` vào cuối, để hệ thống ngoài luôn biết hội nào trả. Email chỉ được gửi đi khi link có ghi `{email}`.
+- **Chưa có:** Hội Mình chưa tự kích hoạt gói khi khách trả qua link ngoài (phần nhận webhook từ hệ thống ngoài chưa xây). Ô cài đặt có ghi rõ điều này.
+
+### Thay đổi
+
+- **Gói Hội Mình là một trang riêng, một cột**, cả trên máy tính lẫn điện thoại, cùng kiểu với trang bảng giá công khai. Từ trên xuống: thẻ "Gói của bạn" (tên gói, nhãn trạng thái như "Còn 3 ngày", ngày hết hạn, số hội và thành viên), hai tab "Theo tháng" và "Theo năm", rồi thẻ gói ghi giá của tab đang chọn kèm bốn dòng quyền lợi. Có lối "Hội của tôi" để quay về.
+- **Bấm nút trên thẻ gói thì khung thanh toán bật lên**: ghi lại gói và số tiền, chọn cách thanh toán bằng ô chọn một kiểu radio (chuyển khoản QR, MoMo, VNPAY, PayPal), một nút ghi rõ số tiền.
+- **Thẻ "Gói nền tảng của bạn" ở Hội của tôi chỉ còn một nút** ("Thanh toán gói" khi đang dùng thử hoặc hết hạn, "Quản lý gói" khi gói đang chạy), bấm là sang trang gói. Thẻ không còn bung phần thanh toán ra tại chỗ, không còn hai nút "Đóng".
+- **Mục "Hội của tôi" trên thanh đầu trang sáng ở mọi trang con** (Gói Hội Mình, Tạo hội). Trước đây vào các trang này thì không mục nào sáng.
+
+### Sửa lỗi
+
+- **Giá hiện "…/tháng" và nút "Thanh toán …" khi chưa có bảng giá.** Nay trong lúc tải hiện khung chờ; tải không được thì có dòng báo kèm nút "Thử lại", nút trên thẻ gói bị khóa cho tới khi có giá.
+- **Thẻ gói ghi "dùng thử đến" một ngày đã qua.** Ngày hết hạn đã qua mà hội chưa bị khóa thì nay ghi "Đã hết hạn, hết hạn ngày..." kèm lời nhắc thanh toán để không bị khóa tạo nội dung.
+- **Giá hiển thị lấy theo đúng gói của hội** (`planKey`), trùng với gói máy chủ dùng để tính tiền; trước đây lấy gói đầu danh sách.
+- **"2 tháng miễn phí" của gói năm được tính từ giá thật** (12 tháng trừ giá năm), không còn ghi cứng; không chia chẵn theo tháng thì ghi số tiền tiết kiệm, gói năm không rẻ hơn thì không ghi gì.
+
+### Kỹ thuật
+
+- Trạng thái gói gom về một hàm thuần `planView` trong `apps/web/src/lib/platform-plan.ts` (có test), thẻ ở Hội của tôi và trang gói dùng chung.
+- Trang mới `apps/web/src/pages/owner/WorkspacePlan.tsx`; lớp `.seg` trong `@hoiminh/ui` cho hai tab dạng viên thuốc.
+- Migration `0010_plan_payment_link.sql`: thêm ba cột vào bảng `plans` (`payment_mode` mặc định `gateway`, `monthly_pay_url`, `yearly_pay_url`). Chỉ thêm cột, viết `IF NOT EXISTS`. **Phải áp dụng lên database thật trước khi đưa bản này lên chạy**, vì mọi truy vấn lấy gói đều đọc các cột này.
+- `PATCH /v1/admin/plans/:key` nhận thêm `paymentMode`, `monthlyPayUrl`, `yearlyPayUrl`. Link phải là `https`, dài tối đa 500 ký tự; chế độ link mà không có link nào thì bị từ chối. `GET /v1/plans` trả thêm ba trường này.
+- `POST /v1/checkout` với gói nền tảng bị từ chối khi gói đang ở chế độ link ngoài, để lựa chọn của quản trị không bị vượt qua bằng cách gọi thẳng API.
+- Test e2e luồng 20: quản trị cài link, nút thanh toán của chủ hội dẫn thẳng sang link có mã hội, quản trị trả về như cũ.
+- Test e2e luồng 6 đi qua trang mới: bấm liên kết "Thanh toán gói" ở `/admin`, sang `/admin/goi`, đổi tab năm rồi về tab tháng, mở khung thanh toán, thanh toán.
+
 ## 1.30.0 - 2026-11-11
 
 Tin nhắn: gửi được tệp đính kèm (tối đa 5MB), có đủ ba trạng thái đã gửi, đã nhận, đã xem, có tab Lưu trữ, chặn và báo cáo người dùng; hàng thao tác dưới mỗi tin được xếp lại và khung chat không còn kéo ngang được.

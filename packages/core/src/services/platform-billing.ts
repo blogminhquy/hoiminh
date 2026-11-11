@@ -5,7 +5,7 @@ import { and, eq, inArray, lt, sql } from 'drizzle-orm';
 import { platformSubscriptions, plans, users, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
-import { notFound } from '../errors';
+import { invalid, notFound } from '../errors';
 import { periodEnd } from '../lib/money';
 import { requireSuperAdmin, requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
@@ -81,12 +81,43 @@ export async function runPlatformBillingCron(ctx: Ctx): Promise<{ reminded: numb
   return { reminded, locked };
 }
 
-/** Super admin: sửa giá gói. */
-export async function updatePlan(ctx: Ctx, key: string, input: { name?: string; monthlyMinor?: number; yearlyMinor?: number; trialDays?: number; description?: string }) {
+export interface UpdatePlanInput {
+  name?: string; monthlyMinor?: number; yearlyMinor?: number; trialDays?: number; description?: string;
+  paymentMode?: 'gateway' | 'link'; monthlyPayUrl?: string | null; yearlyPayUrl?: string | null;
+}
+
+/**
+ * Link thanh toán ngoài: chỉ nhận https, để chủ hội không bị dẫn tới trang không mã hóa hay `javascript:`.
+ * Giữ nguyên chuỗi gốc (có thể chứa `{workspace_id}`, `{email}`, `{cycle}` để web điền khi mở link). Rỗng thì là null.
+ */
+export function cleanPayUrl(value: string | null): string | null {
+  const s = (value ?? '').trim();
+  if (!s) return null;
+  if (s.length > 500) throw invalid('Link thanh toán dài quá 500 ký tự');
+  let url: URL;
+  try {
+    url = new URL(s);
+  } catch {
+    throw invalid('Link thanh toán không hợp lệ');
+  }
+  if (url.protocol !== 'https:') throw invalid('Link thanh toán phải bắt đầu bằng https://');
+  return s;
+}
+
+/** Super admin: sửa giá gói và cách thu tiền (thanh toán trong Hội Mình, hoặc link của hệ thống ngoài). */
+export async function updatePlan(ctx: Ctx, key: string, input: UpdatePlanInput) {
   requireSuperAdmin(ctx);
-  const [row] = await ctx.db.update(plans).set({ ...input, updatedAt: ctx.now() }).where(eq(plans.key, key)).returning();
+  const current = await ctx.db.query.plans.findFirst({ where: eq(plans.key, key) });
+  if (!current) throw notFound();
+  const set: UpdatePlanInput = { ...input };
+  if (input.monthlyPayUrl !== undefined) set.monthlyPayUrl = cleanPayUrl(input.monthlyPayUrl);
+  if (input.yearlyPayUrl !== undefined) set.yearlyPayUrl = cleanPayUrl(input.yearlyPayUrl);
+  const next = { ...current, ...set };
+  // Chế độ link mà không có link nào thì chủ hội không còn đường trả tiền.
+  if (next.paymentMode === 'link' && !next.monthlyPayUrl && !next.yearlyPayUrl) throw invalid('Chọn link thanh toán ngoài thì cần ít nhất một link (tháng hoặc năm)');
+  const [row] = await ctx.db.update(plans).set({ ...set, updatedAt: ctx.now() }).where(eq(plans.key, key)).returning();
   if (!row) throw notFound();
-  await audit(ctx, { action: 'plan.update', resourceType: 'plan', resourceId: key, metadata: input });
+  await audit(ctx, { action: 'plan.update', resourceType: 'plan', resourceId: key, metadata: { ...set } });
   return row;
 }
 

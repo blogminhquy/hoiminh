@@ -44,6 +44,8 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
   if (!ws) throw notFound('Workspace không tồn tại');
   const plan = await ctx.db.query.plans.findFirst({ where: eq(plans.key, ws.planKey) });
   if (!plan) throw notFound('Gói nền tảng không tồn tại');
+  // Quản trị đã chuyển gói sang link thanh toán ngoài: không tạo đơn qua cổng trong Hội Mình nữa.
+  if (plan.paymentMode === 'link') throw new AppError('payment_error', 'Gói Hội Mình đang thanh toán qua link ngoài, mở trang Gói Hội Mình để tới trang thanh toán');
   const amount = t.cycle === 'monthly' ? plan.monthlyMinor : plan.yearlyMinor;
   return { title: `Gói ${plan.name} · ${t.cycle === 'monthly' ? 'theo tháng' : 'theo năm'}`, subtitle: 'Gói nền tảng cho chủ hội', amountMinor: amount, currency: 'VND', communityId: null, workspaceId: ws.id, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, title: `Hội Mình · ${t.cycle === 'monthly' ? 'tháng' : 'năm'}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `Hội Mình · ${t.cycle === 'monthly' ? 'tháng' : 'năm'}` };
 }

@@ -71,6 +71,13 @@
       "when": 1794355565176,
       "tag": "0009_message_files_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794361409191,
+      "tag": "0010_plan_payment_link",
+      "breakpoints": true
     }
   ]
 }
