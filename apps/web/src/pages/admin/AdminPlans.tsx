@@ -1,5 +1,6 @@
 // Hệ thống · Gói nền tảng và Tính năng (hai tab của nhóm "Gói và tính năng"): thẻ gói duy nhất với 3 ô tháng/năm/dùng thử
-// (sửa giá, chọn cách thu tiền: thanh toán trong Hội Mình hoặc link ngoài), cộng sự nền tảng; tab Tính năng bật tắt các cờ có tác dụng thật.
+// (sửa giá, chọn cách thu tiền: thanh toán trong Hội Mình hoặc link ngoài; chưa có gói nào thì tạo gói ngay tại đây),
+// cộng sự nền tảng; tab Tính năng bật tắt các cờ có tác dụng thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Field, Input, OptionCard, T, Toggle, money } from '@hoiminh/ui';
 import { Check, Plus } from 'lucide-react';
@@ -10,7 +11,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fmtShortMoney } from '@/lib/format';
 
 interface Plan { key: string; name: string; description: string; monthlyMinor: number; yearlyMinor: number; trialDays: number; features: string[]; paymentMode: 'gateway' | 'link'; monthlyPayUrl: string | null; yearlyPayUrl: string | null }
-interface Stats { plan: Plan | null; monthlyCount: number; yearlyCount: number; trialCount: number; expiredCount: number; mrrMonthlyMinor: number; mrrYearlyMinor: number; conversionRate: number }
+interface Stats { plan?: Plan | null; monthlyCount: number; yearlyCount: number; trialCount: number; expiredCount: number; mrrMonthlyMinor: number; mrrYearlyMinor: number; conversionRate: number }
 interface Flag { key: string; description: string; enabled: boolean; rules: Record<string, unknown> }
 interface AffiliateInfo { program: { commissionRateBps: number; commissionDurationMonths: number | null }; stats: { paidThisMonthMinor: number } }
 const FEATURES = ['Không giới hạn hội, thành viên, khóa học, video, sự kiện', 'Không thu phí giao dịch', 'Cộng sự và bảng xếp hạng cộng sự', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động và tiện ích', 'Nhận tiền qua chuyển khoản QR, MoMo, VNPAY, PayPal', 'API, webhook và MCP'];
@@ -21,14 +22,20 @@ const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàn
 /** Cờ của tính năng chưa xây (thuộc V2): bật hay tắt chưa đổi gì, nên không hiện để khỏi gây hiểu nhầm. */
 const NO_EFFECT = new Set(['realtime_chat', 'go_live', 'gamification']);
 
-function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
+/** Khóa của gói duy nhất (khớp PLATFORM_PLAN_KEY ở packages/core) và giá điền sẵn khi database chưa có gói nào. */
+const PLAN_KEY = 'hoiminh';
+const NEW_PLAN = { name: 'Hội Mình', monthlyMinor: 499_000, yearlyMinor: 4_990_000, trialDays: 14 };
+
+/** Sửa gói đã có, hoặc tạo gói khi chưa có gói nào (plan = null): cùng một ô, cùng một lệnh lưu. */
+function PlanEditor({ plan, onClose }: { plan: Plan | null; onClose?: () => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: plan.name, monthlyMinor: plan.monthlyMinor, yearlyMinor: plan.yearlyMinor, trialDays: plan.trialDays, paymentMode: plan.paymentMode ?? 'gateway', monthlyPayUrl: plan.monthlyPayUrl ?? '', yearlyPayUrl: plan.yearlyPayUrl ?? '' });
+  const [f, setF] = useState({ name: plan?.name ?? NEW_PLAN.name, monthlyMinor: plan?.monthlyMinor ?? NEW_PLAN.monthlyMinor, yearlyMinor: plan?.yearlyMinor ?? NEW_PLAN.yearlyMinor, trialDays: plan?.trialDays ?? NEW_PLAN.trialDays, paymentMode: plan?.paymentMode ?? 'gateway', monthlyPayUrl: plan?.monthlyPayUrl ?? '', yearlyPayUrl: plan?.yearlyPayUrl ?? '' });
   const link = f.paymentMode === 'link';
-  const m = useMutation({ mutationFn: () => api.patch(`/v1/admin/plans/${plan.key}`, f), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'plans'] }); void qc.invalidateQueries({ queryKey: ['plans'] }); onClose(); } });
+  const m = useMutation({ mutationFn: () => api.patch(`/v1/admin/plans/${plan?.key ?? PLAN_KEY}`, f), onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'plans'] }); void qc.invalidateQueries({ queryKey: ['plans'] }); onClose?.(); } });
   return (
     <div className="card p-5 flex flex-col gap-3">
-      <span className="font-semibold">Sửa gói {plan.key}</span>
+      <span className="font-semibold">{plan ? `Sửa gói ${plan.key}` : 'Tạo gói Hội Mình'}</span>
+      {!plan && <span className="muted text-[13px]">Giá dưới đây là giá điền sẵn, kiểm tra lại trước khi tạo. Tạo xong vẫn sửa được.</span>}
       <div className="grid-2"><Field label="Tên gói"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field><Field label="Ngày dùng thử"><Input type="number" min={0} value={f.trialDays} onChange={(e) => setF({ ...f, trialDays: Number(e.target.value) })} /></Field><Field label="Giá tháng (đ)"><Input type="number" min={0} step={1000} value={f.monthlyMinor} onChange={(e) => setF({ ...f, monthlyMinor: Number(e.target.value) })} /></Field><Field label="Giá năm (đ)" hint="Gợi ý = 10 tháng"><Input type="number" min={0} step={1000} value={f.yearlyMinor} onChange={(e) => setF({ ...f, yearlyMinor: Number(e.target.value) })} /></Field></div>
       <div className="flex flex-col gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
         <span className="text-[13px] font-semibold">Cách thu tiền gói</span>
@@ -44,7 +51,7 @@ function PlanEditor({ plan, onClose }: { plan: Plan; onClose: () => void }) {
         </div>
       )}
       {m.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</span>}
-      <div className="flex gap-2 justify-end"><Button size="sm" onClick={onClose}>Hủy</Button><Button size="sm" variant="dark" loading={m.isPending} onClick={() => m.mutate()}>Lưu gói</Button></div>
+      <div className="flex gap-2 justify-end">{onClose && <Button size="sm" onClick={onClose}>Hủy</Button>}<Button size="sm" variant="dark" loading={m.isPending} onClick={() => m.mutate()}>{plan ? 'Lưu gói' : 'Tạo gói'}</Button></div>
     </div>
   );
 }
@@ -77,7 +84,16 @@ export default function Page() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Gói nền tảng</h1><div className="muted text-[13px]">Hiện chỉ có một gói đầy đủ tính năng, trả theo tháng hoặc năm. Không thu phí giao dịch.</div></div></div>
       <QueryState q={stats} rows={4}>
-        {(s) => (
+        {(s) => !s.plan ? (
+          // Database chưa có gói nào: không có gì để sửa, nên mở sẵn ô tạo gói.
+          <div className="flex flex-col gap-3" style={{ maxWidth: 560 }}>
+            <div className="rounded-[12px] px-4 py-3 text-[14px]" style={{ background: T.goldSoft, color: T.goldText }}>
+              <div className="font-semibold">Chưa có gói nào</div>
+              <div className="text-[13px]">Chủ hội chưa thấy giá, chưa thanh toán được và người mới chưa bắt đầu dùng thử được cho tới khi bạn tạo gói.</div>
+            </div>
+            <PlanEditor plan={null} />
+          </div>
+        ) : (
           <div className="flex gap-4 flex-col md:flex-row">
             <div className="card card-invert flex-[1.3_1_0] p-6 flex flex-col gap-4">
               <div className="flex items-center gap-2.5 flex-wrap"><span className="font-bold text-[18px]">{s.plan?.name ?? 'Hội Mình'}</span><span className="tag" style={{ background: T.gold, color: T.invertBg }}>Gói duy nhất</span><span className="flex-grow" /><button type="button" className="btn btn-ghost btn-sm" style={{ background: 'transparent', color: T.invertInk, borderColor: 'rgba(255,253,249,0.3)' }} onClick={() => setEdit((e) => !e)}>{edit ? 'Đóng' : 'Sửa gói'}</button></div>
