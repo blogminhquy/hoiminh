@@ -1,16 +1,34 @@
 // Tạo hội của bạn (signupBody trong build.mjs): nền tối, tiêu đề, băng chuyền 3 thẻ hội, chấm trang, nút TẠO HỘI CỦA BẠN.
-import { T } from '@hoiminh/ui';
+import { CommunityMark, T } from '@hoiminh/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fmtCount } from '@/lib/format';
-import { useDiscover, type DiscoverCommunity } from './Discovery';
+import { COVER_RATIO, useDiscover, type DiscoverCommunity } from './Discovery';
 import { SignupPage, withRef } from './SignupParts';
 
+/**
+ * Thẻ hội trong băng chuyền. Hội có ảnh bìa: ảnh hiện trọn 16:9, tên hội nằm ở dải riêng bên dưới
+ * (ảnh bìa thường đã có chữ, đè tên lên thì cả hai đều không đọc được). Chưa có ảnh: nền màu, tên đè lên.
+ */
 function Showcase({ c, side }: { c: DiscoverCommunity; side: boolean }) {
-  const bg = c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor;
+  if (c.coverUrl) {
+    if (side) return <img src={c.coverUrl} alt="" className="block flex-shrink-0 rounded-[20px]" style={{ width: 260, maxWidth: '28vw', aspectRatio: COVER_RATIO, objectFit: 'cover', background: c.coverColor, opacity: 0.45, filter: 'blur(0.5px)' }} />;
+    return (
+      <div className="overflow-hidden flex-shrink-0 rounded-[20px]" style={{ width: 560, maxWidth: '92vw', background: 'rgba(255,255,255,0.08)', boxShadow: '0 30px 60px rgba(0,0,0,0.45)' }}>
+        <img src={c.coverUrl} alt={`Ảnh bìa ${c.name}`} className="block w-full" style={{ aspectRatio: COVER_RATIO, objectFit: 'cover', background: c.coverColor }} />
+        <div className="flex items-center gap-3 text-left" style={{ padding: '14px 18px', color: T.invertInk }}>
+          <CommunityMark mark={c.logoMark} color={T.side} url={c.logoUrl} size={48} radius={13} />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-[17px] leading-[1.25] truncate">{c.name}</div>
+            <div className="text-[14px] truncate" style={{ color: T.sideText }}>{fmtCount(c.memberCount)} thành viên{c.shortDescription ? ` · ${c.shortDescription}` : ''}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="relative overflow-hidden flex-shrink-0 rounded-[20px] transition-all" style={{ width: side ? 260 : 560, maxWidth: side ? '28vw' : '92vw', height: side ? 240 : 320, background: bg, opacity: side ? 0.45 : 1, filter: side ? 'blur(0.5px)' : undefined, boxShadow: side ? undefined : '0 30px 60px rgba(0,0,0,0.45)' }}>
+    <div className="relative overflow-hidden flex-shrink-0 rounded-[20px] transition-all" style={{ width: side ? 260 : 560, maxWidth: side ? '28vw' : '92vw', height: side ? 240 : 320, background: c.coverColor, opacity: side ? 0.45 : 1, filter: side ? 'blur(0.5px)' : undefined, boxShadow: side ? undefined : '0 30px 60px rgba(0,0,0,0.45)' }}>
       <div className="absolute left-6 bottom-6 text-left" style={{ color: T.invertInk }}>
         <div className="serif font-extrabold leading-[1.1]" style={{ fontSize: side ? 20 : 34 }}>{side ? c.logoMark : c.name}</div>
         {!side && <div className="text-[14px] mt-1.5" style={{ opacity: 0.85 }}>{c.shortDescription}</div>}
