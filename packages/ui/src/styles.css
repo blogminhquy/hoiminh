@@ -164,6 +164,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 /* Lưới Khu học tập: tự xuống hàng theo bề rộng, không cần media query riêng. */
 .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+/* Trang Gói Hội Mình: gói đang dùng (hẹp) bên trái, thanh toán (rộng) bên phải; từ 900px trở xuống xếp một cột. */
+.plan-page { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 20px; align-items: start; }
 .table-scroll { overflow-x: auto; }
 /* Hàng chip lọc: máy tính xuống dòng; điện thoại một hàng vuốt ngang để nội dung bên dưới lên cao hơn. */
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -230,6 +232,7 @@ html .text-\[15px\] { font-size: 16px; }
   .settings-page > .settings-nav { width: 100%; flex-direction: row; align-items: center; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
   .settings-nav-item { white-space: nowrap; }
   .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .plan-page { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 767px) {
   .app-sidebar { display: none !important; }

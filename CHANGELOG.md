@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 1.29.1 - 2026-11-11
+
+Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một trang riêng, hai cột gọn. Trước đây phần thanh toán bung ra ngay trong hàng thẻ của "Hội của tôi", ép ba thẻ vào một hàng làm chữ xuống dòng từng từ và nút tràn ra ngoài thẻ.
+
+### Thay đổi
+
+- **Gói Hội Mình là một trang riêng.** Bên trái là gói đang dùng: tên gói, nhãn trạng thái ("Còn 3 ngày", "Đang hoạt động", "Đã hết hạn"), ngày hết hạn, giá, số hội và thành viên đang dùng. Bên phải là thanh toán: chọn chu kỳ, cách thanh toán, một nút ghi rõ số tiền. Điện thoại xếp một cột, nút thanh toán rộng hết màn hình. Có lối "Hội của tôi" để quay về.
+- **Thẻ "Gói nền tảng của bạn" ở Hội của tôi chỉ còn một nút** ("Thanh toán gói" khi đang dùng thử hoặc hết hạn, "Quản lý gói" khi gói đang chạy), bấm là sang trang gói. Thẻ không còn bung phần thanh toán ra tại chỗ, không còn hai nút "Đóng".
+- **Mục "Hội của tôi" trên thanh đầu trang sáng ở mọi trang con** (Gói Hội Mình, Tạo hội). Trước đây vào các trang này thì không mục nào sáng.
+
+### Sửa lỗi
+
+- **Giá hiện "…/tháng" và nút "Thanh toán …" khi chưa có bảng giá.** Nay trong lúc tải hiện khung chờ; tải không được thì có dòng báo kèm nút "Thử lại", nút thanh toán ghi "Thanh toán" và bị khóa cho tới khi có giá.
+- **Thẻ gói ghi "dùng thử đến" một ngày đã qua.** Ngày hết hạn đã qua mà hội chưa bị khóa thì nay ghi "Đã hết hạn, hết hạn ngày..." kèm lời nhắc thanh toán để không bị khóa tạo nội dung.
+- **Giá hiển thị lấy theo đúng gói của hội** (`planKey`), trùng với gói máy chủ dùng để tính tiền; trước đây lấy gói đầu danh sách.
+- **"2 tháng miễn phí" của gói năm được tính từ giá thật** (12 tháng trừ giá năm), không còn ghi cứng; không chia chẵn theo tháng thì ghi số tiền tiết kiệm, gói năm không rẻ hơn thì không ghi gì.
+
+### Kỹ thuật
+
+- Trạng thái gói gom về một hàm thuần `planView` trong `apps/web/src/lib/platform-plan.ts` (có test), thẻ ở Hội của tôi và trang gói dùng chung.
+- Trang mới `apps/web/src/pages/owner/WorkspacePlan.tsx`; lớp `.plan-page` trong `@hoiminh/ui` (lưới 2 phần và 3 phần, từ 900px trở xuống một cột). Không đổi API, không có migration.
+- Test e2e luồng 6 đi qua trang mới: bấm liên kết "Thanh toán gói" ở `/admin`, sang `/admin/goi`, rồi thanh toán.
+
 ## 1.29.0 - 2026-11-11
 
 Kéo thả để xếp ảnh trang giới thiệu, ảnh bìa hồ sơ kiểu Facebook, thanh menu bên trái thu gọn được, và mọi ô chọn (dropdown) dùng danh sách riêng theo màu chủ đề.

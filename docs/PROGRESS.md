@@ -53,7 +53,7 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 19 | Thanh toán (checkout) | `/:slug/thanh-toan`, `/thanh-toan/:orderId` | community/Checkout.tsx, CheckoutConfigure.tsx, CheckoutParts.tsx | e2e 02, 03, 06 |
 | 20 | Tạo hội của bạn · đăng ký (signup) | `/tao-hoi` | public/SignupLanding.tsx (+SignupParts) | — |
 | 21 | Chọn gói tháng/năm (signup-plan) | `/tao-hoi/goi` | public/SignupPlan.tsx | — |
-| 22 | Hội của tôi (ws-home) | `/admin`, `/admin/goi` | owner/WorkspaceHome.tsx (+Parts, PlanCard) | e2e 05, 06 |
+| 22 | Hội của tôi (ws-home), Gói Hội Mình | `/admin`, `/admin/goi` | owner/WorkspaceHome.tsx (+Parts, PlanCard), owner/WorkspacePlan.tsx | e2e 05, 06 |
 | 23 | Tạo hội (ws-create) | `/admin/tao-hoi` | owner/WorkspaceCreate.tsx (+Parts) | e2e 05 |
 | 24 | Tạo sự kiện (event-create) | `/:slug/su-kien/moi`, `/:eventId/sua` | community/EventCreate.tsx (+Parts) | e2e 05 |
 | 25 | Tạo khóa học (course-create) | `/:slug/khoa-hoc/moi`, `/:courseId/sua` | community/CourseCreate.tsx (+Parts) | e2e 05 |

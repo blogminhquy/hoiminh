@@ -1,8 +1,8 @@
-// Hội của tôi (wsHomeMain): tiêu đề + nút Tạo hội, lưới hội làm chủ, hội tham gia + gói nền tảng, đội ngũ.
+// Hội của tôi (wsHomeMain): tiêu đề + nút Tạo hội, lưới hội làm chủ, hội tham gia + thẻ gói nền tảng (dẫn sang /admin/goi), đội ngũ.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, T } from '@hoiminh/ui';
 import { Plus } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -24,7 +24,6 @@ function StartTrial() {
 
 export default function Page() {
   const { user } = useAuth();
-  const { pathname } = useLocation();
   const q = useQuery({ queryKey: WS_HOME_KEY, queryFn: () => api.get<WorkspaceHome>('/v1/me/workspace') });
   return (
     <QueryState q={q} rows={4}>
@@ -53,7 +52,7 @@ export default function Page() {
             )}
             <div className="flex gap-5 flex-col md:flex-row">
               <JoinedCard items={d.joined} />
-              <PlanCard d={d} autoOpen={pathname === '/admin/goi'} />
+              <PlanCard d={d} />
             </div>
             {d.workspace && <TeamCard team={d.team} workspaceId={d.workspace.id} canInvite={d.workspace.ownerUserId === user?.id} />}
           </>
