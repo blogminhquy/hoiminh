@@ -1,6 +1,6 @@
 // Cài đặt · Giá và gói (pricingMain): kiểu thu phí, 3 thẻ gói, cách thanh toán, xếp thành viên trả phí cũ; nút Đóng cổng / Xem trước / Lưu.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Chip, T } from '@hoiminh/ui';
+import { Button, Chip, Select, T } from '@hoiminh/ui';
 import { Globe, Lock, QrCode, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,7 +48,7 @@ export default function Page() {
         <div className="flex items-center gap-2.5 flex-wrap"><span className="font-semibold">Cách thanh toán</span><span className="muted text-[13px]">Người mua tự chọn ở bước thanh toán</span></div>
         <div className="flex gap-2 flex-wrap">{PROVIDERS.map(([k, l]) => <Chip key={k} on={f.enabledProviders.includes(k)} onClick={() => toggleProvider(k)}>{k === 'sepay' && <QrCode size={14} />}{l}</Chip>)}</div>
         {f.paidMembersCount > 0 && (
-          <div className="flex items-center gap-2.5 text-[13px] pt-3 flex-wrap" style={{ color: T.ink2, borderTop: `1px solid ${T.line}` }}><Users size={16} />{f.paidMembersCount} thành viên trả phí từ trước sẽ được xếp vào gói <select value={migrate} onChange={(e) => setMigrate(e.target.value as typeof migrate)} className="font-bold bg-transparent" style={{ color: T.ink }}>{f.tiers.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</select></div>
+          <div className="flex items-center gap-2.5 text-[13px] pt-3 flex-wrap" style={{ color: T.ink2, borderTop: `1px solid ${T.line}` }}><Users size={16} />{f.paidMembersCount} thành viên trả phí từ trước sẽ được xếp vào gói <Select aria-label="Gói cho thành viên trả phí từ trước" value={migrate} onChange={(e) => setMigrate(e.target.value as typeof migrate)} style={{ width: 'fit-content', minWidth: 150 }}>{f.tiers.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</Select></div>
         )}
       </div>
     </>

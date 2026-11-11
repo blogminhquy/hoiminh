@@ -40,7 +40,7 @@ test('điện thoại: Hôm nay, thanh dưới, đăng bài nhanh, đăng xuất
   await nav.getByRole('link', { name: 'Viết bài mới' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('Tạo bài viết')).toBeVisible();
-  await expect(dialog.getByLabel('Chuyên mục')).not.toHaveValue('');
+  await expect(dialog.getByLabel('Chuyên mục')).not.toHaveText(/Chọn chuyên mục|Đang tải/);
   const text = `Bài thử từ điện thoại ${Date.now()}`;
   await dialog.getByLabel('Nội dung bài viết').fill(text);
   await dialog.getByRole('button', { name: 'Đăng bài' }).click();

@@ -34,7 +34,7 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
 
   await side.getByRole('link', { name: 'Viết bài' }).click();
   await expect(page.getByRole('dialog').getByText('Tạo bài viết')).toBeVisible();
-  await expect(page.getByRole('dialog').getByLabel('Chuyên mục')).not.toHaveValue('');
+  await expect(page.getByRole('dialog').getByLabel('Chuyên mục')).not.toHaveText(/Chọn chuyên mục|Đang tải/);
   // Nền màu cho bài ngắn: ô đầu là "Không nền", sau đó 8 màu; chọn màu nào thì ô đó được đánh dấu.
   await page.getByRole('dialog').getByRole('button', { name: /^Thêm/ }).click();
   const bgs = page.getByRole('dialog').getByRole('radiogroup', { name: 'Nền màu' });
@@ -50,4 +50,32 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
   await page.goto('/tai-khoan/goi');
   await page.getByRole('navigation', { name: 'Tài khoản' }).getByRole('button', { name: 'Đăng xuất' }).click();
   await expect(page).toHaveURL(/dang-nhap/);
+});
+
+test('máy tính: thu gọn thanh menu bên trái còn dải biểu tượng, tải lại vẫn nhớ, mở ra lại như cũ', async ({ page }) => {
+  await login(page, USERS.member2);
+  await page.goto('/minhquy/bang-tin');
+  const side = page.locator('aside.app-sidebar');
+  const width = async () => Math.round((await side.boundingBox())!.width);
+  await expect(side.getByText('Bảng tin', { exact: true })).toBeVisible();
+  expect(await width()).toBe(264);
+
+  await side.getByRole('button', { name: 'Thu gọn menu' }).click();
+  await expect.poll(width).toBe(72);
+  // Chữ ẩn đi, nhưng mỗi mục vẫn có tên (đọc màn hình, rê chuột) và vẫn bấm được.
+  await expect(side.getByText('Bảng tin', { exact: true })).toBeHidden();
+  await expect(side.getByRole('link', { name: 'Sự kiện' })).toHaveAttribute('title', 'Sự kiện');
+  await expect(side.getByRole('link', { name: 'Viết bài' })).toBeVisible();
+  await expectNoSideScroll(page);
+  await side.getByRole('link', { name: 'Thành viên' }).click();
+  await expect(page).toHaveURL(/\/minhquy\/thanh-vien$/);
+
+  // Lựa chọn được nhớ ở máy: tải lại trang vẫn thu gọn.
+  await page.reload();
+  await expect(side.getByRole('button', { name: 'Mở rộng menu' })).toBeVisible();
+  expect(await width()).toBe(72);
+
+  await side.getByRole('button', { name: 'Mở rộng menu' }).click();
+  await expect.poll(width).toBe(264);
+  await expect(side.getByText('Bảng tin', { exact: true })).toBeVisible();
 });

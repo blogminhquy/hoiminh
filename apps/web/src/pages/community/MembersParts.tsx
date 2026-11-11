@@ -1,6 +1,6 @@
 // Modal quản lý thành viên (760px, 4 tab): thông tin, khóa học, thanh toán, câu hỏi khi tham gia.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar, Button, Modal, T, Tag } from '@hoiminh/ui';
+import { Avatar, Button, Modal, Select, T, Tag } from '@hoiminh/ui';
 import { Calendar, Clock, MessageCircle, QrCode, Trophy, Users, Wallet } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { QueryState } from '@/components/QueryState';
@@ -72,11 +72,11 @@ function InfoTab({ d, communityId, memberId, onClose, onMessage }: { d: MemberDe
         <span className="muted">Email</span><span className="truncate">{d.user?.email ?? '—'}</span>
         <span className="muted">Vai trò</span>
         <span className="inline-flex items-center gap-2 flex-wrap">
-          {editRole && !isOwner ? <select className="input" style={{ height: 32, width: 180 }} defaultValue={m.role} onChange={(e) => patch.mutate({ role: e.target.value })}><option value="member">Thành viên</option><option value="moderator">Điều phối</option><option value="admin">Quản trị</option></select> : <>{ROLE_LABEL[m.role] ?? m.role}{!isOwner && <a href="#" onClick={(e) => { e.preventDefault(); setEditRole(true); }}>(đổi)</a>}</>}
+          {editRole && !isOwner ? <Select aria-label="Vai trò" style={{ width: 180 }} defaultValue={m.role} onChange={(e) => patch.mutate({ role: e.target.value })}><option value="member">Thành viên</option><option value="moderator">Điều phối</option><option value="admin">Quản trị</option></Select> : <>{ROLE_LABEL[m.role] ?? m.role}{!isOwner && <a href="#" onClick={(e) => { e.preventDefault(); setEditRole(true); }}>(đổi)</a>}</>}
         </span>
         <span className="muted">Gói</span>
         <span className="inline-flex items-center gap-2 flex-wrap">
-          {editTier && !isOwner ? <select className="input" style={{ height: 32, width: 180 }} defaultValue={d.tier?.key ?? 'standard'} onChange={(e) => patch.mutate({ tierKey: e.target.value })}><option value="standard">Tiêu chuẩn</option><option value="premium">Premium</option><option value="vip">VIP</option></select> : <><Tag tone={tierTone(d.tier?.key)}>{d.tier?.name ?? 'Miễn phí'}</Tag>{!isOwner && <a href="#" onClick={(e) => { e.preventDefault(); setEditTier(true); }}>(đổi)</a>}</>}
+          {editTier && !isOwner ? <Select aria-label="Gói thành viên" style={{ width: 180 }} defaultValue={d.tier?.key ?? 'standard'} onChange={(e) => patch.mutate({ tierKey: e.target.value })}><option value="standard">Tiêu chuẩn</option><option value="premium">Premium</option><option value="vip">VIP</option></Select> : <><Tag tone={tierTone(d.tier?.key)}>{d.tier?.name ?? 'Miễn phí'}</Tag>{!isOwner && <a href="#" onClick={(e) => { e.preventDefault(); setEditTier(true); }}>(đổi)</a>}</>}
         </span>
       </div>
       <div className="grid-2 text-[14px] pt-3.5" style={{ borderTop: `1px solid ${T.line}`, gap: 12 }}>

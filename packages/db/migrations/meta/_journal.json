@@ -57,6 +57,13 @@
       "when": 1794343887169,
       "tag": "0007_about_media",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794344763739,
+      "tag": "0008_user_cover",
+      "breakpoints": true
     }
   ]
 }
