@@ -71,9 +71,13 @@ DROP POLICY IF EXISTS tenant_isolation ON public.user_reports;--> statement-brea
 CREATE POLICY tenant_isolation ON public.user_reports FOR ALL
   USING (hoiminh_bypass() OR hoiminh_is_user(reporter_user_id))
   WITH CHECK (hoiminh_bypass() OR hoiminh_is_user(reporter_user_id));--> statement-breakpoint
+-- Database thật: mọi bảng thuộc vai trò hoiminh_app của API (chủ sở hữu thì không bị RLS chặn khi chưa bật FORCE, xem README).
+-- Migration áp dụng tay chạy bằng vai trò khác, nên phải trao lại quyền sở hữu hai bảng mới, không thì chỉ riêng hai bảng này bị RLS chặn.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'hoiminh_app') THEN
+    ALTER TABLE public.user_blocks OWNER TO hoiminh_app;
+    ALTER TABLE public.user_reports OWNER TO hoiminh_app;
     GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_blocks, public.user_reports TO hoiminh_app;
   END IF;
 END $$;
