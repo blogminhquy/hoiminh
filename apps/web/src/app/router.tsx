@@ -1,6 +1,7 @@
 // Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Cộng sự và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams, type RouteObject } from 'react-router-dom';
+import { FeatureGate } from '@/components/PlanGate';
 import { LoadingBlock } from '@/components/QueryState';
 import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
@@ -118,12 +119,12 @@ const communityRoutes: RouteObject = {
             { path: 'chung', element: page(() => import('@/pages/settings/SettingsGeneral')) },
             { path: 'bang-tin', element: page(() => import('@/pages/settings/SettingsFeed')) },
             { path: 'gia', element: page(() => import('@/pages/settings/SettingsPricing')) },
-            { path: 'cong-su', element: page(() => import('@/pages/settings/SettingsAffiliate')) },
+            { path: 'cong-su', element: <FeatureGate feature="affiliate">{page(() => import('@/pages/settings/SettingsAffiliate'))}</FeatureGate> },
             { path: 'tien-ich', element: page(() => import('@/pages/settings/SettingsPlugins')) },
-            { path: 'nguon-dong-bo', element: page(() => import('@/pages/settings/SettingsSources')) },
-            { path: 'quy-tac', element: page(() => import('@/pages/settings/SettingsRules')) },
-            { path: 'lien-he', element: page(() => import('@/pages/settings/SettingsContacts')) },
-            { path: 'nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
+            { path: 'nguon-dong-bo', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsSources'))}</FeatureGate> },
+            { path: 'quy-tac', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsRules'))}</FeatureGate> },
+            { path: 'lien-he', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsContacts'))}</FeatureGate> },
+            { path: 'nha-phat-trien', element: <FeatureGate feature="api">{page(() => import('@/pages/owner/Developer'))}</FeatureGate> },
           ],
         },
       ],

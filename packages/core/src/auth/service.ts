@@ -1,5 +1,5 @@
 // Dịch vụ xác thực: đăng ký (ghi nhận người giới thiệu), đăng nhập, xác minh email, quên/đặt lại/đổi mật khẩu, phiên.
-import { BUSINESS, randomCode, sha256Hex, timingSafeEqual } from '@hoiminh/config';
+import { randomCode, sha256Hex, timingSafeEqual } from '@hoiminh/config';
 import { toSlug, type AuthSession, type AuthUser, type LoginInput, type RegisterInput } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, gt, isNull, ne } from 'drizzle-orm';
@@ -222,4 +222,3 @@ export async function changePassword(
   await ctx.email.send(templates.passwordChanged(user.email, user.name));
 }
 
-export const TRIAL_DAYS = BUSINESS.platformTrialDays;

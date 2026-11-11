@@ -22,9 +22,8 @@ export interface DomainEvents {
   'affiliate.withdrawal_paid': { withdrawalId: string; programId: string; affiliateAccountId: string; amountMinor: number; userId: string; transferReference: string };
   'affiliate.withdrawal_rejected': { withdrawalId: string; affiliateAccountId: string; amountMinor: number; userId: string; reason: string };
   'message.sent': { messageId: string; conversationId: string; senderUserId: string; recipientUserIds: string[]; automated: boolean };
-  'platform.trial_started': { workspaceId: string; ownerUserId: string; trialEndsAt: string };
-  'platform.subscription_activated': { workspaceId: string; cycle: 'monthly' | 'yearly'; periodEnd: string };
-  'platform.locked': { workspaceId: string };
+  'platform.subscription_activated': { workspaceId: string; communityId: string; planKey: string; cycle: 'quarterly' | 'yearly'; periodEnd: string };
+  'platform.plan_expired': { workspaceId: string; communityId: string; planKey: string };
   'user.registered': { userId: string; email: string; ref: string | null; communitySlug: string | null };
   'user.email_verified': { userId: string; email: string };
 }

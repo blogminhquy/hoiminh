@@ -25,7 +25,7 @@ Tài khoản mẫu (mật khẩu chung `hoiminh123`):
 | Super admin | admin@hoiminh.vn | `/he-thong` |
 | Cộng sự | hoangvu@gmail.com | `/tai-khoan/cong-su`, `/minhquy/xep-hang` |
 | Thành viên Tiêu chuẩn | congtran@gmail.com | `/minhquy/bang-tin` |
-| Chủ hội đang dùng thử | vy.english@gmail.com | `/admin` |
+| Chủ hội gói Miễn phí | vy.english@gmail.com | `/admin` |
 
 Không cần điền `.env` để chạy local. Muốn đổi cấu hình, sao chép `.env.example` thành `.env`.
 

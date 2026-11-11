@@ -12,6 +12,7 @@ import { registerVerified } from '../auth/service';
 import type { Ctx } from '../context';
 import { forbidden, invalid } from '../errors';
 import { raw } from '../lib/db';
+import { hasRoomForMember, workspaceHasFeature } from './plans';
 
 type Contact = typeof contacts.$inferSelect;
 type Grant = typeof automationGrants.$inferSelect;
@@ -92,6 +93,8 @@ async function applyMembership(ctx: Ctx, g: Grant, user: User): Promise<ApplyRes
   if (member && member.role !== 'member') return skip('Người này đang quản lý hội, giữ nguyên');
   const wasActive = Boolean(member && (member.status === 'active' || member.status === 'cancelling'));
   if (wasActive && member!.subscriptionId) return skip('Đang có gói trả phí riêng, giữ nguyên');
+  // Người mới mà hội đã chạm trần thành viên của gói: không thêm, ghi rõ lý do để chủ hội thấy trong nhật ký chạy.
+  if (!wasActive && !(await hasRoomForMember(ctx, community.id))) return skip('Hội đã đủ thành viên theo gói đang dùng, chưa thêm được người mới. Nâng gói rồi gắn lại thẻ để cấp lại.');
   const now = ctx.now();
   const expiresAt = g.durationDays ? new Date(now.getTime() + g.durationDays * 86_400_000) : null;
   const fromTierId = member?.tierId ?? null;
@@ -267,6 +270,8 @@ async function logRun(ctx: Ctx, rule: Pick<Rule, 'id' | 'workspaceId'>, contactI
 /** Liên hệ vừa được gắn thẻ: chạy mọi quy tắc đang bật của thẻ đó. */
 export async function onTagAdded(ctx: Ctx, contact: Contact, tag: { id: string; name: string }): Promise<number> {
   const rules = await ctx.db.query.automationRules.findMany({ where: and(eq(automationRules.tagId, tag.id), eq(automationRules.enabled, true)), orderBy: (t, { asc }) => asc(t.createdAt) });
+  // Tự động hóa là tính năng trả phí: workspace không còn hội nào có gói bật tự động hóa thì quy tắc ngừng chạy (quy tắc vẫn giữ).
+  if (!rules.length || !(await workspaceHasFeature(ctx, rules[0]!.workspaceId, 'automation'))) return 0;
   for (const rule of rules) await runRule(ctx, rule, contact, tag.name);
   return rules.length;
 }

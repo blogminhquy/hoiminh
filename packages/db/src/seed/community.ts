@@ -14,6 +14,7 @@ export interface SeedCommunity {
   name: string;
   tiers: Record<'standard' | 'premium' | 'vip', string>;
   spaces: Record<string, string>;
+  plan: SeedPlan | null;
 }
 
 /** Hội chính "Kinh Doanh Online Cùng AI" của Minh Quý + các hội phụ cho Khám phá và Quản trị hệ thống. */
@@ -30,43 +31,43 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
       { label: 'Kênh YouTube', url: 'https://youtube.com/@minhquy' },
       { label: 'Zalo hỗ trợ', url: 'https://zalo.me/minhquy' },
     ],
-    customDomain: 'hoc.minhquy.vn', workspaceStatus: 'active',
+    customDomain: 'hoc.minhquy.vn', freeSlot: true, plan: { key: 'pro', cycle: 'quarterly', daysLeft: 17 },
   });
-  // Hội thứ hai và bản nháp của Minh Quý (màn "Hội của tôi").
+  // Hội thứ hai (đã trả gói Khởi đầu) và hội thứ ba đang chờ thanh toán của Minh Quý (màn "Hội của tôi").
   const congsu = await createCommunity(db, base, {
     key: 'congsu', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'Cộng sự MMO', slug: 'cong-su-mmo', mark: 'AF', color: '#0E8E96',
     coverColor: '#25201B', tagline: 'Cộng sự', short: 'Nhóm kín cho cộng sự bán khóa học AI.', description: 'Nhóm kín cho cộng sự.',
-    category: 'kinh-doanh', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 58, paidCount: 58, discoverable: false,
+    category: 'kinh-doanh', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 58, paidCount: 58, discoverable: false, plan: { key: 'starter', cycle: 'yearly', daysLeft: 120 },
   });
   const draft = await createCommunity(db, base, {
     key: 'aiagent', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'AI Agent cho chủ shop', slug: 'ai-agent-shop', mark: 'AI', color: '#7A5C3E',
     coverColor: '#3E5C7A', tagline: 'AI Agent', short: 'Chủ shop nhỏ muốn dựng trợ lý AI trả lời khách, chốt đơn và chăm sóc sau bán mà không cần thuê thêm người.',
-    description: 'Đang soạn.', category: 'cong-nghe-ai', pricingMode: 'freemium', status: 'draft', memberCount: 0, paidCount: 0, discoverable: false,
+    description: 'Đang soạn.', category: 'cong-nghe-ai', pricingMode: 'freemium', status: 'draft', memberCount: 0, paidCount: 0, discoverable: false, lockedReason: 'plan_required',
   });
   const yt = await createCommunity(db, base, {
     key: 'yt', owner: U.huan!, workspaceKey: 'huan', name: 'Faceless YouTube Foundation', slug: 'faceless-yt', mark: 'YT', color: '#0E8E96', coverColor: '#D4593A',
     tagline: 'Faceless\nYouTube', short: 'Xây kênh không lộ mặt từ ý tưởng đến kiếm tiền.', description: 'Xây kênh YouTube không lộ mặt.',
-    category: 'sang-tao-noi-dung', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 1204, paidCount: 1204, workspaceStatus: 'active',
+    category: 'sang-tao-noi-dung', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 1204, paidCount: 1204, freeSlot: true, plan: { key: 'pro', cycle: 'yearly', daysLeft: 200 },
   });
   const qt = await createCommunity(db, base, {
     key: 'qt', owner: U.thanhlong!, workspaceKey: 'thanhlong', name: 'Quản trị cảm xúc', slug: 'quan-tri-cam-xuc', mark: 'QT', color: '#7A5C3E', coverColor: '#7A5C3E',
     tagline: 'Quản trị\ncảm xúc', short: 'Làm chủ cảm xúc để làm chủ cuộc đời, 23 bài theo lộ trình.', description: 'Làm chủ cảm xúc.',
-    category: 'phat-trien-ban-than', pricingMode: 'one_time', oneTime: 990_000, memberCount: 176, paidCount: 176, workspaceStatus: 'active',
+    category: 'phat-trien-ban-than', pricingMode: 'one_time', oneTime: 990_000, memberCount: 176, paidCount: 176, freeSlot: true, plan: { key: 'starter', cycle: 'yearly', daysLeft: 150 },
   });
   const yoga = await createCommunity(db, base, {
     key: 'yoga', owner: U.lehanh!, workspaceKey: 'lehanh', name: 'Yoga sáng 6 giờ', slug: 'yoga-6h', mark: 'YG', color: '#5C7A3E', coverColor: '#5C7A3E',
     tagline: 'Yoga sáng', short: 'Tập cùng nhau mỗi sáng 6 giờ, 21 ngày đổi thói quen.', description: 'Yoga buổi sáng.',
-    category: 'suc-khoe', pricingMode: 'subscription', monthly: 99_000, yearly: 990_000, memberCount: 128, paidCount: 128, workspaceStatus: 'active',
+    category: 'suc-khoe', pricingMode: 'subscription', monthly: 99_000, yearly: 990_000, memberCount: 128, paidCount: 128, freeSlot: true, plan: { key: 'starter', cycle: 'yearly', daysLeft: 300 },
   });
   const vy = await createCommunity(db, base, {
     key: 'vy', owner: U.thaovy!, workspaceKey: 'thaovy', name: 'Ngoại ngữ cùng Vy', slug: 'ngoai-ngu-vy', mark: 'NV', color: '#3E5C7A', coverColor: '#3E5C7A',
     tagline: 'Tiếng Anh\nmỗi ngày', short: 'Học tiếng Anh giao tiếp 15 phút mỗi ngày.', description: 'Tiếng Anh mỗi ngày.',
-    category: 'ngoai-ngu', pricingMode: 'freemium', monthly: 149_000, yearly: 1_490_000, memberCount: 41, paidCount: 0, workspaceStatus: 'trial', trialDaysLeft: 3,
+    category: 'ngoai-ngu', pricingMode: 'freemium', monthly: 149_000, yearly: 1_490_000, memberCount: 41, paidCount: 0, freeSlot: true,
   });
   const shopee = await createCommunity(db, base, {
     key: 'shopee', owner: U.phamduc!, workspaceKey: 'phamduc', name: 'Shopee 0 đồng', slug: 'shopee-0d', mark: 'SH', color: '#5C3E7A', coverColor: '#5C3E7A',
     tagline: 'Shopee', short: 'Bán hàng Shopee không vốn.', description: 'Bán hàng Shopee.', category: 'kinh-doanh', pricingMode: 'free',
-    memberCount: 12, paidCount: 0, workspaceStatus: 'trial', trialDaysLeft: 9, lockedReason: 'Bị báo cáo nội dung · đang xem xét',
+    memberCount: 12, paidCount: 0, freeSlot: true, lockedReason: 'Bị báo cáo nội dung · đang xem xét',
   });
   const crypto = await createCommunity(db, base, {
     key: 'crypto', owner: U.phamduc!, workspaceKey: 'phamduc', name: 'Crypto x100', slug: 'crypto-x100', mark: 'CR', color: '#8C8478', coverColor: '#25201B',
@@ -77,23 +78,28 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
   return { main, others: [congsu, draft, yt, qt, yoga, vy, shopee, crypto] };
 }
 
+export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'quarterly' | 'yearly'; daysLeft: number }
+
 interface CommunitySpec {
   key: string; owner: SeedUser; workspaceKey: string; name: string; slug: string; mark: string; color: string; coverColor: string; tagline: string;
   short: string; description: string; category: string; pricingMode: 'free' | 'freemium' | 'subscription' | 'one_time';
   monthly?: number; yearly?: number; oneTime?: number; memberCount: number; paidCount: number; status?: 'draft' | 'active' | 'locked';
   discoverable?: boolean; rules?: string[]; links?: Array<{ label: string; url: string }>; customDomain?: string;
-  workspaceStatus?: 'trial' | 'active'; trialDaysLeft?: number; lockedReason?: string;
+  lockedReason?: string;
+  /** Hội miễn phí của tài khoản (mỗi chủ một hội). */
+  freeSlot?: boolean;
+  /** Gói trả phí đang dùng; không có thì hội ở gói Miễn phí. */
+  plan?: SeedPlan;
 }
 
 async function createCommunity(db: Database, base: Date, s: CommunitySpec): Promise<SeedCommunity> {
   const workspaceId = await sid(`workspace:${s.workspaceKey}`);
   const communityId = await sid(`community:${s.key}`);
-  const isTrial = s.workspaceStatus === 'trial';
   await db
     .insert(workspaces)
     .values({
       id: workspaceId, ownerUserId: s.owner.id, name: `Workspace của ${s.owner.name}`, slug: s.workspaceKey,
-      status: isTrial ? 'trial' : 'active', trialEndsAt: isTrial ? daysFrom(base, s.trialDaysLeft ?? 14) : daysFrom(base, -300),
+      status: 'active',
       createdAt: daysFrom(base, -s.owner.joinedDaysAgo),
     })
     .onConflictDoNothing();
@@ -105,7 +111,7 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
       logoMark: s.mark, logoColor: s.color, coverColor: s.coverColor, coverTagline: s.tagline, rules: s.rules ?? [], links: s.links ?? [],
       status: s.status ?? 'active', pricingMode: s.pricingMode, discoverable: s.discoverable ?? true, customDomain: s.customDomain ?? null,
       customDomainVerifiedAt: s.customDomain ? daysFrom(base, -10) : null, memberCount: s.memberCount, paidMemberCount: s.paidCount,
-      lockedReason: s.lockedReason ?? null, createdAt: daysFrom(base, -Math.min(s.owner.joinedDaysAgo, 300)),
+      lockedReason: s.lockedReason ?? null, isFreeSlot: s.freeSlot ?? false, planKey: s.plan?.key ?? 'free', planEndsAt: s.plan ? daysFrom(base, s.plan.daysLeft) : null, createdAt: daysFrom(base, -Math.min(s.owner.joinedDaysAgo, 300)),
     })
     .onConflictDoNothing();
 
@@ -144,7 +150,7 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
     .insert(communityMembers)
     .values({ id: await sid(`member:${s.key}:${s.owner.key}`), communityId, userId: s.owner.id, role: 'owner', status: 'active', tierId: tiers.premium, level: 7, joinedAt: daysFrom(base, -Math.min(s.owner.joinedDaysAgo, 300)), lastActiveAt: daysFrom(base, 0, 9) })
     .onConflictDoNothing();
-  return { id: communityId, workspaceId, slug: s.slug, name: s.name, tiers, spaces: spaceIds };
+  return { id: communityId, workspaceId, slug: s.slug, name: s.name, tiers, spaces: spaceIds, plan: s.plan ?? null };
 }
 
 /** Thành viên của hội chính: vai trò, gói, trạng thái, giới thiệu, LTV khớp demo. */

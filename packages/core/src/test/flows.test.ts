@@ -20,7 +20,6 @@ import * as paymentsSvc from '../services/payments';
 import * as posts from '../services/posts';
 import * as withdrawals from '../services/withdrawals';
 import * as admin from '../services/admin';
-import * as platformBilling from '../services/platform-billing';
 import { createTestApp, type TestApp } from './setup';
 
 let app: TestApp;
@@ -218,6 +217,10 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
   it('tạo hội Freemium với tier, chuyên mục, plugin mặc định', async () => {
     const mq = await app.as('minhquy');
     const c = await communities.createCommunity(mq, { name: 'Hội Test', slug: 'hoi-test', shortDescription: 'Test', description: '', pricingMode: 'freemium', category: 'kinh-doanh', template: 'course' });
+    // Minh Quý đã có hội miễn phí của tài khoản, nên hội này chờ thanh toán gói; trả gói xong thì mở.
+    expect(c.needsPlan).toBe(true);
+    const plan = await checkout.createCheckout(mq, { target: { type: 'platform', communityId: c.id, planKey: 'starter', cycle: 'quarterly' }, provider: 'sepay' });
+    await sepayPaid(plan.reference, plan.amountMinor);
     const about = await communities.aboutPage(app.anon(), 'hoi-test');
     expect(about.tiers.map((t) => t.key)).toEqual(['standard', 'premium']);
     await expect(communities.createCommunity(mq, { name: 'Trùng', slug: 'hoi-test', shortDescription: '', description: '', pricingMode: 'free', category: 'kinh-doanh', template: 'blank' })).rejects.toThrow();
@@ -276,28 +279,6 @@ describe('Luồng 5: chủ hội tạo hội → khóa học → sự kiện l�
     await expect(posts.createPost(duy, kd, { spaceId: await app.ids('space:kd:thong-bao'), title: 'x', contentMd: 'y', imageFileIds: [], broadcastEmail: false })).rejects.toThrow();
     const p = await posts.createPost(duy, kd, { spaceId: await app.ids('space:kd:chia-se'), title: '', contentMd: 'Status ngắn có nền', statusBgKey: 'dat', imageFileIds: [], broadcastEmail: false });
     expect(p.statusBgKey).toBe('dat');
-  });
-});
-
-describe('Luồng 6: gói nền tảng dùng thử → nhắc → trả → hết hạn khóa', () => {
-  it('nhắc trước 3 ngày, hết hạn thì khóa tạo nội dung, thanh toán thì mở lại', async () => {
-    const vyWs = await app.ids('workspace:thaovy');
-    const { sql } = await import('drizzle-orm');
-    const before = await platformBilling.runPlatformBillingCron(app.system());
-    expect(before.reminded).toBeGreaterThanOrEqual(1);
-    await app.ctx.db.execute(sql`update platform_subscriptions set current_period_end = now() - interval '1 day' where workspace_id = ${vyWs}`);
-    const r = await platformBilling.runPlatformBillingCron(app.system());
-    expect(r.locked).toBeGreaterThanOrEqual(1);
-    const vy = await app.as('member1');
-    const vyCtx = { ...vy, actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
-    await expect(courses.createCourse(vyCtx, await app.ids('community:vy'), { title: 'Bị khóa', shortDescription: '', descriptionMd: '', accessMode: 'all_members', previewFirstModule: true, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: false })).rejects.toThrow(/hết hạn/);
-    const session = await checkout.createCheckout(vyCtx, { target: { type: 'platform', workspaceId: vyWs, cycle: 'yearly' }, provider: 'sepay' });
-    expect(session.amountMinor).toBe(4_990_000);
-    await sepayPaid(session.reference, 4_990_000);
-    const status = await platformBilling.platformStatus(vyCtx, vyWs);
-    expect(status.locked).toBe(false);
-    expect(status.subscription?.status).toBe('active');
-    expect(status.subscription?.billingCycle).toBe('yearly');
   });
 });
 

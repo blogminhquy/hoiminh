@@ -1,8 +1,8 @@
 // Modal "Tạo bài viết", bản gọn: một ô viết, nút ảnh, nút Đăng. Chuyên mục tự chọn sẵn (vẫn đổi được);
-// tiêu đề, nền status, video, bình chọn, link và gửi email nằm sau nút "Thêm".
+// tiêu đề, nền status, video, bình chọn, link và báo cho cả hội nằm sau nút "Thêm".
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Modal, Select, T, Toggle } from '@hoiminh/ui';
-import { BarChart3, ChevronDown, ChevronUp, Image as ImageIcon, Link as LinkIcon, Mail, Video } from 'lucide-react';
+import { BarChart3, Bell, ChevronDown, ChevronUp, Image as ImageIcon, Link as LinkIcon, Video } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StatusBox } from '@/components/post/PostCard';
@@ -126,8 +126,8 @@ export function Composer({ open, onClose, defaultSpaceId }: { open: boolean; onC
             )}
             {canBroadcast && (
               <label className="flex items-center gap-2.5 text-[13px]" style={{ color: T.ink2 }}>
-                <Mail size={16} /><span className="flex-grow">Gửi email cho tất cả thành viên</span>
-                <Toggle on={broadcast} onChange={setBroadcast} label="Gửi email" />
+                <Bell size={16} /><span className="flex-grow">Báo cho tất cả thành viên (thông báo trong ứng dụng)</span>
+                <Toggle on={broadcast} onChange={setBroadcast} label="Báo cho tất cả thành viên" />
               </label>
             )}
           </div>

@@ -29,10 +29,11 @@ export const workspaces = pgTable(
     ownerUserId: uuid('owner_user_id').notNull().references(() => users.id),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    /** Không còn dùng: gói gắn với từng hội (communities.plan_key). Cột giữ lại để không phải xóa dữ liệu. */
     planKey: text('plan_key').notNull().default('hoiminh'),
-    status: text('status').$type<WorkspaceStatus>().notNull().default('trial'),
+    status: text('status').$type<WorkspaceStatus>().notNull().default('active'),
+    /** Không còn dùng thử; hai cột dưới giữ lại để không phải xóa dữ liệu. */
     trialEndsAt: ts('trial_ends_at'),
-    /** Hết hạn gói thì khóa tạo nội dung, không xóa dữ liệu. */
     contentLockedAt: ts('content_locked_at'),
     ...timestamps(),
   },
@@ -87,6 +88,11 @@ export const communities = pgTable(
     memberCount: integer('member_count').notNull().default(0),
     paidMemberCount: integer('paid_member_count').notNull().default(0),
     lockedReason: text('locked_reason'),
+    /** Gói đã mua cho hội này (khóa bảng plans). Hết `planEndsAt` thì hội tính như gói Miễn phí. */
+    planKey: text('plan_key').notNull().default('free'),
+    planEndsAt: ts('plan_ends_at'),
+    /** Hội miễn phí của tài khoản (mỗi tài khoản một hội). Hội khác phải có gói trả phí còn hạn mới hoạt động. */
+    isFreeSlot: boolean('is_free_slot').notNull().default(false),
     deletedAt: ts('deleted_at'),
     ...timestamps(),
   },

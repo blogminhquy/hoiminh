@@ -57,7 +57,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     settings && { id: 'set-contacts', group: 'Cài đặt', label: 'Liên hệ và thẻ', hint: 'Người để lại email, gắn hoặc gỡ thẻ', to: `${b}/cai-dat/lien-he`, keywords: 'contact tag khach danh sach email' },
     settings && { id: 'set-pixel', group: 'Cài đặt', label: 'Pixel Facebook', to: `${b}/cai-dat/tien-ich`, keywords: 'quang cao meta' },
     settings && scope.role === 'owner' && { id: 'set-dev', group: 'Cài đặt', label: 'Khóa API và webhook', to: `${b}/cai-dat/nha-phat-trien`, keywords: 'nha phat trien mcp ket noi' },
-    scope.role === 'owner' && { id: 'set-plan', group: 'Cài đặt', label: 'Gói Hội Mình', hint: 'Xem hạn, gia hạn, đổi sang gói năm', to: '/admin/goi', keywords: 'nen tang dung thu' },
+    scope.role === 'owner' && { id: 'set-plan', group: 'Cài đặt', label: 'Gói của hội', hint: 'Xem gói, trần thành viên, gia hạn, nâng gói', to: `/admin/goi?hoi=${scope.slug}`, keywords: 'nen tang hoi minh nang cap tran thanh vien' },
   ];
   return list.filter((c): c is Command => Boolean(c));
 }
@@ -73,7 +73,7 @@ export function adminCommands(): Command[] {
     { id: 'a-user-reports', group: 'Hệ thống', label: 'Báo cáo người dùng', to: `${b}/bao-cao`, keywords: 'bao cao chan spam quay roi lua dao' },
     { id: 'a-payments', group: 'Hệ thống', label: 'Thanh toán và đối soát', hint: 'Ghép chuyển khoản thiếu mã', to: `${b}/thanh-toan`, keywords: 'giao dich sepay' },
     { id: 'a-affiliate', group: 'Hệ thống', label: 'Cộng sự nền tảng', hint: 'Trả hoa hồng giới thiệu Hội Mình', to: `${b}/cong-su`, keywords: 'yeu cau rut' },
-    { id: 'a-plans', group: 'Hệ thống', label: 'Gói nền tảng', hint: 'Giá tháng, giá năm, ngày dùng thử', to: `${b}/goi` },
+    { id: 'a-plans', group: 'Hệ thống', label: 'Gói nền tảng', hint: 'Giá, trần thành viên và tính năng của bốn gói', to: `${b}/goi` },
     { id: 'a-flags', group: 'Hệ thống', label: 'Bật tắt tính năng', to: `${b}/tinh-nang`, keywords: 'co feature flag' },
     { id: 'a-infra', group: 'Hệ thống', label: 'Hạ tầng và khóa', hint: 'Khóa cổng thanh toán, email, lưu trữ', to: `${b}/ha-tang`, keywords: 'api key cau hinh' },
     { id: 'a-versions', group: 'Hệ thống', label: 'Phiên bản', to: `${b}/phien-ban`, keywords: 'cap nhat release' },

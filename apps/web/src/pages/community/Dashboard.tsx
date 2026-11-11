@@ -13,7 +13,6 @@ import { useAuth } from '@/lib/auth';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate, fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
 import { buildOwnerTodos, type OwnerPlan, type OwnerTodo } from '@/lib/owner-todo';
-import { WS_HOME_KEY, type WorkspaceHome } from '@/pages/owner/WorkspaceHomeParts';
 
 interface Overview {
   stats: { newMembers: number; newMembersDeltaPct: number | null; revenueMinor: number; revenueDeltaPct: number | null; paying: number; premium: number; vip: number; churned: number; churnRatePct: number; posts: number };
@@ -60,14 +59,8 @@ export default function Dashboard() {
   const payout = useQuery({ queryKey: ['payout-settings', cid], queryFn: () => api.get<Payout>(`/v1/communities/${cid}/payout`), enabled: canMoney });
   const pending = useQuery({ queryKey: ['members', cid, 'pending-count'], queryFn: () => api.get<{ counts: Record<string, number> }>(`/v1/communities/${cid}/members?status=pending&limit=1`), enabled: can('member.manage') });
   const feed = useQuery({ queryKey: ['feed', cid, 'today'], queryFn: () => api.get<{ items: FeedPost[] }>(`/v1/communities/${cid}/feed`), enabled: can('post.moderate') && shell.community.tabs.feed !== false });
-  // Gói Hội Mình là việc của người đứng tên không gian làm việc, quản trị được mời không cần thấy.
-  const workspace = useQuery({ queryKey: WS_HOME_KEY, queryFn: () => api.get<WorkspaceHome>('/v1/me/workspace'), enabled: shell.viewer.role === 'owner' });
-
-  const ws = workspace.data?.workspace;
-  const sub = workspace.data?.platformSubscription;
-  const plan: OwnerPlan | null = ws && ws.id === shell.community.workspaceId && ws.ownerUserId === user?.id
-    ? { status: sub?.status ?? 'trialing', endsAt: sub?.currentPeriodEnd ?? ws.trialEndsAt, locked: Boolean(ws.contentLockedAt) }
-    : null;
+  // Gói của hội là việc của chủ hội (người trả tiền), quản trị được mời không cần thấy.
+  const plan: OwnerPlan | null = shell.viewer.role === 'owner' ? shell.plan : null;
   const now = new Date();
   const todos = buildOwnerTodos({
     slug: shell.community.slug,
@@ -77,7 +70,7 @@ export default function Dashboard() {
     pendingPosts: feed.data ? feed.data.items.filter((p) => p.moderationStatus === 'pending').length : null,
     plan,
   });
-  const loading = (canMoney && payout.isLoading) || pending.isLoading || feed.isLoading || workspace.isLoading;
+  const loading = (canMoney && payout.isLoading) || pending.isLoading || feed.isLoading;
   const from = new Date(Date.now() - days * 86_400_000);
 
   return (

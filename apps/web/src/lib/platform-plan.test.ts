@@ -1,103 +1,87 @@
+import { PLAN_DEFAULTS, type PlanDef } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { externalPayUrl, payCycles, pickPlan, planView, priceLabel, yearlySaving, type PlanInput } from './platform-plan';
+import { capView, compareRows, planBadge, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
 
-// Giữa trưa UTC: ngày hiển thị giống nhau ở mọi múi giờ từ UTC-11 tới UTC+11.
-const now = new Date('2026-11-10T12:00:00Z');
+const now = new Date('2026-11-11T03:00:00Z');
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString();
-const sub = (over: Partial<NonNullable<PlanInput['sub']>> = {}): NonNullable<PlanInput['sub']> => ({ status: 'active', billingCycle: 'monthly', currentPeriodEnd: inDays(20), cancelAtPeriodEnd: false, ...over });
-const view = (over: Partial<PlanInput>) => planView({ sub: null, trialEndsAt: null, locked: false, now, ...over });
-const plan = { key: 'hoiminh', name: 'Hội Mình', monthlyMinor: 499_000, yearlyMinor: 4_990_000 };
+const plans: PlanDef[] = PLAN_DEFAULTS.map((p) => ({ ...p, features: [...p.features] }));
+const free: HoiPlan = { key: 'free', name: 'Miễn phí', memberCap: 100, features: [], endsAt: null, daysLeft: 0, boughtKey: 'free', boughtEndsAt: null, isFreeSlot: true, needsPlan: false, full: false };
+const on = (key: 'starter' | 'pro' | 'unlimited', days: number): HoiPlan => {
+  const p = plans.find((x) => x.key === key)!;
+  return { ...free, key, name: p.name, memberCap: p.memberCap, features: p.features, endsAt: inDays(days), daysLeft: days, boughtKey: key, boughtEndsAt: inDays(days) };
+};
 
-describe('planView', () => {
-  it('đang dùng thử: nêu số ngày còn lại và ngày hết, cần thanh toán', () => {
-    const v = view({ sub: sub({ status: 'trialing', currentPeriodEnd: inDays(10) }) });
-    expect(v).toMatchObject({ state: 'trial', name: 'Dùng thử', badge: 'Còn 10 ngày', when: 'đến 20/11/2026', warn: null, needsPayment: true });
+describe('planBadge', () => {
+  it('gói Miễn phí dùng vĩnh viễn; gói trả phí ghi ngày hết hạn, còn 7 ngày trở xuống thì đếm ngày', () => {
+    expect(planBadge(free)).toMatchObject({ label: 'Dùng vĩnh viễn', tone: 'muted' });
+    expect(planBadge(on('pro', 60)).label).toMatch(/^Tới \d{2}\/\d{2}\/\d{4}$/);
+    expect(planBadge(on('pro', 5))).toMatchObject({ label: 'Còn 5 ngày', tone: 'gold' });
   });
 
-  it('dùng thử còn từ 7 ngày trở xuống thì kèm lời nhắc chọn gói', () => {
-    expect(view({ sub: sub({ status: 'trialing', currentPeriodEnd: inDays(3) }) }).warn).toContain('Chọn gói');
-  });
-
-  it('chưa có bản ghi gói thì tính theo ngày hết dùng thử của workspace', () => {
-    expect(view({ trialEndsAt: inDays(5) })).toMatchObject({ state: 'trial', badge: 'Còn 5 ngày', cycle: 'monthly' });
-    expect(view({})).toMatchObject({ state: 'trial', badge: 'Đang dùng thử', when: '' });
-  });
-
-  it('ngày hết đã qua mà chưa bị khóa: không còn ghi "dùng thử đến" một ngày trong quá khứ', () => {
-    const v = view({ sub: sub({ status: 'trialing', currentPeriodEnd: inDays(-41) }) });
-    expect(v).toMatchObject({ state: 'overdue', badge: 'Đã hết hạn', when: 'hết hạn 30/09/2026', needsPayment: true });
-    expect(v.warn).toContain('không bị khóa');
-  });
-
-  it('gói đang chạy: tên theo chu kỳ, còn xa thì không nhắc', () => {
-    expect(view({ sub: sub() })).toMatchObject({ state: 'active', name: 'Gói tháng', badge: 'Đang hoạt động', when: 'dùng đến 30/11/2026', warn: null, needsPayment: false });
-    expect(view({ sub: sub({ billingCycle: 'yearly', currentPeriodEnd: inDays(200) }) })).toMatchObject({ name: 'Gói năm', cycle: 'yearly' });
-  });
-
-  it('gói đang chạy còn từ 7 ngày trở xuống thì nhắc gia hạn', () => {
-    expect(view({ sub: sub({ currentPeriodEnd: inDays(2) }) })).toMatchObject({ state: 'active', badge: 'Còn 2 ngày' });
-    expect(view({ sub: sub({ currentPeriodEnd: inDays(2) }) }).warn).toContain('Gia hạn');
-  });
-
-  it('đã hủy gia hạn thì báo ngày kết thúc', () => {
-    expect(view({ sub: sub({ cancelAtPeriodEnd: true }) })).toMatchObject({ state: 'ending', badge: 'Sắp kết thúc', when: 'kết thúc 30/11/2026' });
-    expect(view({ sub: sub({ status: 'cancelled' }) }).state).toBe('ending');
-  });
-
-  it('bị khóa, hết hạn hoặc quá hạn thanh toán đều báo đang tạm khóa', () => {
-    for (const v of [view({ sub: sub(), locked: true }), view({ sub: sub({ status: 'expired' }) }), view({ sub: sub({ status: 'past_due' }) })]) {
-      expect(v).toMatchObject({ state: 'locked', badge: 'Đã hết hạn', needsPayment: true });
-      expect(v.warn).toContain('tạm khóa');
-    }
+  it('gói trả phí đã hết hạn: hội miễn phí về gói Miễn phí và có ghi chú; hội thứ hai thì cần gói', () => {
+    expect(planBadge({ ...free, boughtKey: 'pro', boughtEndsAt: inDays(-2) }).note).toMatch(/đã hết hạn/);
+    expect(planBadge({ ...free, isFreeSlot: false, needsPlan: true, full: true })).toMatchObject({ label: 'Chờ thanh toán', tone: 'accent' });
+    expect(planBadge({ ...free, isFreeSlot: false, needsPlan: true, full: true, boughtKey: 'starter', boughtEndsAt: inDays(-2) })).toMatchObject({ label: 'Gói đã hết hạn' });
   });
 });
 
-describe('giá gói', () => {
-  it('ghi giá theo chu kỳ', () => {
-    expect(priceLabel(plan, 'monthly')).toBe('499.000đ/tháng');
-    expect(priceLabel(plan, 'yearly')).toBe('4.990.000đ/năm');
-  });
-
-  it('lợi của gói năm tính từ giá thật, không ghi cứng', () => {
-    expect(yearlySaving(plan)).toBe('2 tháng miễn phí');
-    expect(yearlySaving({ ...plan, yearlyMinor: 5_000_000 })).toBe('Tiết kiệm 988.000đ');
-    expect(yearlySaving({ ...plan, yearlyMinor: 499_000 * 12 })).toBeNull();
-    expect(yearlySaving({ ...plan, monthlyMinor: 0 })).toBeNull();
-  });
-
-  it('chọn đúng gói của workspace, không có thì lấy gói đầu, danh sách rỗng thì null', () => {
-    const other = { ...plan, key: 'khac' };
-    expect(pickPlan([other, plan], 'hoiminh')).toBe(plan);
-    expect(pickPlan([other, plan], 'la')).toBe(other);
-    expect(pickPlan([], 'hoiminh')).toBeNull();
-    expect(pickPlan(undefined, 'hoiminh')).toBeNull();
+describe('capView', () => {
+  it('đếm số chỗ còn lại, chạm trần thì báo đủ, gói không giới hạn thì không có thanh', () => {
+    expect(capView(87, 100)).toMatchObject({ text: '87 trên 100', percent: 87, left: 13, full: false });
+    expect(capView(87, 100).note).toMatch(/Còn 13 chỗ/);
+    expect(capView(100, 100)).toMatchObject({ full: true, percent: 100, left: 0 });
+    expect(capView(9_000, null)).toMatchObject({ left: null, full: false });
   });
 });
 
-describe('gói thu tiền bằng link ngoài', () => {
-  const who = { workspaceId: 'ws-123', email: 'vy+test@gmail.com' };
-  const link = { ...plan, paymentMode: 'link' as const, monthlyPayUrl: 'https://pay.example.com/thang?ref={workspace_id}&email={email}&ky={cycle}', yearlyPayUrl: null };
-
-  it('thanh toán trong Hội Mình thì bán cả hai chu kỳ và không có link ngoài', () => {
-    expect(payCycles(plan)).toEqual(['monthly', 'yearly']);
-    expect(payCycles({ ...plan, paymentMode: 'gateway', monthlyPayUrl: 'https://pay.example.com' })).toEqual(['monthly', 'yearly']);
-    expect(externalPayUrl(plan, 'monthly', who)).toBeNull();
+describe('tierCards', () => {
+  it('hội Miễn phí, chu kỳ 1 năm: giá quy ra tháng là 10 lần giá tháng chia 12, kèm tổng tiền phải trả', () => {
+    const cards = tierCards(plans, free, 87, 'yearly', now);
+    expect(cards.map((c) => [c.key, c.state])).toEqual([['free', 'current'], ['starter', 'buy'], ['pro', 'buy'], ['unlimited', 'buy']]);
+    expect(cards[1]).toMatchObject({ price: '82.500đ', per: 'mỗi tháng', cta: 'Chọn gói Khởi đầu' });
+    expect(cards[1]!.sub).toBe('Trả 990.000đ cho 1 năm, tặng 2 tháng.');
+    expect(cards[2]).toMatchObject({ popular: true, cap: 'Tối đa 5.000 thành viên' });
+    expect(tierCards(plans, free, 87, 'quarterly', now)[1]).toMatchObject({ price: '99.000đ', sub: 'Trả 297.000đ cho 3 tháng.' });
   });
 
-  it('link ngoài chỉ bán chu kỳ đã cài link', () => {
-    expect(payCycles(link)).toEqual(['monthly']);
-    expect(payCycles({ ...link, yearlyPayUrl: 'https://pay.example.com/nam' })).toEqual(['monthly', 'yearly']);
-    expect(payCycles({ ...link, monthlyPayUrl: null })).toEqual([]);
-    expect(externalPayUrl(link, 'yearly', who)).toBeNull();
+  it('tính năng trả phí của gói thấp vẫn hiện, ghi rõ có từ gói nào', () => {
+    const [f, , pro, unlimited] = tierCards(plans, free, 10, 'yearly', now);
+    expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: tự động hóa', on: false });
+    expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: API', on: false });
+    expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Cộng sự', 'API']);
+    expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu']);
   });
 
-  it('điền mã hội, email, chu kỳ vào chỗ trống, có mã hóa ký tự đặc biệt', () => {
-    expect(externalPayUrl(link, 'monthly', who)).toBe('https://pay.example.com/thang?ref=ws-123&email=vy%2Btest%40gmail.com&ky=monthly');
+  it('đang ở Chuyên nghiệp với 1.240 thành viên: gói thấp hơn không mua được, cùng gói thì gia hạn, gói trên thì nâng', () => {
+    const cards = tierCards(plans, on('pro', 40), 1_240, 'quarterly', now);
+    expect(cards.map((c) => c.state)).toEqual(['blocked', 'blocked', 'buy', 'buy']);
+    expect(cards[1]!.reason).toMatch(/còn hạn/);
+    expect(cards[2]!.cta).toBe('Gia hạn gói Chuyên nghiệp');
+    expect(cards[3]!.cta).toBe('Nâng lên Không giới hạn');
+    // Hết hạn rồi mà hội vẫn đông hơn trần của gói thấp thì vẫn chưa mua được gói đó.
+    const expired = tierCards(plans, { ...free, boughtKey: 'pro', boughtEndsAt: inDays(-1), full: true }, 1_240, 'quarterly', now);
+    expect(expired[1]).toMatchObject({ state: 'blocked', reason: 'Tối đa 500 thành viên, hội đang có 1.240.' });
+  });
+});
+
+describe('upgradeSummary', () => {
+  it('Khởi đầu còn 60 ngày, nâng lên Chuyên nghiệp 3 tháng: 90 + 60 = 150 ngày, trả 897.000đ', () => {
+    const u = upgradeSummary(on('starter', 60), plans[2]!, 120, 'quarterly', now);
+    expect(u).toMatchObject({ title: 'Nâng hội lên gói Chuyên nghiệp', buyDays: '90 ngày', carryDays: '+ 60 ngày', totalDays: '150 ngày', price: '897.000đ' });
+    expect(u.carryLabel).toBe('Tặng: số ngày còn lại của gói Khởi đầu');
+    expect(u.quote.endsAt.getTime()).toBe(now.getTime() + 150 * 86_400_000);
   });
 
-  it('link không ghi mã hội thì tự thêm hm_ws và hm_cycle, giữ tham số sẵn có', () => {
-    const url = externalPayUrl({ ...link, yearlyPayUrl: 'https://pay.example.com/nam?utm=hm' }, 'yearly', who);
-    expect(url).toBe('https://pay.example.com/nam?utm=hm&hm_ws=ws-123&hm_cycle=yearly');
-    expect(url).not.toContain('gmail');
+  it('gói Miễn phí mua gói đầu tiên thì không có ngày tặng; gia hạn thì nối tiếp', () => {
+    expect(upgradeSummary(free, plans[1]!, 10, 'yearly', now)).toMatchObject({ title: 'Chọn gói Khởi đầu cho hội', carryLabel: '', totalDays: '365 ngày', price: '990.000đ' });
+    expect(upgradeSummary(on('pro', 10), plans[2]!, 10, 'yearly', now)).toMatchObject({ title: 'Gia hạn gói Chuyên nghiệp', totalDays: '375 ngày' });
+  });
+});
+
+describe('compareRows', () => {
+  it('có đủ trần, giá hai chu kỳ và bốn tính năng trả phí', () => {
+    const rows = compareRows(plans);
+    expect(rows.find((r) => r.label === 'Trả 1 năm')!.cells.map((c) => c.text)).toEqual(['0đ', '990.000đ', '2.990.000đ', '7.990.000đ']);
+    expect(rows.find((r) => r.label === 'Tự động hóa')!.cells.map((c) => c.text)).toEqual(['Khóa', 'Khóa', 'Có', 'Có']);
   });
 });

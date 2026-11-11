@@ -31,7 +31,7 @@ describe('email', () => {
     const all = [
       templates.welcomeMember('a@b.vn', evil, evil, 'https://hoiminh.com/x'),
       templates.newMessage('a@b.vn', evil, evil, 'https://hoiminh.com/x'),
-      templates.broadcastPost('a@b.vn', evil, evil, evil, 'https://hoiminh.com/x'),
+      templates.planReminder('a@b.vn', evil, evil, evil, 3, 'https://hoiminh.com/x'),
       templates.withdrawalRejected('a@b.vn', evil, '1đ', evil),
       templates.invite('a@b.vn', evil, evil, 'https://hoiminh.com/x'),
     ];

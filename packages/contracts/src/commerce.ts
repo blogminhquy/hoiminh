@@ -1,6 +1,7 @@
 // Hợp đồng thương mại: sản phẩm, offer, checkout, thanh toán, hoàn tiền, gói nền tảng.
 import { z } from 'zod';
 import { amountMinorSchema, billingCycleSchema, currencySchema, idSchema, paymentProviderSchema } from './common';
+import { paidPlanKeySchema, planCycleSchema } from './plans';
 
 export const productKindSchema = z.enum(['course', 'bundle', 'digital']);
 export type ProductKind = z.infer<typeof productKindSchema>;
@@ -50,7 +51,7 @@ export const storeQuerySchema = z.object({
 export const checkoutTargetSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tier'), communityId: idSchema, tierKey: z.enum(['premium', 'vip', 'standard']), cycle: billingCycleSchema }),
   z.object({ type: z.literal('product'), productId: idSchema }),
-  z.object({ type: z.literal('platform'), workspaceId: idSchema, cycle: z.enum(['monthly', 'yearly']) }),
+  z.object({ type: z.literal('platform'), communityId: idSchema, planKey: paidPlanKeySchema, cycle: planCycleSchema }),
 ]);
 export type CheckoutTarget = z.infer<typeof checkoutTargetSchema>;
 

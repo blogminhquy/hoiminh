@@ -10,7 +10,7 @@ import { fmtCount } from '@/lib/format';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
 
-interface JoinResult { member: { status: string }; alreadyMember?: boolean }
+interface JoinResult { member: { status: string }; alreadyMember?: boolean; waitlisted?: boolean }
 
 function JoinQuestionsModal({ d, open, onClose, onSubmit, saving, error }: { d: AboutPage; open: boolean; onClose: () => void; onSubmit: (answers: Array<{ questionId: string; answer: string }>) => void; saving: boolean; error: unknown }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -53,7 +53,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
       setAsking(false);
       await qc.invalidateQueries({ queryKey: ['me'] });
       await qc.invalidateQueries({ queryKey: ['about', c.slug] });
-      if (r.member.status === 'pending') { setNotice('Đã gửi yêu cầu, chờ chủ hội duyệt.'); return; }
+      if (r.member.status === 'pending') { setNotice(r.waitlisted ? 'Hội đang đủ chỗ. Yêu cầu của bạn đã vào hàng chờ, chủ hội sẽ duyệt khi có chỗ.' : 'Đã gửi yêu cầu, chờ chủ hội duyệt.'); return; }
       rememberCommunitySlug(c.slug);
       navigate(`/${c.slug}/bang-tin`);
     },

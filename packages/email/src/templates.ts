@@ -93,16 +93,19 @@ export const templates = {
     make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được hoàn. Tiền về theo phương thức bạn đã trả trong 3-7 ngày làm việc.</p>`),
   eventReminder: (to: string, name: string, event: string, when: string, url: string) =>
     make('event_reminder', to, `Sắp diễn ra: ${event}`, `${event}`, `<p>Chào ${h(name)}, sự kiện bắt đầu ${h(when)}. Link phòng hiện trong trang sự kiện.</p>`, { label: 'Xem sự kiện', url }),
-  trialReminder: (to: string, name: string, daysLeft: number, url: string) =>
-    make('trial_reminder', to, daysLeft > 0 ? `Gói dùng thử còn ${daysLeft} ngày` : 'Gói dùng thử đã hết hạn', daysLeft > 0 ? `Còn ${daysLeft} ngày dùng thử` : 'Hết dùng thử', `<p>Chào ${h(name)}, ${daysLeft > 0 ? `gói dùng thử Hội Mình của bạn còn ${daysLeft} ngày.` : 'gói dùng thử đã hết hạn, hội của bạn tạm khóa tạo nội dung nhưng không mất dữ liệu.'} Thanh toán bằng chuyển khoản hoặc MoMo để tiếp tục, 499.000đ/tháng hoặc 4.990.000đ/năm.</p>`, { label: 'Thanh toán gói', url }),
+  /** Nhắc gia hạn gói Hội Mình của một hội (daysLeft > 0), hoặc báo gói đã hết hạn (daysLeft = 0). Email hệ thống, luôn gửi. */
+  planReminder: (to: string, name: string, community: string, plan: string, daysLeft: number, url: string) =>
+    make('plan_reminder', to, daysLeft > 0 ? `Gói ${plan} của ${community} còn ${daysLeft} ngày` : `Gói ${plan} của ${community} đã hết hạn`, daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Gói đã hết hạn',
+      `<p>Chào ${h(name)}, ${daysLeft > 0
+        ? `gói <strong>${h(plan)}</strong> của hội <strong>${h(community)}</strong> còn ${daysLeft} ngày. Gia hạn trước ngày hết hạn thì số ngày mới được nối tiếp, không mất ngày nào.`
+        : `gói <strong>${h(plan)}</strong> của hội <strong>${h(community)}</strong> đã hết hạn. Hội trở về gói Miễn phí: thành viên và dữ liệu vẫn được giữ nguyên, hội chỉ chưa nhận thêm người mới nếu đã vượt trần của gói Miễn phí, và các tính năng của gói trả phí tạm khóa.`}</p>`,
+      { label: daysLeft > 0 ? 'Gia hạn gói' : 'Xem các gói', url }),
   commissionAvailable: (to: string, name: string, amount: string, url: string) =>
     make('commission_available', to, `Hoa hồng ${amount} đã có thể rút`, 'Hoa hồng đã được duyệt', `<p>Chào ${h(name)}, hoa hồng <strong>${h(amount)}</strong> đã hết thời gian giữ và vào số dư có thể rút.</p>`, { label: 'Xem ví cộng sự', url }),
   withdrawalPaid: (to: string, name: string, amount: string, reference: string) =>
     make('withdrawal_paid', to, `Đã chuyển ${amount} cho bạn`, 'Yêu cầu rút đã được thanh toán', `<p>Chào ${h(name)}, <strong>${h(amount)}</strong> đã được chuyển khoản. Mã tham chiếu: <code>${h(reference)}</code>.</p>`),
   withdrawalRejected: (to: string, name: string, amount: string, reason: string) =>
     make('withdrawal_rejected', to, `Yêu cầu rút ${amount} bị từ chối`, 'Yêu cầu rút bị từ chối', `<p>Chào ${h(name)}, yêu cầu rút <strong>${h(amount)}</strong> bị từ chối với lý do: ${h(reason)}. Số tiền đã trả lại ví của bạn.</p>`),
-  broadcastPost: (to: string, community: string, title: string, excerpt: string, url: string) =>
-    make('broadcast_post', to, `[${community}] ${title}`, title, `<p>${h(excerpt)}</p>`, { label: 'Đọc bài', url }),
   newMessage: (to: string, from: string, preview: string, url: string) =>
     make('new_message', to, `${from} nhắn cho bạn`, `Tin nhắn mới từ ${from}`, `<p>${h(preview)}</p>`, { label: 'Trả lời', url }),
   /** Email thử do quản trị hệ thống bấm gửi để kiểm chứng Resend đã nối. */

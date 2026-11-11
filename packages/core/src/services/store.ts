@@ -9,7 +9,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { hasEntitlement, ownsProduct } from './entitlements';
 import { releaseFiles } from './files';
-import { assertWorkspaceUnlocked } from './workspaces';
+import { assertCommunityHasPlan } from './plans';
 
 function discountPercent(price: number, compareAt: number | null): number | null {
   if (!compareAt || compareAt <= price) return null;
@@ -72,7 +72,7 @@ export async function getProduct(ctx: Ctx, productId: string) {
 /** Tạo sản phẩm + trang bán. */
 export async function createProduct(ctx: Ctx, communityId: string, input: CreateProductInput) {
   const access = await requireCommunityPermission(ctx, communityId, 'store.manage');
-  await assertWorkspaceUnlocked(ctx, access.workspaceId);
+  await assertCommunityHasPlan(ctx, communityId);
   if (input.kind === 'course' && !input.courseId) throw invalid('Sản phẩm khóa học cần chọn khóa học');
   if (input.kind === 'bundle' && input.bundleItemProductIds.length < 2) throw invalid('Combo cần ít nhất 2 sản phẩm');
   if (input.kind === 'digital' && input.digitalFileIds.length === 0) throw invalid('Sản phẩm số cần ít nhất 1 tệp');

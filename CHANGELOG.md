@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 1.32.0 - 2026-11-11
+
+Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng.
+
+### Tính năng
+
+- **Bốn gói cho từng hội.** Miễn phí (0đ, tối đa 100 thành viên), Khởi đầu (99.000đ mỗi tháng, 500), Chuyên nghiệp (299.000đ, 5.000, có tự động hóa, tên miền riêng, cộng sự, API), Không giới hạn (799.000đ, không giới hạn thành viên). Mọi gói đều bán hàng và thu tiền được, không thu phí trên doanh thu.
+- **Hai chu kỳ: 3 tháng và 1 năm.** 3 tháng bằng 3 lần giá tháng (90 ngày), 1 năm bằng 10 lần giá tháng (365 ngày). Không còn gói 1 tháng.
+- **Trang "Gói cho hội" (`/admin/goi?hoi=<đường dẫn hội>`):** thanh thành viên so với trần, hai tab chu kỳ, bốn thẻ gói, bảng so sánh. Tính năng của gói cao hơn vẫn hiện kèm ổ khóa và ghi "Có từ gói ...".
+- **Nâng gói được tặng ngày.** Màn nâng gói ghi rõ số ngày mua, số ngày còn lại của gói cũ được tặng sang gói mới, tổng số ngày, ngày hết hạn và số tiền. Gia hạn cùng gói thì nối tiếp vào ngày hết hạn. Không mua được gói thấp hơn gói đang còn hạn, hay gói có trần thấp hơn số thành viên đang có.
+- **Mỗi tài khoản một hội miễn phí.** Tạo hội thứ hai thì có thêm bước "Gói": chọn gói trả phí và chu kỳ, hội được tạo ở trạng thái chờ thanh toán và mở ngay khi tiền về.
+- **Trần thành viên.** Hội đã đủ chỗ thì người mới vẫn xin vào được và nằm ở hàng chờ duyệt. Trang Thành viên có dải báo đủ chỗ; chủ hội bấm Duyệt thì thấy màn nâng gói thay vì duyệt. Người muốn trả tiền để vào hội đang đủ chỗ bị chặn trước khi thanh toán. Bàn điều khiển nhắc việc này trong "Cần xử lý".
+- **Khóa tính năng trả phí.** Trong Cài đặt hội, các mục Nguồn đồng bộ, Quy tắc tự động, Liên hệ và thẻ, Mức hoa hồng, Nhà phát triển và ô Tên miền riêng vẫn hiện nhưng kèm ổ khóa; bấm vào thì thấy lời mời nâng gói. Máy chủ chặn thật ở mọi đường (trả lỗi `plan_locked`).
+- **Bảng bốn gói của quản trị** (Hệ thống, Gói nền tảng): nhập giá mỗi tháng và trần thành viên, bật tắt bốn tính năng cho từng gói, giá 3 tháng và 1 năm tự tính, lưu cả bảng một lần.
+- **Bảng giá công khai (`/tao-hoi/goi`)** hiện bốn gói, nút "Tạo hội miễn phí".
+
+### Thay đổi
+
+- **Bỏ dùng thử.** Không còn 14 ngày dùng thử, không còn email nhắc dùng thử, không còn khóa cả tài khoản khi hết hạn. Hội miễn phí của tài khoản dùng vĩnh viễn; gói trả phí hết hạn thì hội tự về gói Miễn phí, thành viên và dữ liệu giữ nguyên.
+- **Gói cũ 499.000đ ngừng bán.** Tài khoản đang trả gói cũ còn hạn thì mọi hội của tài khoản đó được gói Không giới hạn tới hết kỳ đã trả.
+- **Bỏ thu tiền gói bằng link thanh toán ngoài** (thêm ở 1.31.0): bảng bốn gói chỉ thu qua thanh toán trong Hội Mình. Ba cột của tính năng này còn trong database, bật lại được nếu cần.
+- **Bỏ email thông báo của hội.** Công tắc "Gửi email cho tất cả thành viên" khi đăng bài nay là "Báo cho tất cả thành viên": mỗi thành viên nhận một thông báo trong ứng dụng, không còn email. Công tắc cùng tên ở màn tạo sự kiện được gỡ vì trước giờ bật lên không gửi gì. Email hệ thống giữ nguyên: xác minh tài khoản, đặt lại mật khẩu, biên nhận thanh toán, nhắc gia hạn gói, nhắc sự kiện.
+- Email nhắc gia hạn gói ghi rõ tên hội và tên gói, gửi trước 7, 3, 1 ngày và một lần khi hết hạn.
+- Thẻ "Gói nền tảng của bạn" ở Hội của tôi thành "Gói của các hội": mỗi hội một dòng.
+
+### Kỹ thuật
+
+- Migration `0011_plans_per_community`: thêm bốn dòng gói; `communities` có `plan_key`, `plan_ends_at`, `is_free_slot`; `platform_subscriptions` chuyển từ một dòng mỗi workspace sang một dòng mỗi hội (`community_id`); xóa trạng thái dùng thử và khóa của workspace. Chạy lại được. **Phải áp dụng lên database thật trước khi merge.**
+- Luật giá, chu kỳ, ngày tặng nằm ở `packages/contracts/src/plans.ts` (hàm thuần `planQuote`), API và web dùng chung.
+- `packages/core/src/services/plans.ts`: gói đang có hiệu lực của một hội tính theo thời điểm hiện tại (không chờ cron), các hàm chặn `requirePlanFeature`, `assertRoomForMember`, `assertCommunityHasPlan`.
+- API: `GET /v1/plans` trả bốn gói; `GET /v1/communities/:id/plan`; `PUT /v1/admin/plans` lưu cả bảng (thay `PATCH /v1/admin/plans/:key`); đích thanh toán `platform` nhận `communityId`, `planKey`, `cycle`; bỏ `GET /v1/workspaces/:id/platform`. Mã lỗi mới `member_cap` (409).
+- Khung hội (`/shell`) trả thêm `plan` cho người quản lý hội.
+- Ngày bắt đầu kỳ tính từ lúc gói được kích hoạt, không tính từ giờ giao dịch ngân hàng.
+- Test: core `plans.test.ts` (17), web `platform-plan.test.ts` (10) và `owner-todo.test.ts`, e2e luồng 5, 6, 20, 21.
+
 ## 1.31.2 - 2026-11-11
 
 Ảnh bìa của hội hiện trọn ở trang Khám phá và trang Tạo hội, đúng khung 16:9 của ảnh chủ hội tải lên. Hội chưa có ảnh bìa thì thẻ ở Khám phá hiện ảnh đại diện (logo) thay cho ô màu trống.

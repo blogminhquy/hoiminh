@@ -79,11 +79,11 @@ export default function Page() {
         <div className="flex flex-col gap-2.5">
           <h1 className="serif m-0 font-extrabold leading-[1.15] text-[32px] md:text-[44px]" style={{ maxWidth: 820 }}>Xây một hội quanh đam mê của bạn</h1>
           <div className="font-semibold text-[18px] md:text-[22px]" style={{ color: T.gold }}>Dạy học, bán khóa học và nhận tiền bằng chuyển khoản Việt Nam</div>
-          <div className="text-[15px]" style={{ color: T.sideText }}>Một gói duy nhất, đầy đủ tính năng, không thu phí giao dịch</div>
+          <div className="text-[15px]" style={{ color: T.sideText }}>Bắt đầu miễn phí, không thu phí trên doanh thu ở mọi gói</div>
         </div>
         {list.data && list.data.length > 0 && <Carousel items={list.data} />}
         <Link to={withRef('/tao-hoi/goi', ref)} className="btn btn-primary w-full uppercase" style={{ maxWidth: 560, height: 56, fontSize: 16, letterSpacing: '0.04em', borderRadius: 12 }}>Tạo hội của bạn</Link>
-        <div className="text-[13px]" style={{ color: T.sideMuted }}>Dùng thử 14 ngày miễn phí · không cần thẻ</div>
+        <div className="text-[13px]" style={{ color: T.sideMuted }}>Hội đầu tiên miễn phí, dùng vĩnh viễn · không cần thẻ</div>
       </div>
     </SignupPage>
   );

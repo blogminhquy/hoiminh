@@ -16,7 +16,7 @@ test.describe('điện thoại', () => {
     await expect(page.getByRole('heading', { name: /^Chào / })).toBeVisible();
     // Danh sách "Cần xử lý" luôn có nội dung: hoặc việc cần làm, hoặc dòng báo đã xong hết.
     const todo = page.getByRole('region', { name: 'Cần xử lý' });
-    await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|Gói Hội Mình|Dùng thử|Mọi việc đã xong/).first()).toBeVisible();
+    await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|hết hạn|Hội đã đủ|Mọi việc đã xong/).first()).toBeVisible();
     await expect(page.getByText('Có thể rút')).toBeVisible();
     await expect(page.getByText('Ghé hội hôm nay')).toHaveCount(0);
     await expectNoSideScroll(page, 390);
@@ -88,7 +88,8 @@ test.describe('máy tính', () => {
     await expect(page).toHaveURL(/\/minhquy\/cai-dat\/chung$/);
     const settings = page.getByRole('navigation', { name: 'Cài đặt' });
     for (const label of ['Hội', 'Bán hàng', 'Cộng sự', 'Tự động và kết nối']) await expect(settings.getByRole('link', { name: label, exact: true })).toBeVisible();
-    await expect(settings.getByRole('link')).toHaveCount(5); // 4 nhóm và lối ra trang giới thiệu
+    await expect(settings.getByRole('link', { name: /Gói của hội/ })).toHaveAttribute('href', '/admin/goi?hoi=minhquy');
+    await expect(settings.getByRole('link')).toHaveCount(6); // 4 nhóm, gói của hội và lối ra trang giới thiệu
     await settings.getByRole('link', { name: 'Tự động và kết nối' }).click();
     await expect(page).toHaveURL(/\/minhquy\/cai-dat\/tien-ich$/);
     await page.getByRole('navigation', { name: 'Tự động và kết nối' }).getByRole('link', { name: 'Nhà phát triển' }).click();

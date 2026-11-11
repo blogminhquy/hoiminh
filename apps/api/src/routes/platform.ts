@@ -10,7 +10,8 @@ export const platformRoutes = router();
 
 platformRoutes.get('/plans', async (c) => c.json(await platformBilling.listPlans(c.get('ctx'))));
 platformRoutes.get('/users/:handle', async (c) => c.json(await users.publicProfile(c.get('ctx'), c.req.param('handle'))));
-platformRoutes.get('/workspaces/:id/platform', requireAuth, async (c) => c.json(await platformBilling.platformStatus(c.get('ctx'), c.req.param('id'))));
+/** Gói của một hội: gói đang dùng, số thành viên so với trần, bảng gói để chọn (trang Gói cho hội). */
+platformRoutes.get('/communities/:id/plan', requireAuth, async (c) => c.json(await platformBilling.communityPlanStatus(c.get('ctx'), c.req.param('id'))));
 
 platformRoutes.get('/workspaces/:id/api-keys', requireAuth, async (c) => c.json(await apiKeys.listApiKeys(c.get('ctx'), c.req.param('id'))));
 platformRoutes.post('/workspaces/:id/api-keys', requireAuth, async (c) => c.json(await apiKeys.createApiKey(c.get('ctx'), c.req.param('id'), await parse(createApiKeySchema, await body(c))), 201));

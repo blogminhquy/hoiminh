@@ -1,26 +1,13 @@
-// Hội của tôi (wsHomeMain): tiêu đề + nút Tạo hội, lưới hội làm chủ, hội tham gia + thẻ gói nền tảng (dẫn sang /admin/goi), đội ngũ.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, T } from '@hoiminh/ui';
+// Hội của tôi (wsHomeMain): tiêu đề + nút Tạo hội, lưới hội làm chủ (kèm gói của từng hội), hội tham gia + thẻ gói của các hội, đội ngũ.
+// Không còn dùng thử: hội đầu tiên của tài khoản miễn phí vĩnh viễn, hội thứ hai trở đi chọn gói trả phí khi tạo.
+import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
-import { api, errorMessage } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { HoiCard, JoinedCard, TeamCard, WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 import { PlanCard } from './WorkspacePlanCard';
-
-function StartTrial() {
-  const qc = useQueryClient();
-  const m = useMutation({ mutationFn: () => api.post('/v1/me/workspace', {}), onSuccess: () => qc.invalidateQueries({ queryKey: WS_HOME_KEY }) });
-  return (
-    <div className="card card-invert flex flex-col gap-3 p-6">
-      <div className="serif text-[22px] font-extrabold">Bắt đầu 14 ngày dùng thử</div>
-      <div className="text-[13px]" style={{ color: T.sideText }}>Không cần thẻ. Tạo hội, đăng khóa học, nhận thanh toán qua chuyển khoản, MoMo, VNPAY, không phí giao dịch.</div>
-      {m.isError && <div className="text-[13px]" style={{ color: T.accent }}>{errorMessage(m.error)}</div>}
-      <div><Button variant="primary" loading={m.isPending} onClick={() => m.mutate()}>Kích hoạt dùng thử</Button></div>
-    </div>
-  );
-}
 
 export default function Page() {
   const { user } = useAuth();
@@ -40,13 +27,12 @@ export default function Page() {
               <span className="flex-grow" />
               <Link to="/admin/tao-hoi" className="btn btn-primary"><Plus size={18} /> Tạo hội của bạn</Link>
             </div>
-            {!d.workspace && <StartTrial />}
             {d.owned.length > 0 ? (
               <div className="grid-3">{d.owned.map((c) => <HoiCard key={c.id} c={c} role={roleOf(c)} />)}</div>
             ) : (
               <div className="card p-6 text-center flex flex-col items-center gap-2">
                 <div className="font-semibold">Bạn chưa có hội nào</div>
-                <div className="muted text-[13px]">Tạo hội đầu tiên trong 2 phút, {ownerName ? `${ownerName} ` : ''}mọi thứ đổi được sau.</div>
+                <div className="muted text-[13px]">Tạo hội đầu tiên trong 2 phút, {ownerName ? `${ownerName} ` : ''}mọi thứ đổi được sau. Hội đầu tiên miễn phí, dùng vĩnh viễn, không cần thẻ.</div>
                 <Link to="/admin/tao-hoi" className="btn btn-dark btn-sm mt-1">Tạo hội của bạn</Link>
               </div>
             )}

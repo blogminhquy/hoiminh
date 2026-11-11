@@ -10,6 +10,7 @@ import { invalidState, notFound } from '../errors';
 import { requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
 import { confirmPayment } from './payments';
+import { planOfCommunity, planTable } from './plans';
 
 export interface ConfigWarning {
   key: string;
@@ -81,12 +82,13 @@ export async function overview(ctx: Ctx, days = 30) {
       (select count(*)::int from reconciliation_items where status not in ('matched')) as unmatched,
       (select count(*)::int from webhook_events where processing_status = 'failed' and created_at > now() - interval '1 day') as webhook_failures,
       (select count(*)::int from communities where locked_reason is not null and status = 'active') as reported,
-      (select count(*)::int from platform_subscriptions where status = 'trialing' and current_period_end < now() + interval '3 days') as trials_ending`);
+      (select count(*)::int from platform_subscriptions where status = 'active' and current_period_end > now() and current_period_end < now() + interval '7 days') as plans_ending`);
   const row = r[0] as Record<string, string | number>;
   const daily = await raw(ctx.db, sql`select to_char(paid_at, 'YYYY-MM-DD') as d, sum(total_minor)::bigint as v from orders where status = 'paid' and paid_at > now() - make_interval(days => ${days}) group by 1 order by 1`);
   const byProvider = await raw(ctx.db, sql`select provider, sum(amount_minor)::bigint as v from payments where status = 'succeeded' and paid_at > now() - make_interval(days => ${days}) group by provider`);
-  const recent = await ctx.db.select({ c: communities, owner: { name: users.name }, ws: { status: workspaces.status } }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(isNull(communities.deletedAt)).orderBy(desc(communities.createdAt)).limit(5);
-  return { config: await configWarnings(ctx), infra: infraStatus(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), trialsEnding: Number(row.trials_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => ({ ...x.c, ownerName: x.owner.name, workspaceStatus: x.ws.status })) };
+  const overviewPlans = await planTable(ctx);
+  const recent = await ctx.db.select({ c: communities, owner: { name: users.name } }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(isNull(communities.deletedAt)).orderBy(desc(communities.createdAt)).limit(5);
+  return { config: await configWarnings(ctx), infra: infraStatus(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), plansEnding: Number(row.plans_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => { const p = planOfCommunity(x.c, overviewPlans, ctx.now()); return { ...x.c, ownerName: x.owner.name, planName: p.needsPlan ? 'Chưa có gói' : p.name, planKey: p.key }; }) };
 }
 
 /** Danh sách hội toàn hệ thống với bộ lọc và GMV 30 ngày. */
@@ -97,10 +99,16 @@ export async function listCommunities(ctx: Ctx, q: { status?: 'active' | 'draft'
   if (q.status === 'reported') conds.push(eq(communities.status, 'active'), sql`${communities.lockedReason} is not null`);
   else if (q.status) conds.push(eq(communities.status, q.status));
   if (q.q) conds.push(or(ilike(communities.name, `%${q.q}%`), ilike(communities.slug, `%${q.q}%`), ilike(users.name, `%${q.q}%`))!);
-  const rows = await ctx.db.select({ c: communities, owner: { id: users.id, name: users.name, email: users.email }, ws: { status: workspaces.status, trialEndsAt: workspaces.trialEndsAt, id: workspaces.id }, gmv: sql<string>`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`, cycle: sql<string | null>`(select billing_cycle from platform_subscriptions ps where ps.workspace_id = ${communities.workspaceId} and ps.status = 'active' limit 1)` }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(and(...conds)).orderBy(desc(sql`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`)).limit(q.limit ?? 50);
+  const rows = await ctx.db.select({ c: communities, owner: { id: users.id, name: users.name, email: users.email }, ws: { id: workspaces.id }, gmv: sql<string>`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`, cycle: sql<string | null>`(select billing_cycle from platform_subscriptions ps where ps.community_id = ${communities.id} and ps.status = 'active' and ps.current_period_end > now() limit 1)` }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(and(...conds)).orderBy(desc(sql`coalesce((select sum(total_minor) from orders o where o.community_id = ${communities.id} and o.status = 'paid' and o.paid_at > now() - interval '30 days'),0)`)).limit(q.limit ?? 50);
   const counts = await ctx.db.select({ status: communities.status, c: sql<number>`count(*)::int` }).from(communities).where(isNull(communities.deletedAt)).groupBy(communities.status);
   const [reported] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(communities).where(and(isNull(communities.deletedAt), eq(communities.status, 'active'), sql`${communities.lockedReason} is not null`));
-  return { items: rows.map((r) => ({ ...r.c, owner: r.owner, workspaceStatus: r.ws.status, trialEndsAt: r.ws.trialEndsAt, gmv30Minor: Number(r.gmv), planCycle: r.cycle })), counts: { ...(Object.fromEntries(counts.map((c) => [c.status, c.c])) as Record<string, number>), reported: reported?.c ?? 0 } };
+  const table = await planTable(ctx);
+  const now = ctx.now();
+  const planView = (c: typeof communities.$inferSelect) => {
+    const p = planOfCommunity(c, table, now);
+    return { planKey: p.key, planName: p.name, planEndsAt: p.endsAt, needsPlan: p.needsPlan };
+  };
+  return { items: rows.map((r) => ({ ...r.c, owner: r.owner, gmv30Minor: Number(r.gmv), planCycle: r.cycle, ...planView(r.c) })), counts: { ...(Object.fromEntries(counts.map((c) => [c.status, c.c])) as Record<string, number>), reported: reported?.c ?? 0 } };
 }
 
 /** Khóa / mở khóa / lưu trữ hội (bị báo cáo). */

@@ -1,87 +1,78 @@
-// Chọn cách thanh toán (signupPlanBody trong build.mjs): toggle tháng/năm, thẻ gói từ /v1/plans, 7 dòng tính năng, dùng thử 14 ngày.
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, money, T } from '@hoiminh/ui';
-import { Check } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+// Bảng giá công khai (/tao-hoi/goi): bốn gói từ /v1/plans, hai tab chu kỳ (3 tháng, 1 năm). Mỗi gói dùng cho một hội.
+// Không có dùng thử: ai cũng bắt đầu bằng hội miễn phí (dùng vĩnh viễn), muốn nâng gói thì nâng trong trang quản lý hội.
+import { useQuery } from '@tanstack/react-query';
+import type { PlanCycle, PlanDef } from '@hoiminh/contracts';
+import { T } from '@hoiminh/ui';
+import { Check, Lock, Users } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
-import { api, errorMessage } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { CYCLES, cycleLabel, tierCards, type HoiPlan } from '@/lib/platform-plan';
 import { SignupPage, withRef } from './SignupParts';
 
-interface Plan { key: string; name: string; description: string; monthlyMinor: number; yearlyMinor: number; trialDays: number; features: string[] }
-
-const DEFAULT_FEATURES: Array<Array<string | { b: string }>> = [
-  [{ b: 'Không giới hạn' }, ' hội, thành viên, khóa học, video, sự kiện'],
-  [{ b: 'Không thu phí giao dịch' }, ', bạn nhận đủ tiền thành viên trả'],
-  ['Nhận tiền qua ', { b: 'chuyển khoản QR, MoMo, VNPAY' }, ', PayPal cho khách quốc tế'],
-  ['Cộng sự và bảng xếp hạng cộng sự'],
-  ['Cửa hàng bán khóa học, combo, tài liệu'],
-  ['Tên miền riêng'],
-  ['Tin nhắn chào tự động, tiện ích, API và webhook'],
-];
-
-function Feature({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2.5 text-[15px]">
-      <span className="inline-flex items-center justify-center rounded-full flex-shrink-0" style={{ width: 22, height: 22, background: '#1E8A5A', color: T.invertInk }}><Check size={13} /></span>
-      <span>{children}</span>
-    </div>
-  );
-}
+/** Người xem bảng giá chưa có hội nào: coi như đang ở gói Miễn phí để dựng bốn thẻ. */
+const VISITOR: HoiPlan = { key: 'free', name: 'Miễn phí', memberCap: null, features: [], endsAt: null, daysLeft: 0, boughtKey: 'free', boughtEndsAt: null, isFreeSlot: true, needsPlan: false, full: false };
+const CARD = { background: '#2E2823', border: '1px solid rgba(255,253,249,0.08)' };
 
 export default function Page() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const ref = params.get('ref');
-  const [cycle, setCycle] = useState<'monthly' | 'yearly'>('yearly');
-  const plans = useQuery({ queryKey: ['plans'], queryFn: () => api.get<Plan[]>('/v1/plans'), staleTime: 300_000 });
-  const start = useMutation({
-    mutationFn: () => api.post<{ id: string }>('/v1/me/workspace'),
-    onSuccess: () => navigate('/admin/tao-hoi'),
-  });
-  const go = () => {
-    if (!user) navigate(withRef('/dang-ky?next=%2Fadmin%2Ftao-hoi', ref));
-    else start.mutate();
-  };
-  const seg = (k: 'monthly' | 'yearly', label: string) => (
-    <button type="button" onClick={() => setCycle(k)} className="rounded-full" style={{ padding: '10px 36px', fontWeight: cycle === k ? 700 : 600, background: cycle === k ? T.surface : 'transparent', color: cycle === k ? T.ink : T.sideText }}>{label}</button>
-  );
+  const [cycle, setCycle] = useState<PlanCycle>('yearly');
+  const plans = useQuery({ queryKey: ['plans'], queryFn: () => api.get<PlanDef[]>('/v1/plans'), staleTime: 300_000 });
+  const go = () => navigate(user ? '/admin/tao-hoi' : withRef('/dang-ky?next=%2Fadmin%2Ftao-hoi', ref));
 
   return (
     <SignupPage>
-      <div className="flex-grow flex flex-col items-center gap-6 px-4 md:px-16" style={{ paddingTop: 40, paddingBottom: 40 }}>
-        <h1 className="serif m-0 font-extrabold text-[30px] md:text-[40px]">Chọn cách thanh toán</h1>
-        <div className="relative flex p-1 rounded-full" style={{ background: 'rgba(255,253,249,0.1)' }}>
-          {seg('monthly', 'Theo tháng')}
-          {seg('yearly', 'Theo năm')}
-          <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.invertInk, height: 26, padding: '0 10px' }}>2 tháng miễn phí</span>
+      <div className="flex-grow flex flex-col items-center gap-6 px-4 md:px-10" style={{ paddingTop: 40, paddingBottom: 40 }}>
+        <div className="flex flex-col gap-2 text-center">
+          <h1 className="serif m-0 font-extrabold text-[30px] md:text-[40px]">Bắt đầu miễn phí, nâng gói khi hội lớn</h1>
+          <div className="text-[16px]" style={{ color: T.sideText }}>Mỗi gói dùng cho một hội. Không thu phí trên doanh thu ở bất kỳ gói nào.</div>
         </div>
-        <QueryState q={plans} rows={1} isEmpty={(d) => d.length === 0} empty={{ title: 'Chưa có gói nào', hint: 'Hệ thống chưa mở bán gói nền tảng.' }}>
-          {(list) => {
-            const plan = list[0]!;
-            const yearly = cycle === 'yearly';
-            const features = plan.features.length ? plan.features.map((f) => [f]) : DEFAULT_FEATURES;
-            return (
-              <div className="w-full rounded-[20px] flex flex-col gap-[22px]" style={{ maxWidth: 560, background: '#2E2823', border: '1px solid rgba(255,253,249,0.08)', padding: '32px 24px' }}>
-                <div className="flex items-baseline gap-3 justify-center flex-wrap">
-                  <span className="serif text-[34px] font-extrabold">{plan.name || 'Hội Mình'}</span>
-                  <span className="text-[22px] font-semibold">{yearly ? `${money(plan.yearlyMinor)}/năm` : `${money(plan.monthlyMinor)}/tháng`}</span>
+        <div className="relative flex p-1 rounded-full" style={{ background: 'rgba(255,253,249,0.1)' }} role="tablist" aria-label="Chu kỳ thanh toán">
+          {CYCLES.map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={cycle === k} onClick={() => setCycle(k)} className="rounded-full" style={{ minHeight: 44, padding: '0 32px', fontSize: 15, fontWeight: cycle === k ? 700 : 600, background: cycle === k ? T.surface : 'transparent', color: cycle === k ? T.ink : T.sideText }}>{cycleLabel(k)}</button>
+          ))}
+          <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.invertInk, height: 26, padding: '0 10px' }}>Tặng 2 tháng</span>
+        </div>
+        <QueryState q={plans} rows={2}>
+          {(list) => (
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start w-full" style={{ maxWidth: 1180 }}>
+              {tierCards(list, VISITOR, 0, cycle, new Date()).map((t) => (
+                <div key={t.key} className="rounded-[18px] flex flex-col gap-4 p-5" style={{ ...CARD, ...(t.popular ? { borderColor: T.gold } : {}) }}>
+                  <div className="flex items-center gap-2 flex-wrap min-h-[28px]">
+                    <span className="text-[19px] font-extrabold">{t.name}</span>
+                    {t.popular && <span className="tag" style={{ background: T.gold, color: T.invertBg }}>Dành cho đa số</span>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="serif text-[30px] font-extrabold leading-tight">{t.price}</span>
+                      <span className="text-[14px]" style={{ color: T.sideText }}>{t.per}</span>
+                    </div>
+                    <span className="text-[14px]" style={{ color: T.sideText }}>{t.sub}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[15px] font-semibold"><Users size={18} className="flex-shrink-0" style={{ color: T.gold }} />{t.cap}</div>
+                  <div className="flex flex-col gap-2.5">
+                    {t.features.map((f) => (
+                      <div key={f.text} className="flex items-start gap-2.5 text-[14px]" style={{ color: f.on ? T.invertInk : T.sideMuted }}>
+                        {f.on ? <Check size={18} className="flex-shrink-0 mt-0.5" style={{ color: '#4CC38A' }} /> : <Lock size={16} className="flex-shrink-0 mt-[3px]" />}
+                        <span>{f.text}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-center text-[13px] -mt-3.5" style={{ color: T.sideText }}>
-                  {yearly ? `tương đương ${money(Math.round(plan.yearlyMinor / 12))}/tháng · gói tháng ${money(plan.monthlyMinor)}` : `gói năm ${money(plan.yearlyMinor)}, tiết kiệm ${money(Math.max(0, plan.monthlyMinor * 12 - plan.yearlyMinor))}`}
-                </div>
-                <div className="flex flex-col gap-3">
-                  {features.map((parts, i) => <Feature key={i}>{parts.map((p, k) => (typeof p === 'string' ? <span key={k}>{p}</span> : <strong key={k}>{p.b}</strong>))}</Feature>)}
-                </div>
-                {start.isError && <div className="text-[13px] rounded-[10px] px-3.5 py-2.5" style={{ background: T.accentSoft, color: T.accentText }}>{errorMessage(start.error)}</div>}
-                <Button variant="primary" loading={start.isPending} onClick={go} className="uppercase" style={{ height: 54, fontSize: 15, letterSpacing: '0.04em', borderRadius: 12 }}>Dùng thử {plan.trialDays || 14} ngày miễn phí</Button>
-                <div className="text-center text-[13px]" style={{ color: T.sideMuted }}>Không cần thẻ. Hết dùng thử, thanh toán bằng chuyển khoản hoặc MoMo, hủy bất cứ lúc nào.</div>
-              </div>
-            );
-          }}
+              ))}
+            </div>
+          )}
         </QueryState>
+        <button type="button" onClick={go} className="btn btn-primary w-full uppercase" style={{ maxWidth: 560, height: 56, fontSize: 16, letterSpacing: '0.04em', borderRadius: 12 }}>Tạo hội miễn phí</button>
+        <div className="flex flex-col gap-1 text-center text-[14px]" style={{ color: T.sideMuted }}>
+          <span>Không cần thẻ, không có dùng thử: gói Miễn phí dùng vĩnh viễn, bán hàng và thu tiền được ngay.</span>
+          <span>Mỗi tài khoản có một hội miễn phí. Hội thứ hai trở đi cần gói trả phí.</span>
+        </div>
       </div>
     </SignupPage>
   );

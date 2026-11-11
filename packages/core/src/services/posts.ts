@@ -13,7 +13,7 @@ import { reactionCounts } from './comments';
 import { broadcastKey } from '../jobs/broadcast';
 import { scheduleJob } from '../jobs/schedule';
 import { releaseFiles } from './files';
-import { assertWorkspaceUnlocked } from './workspaces';
+import { assertCommunityHasPlan } from './plans';
 
 const authorCols = { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor };
 
@@ -71,11 +71,11 @@ async function loadPolls(ctx: Ctx, postIds: string[]) {
 export async function createPost(ctx: Ctx, communityId: string, input: CreatePostInput) {
   const userId = requireUser(ctx);
   const access = await requireCommunityPermission(ctx, communityId, 'post.create');
-  await assertWorkspaceUnlocked(ctx, access.workspaceId);
+  await assertCommunityHasPlan(ctx, communityId);
   const space = await ctx.db.query.spaces.findFirst({ where: and(eq(spaces.id, input.spaceId), eq(spaces.communityId, communityId)) });
   if (!space) throw invalid('Chọn chuyên mục trước khi đăng');
   await canPostInSpace(ctx, access, space);
-  if (input.broadcastEmail && !access.permissions.has('post.broadcast')) throw forbidden('Chỉ quản trị viên gửi email cho tất cả thành viên');
+  if (input.broadcastEmail && !access.permissions.has('post.broadcast')) throw forbidden('Chỉ quản trị viên báo bài cho tất cả thành viên');
   const moderationStatus = await needsModeration(ctx, communityId, userId, access.permissions.has('post.moderate')) ? 'pending' : 'approved';
   const imageFiles = input.imageFileIds.length ? await ctx.db.query.files.findMany({ where: and(inArray(files.id, input.imageFileIds), eq(files.ownerUserId, userId)) }) : [];
   const statusBgKey = input.statusBgKey && canUseStatusBg(input.contentMd, imageFiles.length, input.title) ? input.statusBgKey : null;

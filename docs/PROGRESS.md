@@ -94,7 +94,7 @@ Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/Adm
 | 3. Mua lẻ qua MoMo và hoàn tiền 7 ngày | ✅ | 03-cua-hang-momo-hoan-tien |
 | 4. Cộng sự: hold → available → rút → xem xét → trả/từ chối | ✅ | 04-cong-su-rut-tien |
 | 5. Chủ hội tạo hội → khóa học → sự kiện lặp | ✅ | 05-chu-hoi-tao-hoi-khoa-hoc-su-kien |
-| 6. Gói nền tảng dùng thử → trả → hết hạn khóa | ✅ | 06-goi-nen-tang |
+| 6. Gói cho hội: Miễn phí → mua gói → nâng gói tặng ngày; trần thành viên; khóa tính năng; bảng gói quản trị | ✅ | 06-goi-nen-tang, 20-tran-thanh-vien-va-khoa-tinh-nang, 21-bang-goi-quan-tri |
 | 7. Quản trị hệ thống: đối soát, tắt cổng, khóa hội | ✅ | 07-quan-tri-he-thong |
 
 ## Đã kiểm chứng

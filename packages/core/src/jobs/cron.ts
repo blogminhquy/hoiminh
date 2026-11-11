@@ -62,8 +62,8 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
       out.entitlementsExpired = await expireEntitlements(ctx);
       out.abandonedUploads = await sweepAbandonedUploads(ctx);
       const b = await runPlatformBillingCron(ctx);
-      out.trialReminded = b.reminded;
-      out.workspacesLocked = b.locked;
+      out.planReminded = b.reminded;
+      out.plansExpired = b.expired;
     });
     // Quyền do quy tắc tự động cấp có hạn dùng (hội viên N ngày): quá hạn thì thu hồi. Bước riêng để lỗi ở đây không chặn bước tiền.
     await step('automation', async (ctx) => {

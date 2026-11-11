@@ -13,14 +13,14 @@ export type Template = 'course' | 'coaching' | 'membership' | 'blank';
 export const MODES: Array<[PricingMode, string, string]> = [['free', 'Miễn phí', 'Ai cũng vào'], ['freemium', 'Freemium', 'Vào miễn phí, có gói nâng cấp'], ['subscription', 'Thu phí', 'Trả mới vào được'], ['one_time', 'Trả một lần', 'Trọn đời']];
 export const TEMPLATES: Array<[Template, string, string]> = [['course', 'Khóa học', 'Bảng tin + thư viện khóa học, phù hợp bán khóa'], ['coaching', 'Coaching', 'Sự kiện, Q&A hằng tuần và cửa hàng'], ['membership', 'Membership', 'Bảng tin là trung tâm, thu phí tháng'], ['blank', 'Trống', 'Tự bật tab bạn cần trong Cài đặt']];
 
-export function StepBar({ current }: { current: number }) {
+export function StepBar({ current, steps = STEPS }: { current: number; steps?: readonly string[] }) {
   return (
     <div className="flex gap-2 flex-wrap justify-center">
-      {STEPS.map((s, i) => (
+      {steps.map((s, i) => (
         <span key={s} className="inline-flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: i <= current ? T.ink : T.ink3 }}>
           <span className="w-[22px] h-[22px] rounded-full inline-flex items-center justify-center" style={i <= current ? { background: T.ink, color: T.surface } : { border: `1.5px solid ${T.line2}` }}>{i < current ? <Check size={12} /> : i + 1}</span>
           {s}
-          {i < STEPS.length - 1 && <span className="w-6 h-px self-center ml-2 hide-mobile" style={{ background: T.line2 }} />}
+          {i < steps.length - 1 && <span className="w-6 h-px self-center ml-2 hide-mobile" style={{ background: T.line2 }} />}
         </span>
       ))}
     </div>
@@ -62,7 +62,7 @@ export function Done({ slug, name }: { slug: string; name: string }) {
     <div className="flex flex-col items-center gap-3 text-center py-4">
       <span className="w-14 h-14 rounded-full inline-flex items-center justify-center" style={{ background: T.tealSoft, color: T.tealText }}><Check size={28} /></span>
       <div className="serif text-[24px] font-extrabold">{name} đã sẵn sàng</div>
-      <div className="muted text-[14px]">Đường dẫn hội: <strong style={{ color: T.ink }}>{SITE_HOST}/{slug}</strong>. Hội đang ở trạng thái nháp cho tới khi bạn đăng bài đầu tiên hoặc mở cổng trong Cài đặt.</div>
+      <div className="muted text-[14px]">Đường dẫn hội: <strong style={{ color: T.ink }}>{SITE_HOST}/{slug}</strong>. Đây là hội miễn phí của tài khoản: dùng vĩnh viễn, bán hàng và thu tiền được ngay.</div>
       <div className="flex gap-2 flex-wrap justify-center pt-2">
         <Link to={`/${slug}/cai-dat`} className="btn btn-ghost">Cài đặt hội</Link>
         <Link to={`/${slug}/hom-nay`} className="btn btn-primary">Vào hội</Link>

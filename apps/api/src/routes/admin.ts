@@ -1,5 +1,5 @@
 // /v1/admin: quản trị hệ thống (super admin).
-import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema } from '@hoiminh/contracts';
+import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, savePlansSchema } from '@hoiminh/contracts';
 import { admin, affiliate, featureFlags, infra, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
@@ -49,7 +49,7 @@ adminRoutes.get('/infra', async (c) => c.json(await infra.getInfra(c.get('ctx'))
 adminRoutes.put('/infra/:section', async (c) => c.json(await infra.updateInfra(c.get('ctx'), await parse(z.enum(['email', 'release']), c.req.param('section')), await parse(infraUpdateSchema, await body(c)))));
 adminRoutes.post('/infra/release/test', async (c) => c.json(await infra.testRelease(c.get('ctx'))));
 adminRoutes.get('/plans', async (c) => c.json(await platformBilling.planStats(c.get('ctx'))));
-adminRoutes.patch('/plans/:key', async (c) => c.json(await platformBilling.updatePlan(c.get('ctx'), c.req.param('key'), await parse(z.object({ name: z.string().max(80).optional(), monthlyMinor: z.number().int().optional(), yearlyMinor: z.number().int().optional(), trialDays: z.number().int().optional(), description: z.string().max(500).optional(), paymentMode: z.enum(['gateway', 'link']).optional(), monthlyPayUrl: z.string().max(500).nullable().optional(), yearlyPayUrl: z.string().max(500).nullable().optional() }), await body(c)))));
+adminRoutes.put('/plans', async (c) => c.json(await platformBilling.savePlans(c.get('ctx'), await parse(savePlansSchema, await body(c)))));
 adminRoutes.get('/flags', async (c) => c.json(await featureFlags.listFlags(c.get('ctx'))));
 adminRoutes.put('/flags/:key', async (c) => c.json(await featureFlags.setFlag(c.get('ctx'), c.req.param('key'), await parse(z.object({ enabled: z.boolean().optional(), description: z.string().optional(), rules: z.object({ workspaceIds: z.array(z.string()).optional(), planKeys: z.array(z.string()).optional(), percent: z.number().optional() }).optional() }), await body(c)))));
 

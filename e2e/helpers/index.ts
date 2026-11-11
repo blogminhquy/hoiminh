@@ -3,7 +3,7 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 export const API = 'http://localhost:8787';
 export const PASSWORD = 'hoiminh123';
-export const USERS = { owner: 'minhquy@gmail.com', admin: 'admin@hoiminh.vn', affiliate: 'hoangvu@gmail.com', member: 'congtran@gmail.com', member2: 'duynguyen@gmail.com', trialOwner: 'vy.english@gmail.com' } as const;
+export const USERS = { owner: 'minhquy@gmail.com', admin: 'admin@hoiminh.vn', affiliate: 'hoangvu@gmail.com', member: 'congtran@gmail.com', member2: 'duynguyen@gmail.com', freeOwner: 'vy.english@gmail.com', freeOwner2: 'phamduc@gmail.com' } as const;
 
 /** Đăng nhập qua màn Đăng nhập rồi chờ rời khỏi /dang-nhap. */
 export async function login(page: Page, email: string, password = PASSWORD): Promise<void> {
@@ -60,4 +60,18 @@ export async function readOrder(page: Page): Promise<{ reference: string; amount
   expect(ref, 'mã tham chiếu trên trang đơn').toMatch(/^HM/);
   const amount = body.match(/Tổng thanh toán\s*([\d.]+)đ/)?.[1] ?? '0';
   return { reference: ref, amountMinor: parseMoney(amount) };
+}
+
+/** Bảng bốn gói mặc định (giá, trần, tính năng đã chốt), dùng để trả bảng gói về như cũ sau khi một bài test đổi nó. */
+export const DEFAULT_PLANS = [
+  { key: 'free', monthlyMinor: 0, memberCap: 100, features: [] },
+  { key: 'starter', monthlyMinor: 99_000, memberCap: 500, features: [] },
+  { key: 'pro', monthlyMinor: 299_000, memberCap: 5_000, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'unlimited', monthlyMinor: 799_000, memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+] as const;
+
+/** Quản trị lưu bảng gói qua API; `change` sửa riêng vài gói so với bảng mặc định. */
+export async function savePlans(request: APIRequestContext, change: Partial<Record<(typeof DEFAULT_PLANS)[number]['key'], { monthlyMinor?: number; memberCap?: number | null; features?: string[] }>> = {}): Promise<void> {
+  const token = await apiToken(request, USERS.admin);
+  await apiJson(request, token, 'PUT', '/v1/admin/plans', { plans: DEFAULT_PLANS.map((p) => ({ ...p, ...(change[p.key] ?? {}) })) });
 }

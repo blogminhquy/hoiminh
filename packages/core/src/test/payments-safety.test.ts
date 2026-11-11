@@ -76,10 +76,9 @@ describe('Hoàn tiền', () => {
 
   it('API key không hoàn được đơn gói nền tảng (không thuộc hội nào)', async () => {
     const sys = app.system();
-    // Chủ hội Thảo Vy trả gói nền tảng năm qua chuyển khoản.
-    const vyWs = await app.ids('workspace:thaovy');
+    // Chủ hội Thảo Vy trả gói Khởi đầu 1 năm cho hội của mình qua chuyển khoản.
     const vy = { ...sys, actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
-    const s = await checkout.createCheckout(vy, { target: { type: 'platform', workspaceId: vyWs, cycle: 'yearly' }, provider: 'sepay' });
+    const s = await checkout.createCheckout(vy, { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'starter', cycle: 'yearly' }, provider: 'sepay' });
     await sepayPaid(s.reference, s.amountMinor);
     const order = await app.ctx.db.query.orders.findFirst({ where: and(eq(orders.id, s.orderId), eq(orders.status, 'paid')) });
     expect(order).toBeTruthy();
@@ -92,10 +91,10 @@ describe('Hoàn tiền', () => {
 });
 
 describe('PayPal', () => {
-  /** Chủ hội Thảo Vy mua gói nền tảng năm (không phụ thuộc cổng hội cho phép). */
+  /** Chủ hội Thảo Vy mua gói Khởi đầu 1 năm cho hội (không phụ thuộc cổng hội cho phép). */
   async function vyPlatform(provider: 'sepay' | 'paypal') {
     const vy = { ...app.system(), actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
-    return checkout.createCheckout(vy, { target: { type: 'platform', workspaceId: await app.ids('workspace:thaovy'), cycle: 'yearly' }, provider });
+    return checkout.createCheckout(vy, { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'starter', cycle: 'yearly' }, provider });
   }
 
   it('so với số USD đã thu, không nhầm với tiền VND của đơn', async () => {

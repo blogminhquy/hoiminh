@@ -5,6 +5,7 @@ import { Calendar, Clock, MessageCircle, QrCode, Trophy, Users, Wallet } from 'l
 import { useState, type ReactNode } from 'react';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
+import { MemberCapCard, memberCapOf } from '@/components/PlanGate';
 import { fmtDate, fmtDateTime, money, daysUntil } from '@/lib/format';
 import { AnswersTab, CoursesTab, PaymentsTab, type MemberUser } from './MembersExtra';
 
@@ -65,6 +66,8 @@ function InfoTab({ d, communityId, memberId, onClose, onMessage }: { d: MemberDe
   const last = d.payments[0];
   const isOwner = m.role === 'owner';
   const err = patch.error ?? act.error;
+  // Bấm Duyệt lúc hội đã chạm trần thành viên của gói: hiện màn nâng gói thay cho dòng báo lỗi.
+  const capErr = memberCapOf(act.error);
   const row = (icon: ReactNode, text: ReactNode) => <div className="flex items-center gap-2.5" style={{ color: T.ink2 }}>{icon}<span className="min-w-0 truncate">{text}</span></div>;
   return (
     <>
@@ -88,7 +91,7 @@ function InfoTab({ d, communityId, memberId, onClose, onMessage }: { d: MemberDe
         {row(<QrCode size={18} />, last ? `Lần cuối: ${fmtDateTime(last.at)} · ${money(last.amountMinor)} · ${last.status === 'paid' ? 'thành công' : last.status}` : 'Chưa có giao dịch')}
       </div>
       <div className="flex-grow" />
-      {err && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(err)}</div>}
+      {capErr ? <MemberCapCard details={capErr} who={d.user?.name} onClose={() => act.reset()} /> : err && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(err)}</div>}
       {!isOwner && (
         <div className="flex gap-2 flex-wrap pt-3.5" style={{ borderTop: `1px solid ${T.line}` }}>
           {m.status === 'pending' && <Button size="sm" variant="primary" loading={act.isPending} onClick={() => act.mutate('approve')}>Duyệt</Button>}

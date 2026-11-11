@@ -6,12 +6,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { fmtCount, fmtDate, fmtShortMoney } from '@/lib/format';
+import { planBadge, type HoiPlan } from '@/lib/platform-plan';
 import { SITE_HOST } from '@/lib/site';
 
 export interface WorkspaceHome {
-  workspace: { id: string; name: string; slug: string; planKey: string; status: string; trialEndsAt: string | null; contentLockedAt: string | null; ownerUserId: string } | null;
-  platformSubscription: { id: string; planKey: string; status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'; billingCycle: 'monthly' | 'yearly'; currentPeriodStart: string; currentPeriodEnd: string; cancelAtPeriodEnd: boolean } | null;
-  owned: Array<{ id: string; workspaceId: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; pricingMode: string; memberCount: number; paidMemberCount: number; revenue30Minor: number }>;
+  workspace: { id: string; name: string; slug: string; status: string; ownerUserId: string } | null;
+  /** Tài khoản đã dùng hội miễn phí chưa: rồi thì hội tạo thêm phải có gói trả phí. */
+  freeSlotUsed: boolean;
+  owned: Array<{ id: string; workspaceId: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; pricingMode: string; memberCount: number; paidMemberCount: number; revenue30Minor: number; plan: HoiPlan }>;
   joined: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null; role: string; tier: { key: string; name: string } | null; nextRenewalAt: string | null }>;
   team: Array<{ id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; role: string }>;
   totals: { communities: number; members: number };
@@ -24,23 +26,30 @@ const WS_ROLE: Record<string, string> = { owner: 'Chủ sở hữu', admin: 'Qu�
 
 export function HoiCard({ c, role }: { c: WorkspaceHome['owned'][number]; role: string }) {
   const draft = c.status === 'draft';
+  const waiting = c.plan.needsPlan;
+  const badge = planBadge(c.plan);
   return (
     <div className="card flex flex-col gap-3.5 p-5">
       <div className="flex items-center gap-3">
         <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={48} radius={14} />
         <div className="flex-grow min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">{SITE_HOST}/{c.slug}</div></div>
-        {draft ? <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Nháp</span> : <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>{MODE_LABEL[c.pricingMode] ?? c.pricingMode}</span>}
+        {waiting ? <span className="tag" style={{ background: T.accentSoft, color: T.accentText }}>{badge.label}</span> : draft ? <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Nháp</span> : <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>{MODE_LABEL[c.pricingMode] ?? c.pricingMode}</span>}
       </div>
       <div className="grid grid-cols-3 gap-2 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
         <div><div className="font-bold text-[18px]">{fmtCount(c.memberCount)}</div><div className="muted text-[12px]">Thành viên</div></div>
         <div><div className="font-bold text-[18px]">{fmtCount(c.paidMemberCount)}</div><div className="muted text-[12px]">Trả phí</div></div>
         <div><div className="font-bold text-[18px]">{fmtShortMoney(c.revenue30Minor)}</div><div className="muted text-[12px]">30 ngày</div></div>
       </div>
+      <Link to={`/admin/goi?hoi=${c.slug}`} className="flex items-center gap-2 text-[13px]" style={{ color: T.ink2 }}>
+        <span className="min-w-0 truncate flex-grow"><span className="font-semibold" style={{ color: T.ink }}>{waiting ? 'Chưa có gói' : `Gói ${c.plan.name}`}</span>{!waiting && ` · ${badge.label}`}</span>
+        <span className="font-semibold whitespace-nowrap flex-shrink-0" style={{ color: T.teal }}>{waiting ? 'Chọn gói' : c.plan.key === 'free' ? 'Nâng gói' : 'Xem gói'}</span>
+      </Link>
       <div className="flex items-center gap-2">
         <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{role}</span>
         <span className="flex-grow" />
-        <Link to={`/${c.slug}/cai-dat`} className="btn btn-ghost btn-sm">Cài đặt</Link>
-        <Link to={`/${c.slug}/hom-nay`} className="btn btn-dark btn-sm">Vào quản lý</Link>
+        {waiting
+          ? <Link to={`/admin/goi?hoi=${c.slug}`} className="btn btn-primary btn-sm">Thanh toán để mở hội</Link>
+          : <><Link to={`/${c.slug}/cai-dat`} className="btn btn-ghost btn-sm">Cài đặt</Link><Link to={`/${c.slug}/hom-nay`} className="btn btn-dark btn-sm">Vào quản lý</Link></>}
       </div>
     </div>
   );

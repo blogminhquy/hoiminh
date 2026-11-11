@@ -16,7 +16,7 @@ describe('daysLeft', () => {
 describe('buildOwnerTodos', () => {
   it('không có gì cần làm thì trả danh sách rỗng', () => {
     expect(buildOwnerTodos(base)).toEqual([]);
-    expect(buildOwnerTodos({ ...base, affiliatePayouts: { count: 0, amountMinor: 0 }, pendingMembers: 0, pendingPosts: 0, plan: { status: 'active', endsAt: inDays(20), locked: false } })).toEqual([]);
+    expect(buildOwnerTodos({ ...base, affiliatePayouts: { count: 0, amountMinor: 0 }, pendingMembers: 0, pendingPosts: 0, plan: { key: 'pro', name: 'Chuyên nghiệp', endsAt: inDays(20), memberCap: 5_000, needsPlan: false, full: false } })).toEqual([]);
   });
 
   it('yêu cầu rút của cộng sự nêu số yêu cầu, số tiền và dẫn tới trang Cộng sự', () => {
@@ -37,31 +37,28 @@ describe('buildOwnerTodos', () => {
     expect(list.map((t) => t.key)).toEqual(['payouts', 'members']);
   });
 
-  it('gói Hội Mình: còn hơn 7 ngày thì không nhắc', () => {
-    expect(buildOwnerTodos({ ...base, plan: { status: 'trialing', endsAt: inDays(8), locked: false } })).toEqual([]);
-    expect(buildOwnerTodos({ ...base, plan: { status: 'active', endsAt: null, locked: false } })).toEqual([]);
+  const plan = (over: Partial<NonNullable<OwnerTodoInput['plan']>>) => ({ key: 'pro', name: 'Chuyên nghiệp', endsAt: inDays(60), memberCap: 5_000, needsPlan: false, full: false, ...over });
+
+  it('gói của hội: gói Miễn phí hoặc còn hơn 7 ngày thì không nhắc', () => {
+    expect(buildOwnerTodos({ ...base, plan: plan({ endsAt: inDays(8) }) })).toEqual([]);
+    expect(buildOwnerTodos({ ...base, plan: plan({ key: 'free', name: 'Miễn phí', endsAt: null, memberCap: 100 }) })).toEqual([]);
   });
 
-  it('gói Hội Mình: dùng thử còn 5 ngày thì nhắc chọn gói, còn 2 ngày thì thành việc gấp', () => {
-    const [soon] = buildOwnerTodos({ ...base, plan: { status: 'trialing', endsAt: inDays(5), locked: false } });
-    expect(soon).toMatchObject({ key: 'plan', title: 'Dùng thử hết sau 5 ngày', label: 'Chọn gói', to: '/admin/goi', urgent: false });
-    const [close] = buildOwnerTodos({ ...base, plan: { status: 'trialing', endsAt: inDays(2), locked: false } });
+  it('gói của hội: gói trả phí còn 5 ngày thì nhắc gia hạn và dẫn tới trang gói của đúng hội đó, còn 2 ngày thì thành việc gấp', () => {
+    const [soon] = buildOwnerTodos({ ...base, plan: plan({ endsAt: inDays(5) }) });
+    expect(soon).toMatchObject({ key: 'plan', title: 'Gói Chuyên nghiệp hết hạn sau 5 ngày', label: 'Gia hạn', to: '/admin/goi?hoi=minhquy', urgent: false });
+    const [close] = buildOwnerTodos({ ...base, plan: plan({ endsAt: inDays(2) }) });
     expect(close?.urgent).toBe(true);
   });
 
-  it('gói Hội Mình: gói trả phí sắp hết hạn thì nhắc gia hạn', () => {
-    const [t] = buildOwnerTodos({ ...base, plan: { status: 'active', endsAt: inDays(3), locked: false } });
-    expect(t).toMatchObject({ title: 'Gói Hội Mình hết hạn sau 3 ngày', label: 'Gia hạn' });
+  it('gói của hội: chạm trần thành viên thì mời nâng gói, đứng đầu danh sách', () => {
+    const list = buildOwnerTodos({ ...base, pendingMembers: 4, plan: plan({ key: 'free', name: 'Miễn phí', endsAt: null, memberCap: 100, full: true }) });
+    expect(list[0]).toMatchObject({ key: 'plan', title: 'Hội đã đủ 100 thành viên của gói Miễn phí', label: 'Nâng gói', urgent: true });
+    expect(list[1]?.key).toBe('members');
   });
 
-  it('gói Hội Mình: đã hết hạn hoặc đang khóa nội dung thì đứng đầu danh sách', () => {
-    const list = buildOwnerTodos({ ...base, affiliatePayouts: { count: 1, amountMinor: 500_000 }, plan: { status: 'expired', endsAt: inDays(-1), locked: false } });
-    expect(list[0]).toMatchObject({ key: 'plan', title: 'Gói Hội Mình đã hết hạn', urgent: true });
-    const [locked] = buildOwnerTodos({ ...base, plan: { status: 'active', endsAt: inDays(30), locked: true } });
-    expect(locked?.key).toBe('plan');
-  });
-
-  it('gói đã hủy không nhắc gia hạn', () => {
-    expect(buildOwnerTodos({ ...base, plan: { status: 'cancelled', endsAt: inDays(3), locked: false } })).toEqual([]);
+  it('gói của hội: hội thứ hai chưa có gói thì nhắc chọn gói', () => {
+    const [t] = buildOwnerTodos({ ...base, plan: plan({ key: 'free', name: 'Miễn phí', endsAt: null, needsPlan: true, full: true }) });
+    expect(t).toMatchObject({ key: 'plan', title: 'Hội chưa có gói', label: 'Chọn gói', urgent: true });
   });
 });

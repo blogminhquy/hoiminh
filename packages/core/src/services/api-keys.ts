@@ -6,10 +6,12 @@ import type { Actor, Ctx } from '../context';
 import { notFound } from '../errors';
 import { requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
+import { requireWorkspaceFeature, workspaceHasFeature } from './plans';
 
 /** Tạo key: trả về raw đúng một lần. Định dạng hm_live_<prefix>_<secret>. */
 export async function createApiKey(ctx: Ctx, workspaceId: string, input: { name: string; scopes: string[]; expiresAt?: string | null }) {
   await requireWorkspaceRole(ctx, workspaceId, ['owner']);
+  await requireWorkspaceFeature(ctx, workspaceId, 'api');
   const prefix = randomToken(4);
   const secret = randomToken(24);
   const raw = `hm_${ctx.env.APP_ENV === 'production' ? 'live' : 'test'}_${prefix}_${secret}`;
@@ -36,6 +38,8 @@ export async function authenticateApiKey(ctx: Ctx, raw: string): Promise<Actor |
   if (!raw.startsWith('hm_')) return null;
   const row = await ctx.db.query.apiKeys.findFirst({ where: and(eq(apiKeys.keyHash, await sha256Hex(raw)), eq(apiKeys.status, 'active'), or(isNull(apiKeys.expiresAt), gt(apiKeys.expiresAt, ctx.now()))!) });
   if (!row) return null;
+  // API là tính năng trả phí: workspace không còn hội nào có gói bật API thì key cũ ngừng dùng được (key không bị xóa).
+  if (!(await workspaceHasFeature(ctx, row.workspaceId, 'api'))) return null;
   await ctx.db.update(apiKeys).set({ lastUsedAt: ctx.now() }).where(eq(apiKeys.id, row.id));
   const ws = await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, row.workspaceId), columns: { ownerUserId: true } });
   return { type: 'api_key', apiKeyId: row.id, workspaceId: row.workspaceId, scopes: row.scopes, userId: ws?.ownerUserId ?? row.createdByUserId };

@@ -10,6 +10,7 @@ import { extractInbound, flattenPayload, normalizeTagName } from '../lib/inbound
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission } from '../permissions';
 import { audit } from './audit';
+import { requirePlanFeature } from './plans';
 import { activationUrl, createClaim, grantTitle, onTagAdded, onTagRemoved, revokeGrant, senderName, unsubscribeUrl } from './automation-engine';
 import { templates } from '@hoiminh/email';
 
@@ -19,9 +20,12 @@ type Source = typeof inboundSources.$inferSelect;
 const EMPTY_MAPPING: InboundMapping = { emailPath: '', namePath: '', phonePath: '', tagPath: '', removeTagPath: '', defaultTags: [] };
 const MAX_ACTIONS = 6;
 
-/** Người gọi phải có quyền cài đặt ở hội đang mở; trả về workspace chứa dữ liệu thẻ. */
-async function workspaceFor(ctx: Ctx, communityId: string): Promise<string> {
-  return (await requireCommunityPermission(ctx, communityId, 'settings.manage')).workspaceId;
+/** Người gọi phải có quyền cài đặt ở hội đang mở và gói của hội có tự động hóa; trả về workspace chứa dữ liệu thẻ. */
+async function workspaceFor(ctx: Ctx, communityId: string, opts: { gate?: boolean } = {}): Promise<string> {
+  const workspaceId = (await requireCommunityPermission(ctx, communityId, 'settings.manage')).workspaceId;
+  // Tự động hóa (nguồn đồng bộ, quy tắc, liên hệ và thẻ) là tính năng trả phí của gói hội đang mở.
+  if (opts.gate !== false) await requirePlanFeature(ctx, communityId, 'automation');
+  return workspaceId;
 }
 
 const sourceUrl = (ctx: Ctx, token: string) => `${ctx.env.API_URL}/webhooks/in/${token}`;
@@ -183,7 +187,8 @@ export async function reprocessEvent(ctx: Ctx, communityId: string, eventId: str
 // ---------- Thẻ và liên hệ (màn quản trị) ----------
 
 export async function listTags(ctx: Ctx, communityId: string) {
-  const workspaceId = await workspaceFor(ctx, communityId);
+  // Màn Thành viên dùng danh sách thẻ để lọc, nên đọc thẻ thì gói nào cũng được.
+  const workspaceId = await workspaceFor(ctx, communityId, { gate: false });
   // Ghi rõ "tags"."id" trong truy vấn con: Drizzle bỏ tên bảng khi vẽ cột ở danh sách select của truy vấn một bảng,
   // và "id" trần trong truy vấn con sẽ thành id của bảng bên trong.
   return ctx.db

@@ -6,6 +6,7 @@ import { raw } from '../lib/db';
 import { resolveCommunityAccess } from '../permissions';
 import { getCommunityBySlug } from './communities';
 import { FLAG, flagsFor } from './feature-flags';
+import { planOfCommunity, planTable } from './plans';
 
 /** Khung hội theo slug: thông tin hội, vai trò người xem, tab hiển thị, số liệu, % khóa học, sự kiện sắp tới, gói Premium. */
 export async function communityShell(ctx: Ctx, slug: string) {
@@ -30,9 +31,14 @@ export async function communityShell(ctx: Ctx, slug: string) {
   const tabs = { ...c.tabs };
   if (!flags[FLAG.store]) tabs.store = false;
   if (!flags[FLAG.affiliateLeaderboard]) tabs.affiliate = false;
+  // Gói của hội: tab Cộng sự chỉ hiện khi gói có cộng sự; người quản lý nhận thêm số liệu gói để giao diện khóa nút và mời nâng gói.
+  const plan = planOfCommunity(c, await planTable(ctx), ctx.now());
+  if (!plan.features.includes('affiliate')) tabs.affiliate = false;
+  const manages = access.permissions.has('settings.manage');
   return {
     community: { id: c.id, workspaceId: c.workspaceId, name: c.name, slug: c.slug, shortDescription: c.shortDescription, logoMark: c.logoMark, logoColor: c.logoColor, logoUrl: c.logoUrl, coverColor: c.coverColor, coverUrl: c.coverUrl, coverTagline: c.coverTagline, tabs, status: c.status, pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, customDomain: c.customDomain, memberCount: c.memberCount, requireSpace: c.requireSpace, enabledProviders: c.enabledProviders },
     flags,
+    plan: manages ? { key: plan.key, name: plan.name, memberCap: plan.memberCap, features: plan.features, endsAt: plan.endsAt, needsPlan: plan.needsPlan, full: plan.full, isFreeSlot: plan.isFreeSlot } : null,
     viewer: { role: access.role, memberId: access.memberId, memberStatus: access.memberStatus, tier: tierKey, permissions: [...access.permissions], isMember: access.memberStatus === 'active' || access.memberStatus === 'cancelling' || access.role === 'owner' || access.role === 'admin' },
     stats: { members: c.memberCount, online: online[0]?.c ?? 0, admins: admins[0]?.c ?? 0, upcomingEvents: eventCount[0]?.c ?? 0 },
     coursePercent,

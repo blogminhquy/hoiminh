@@ -108,7 +108,6 @@ export function WhoBlock({ f, patch }: { f: EventForm; patch: Patch }) {
         {/* Bản ghi thêm thủ công ở trang sự kiện sau buổi (nút "Thêm bản ghi" dành cho người tổ chức): không có nguồn nào để tự lấy bản ghi nên bỏ công tắc "tự đăng". */}
         <ToggleRow label="Nhắc người đăng ký"><div className="flex gap-1.5 flex-wrap">{rem.map(([k, l]) => <Chip key={k} on={f.reminders.includes(k)} onClick={() => toggleRem(k)} style={{ height: 28, fontSize: 12 }}>{l}</Chip>)}</div></ToggleRow>
         <ToggleRow label="Đăng bài thông báo lên Bảng tin khi tạo" on={f.announceOnFeed} onChange={(announceOnFeed) => patch({ announceOnFeed })} />
-        <ToggleRow label="Gửi email cho tất cả thành viên" on={f.broadcastEmail} onChange={(broadcastEmail) => patch({ broadcastEmail })} />
       </div>
     </div>
   );

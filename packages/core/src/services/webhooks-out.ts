@@ -7,6 +7,7 @@ import type { Ctx } from '../context';
 import { notFound } from '../errors';
 import { requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
+import { requireWorkspaceFeature, workspaceHasFeature } from './plans';
 
 const BACKOFF_MINUTES = [1, 5, 30, 120, 720];
 /** Message hẹn giờ có thể tới sớm chút ít so với `next_attempt_at`; sớm hơn mức này là message trùng. */
@@ -14,6 +15,7 @@ const EARLY_TOLERANCE_MS = 5_000;
 
 export async function createWebhook(ctx: Ctx, workspaceId: string, input: { url: string; events: WebhookEventName[]; description?: string; communityId?: string | null }) {
   await requireWorkspaceRole(ctx, workspaceId, ['owner', 'admin']);
+  await requireWorkspaceFeature(ctx, workspaceId, 'api');
   const secret = `whsec_${randomToken(24)}`;
   const [row] = await ctx.db.insert(webhooks).values({ workspaceId, communityId: input.communityId ?? null, url: input.url, description: input.description ?? '', events: input.events, secretEncrypted: await encryptJson({ secret }, ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION) }).returning();
   await audit(ctx, { action: 'webhook.create', resourceType: 'webhook', resourceId: row!.id, workspaceId, metadata: { url: input.url, events: input.events } });
@@ -42,6 +44,8 @@ export async function deleteWebhook(ctx: Ctx, workspaceId: string, id: string) {
 export async function dispatch(ctx: Ctx, workspaceId: string | null, eventName: WebhookEventName, payload: Record<string, unknown>): Promise<number> {
   if (!workspaceId) return 0;
   const targets = await ctx.db.query.webhooks.findMany({ where: and(eq(webhooks.workspaceId, workspaceId), eq(webhooks.status, 'active')) });
+  // Webhook gửi đi thuộc tính năng API: hội xuống gói không có API thì tạm ngừng gửi (cấu hình webhook vẫn giữ).
+  if (!targets.length || !(await workspaceHasFeature(ctx, workspaceId, 'api'))) return 0;
   let n = 0;
   for (const w of targets) {
     if (!w.events.includes(eventName)) continue;
