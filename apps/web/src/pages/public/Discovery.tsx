@@ -25,13 +25,23 @@ export function useDiscover(category: string | null, q: string, limit?: number) 
   return useQuery({ queryKey: ['discover', category, q, limit ?? null], queryFn: () => api.get<DiscoverCommunity[]>(`/v1/communities/discover${s ? `?${s}` : ''}`), staleTime: 60_000 });
 }
 
+/** Khung ảnh của thẻ hội: cùng tỉ lệ 16:9 với ảnh bìa chủ hội tải lên, nên ảnh hiện trọn, không bị cắt. */
+export const COVER_RATIO = '16 / 9';
+
 function CommCard({ c }: { c: DiscoverCommunity }) {
   return (
     <Link to={`/${c.slug}`} className="card overflow-hidden flex flex-col" style={{ color: T.ink }}>
-      <div style={{ height: 150, background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }} />
+      {/* Có ảnh bìa thì hiện trọn ảnh; chưa có thì nền màu của hội kèm ảnh đại diện (logo) ở giữa. */}
+      {c.coverUrl
+        ? <img src={c.coverUrl} alt={`Ảnh bìa ${c.name}`} loading="lazy" className="block w-full" style={{ aspectRatio: COVER_RATIO, objectFit: 'cover', background: c.coverColor }} />
+        : (
+          <div className="flex items-center justify-center" style={{ aspectRatio: COVER_RATIO, background: c.coverColor }}>
+            <CommunityMark mark={c.logoMark} color={T.side} url={c.logoUrl} size={96} radius={24} style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }} />
+          </div>
+        )}
       <div className="p-4 flex flex-col gap-2">
         <div className="flex items-center gap-2.5">
-          <CommunityMark mark={c.logoMark} color={T.side} url={c.logoUrl} size={36} radius={10} />
+          <CommunityMark mark={c.logoMark} color={T.side} url={c.logoUrl} size={40} radius={11} />
           <span className="font-semibold text-[16px] truncate">{c.name}</span>
         </div>
         <div className="text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription || 'Chưa có mô tả'}</div>

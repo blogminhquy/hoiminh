@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.31.1 - 2026-11-11
+
+Ảnh bìa của hội hiện trọn ở trang Khám phá và trang Tạo hội, đúng khung 16:9 của ảnh chủ hội tải lên. Hội chưa có ảnh bìa thì thẻ ở Khám phá hiện ảnh đại diện (logo) thay cho ô màu trống.
+
+### Sửa lỗi
+
+- **Thẻ hội ở trang Khám phá cắt mất ảnh bìa.** Khung ảnh cao cố định 150px nên ảnh 16:9 chỉ còn một dải ở giữa. Nay khung theo đúng tỉ lệ 16:9 của ảnh bìa (ảnh nên từ 1280 x 720px), ảnh hiện trọn trên cả máy tính lẫn điện thoại.
+- **Hội chưa có ảnh bìa hiện một ô màu trống ở Khám phá.** Nay hiện ảnh đại diện (logo vuông) của hội ở giữa nền màu; chưa có logo thì hiện chữ cái đầu.
+- **Màn hình Tạo hội: tên hội đè lên ảnh bìa, không đọc được.** Hội có ảnh bìa thì ảnh hiện trọn 16:9, còn logo, tên hội, số thành viên và mô tả ngắn nằm ở dải riêng bên dưới ảnh; nhãn xanh ở góc không còn che ảnh. Hội chưa có ảnh bìa vẫn hiện nền màu kèm tên như trước.
+
+### Kỹ thuật
+
+- Tỉ lệ khung ảnh bìa gom về hằng `COVER_RATIO` trong `apps/web/src/pages/public/Discovery.tsx`, thẻ ở Khám phá và băng chuyền ở Tạo hội dùng chung.
+- Ảnh bìa ở hai trang này là thẻ `img` (có `alt`, Khám phá tải lười) thay cho ảnh nền CSS.
+- Dòng hướng dẫn ở Cài đặt chung, mục Ảnh bìa, ghi đúng những nơi ảnh hiện.
+
 ## 1.31.0 - 2026-11-11
 
 Gói Hội Mình thu tiền được bằng link thanh toán ngoài, do quản trị hệ thống chọn. Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một trang riêng, một cột dọc ở giữa, có hai tab chu kỳ và khung thanh toán bật lên. Trước đây phần thanh toán bung ra ngay trong hàng thẻ của "Hội của tôi", ép ba thẻ vào một hàng làm chữ xuống dòng từng từ và nút tràn ra ngoài thẻ.
