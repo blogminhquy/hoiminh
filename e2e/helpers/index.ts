@@ -34,7 +34,13 @@ export async function login(page: Page, email: string, password = PASSWORD): Pro
 
 /** Lấy access token qua API (không qua giao diện) cho các bước chuẩn bị dữ liệu. */
 export async function apiToken(request: APIRequestContext, email: string, password = PASSWORD): Promise<string> {
-  const res = await request.post(`${API}/v1/auth/login`, { data: { email, password, remember: true } });
+  let res = await request.post(`${API}/v1/auth/login`, { data: { email, password, remember: true } });
+  // Cùng lý do như `login` ở trên: chạm giới hạn 10 lần đăng nhập mỗi phút thì chờ hết cửa sổ rồi thử lại một lần.
+  if (res.status() === 429) {
+    try { test.info().setTimeout(test.info().timeout + 70_000); } catch { /* gọi ngoài một bài test (afterAll): không có hạn để nới */ }
+    await new Promise((r) => setTimeout(r, 61_000));
+    res = await request.post(`${API}/v1/auth/login`, { data: { email, password, remember: true } });
+  }
   expect(res.ok(), `login ${email}`).toBeTruthy();
   return ((await res.json()) as { accessToken: string }).accessToken;
 }

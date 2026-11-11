@@ -9,9 +9,11 @@ const ZALO = `${IPHONE} Zalo iOS/561`;
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
 const PHONE = { viewport: { width: 390, height: 844 }, hasTouch: true } as const;
 
+// API giới hạn 10 lần đăng nhập mỗi phút cho một email, nên cả tệp chỉ đăng nhập quản trị qua API đúng một lần.
+let adminToken: Promise<string> | null = null;
 async function setGate(request: Parameters<typeof apiToken>[0], enabled: boolean): Promise<void> {
-  const token = await apiToken(request, USERS.admin);
-  await apiJson(request, token, 'PUT', '/v1/admin/flags/install_gate', { enabled });
+  adminToken ??= apiToken(request, USERS.admin);
+  await apiJson(request, await adminToken, 'PUT', '/v1/admin/flags/install_gate', { enabled });
 }
 
 /** Mở một "điện thoại" mới với user agent cho trước. */
