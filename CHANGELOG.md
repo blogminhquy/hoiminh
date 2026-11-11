@@ -6,7 +6,7 @@ Trang Gói Hội Mình (`/admin/goi`) được thiết kế lại thành một t
 
 ### Thay đổi
 
-- **Gói Hội Mình là một trang riêng.** Bên trái là gói đang dùng: tên gói, nhãn trạng thái ("Còn 3 ngày", "Đang hoạt động", "Đã hết hạn"), ngày hết hạn, giá, số hội và thành viên đang dùng. Bên phải là thanh toán: chọn chu kỳ, cách thanh toán, một nút ghi rõ số tiền. Điện thoại xếp một cột, nút thanh toán rộng hết màn hình. Có lối "Hội của tôi" để quay về.
+- **Gói Hội Mình là một trang riêng.** Bên trái là gói đang dùng: tên gói, nhãn trạng thái ("Còn 3 ngày", "Đang hoạt động", "Đã hết hạn"), ngày hết hạn, giá, số hội và thành viên đang dùng. Bên phải là thanh toán: chọn chu kỳ, cách thanh toán (cả hai là ô chọn một, bấm vào ô nào thì ô đó sáng), một nút ghi rõ số tiền. Điện thoại xếp một cột, nút thanh toán rộng hết màn hình. Có lối "Hội của tôi" để quay về.
 - **Thẻ "Gói nền tảng của bạn" ở Hội của tôi chỉ còn một nút** ("Thanh toán gói" khi đang dùng thử hoặc hết hạn, "Quản lý gói" khi gói đang chạy), bấm là sang trang gói. Thẻ không còn bung phần thanh toán ra tại chỗ, không còn hai nút "Đóng".
 - **Mục "Hội của tôi" trên thanh đầu trang sáng ở mọi trang con** (Gói Hội Mình, Tạo hội). Trước đây vào các trang này thì không mục nào sáng.
 

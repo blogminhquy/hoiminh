@@ -1,7 +1,7 @@
 // Gói Hội Mình (/admin/goi): một trang riêng, hai cột. Trái là gói đang dùng (trạng thái, hạn, giá, đang dùng bao nhiêu),
-// phải là thanh toán (chu kỳ, cách trả, nút trả tiền ghi rõ số tiền) → POST /v1/checkout → /thanh-toan/:orderId. Điện thoại xếp một cột.
+// phải là thanh toán (chu kỳ và cách trả đều là ô chọn một kiểu radio, nút trả tiền ghi rõ số tiền) → POST /v1/checkout → /thanh-toan/:orderId. Điện thoại xếp một cột.
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, Chip, money, OptionCard, Skeleton, T, Tag } from '@hoiminh/ui';
+import { Button, money, OptionCard, Skeleton, T, Tag } from '@hoiminh/ui';
 import { ChevronLeft, Sparkles } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -67,7 +67,7 @@ function Checkout({ workspaceId, plan, plansFailed, onRetry, initialCycle, renew
       </div>
       <div className="flex flex-col gap-2">
         <span className="text-[13px] font-semibold">Cách thanh toán</span>
-        <div className="flex gap-2 flex-wrap">{PROVIDERS.map(([k, l]) => <Chip key={k} on={provider === k} onClick={() => setProvider(k)}>{l}</Chip>)}</div>
+        <div className="grid-2">{PROVIDERS.map(([k, l]) => <OptionCard key={k} on={provider === k} onClick={() => setProvider(k)} title={l} />)}</div>
       </div>
       {plansFailed && (
         <div className="flex items-center gap-3 flex-wrap text-[13px]" style={{ color: T.accentText }}>

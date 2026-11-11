@@ -13,6 +13,9 @@ test('thanh toán gói nền tảng từ dùng thử', async ({ page, request })
   await expect(page).toHaveURL(/\/admin\/goi$/);
   await expect(page.getByRole('heading', { name: 'Gói Hội Mình' })).toBeVisible();
   await expect(page.getByText('Còn 3 ngày')).toBeVisible();
+  // Cách thanh toán là ô chọn một: đổi sang MoMo rồi quay lại chuyển khoản QR.
+  await page.getByRole('button', { name: 'MoMo' }).click();
+  await page.getByRole('button', { name: 'Chuyển khoản QR' }).click();
   await page.getByRole('button', { name: /^Thanh toán \d/ }).click();
 
   await expect(page).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/);
