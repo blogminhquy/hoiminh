@@ -1,6 +1,7 @@
 // Điểm xuất của @hoiminh/contracts: mọi schema Zod và type dùng chung giữa API, Web, MCP.
 export * from './common';
 export * from './auth';
+export * from './membership';
 export * from './community';
 export * from './content';
 export * from './learning';

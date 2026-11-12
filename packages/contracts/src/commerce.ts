@@ -50,7 +50,8 @@ export const storeQuerySchema = z.object({
 
 /** Đích của một checkout: tier hội, sản phẩm cửa hàng, hoặc gói nền tảng. */
 export const checkoutTargetSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('tier'), communityId: idSchema, tierKey: z.enum(['premium', 'vip', 'standard']), cycle: billingCycleSchema }),
+  // `months`: kỳ hạn người mua chọn (1 đến 36 tháng). Thiếu thì suy từ `cycle` như trước: monthly là 1 tháng, yearly là 12 tháng.
+  z.object({ type: z.literal('tier'), communityId: idSchema, tierKey: z.enum(['premium', 'vip', 'standard']), cycle: billingCycleSchema, months: z.number().int().min(1).max(36).optional() }),
   z.object({ type: z.literal('product'), productId: idSchema }),
   z.object({ type: z.literal('platform'), communityId: idSchema, planKey: paidPlanKeySchema, cycle: planCycleSchema }),
 ]);

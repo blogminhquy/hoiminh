@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 1.33.0 - 2026-11-12
+
+Chủ hội bán gói thành viên theo nhiều kỳ hạn (1 tháng, 3 tháng, 6 tháng, 12 tháng hoặc số tháng tự nhập) và chạy được khuyến mãi giảm giá, ngay ở Cài đặt, Bán hàng, Giá và gói. Trước đây mỗi gói chỉ có hai ô: giá tháng và giá năm.
+
+### Thêm
+
+- **Kỳ hạn của gói.** Mỗi gói trả phí có một bảng "mấy tháng, bao nhiêu tiền", tối đa 6 dòng. Bấm "+ 3 tháng", "+ 6 tháng", "+ 12 tháng" để thêm nhanh, hoặc "+ Kỳ khác" rồi gõ số tháng bất kỳ từ 1 đến 36. Dòng mới điền sẵn giá bằng mua lẻ từng tháng, chủ hội hạ xuống để khuyến khích mua dài; dưới mỗi dòng ghi giá quy ra mỗi tháng và phần trăm rẻ hơn kỳ ngắn nhất.
+- **Khuyến mãi.** Một thẻ gồm công tắc bật tắt, phần trăm giảm (1 đến 90, có nút chọn nhanh 10, 20, 30, 50) và ngày hết. Để trống ngày hết thì chạy tới khi chủ hội tắt. Khuyến mãi áp cho mọi kỳ hạn và giá trả một lần; thẻ ghi luôn một ví dụ bằng giá thật của hội, và báo khi khuyến mãi đã hết hạn.
+- **Người mua chọn kỳ hạn ở bước thanh toán.** Mỗi kỳ hạn một thẻ: giá gốc gạch đi khi đang giảm, giá phải trả, giá mỗi tháng và nhãn "Rẻ hơn N%" cho kỳ dài. Trang giới thiệu hội, thẻ Premium ở Bảng tin và thẻ "Rẻ hơn với Premium" ở trang khóa học ghi giá của kỳ ngắn nhất, có dòng "Đang giảm N% đến hết ngày ..." khi có khuyến mãi.
+- Mua xong, gói được cấp đúng số tháng đã chọn. Mua tiếp khi gói còn hạn thì nối vào ngày hết hạn đang có. Trang Tài khoản, Gói và thanh toán và hồ sơ thành viên ghi "319.200đ/3 tháng" thay cho chỉ "tháng" hoặc "năm".
+
+### Thay đổi
+
+- Kiểu thu phí "Thu phí" ghi "Theo kỳ hạn 1, 3, 6, 12 tháng" thay cho "Theo tháng hoặc năm".
+- Nút "Đổi sang năm" ở Tài khoản, Gói và thanh toán thành "Gia hạn hoặc đổi kỳ", mở bước thanh toán với đủ kỳ hạn hội đang bán.
+- Hội thu phí theo kỳ hạn chỉ bán các kỳ hạn, hội "Trả một lần" chỉ bán gói trọn đời. Trước đây bước thanh toán hiện cả giá của kiểu thu phí chủ hội không còn nhìn thấy ở màn cài đặt.
+- Hội đã tạo từ trước tự đổi dòng quyền lợi mặc định "Trở thành cộng sự" thành "Trở thành affiliate" và tên chương trình "Cộng sự <tên hội>" thành "Affiliate <tên hội>" (bản 1.32.2 chưa đổi dữ liệu đã lưu). Dòng chủ hội đã tự viết lại thì giữ nguyên.
+
+### Kỹ thuật
+
+- **Có migration `0014_membership_terms`** (chạy lại được nhiều lần): thêm `community_tiers.terms`, `communities.pricing_promo`, `subscriptions.period_months`; điền kỳ hạn của gói cũ từ giá tháng và giá năm đang có, điền số tháng của các gói đang chạy (năm là 12, còn lại là 1). Phải áp lên database thật trước khi merge.
+- Kỳ hạn là nguồn chính của giá. Hai cột `monthly_minor`, `yearly_minor` vẫn được ghi theo kỳ 1 tháng và 12 tháng nên mã và báo cáo cũ đọc tiếp được. Đơn và gói vẫn giữ mã chu kỳ cũ (`yearly` cho 12 tháng, còn lại `monthly`), số tháng thật nằm ở `months` của đơn và `period_months` của gói.
+- Giá sau khuyến mãi tính ở máy chủ khi tạo đơn (`applyPromo`), không tin số tiền từ trình duyệt; đơn ghi giá gốc và phần trăm đã giảm. Kỳ hạn hội không bán thì từ chối tạo đơn.
+- API tạo đơn nhận thêm `months` cho gói thành viên; bản gọi cũ chỉ có `cycle` vẫn chạy (monthly là 1 tháng, yearly là 12 tháng). API lưu giá nhận thêm `terms` cho từng gói và `promo` (null là tắt, không gửi là giữ nguyên).
+- Hàm tính dùng chung cho API và web nằm ở `packages/contracts/src/membership.ts`. Thêm `periodEndMonths` cạnh `periodEnd` thay vì sửa hàm cũ, vì `periodEnd` nằm trên đường xử lý thanh toán thành công.
+- Test: 18 ca ở `packages/core/src/test/membership-terms.test.ts`, 5 ca ở `apps/web/src/lib/membership.test.ts`, và luồng trình duyệt `e2e/tests/24-ky-han-va-khuyen-mai.spec.ts`.
+- Chưa làm: mã giảm giá do chủ hội tự tạo. Ô "Mã giảm giá" ở bước thanh toán đã có và máy chủ đã biết kiểm tra mã, nhưng chưa có màn để chủ hội tạo mã.
+
 ## 1.32.2 - 2026-11-12
 
 Chữ "Cộng sự" trên toàn giao diện đổi thành "Affiliate", theo yêu cầu của chủ dự án. Chỉ đổi chữ, không đổi tính năng.

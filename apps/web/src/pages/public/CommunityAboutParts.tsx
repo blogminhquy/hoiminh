@@ -1,4 +1,5 @@
 // Mảnh trang giới thiệu hội (aboutBody trong build.mjs): kiểu dữ liệu, tab, bộ ảnh và video, lợi ích, người dẫn dắt, khóa học, FAQ.
+import type { PricingPromo, TierTerm } from '@hoiminh/contracts';
 import { COMMUNITY_CATEGORY_LABELS, type AboutMediaItem } from '@hoiminh/contracts';
 import { Avatar, T } from '@hoiminh/ui';
 import { BookOpen, Calendar, ChevronDown, ChevronLeft, ChevronRight, ImagePlus, Lock, MessageCircle, Pencil, Play, Store, Trophy, Users } from 'lucide-react';
@@ -17,7 +18,7 @@ export interface AboutPage {
   referrer: { name: string } | null;
   stats: { members: number; online: number; courses: number; paid: number };
   viewer: { role: string; memberStatus: string | null; tierId: string | null } | null;
-  pricing: { mode: string; doorsOpen: boolean; paymentsReady: boolean; premiumMonthlyMinor: number | null; premiumYearlyMinor: number | null; oneTimeMinor: number | null };
+  pricing: { mode: string; doorsOpen: boolean; paymentsReady: boolean; premiumMonthlyMinor: number | null; premiumYearlyMinor: number | null; oneTimeMinor: number | null; /** Các kỳ hạn của gói Premium và khuyến mãi đang chạy. */ premiumTerms: TierTerm[]; promo: PricingPromo | null };
 }
 
 export function categoryLabel(key: string): string {

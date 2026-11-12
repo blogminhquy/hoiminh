@@ -10,6 +10,7 @@ import { Empty, ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { isPremium, useShell, type Shell } from '@/lib/community';
+import { checkoutQuery, entryChoice, promoEndLabel } from '@/lib/membership';
 import { fmtTime } from '@/lib/format';
 import { Composer } from './Composer';
 import { SITE_HOST } from '@/lib/site';
@@ -34,8 +35,7 @@ function MiniComposer({ onOpen }: { onOpen: () => void }) {
 function Rail({ shell }: { shell: Shell }) {
   const c = shell.community;
   const premium = shell.premium && !isPremium(shell) ? shell.premium : null;
-  const price = premium?.monthlyMinor ?? premium?.yearlyMinor ?? premium?.oneTimeMinor ?? null;
-  const cycle = premium?.monthlyMinor ? 'tháng' : premium?.yearlyMinor ? 'năm' : 'trọn đời';
+  const entry = entryChoice(premium, c.pricingMode);
   return (
     <aside className="rail">
       <div className="card overflow-hidden">
@@ -57,8 +57,9 @@ function Rail({ shell }: { shell: Shell }) {
         <div className="card card-invert p-[18px] flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={16} /> Gói Premium</div>
           <div className="serif text-[19px] font-bold leading-[1.3]">Mở khóa toàn bộ khóa học và trở thành affiliate</div>
-          <div className="text-[13px]" style={{ color: T.sideText }}>{price !== null ? `${money(price)}/${cycle}` : ''} · hủy bất cứ lúc nào</div>
-          <Link to={`/${c.slug}/thanh-toan?tier=premium&cycle=${premium.monthlyMinor ? 'monthly' : premium.yearlyMinor ? 'yearly' : 'one_time'}`} className="btn btn-primary w-full mt-1">Nâng cấp ngay</Link>
+          <div className="text-[13px]" style={{ color: T.sideText }}>{entry ? <>{entry.percentOff > 0 && <span className="line-through mr-1.5">{money(entry.listMinor)}</span>}{money(entry.payMinor)}/{entry.unit} · </> : null}hủy bất cứ lúc nào</div>
+          {entry && entry.percentOff > 0 && <div className="text-[13px] font-semibold" style={{ color: T.gold }}>Đang giảm {entry.percentOff}%{promoEndLabel(premium.promo) ? ` đến hết ngày ${promoEndLabel(premium.promo)}` : ''}</div>}
+          <Link to={`/${c.slug}/thanh-toan?${checkoutQuery(entry)}`} className="btn btn-primary w-full mt-1">Nâng cấp ngay</Link>
         </div>
       )}
       <div className="card p-4 flex flex-col gap-3">

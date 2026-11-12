@@ -1,12 +1,13 @@
 // Rail trang giới thiệu hội: thẻ hội (số liệu, avatar, giá, nút tham gia), câu hỏi khi tham gia, giới thiệu, liên kết.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, CommunityMark, Modal, money, T } from '@hoiminh/ui';
-import { ExternalLink, Sparkles, Users } from 'lucide-react';
+import { ExternalLink, Sparkles, Tag, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { fmtCount } from '@/lib/format';
+import { checkoutQuery, modeChoices, promoEndLabel } from '@/lib/membership';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
 
@@ -44,6 +45,10 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const member = isViewerMember(d);
   const pending = d.viewer?.memberStatus === 'pending';
   const paid = d.pricing.mode === 'subscription' || d.pricing.mode === 'one_time';
+  // Giá mở đầu là kỳ hạn ngắn nhất (đã trừ khuyến mãi đang chạy); các kỳ dài hơn ghi ở dòng "Hoặc".
+  const choices = modeChoices({ terms: d.pricing.premiumTerms ?? [], promo: d.pricing.promo ?? null, oneTimeMinor: d.pricing.oneTimeMinor }, d.pricing.mode);
+  const entry = choices[0] ?? null;
+  const longer = d.pricing.mode === 'subscription' ? choices.slice(1, 3) : [];
   const [asking, setAsking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -62,13 +67,14 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const onJoin = () => {
     if (member) { rememberCommunitySlug(c.slug); navigate(`/${c.slug}/bang-tin`); return; }
     if (!user) { navigate(`/dang-ky?hoi=${encodeURIComponent(c.slug)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
-    if (paid) { navigate(`/${c.slug}/thanh-toan?tier=premium&cycle=${d.pricing.mode === 'one_time' ? 'one_time' : 'monthly'}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
+    if (paid) { navigate(`/${c.slug}/thanh-toan?${checkoutQuery(entry)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
     if (d.joinQuestions.length) { setAsking(true); return; }
     join.mutate([]);
   };
 
-  const priceMain = d.pricing.mode === 'subscription' && d.pricing.premiumMonthlyMinor ? money(d.pricing.premiumMonthlyMinor) : d.pricing.mode === 'one_time' && d.pricing.oneTimeMinor ? money(d.pricing.oneTimeMinor) : 'Miễn phí';
-  const priceSub = d.pricing.mode === 'subscription' ? '/tháng' : d.pricing.mode === 'one_time' ? 'trọn đời' : 'để tham gia';
+  const priceMain = paid && entry ? money(entry.payMinor) : 'Miễn phí';
+  const priceSub = paid && entry ? (entry.months ? `/${entry.unit}` : 'trọn đời') : 'để tham gia';
+  const promoEnd = promoEndLabel(d.pricing.promo);
   // Hội thu phí mà chủ hội chưa cài nhận tiền: chưa có tài khoản nào để chuyển khoản tới, nên khóa nút tham gia.
   const payLocked = paid && !member && !d.pricing.paymentsReady;
   const label = member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : payLocked ? 'Hội chưa mở thanh toán' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
@@ -105,9 +111,10 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
             </div>
           )}
           <div className="flex flex-col gap-1.5 pt-1">
-            <div className="flex items-baseline gap-2"><span className="serif text-[22px] font-extrabold">{priceMain}</span><span className="muted text-[13px]">{priceSub}</span></div>
-            {d.pricing.mode === 'freemium' && d.pricing.premiumMonthlyMinor ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Premium {money(d.pricing.premiumMonthlyMinor)}/tháng để mở toàn bộ khóa học</div> : null}
-            {d.pricing.mode === 'subscription' && d.pricing.premiumYearlyMinor ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {money(d.pricing.premiumYearlyMinor)}/năm</div> : null}
+            <div className="flex items-baseline gap-2 flex-wrap">{paid && entry && entry.percentOff > 0 && <span className="muted line-through text-[14px]">{money(entry.listMinor)}</span>}<span className="serif text-[22px] font-extrabold">{priceMain}</span><span className="muted text-[13px]">{priceSub}</span></div>
+            {entry && entry.percentOff > 0 && <div className="text-[13px] font-semibold flex items-center gap-1.5" style={{ color: T.goldText }}><Tag size={14} />Đang giảm {entry.percentOff}%{promoEnd ? ` đến hết ngày ${promoEnd}` : ''}</div>}
+            {d.pricing.mode === 'freemium' && entry ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Premium {money(entry.payMinor)}/{entry.unit} để mở toàn bộ khóa học</div> : null}
+            {longer.length > 0 && <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {longer.map((x) => `${money(x.payMinor)}/${x.unit}`).join(', ')}</div>}
           </div>
           <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={pending || payLocked || (!member && !c.doorsOpen)} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
           {(notice || join.isError) && <div className="text-[12px]" style={{ color: join.isError ? T.accentText : T.tealText }}>{join.isError ? errorMessage(join.error) : notice}</div>}

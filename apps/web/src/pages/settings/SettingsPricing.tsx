@@ -1,4 +1,5 @@
-// Cài đặt · Giá và gói (pricingMain): kiểu thu phí, 3 thẻ gói, cách thanh toán, xếp thành viên trả phí cũ; nút Đóng cổng / Xem trước / Lưu.
+// Cài đặt · Giá và gói (pricingMain): kiểu thu phí, 3 thẻ gói (mỗi gói nhiều kỳ hạn), khuyến mãi, cách thanh toán, xếp thành viên trả phí cũ; nút Đóng cổng / Xem trước / Lưu.
+import { normalizeTerms, termLabel, type PricingPromo } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Select, T } from '@hoiminh/ui';
 import { Globe, Lock, QrCode, Users } from 'lucide-react';
@@ -7,9 +8,9 @@ import { Link } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
-import { DEFAULT_TIERS, ModePicker, TierCard, type Mode, type Tier } from './SettingsPricingParts';
+import { DEFAULT_TIERS, ModePicker, PromoCard, TierCard, type Mode, type Tier } from './SettingsPricingParts';
 
-interface Pricing { pricingMode: Mode; doorsOpen: boolean; enabledProviders: string[]; tiers: Tier[]; paidMembersCount: number }
+interface Pricing { pricingMode: Mode; doorsOpen: boolean; enabledProviders: string[]; tiers: Tier[]; paidMembersCount: number; /** Khuyến mãi đã lưu (null là đang tắt). */ promo: PricingPromo | null }
 
 export default function Page() {
   const shell = useShell();
@@ -18,15 +19,19 @@ export default function Page() {
   const [f, setF] = useState<Pricing | null>(null);
   const [migrate, setMigrate] = useState<'standard' | 'premium' | 'vip'>('premium');
   const [saved, setSaved] = useState(false);
-  useEffect(() => { if (q.data && !f) setF({ ...q.data, tiers: q.data.tiers.length ? q.data.tiers : DEFAULT_TIERS }); }, [q.data, f]);
+  useEffect(() => { if (q.data && !f) setF({ ...q.data, promo: q.data.promo ?? null, tiers: q.data.tiers.length ? q.data.tiers.map((t) => ({ ...t, terms: t.terms ?? [] })) : DEFAULT_TIERS }); }, [q.data, f]);
   const save = useMutation({
-    mutationFn: (override?: Partial<Pricing>) => { const p = { ...f!, ...override }; return api.put<Pricing>(`/v1/communities/${shell.community.id}/pricing`, { pricingMode: p.pricingMode, doorsOpen: p.doorsOpen, tiers: p.tiers.map((t) => ({ ...t, benefits: t.benefits.filter((b) => b.trim()) })), enabledProviders: p.enabledProviders, migrateExistingPaidToTierKey: migrate }); },
-    onSuccess: (d) => { setF(d); setSaved(true); setTimeout(() => setSaved(false), 2000); void qc.invalidateQueries({ queryKey: shellKey(shell.community.slug) }); void qc.invalidateQueries({ queryKey: ['pricing'] }); },
+    mutationFn: (override?: Partial<Pricing>) => { const p = { ...f!, ...override }; return api.put<Pricing>(`/v1/communities/${shell.community.id}/pricing`, { pricingMode: p.pricingMode, doorsOpen: p.doorsOpen, tiers: p.tiers.map((t) => ({ ...t, terms: normalizeTerms(t.terms), benefits: t.benefits.filter((b) => b.trim()) })), promo: p.promo, enabledProviders: p.enabledProviders, migrateExistingPaidToTierKey: migrate }); },
+    onSuccess: (d) => { setF({ ...d, promo: d.promo ?? null }); setSaved(true); setTimeout(() => setSaved(false), 2000); void qc.invalidateQueries({ queryKey: shellKey(shell.community.slug) }); void qc.invalidateQueries({ queryKey: ['pricing'] }); },
   });
   if (!f) return <LoadingBlock rows={4} />;
   const patch = (p: Partial<Pricing>) => setF({ ...f, ...p });
   const setTier = (t: Tier) => patch({ tiers: f.tiers.map((x) => (x.key === t.key ? t : x)) });
   const paid = f.pricingMode !== 'free';
+  // Một giá đang bán của gói trả phí đầu tiên, để thẻ khuyến mãi ghi ví dụ bằng số thật.
+  const sampleTier = f.tiers.find((t) => t.key !== 'standard' && t.isActive);
+  const sampleTerm = sampleTier ? normalizeTerms(sampleTier.terms)[0] : undefined;
+  const sample = !sampleTier ? null : f.pricingMode === 'one_time' ? (sampleTier.oneTimeMinor ? { label: `${sampleTier.name} trọn đời`, amountMinor: sampleTier.oneTimeMinor } : null) : sampleTerm ? { label: `${sampleTier.name} ${termLabel(sampleTerm.months)}`, amountMinor: sampleTerm.amountMinor } : null;
   return (
     <>
       <div className="flex items-center gap-3 flex-wrap">
@@ -40,6 +45,7 @@ export default function Page() {
       {save.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(save.error)}</div>}
       <ModePicker value={f.pricingMode} onChange={(pricingMode) => patch({ pricingMode })} />
       {paid && <div className="flex gap-4 flex-wrap">{f.tiers.map((t) => <TierCard key={t.key} t={t} mode={f.pricingMode} onChange={setTier} />)}</div>}
+      {paid && <PromoCard promo={f.promo} onChange={(promo) => patch({ promo })} sample={sample} />}
       {f.pricingMode === 'free' && <div className="muted text-[13px]">Hội miễn phí: mọi thành viên ở gói Tiêu chuẩn, vẫn có thể bán khóa học lẻ trong Cửa hàng.</div>}
       <div className="card flex flex-col gap-3.5" style={{ padding: '16px 20px' }}>
         <div className="flex items-center gap-2.5 flex-wrap">

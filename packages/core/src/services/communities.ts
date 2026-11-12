@@ -1,6 +1,6 @@
 // Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/affiliate, khám phá.
 import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
-import { ABOUT_MEDIA_MAX, parseVideoUrl, type CreateCommunityInput, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
+import { ABOUT_MEDIA_MAX, applyPromo, legacyPricesOf, normalizeTerms, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { affiliatePrograms, communities, communityJoinQuestions, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -41,7 +41,7 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     const [c] = await tx.insert(communities).values({ workspaceId: ws.id, name: input.name, slug: input.slug, shortDescription: input.shortDescription, description: input.description || input.shortDescription, category: input.category, logoMark: markOf(input.name), pricingMode: input.pricingMode, status: isFreeSlot ? 'active' : 'draft', lockedReason: isFreeSlot ? null : 'plan_required', discoverable: isFreeSlot, isFreeSlot, coverTagline: input.name }).returning();
     const hasFree = input.pricingMode === 'free' || input.pricingMode === 'freemium';
     const [standard] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 }).returning();
-    const [premium] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: input.pricingMode !== 'free', sortOrder: 1, monthlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumMonthlyMinor ?? 249_000), yearlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumYearlyMinor ?? 2_490_000), oneTimeMinor: input.pricingMode === 'one_time' ? (input.oneTimeMinor ?? 990_000) : null }).returning();
+    const [premium] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: input.pricingMode !== 'free', sortOrder: 1, monthlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumMonthlyMinor ?? 249_000), yearlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumYearlyMinor ?? 2_490_000), terms: input.pricingMode === 'one_time' ? [] : termsFromLegacy(input.premiumMonthlyMinor ?? 249_000, input.premiumYearlyMinor ?? 2_490_000), oneTimeMinor: input.pricingMode === 'one_time' ? (input.oneTimeMinor ?? 990_000) : null }).returning();
     await tx.insert(communityTiers).values({ communityId: c!.id, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần'], isDefault: false, isActive: false, sortOrder: 2 });
     for (const [i, [name, slug, perm, color]] of DEFAULT_SPACES.entries()) await tx.insert(spaces).values({ communityId: c!.id, name, slug, postPermission: perm, colorKey: color, sortOrder: i });
     for (const [key, enabled] of [['welcome_dm', true], ['instant_approval', true], ['links', true], ['webhook', false], ['meta_pixel', false]] as const) {
@@ -57,13 +57,20 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
   return { ...created, needsPlan: !isFreeSlot };
 }
 
-/** Đồng bộ offer/giá cho từng tier (tháng, năm, một lần). */
+/** Mã chu kỳ của offer cho một kỳ hạn: 1 tháng là 'monthly', 12 tháng là 'yearly', còn lại 'm<số tháng>'. */
+function offerCycle(months: number): 'monthly' | 'yearly' | `m${number}` {
+  return months === 1 ? 'monthly' : months === 12 ? 'yearly' : `m${months}`;
+}
+
+/** Đồng bộ offer/giá cho từng tier: mỗi kỳ hạn một offer, thêm offer trả một lần. Kỳ hạn đã bỏ thì tắt giá của nó. */
 async function syncTierOffers(db: Ctx['db'], communityId: string, workspaceId: string, tiers: Array<typeof communityTiers.$inferSelect>): Promise<void> {
   for (const t of tiers) {
-    for (const [cycle, amount] of [['monthly', t.monthlyMinor], ['yearly', t.yearlyMinor], ['one_time', t.oneTimeMinor]] as const) {
-      if (!amount) continue;
-      const existing = await db.query.offers.findFirst({ where: and(eq(offers.resourceType, 'tier'), eq(offers.resourceId, t.id), eq(offers.cycle, cycle)) });
-      const offerId = existing?.id ?? (await db.insert(offers).values({ workspaceId, communityId, resourceType: 'tier', resourceId: t.id, name: `${t.name} · ${cycle}`, cycle }).returning())[0]!.id;
+    const wanted: Array<[string, number]> = tierTerms(t).map((term) => [offerCycle(term.months), term.amountMinor]);
+    if (t.oneTimeMinor) wanted.push(['one_time', t.oneTimeMinor]);
+    const existing = await db.query.offers.findMany({ where: and(eq(offers.resourceType, 'tier'), eq(offers.resourceId, t.id)) });
+    for (const o of existing) if (!wanted.some(([cycle]) => cycle === o.cycle)) await db.update(prices).set({ isActive: false }).where(eq(prices.offerId, o.id));
+    for (const [cycle, amount] of wanted) {
+      const offerId = existing.find((o) => o.cycle === cycle)?.id ?? (await db.insert(offers).values({ workspaceId, communityId, resourceType: 'tier', resourceId: t.id, name: `${t.name} · ${cycle}`, cycle: cycle as typeof offers.$inferInsert.cycle }).returning())[0]!.id;
       await db.update(prices).set({ isActive: false }).where(eq(prices.offerId, offerId));
       await db.insert(prices).values({ offerId, amountMinor: amount, isActive: true });
     }
@@ -101,7 +108,7 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     courses: courseList, sampleMembers: members.map((m) => m.u), joinQuestions: questions, referrer,
     stats: { members: c.memberCount, online: online?.c ?? 0, courses: courseList.length, paid: c.paidMemberCount },
     viewer: access ? { role: access.role, memberStatus: access.memberStatus, tierId: access.tierId } : null,
-    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null },
+    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null, premiumTerms: premium ? tierTerms(premium) : [], promo: activePromo(c.pricingPromo, ctx.now()) },
   };
 }
 
@@ -177,10 +184,12 @@ export async function updatePricing(ctx: Ctx, communityId: string, input: Update
   const pendingSubs = await raw(ctx.db, sql`select count(*)::int as c from orders where community_id = ${communityId} and target_type = 'tier' and status = 'pending' and created_at > now() - interval '30 minutes'`);
   if (Number((pendingSubs[0] as { c: number }).c) > 0 && input.pricingMode !== (await getCommunityById(ctx, communityId)).pricingMode) throw conflict('Có thanh toán đang xử lý, đợi xong rồi đổi kiểu thu phí');
   await ctx.db.transaction(async (tx) => {
-    await tx.update(communities).set({ pricingMode: input.pricingMode, doorsOpen: input.doorsOpen, enabledProviders: input.enabledProviders, updatedAt: ctx.now() }).where(eq(communities.id, communityId));
+    await tx.update(communities).set({ pricingMode: input.pricingMode, doorsOpen: input.doorsOpen, enabledProviders: input.enabledProviders, ...(input.promo === undefined ? {} : { pricingPromo: input.promo }), updatedAt: ctx.now() }).where(eq(communities.id, communityId));
     const saved: Array<typeof communityTiers.$inferSelect> = [];
     for (const t of input.tiers) {
-      const values = { communityId, key: t.key, name: t.name, description: t.description, benefits: t.benefits, isDefault: input.pricingMode === 'free' || input.pricingMode === 'freemium' ? t.key === 'standard' : t.key === 'premium', isActive: t.isActive, monthlyMinor: t.monthlyMinor ?? null, yearlyMinor: t.yearlyMinor ?? null, oneTimeMinor: t.oneTimeMinor ?? null, updatedAt: ctx.now() };
+      // Kỳ hạn là nguồn chính. Màn cũ chỉ gửi giá tháng và giá năm thì suy thành kỳ 1 tháng và 12 tháng.
+      const terms: TierTerm[] = t.terms ? normalizeTerms(t.terms) : termsFromLegacy(t.monthlyMinor, t.yearlyMinor);
+      const values = { communityId, key: t.key, name: t.name, description: t.description, benefits: t.benefits, isDefault: input.pricingMode === 'free' || input.pricingMode === 'freemium' ? t.key === 'standard' : t.key === 'premium', isActive: t.isActive, terms, ...legacyPricesOf(terms), oneTimeMinor: t.oneTimeMinor ?? null, updatedAt: ctx.now() };
       const [row] = await tx.insert(communityTiers).values(values).onConflictDoUpdate({ target: [communityTiers.communityId, communityTiers.key], set: values }).returning();
       saved.push(row!);
     }
@@ -190,7 +199,7 @@ export async function updatePricing(ctx: Ctx, communityId: string, input: Update
       if (target) await tx.update(communityMembers).set({ tierId: target.id }).where(and(eq(communityMembers.communityId, communityId), sql`${communityMembers.lifetimeValueCents} > 0`));
     }
   });
-  await audit(ctx, { action: 'community.update_pricing', resourceType: 'community', resourceId: communityId, communityId, metadata: { mode: input.pricingMode, doorsOpen: input.doorsOpen } });
+  await audit(ctx, { action: 'community.update_pricing', resourceType: 'community', resourceId: communityId, communityId, metadata: { mode: input.pricingMode, doorsOpen: input.doorsOpen, ...(input.promo === undefined ? {} : { promoPercentOff: input.promo?.percentOff ?? null, promoEndsAt: input.promo?.endsAt ?? null }) } });
   return pricingSettings(ctx, communityId);
 }
 
@@ -200,7 +209,7 @@ export async function pricingSettings(ctx: Ctx, communityId: string) {
   const c = await getCommunityById(ctx, communityId);
   const tiers = await ctx.db.query.communityTiers.findMany({ where: eq(communityTiers.communityId, communityId), orderBy: asc(communityTiers.sortOrder) });
   const [paid] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(communityMembers).where(and(eq(communityMembers.communityId, communityId), sql`${communityMembers.lifetimeValueCents} > 0`));
-  return { pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, enabledProviders: c.enabledProviders, tiers, paidMembersCount: paid?.c ?? 0 };
+  return { pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, enabledProviders: c.enabledProviders, tiers: tiers.map((t) => ({ ...t, terms: tierTerms(t) })), promo: c.pricingPromo ?? null, promoActive: promoActive(c.pricingPromo, ctx.now()), paidMembersCount: paid?.c ?? 0 };
 }
 
 export async function getCommunityById(ctx: Ctx, id: string) {
@@ -277,15 +286,22 @@ export async function discover(ctx: Ctx, q: { category?: string; search?: string
     .where(and(...conds))
     .orderBy(desc(sql`(select count(*) from posts p where p.community_id = ${communities.id} and p.created_at > now() - interval '7 days')`), desc(communities.memberCount))
     .limit(q.limit ?? 24);
-  return rows.map((r) => ({ id: r.c.id, name: r.c.name, slug: r.c.slug, shortDescription: r.c.shortDescription, category: r.c.category, logoMark: r.c.logoMark, logoColor: r.c.logoColor, logoUrl: r.c.logoUrl, coverColor: r.c.coverColor, coverUrl: r.c.coverUrl, memberCount: r.c.memberCount, pricingMode: r.c.pricingMode, priceLabel: priceLabel(r.c.pricingMode, r.premium), activity7d: r.activity }));
+  return rows.map((r) => ({ id: r.c.id, name: r.c.name, slug: r.c.slug, shortDescription: r.c.shortDescription, category: r.c.category, logoMark: r.c.logoMark, logoColor: r.c.logoColor, logoUrl: r.c.logoUrl, coverColor: r.c.coverColor, coverUrl: r.c.coverUrl, memberCount: r.c.memberCount, pricingMode: r.c.pricingMode, priceLabel: priceLabel(r.c.pricingMode, r.premium, r.c.pricingPromo ?? null, ctx.now()), activity7d: r.activity }));
 }
 
-function priceLabel(mode: string, premium: typeof communityTiers.$inferSelect | null): string {
+/** Khuyến mãi đang chạy của hội (đã hết hạn thì coi như không có). */
+export function activePromo(promo: PricingPromo | null | undefined, now: Date): PricingPromo | null {
+  return promoActive(promo, now) ? promo : null;
+}
+
+function priceLabel(mode: string, premium: typeof communityTiers.$inferSelect | null, promo: PricingPromo | null = null, now: Date = new Date()): string {
   if (mode === 'free' || mode === 'freemium') return 'Miễn phí';
-  if (mode === 'one_time') return premium?.oneTimeMinor ? `${premium.oneTimeMinor.toLocaleString('vi-VN')}đ trọn đời` : 'Trả một lần';
-  if (premium?.monthlyMinor) return `${premium.monthlyMinor.toLocaleString('vi-VN')}đ/tháng`;
-  if (premium?.yearlyMinor) return `${premium.yearlyMinor.toLocaleString('vi-VN')}đ/năm`;
-  return 'Thu phí';
+  const vnd = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
+  if (mode === 'one_time') return premium?.oneTimeMinor ? `${vnd(applyPromo(premium.oneTimeMinor, promo, now).payMinor)} trọn đời` : 'Trả một lần';
+  // Ghi giá của kỳ hạn ngắn nhất: đó là số tiền nhỏ nhất để vào hội.
+  const first = premium ? tierTerms(premium)[0] : undefined;
+  if (!first) return 'Thu phí';
+  return `${vnd(applyPromo(first.amountMinor, promo, now).payMinor)}/${termUnit(first.months)}`;
 }
 
 /** Lưu trữ hội (ẩn, giữ dữ liệu). */

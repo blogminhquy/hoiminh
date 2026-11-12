@@ -1,6 +1,7 @@
 // Hợp đồng hội (community), gói (tier), thành viên, cài đặt.
 import { z } from 'zod';
 import { amountMinorSchema, handleSchema, idSchema, slugSchema } from './common';
+import { MAX_TIER_TERMS, pricingPromoSchema, tierTermSchema } from './membership';
 
 export const pricingModeSchema = z.enum(['free', 'freemium', 'subscription', 'one_time']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
@@ -76,10 +77,14 @@ export const tierInputSchema = z.object({
   monthlyMinor: amountMinorSchema.nullable().optional(),
   yearlyMinor: amountMinorSchema.nullable().optional(),
   oneTimeMinor: amountMinorSchema.nullable().optional(),
+  /** Kỳ hạn bán (số tháng và giá). Có trường này thì nó là nguồn chính; giá tháng và giá năm ở trên tự suy theo. */
+  terms: z.array(tierTermSchema).max(MAX_TIER_TERMS).optional(),
 });
 export const updatePricingSchema = z.object({
   pricingMode: pricingModeSchema,
   doorsOpen: z.boolean(),
+  /** Khuyến mãi giá gói thành viên. null là tắt; không gửi thì giữ nguyên khuyến mãi đang có. */
+  promo: pricingPromoSchema.nullable().optional(),
   tiers: z.array(tierInputSchema).min(1).max(3),
   enabledProviders: z.array(z.enum(['sepay', 'momo', 'vnpay', 'paypal'])).default(['sepay', 'momo', 'vnpay']),
   migrateExistingPaidToTierKey: z.enum(['standard', 'premium', 'vip']).optional(),

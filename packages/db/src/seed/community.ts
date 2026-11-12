@@ -134,8 +134,8 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
     .insert(communityTiers)
     .values([
       { id: tiers.standard, communityId, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 },
-      { id: tiers.premium, communityId, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: s.pricingMode !== 'free', sortOrder: 1, monthlyMinor: s.monthly ?? null, yearlyMinor: s.yearly ?? null, oneTimeMinor: s.oneTime ?? null },
-      { id: tiers.vip, communityId, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần', 'Coaching nhóm hàng tuần'], isDefault: false, isActive: s.key === 'kd', sortOrder: 2, monthlyMinor: s.key === 'kd' ? 2_500_000 : null },
+      { id: tiers.premium, communityId, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: s.pricingMode !== 'free', sortOrder: 1, monthlyMinor: s.monthly ?? null, yearlyMinor: s.yearly ?? null, oneTimeMinor: s.oneTime ?? null, terms: [...(s.monthly ? [{ months: 1, amountMinor: s.monthly }] : []), ...(s.yearly ? [{ months: 12, amountMinor: s.yearly }] : [])] },
+      { id: tiers.vip, communityId, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần', 'Coaching nhóm hàng tuần'], isDefault: false, isActive: s.key === 'kd', sortOrder: 2, monthlyMinor: s.key === 'kd' ? 2_500_000 : null, terms: s.key === 'kd' ? [{ months: 1, amountMinor: 2_500_000 }] : [] },
     ])
     .onConflictDoNothing();
 

@@ -77,6 +77,8 @@ export const communities = pgTable(
     status: text('status').$type<CommunityStatus>().notNull().default('active'),
     pricingMode: text('pricing_mode').$type<PricingMode>().notNull().default('freemium'),
     doorsOpen: boolean('doors_open').notNull().default(true),
+    /** Khuyến mãi giá gói thành viên do chủ hội đặt: giảm theo phần trăm, có thể kèm ngày hết. null là không có. */
+    pricingPromo: jsonb('pricing_promo').$type<{ percentOff: number; endsAt: string | null } | null>(),
     discoverable: boolean('discoverable').notNull().default(true),
     customDomain: text('custom_domain'),
     customDomainVerifiedAt: ts('custom_domain_verified_at'),
@@ -111,6 +113,8 @@ export const communityTiers = pgTable(
     isDefault: boolean('is_default').notNull().default(false),
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** Kỳ hạn bán: trả một lần cho `months` tháng. Đây là nguồn chính; `monthly_minor` và `yearly_minor` là bản sao của kỳ 1 tháng và 12 tháng. */
+    terms: jsonb('terms').$type<Array<{ months: number; amountMinor: number }>>().notNull().default([]),
     monthlyMinor: money('monthly_minor'),
     yearlyMinor: money('yearly_minor'),
     oneTimeMinor: money('one_time_minor'),

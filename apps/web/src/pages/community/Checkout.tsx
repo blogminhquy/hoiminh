@@ -82,5 +82,5 @@ export default function Page() {
   if (orderId) return <OrderView orderId={orderId} />;
   if (shell.isLoading) return <CheckoutFrame backTo="/kham-pha"><LoadingBlock /></CheckoutFrame>;
   if (shell.isError || !shell.data) return <CheckoutFrame backTo="/kham-pha"><ErrorBox message={errorMessage(shell.error)} /></CheckoutFrame>;
-  return <CheckoutConfigure shell={shell.data} tierKey={sp.get('tier')} productId={sp.get('product')} initialCycle={sp.get('cycle')} ref={sp.get('ref')} />;
+  return <CheckoutConfigure shell={shell.data} tierKey={sp.get('tier')} productId={sp.get('product')} initialCycle={sp.get('cycle')} initialMonths={sp.get('months')} ref={sp.get('ref')} />;
 }

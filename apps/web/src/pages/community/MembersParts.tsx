@@ -1,4 +1,5 @@
 // Modal quản lý thành viên (760px, 4 tab): thông tin, khóa học, thanh toán, câu hỏi khi tham gia.
+import { monthsOfCycle, termUnit } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Modal, Select, T, Tag } from '@hoiminh/ui';
 import { Calendar, Clock, MessageCircle, QrCode, Trophy, Users, Wallet } from 'lucide-react';
@@ -13,7 +14,7 @@ export interface MemberDetail {
   member: { id: string; role: string; status: string; joinedAt: string; lastActiveAt: string | null; lifetimeValueCents: number; nextRenewalAt: string | null; lastPaymentAt: string | null; source: string };
   user: (MemberUser & { email: string }) | null;
   tier: { key: string; name: string } | null;
-  subscription: { amountMinor: number; billingCycle: string; currentPeriodEnd: string; provider: string | null; status: string } | null;
+  subscription: { amountMinor: number; billingCycle: string; periodMonths?: number | null; currentPeriodEnd: string; provider: string | null; status: string } | null;
   referrer: { name: string; handle: string } | null;
   courses: Array<{ id: string; title: string; accessMode: string; percent: number; completedLessons: number; totalLessons: number; manuallyUnlocked: boolean }>;
   payments: Array<{ orderId: string; at: string; amountMinor: number; status: string; method: string; provider: string; title: string }>;
@@ -84,7 +85,7 @@ function InfoTab({ d, communityId, memberId, onClose, onMessage }: { d: MemberDe
       </div>
       <div className="grid-2 text-[14px] pt-3.5" style={{ borderTop: `1px solid ${T.line}`, gap: 12 }}>
         {row(<Calendar size={18} />, `Tham gia ${fmtDate(m.joinedAt)}`)}
-        {row(<Wallet size={18} />, sub ? `${money(sub.amountMinor)}/${sub.billingCycle === 'yearly' ? 'năm' : sub.billingCycle === 'one_time' ? 'một lần' : 'tháng'}${sub.provider ? ` · qua ${sub.provider}` : ''}` : 'Chưa trả phí')}
+        {row(<Wallet size={18} />, sub ? `${money(sub.amountMinor)}/${sub.billingCycle === 'one_time' ? 'một lần' : termUnit(monthsOfCycle(sub.billingCycle, sub.periodMonths))}${sub.provider ? ` · qua ${sub.provider}` : ''}` : 'Chưa trả phí')}
         {row(<Clock size={18} />, renew !== null ? `Gia hạn sau ${Math.max(0, renew)} ngày` : 'Không có kỳ gia hạn')}
         {row(<Trophy size={18} />, `Giá trị trọn đời ${money(m.lifetimeValueCents)}`)}
         {row(<Users size={18} />, d.referrer ? `Giới thiệu bởi ${d.referrer.name}` : `Nguồn: ${m.source === 'affiliate' ? 'affiliate' : m.source === 'invite' ? 'lời mời' : m.source === 'discovery' ? 'khám phá' : 'trực tiếp'}`)}

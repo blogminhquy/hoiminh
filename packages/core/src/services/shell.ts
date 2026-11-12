@@ -1,4 +1,5 @@
 // Dữ liệu khung ứng dụng: thanh bên hội (tab, số liệu, tiến độ), switcher các hội của tôi, khối sự kiện sắp tới.
+import { promoActive, tierTerms } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { communities, communityMembers, communityTiers, courseProgress, courses, events, userCommunityPrefs } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -44,7 +45,8 @@ export async function communityShell(ctx: Ctx, slug: string) {
     stats: { members: c.memberCount, online: online[0]?.c ?? 0, admins: admins[0]?.c ?? 0, upcomingEvents: eventCount[0]?.c ?? 0 },
     coursePercent,
     upcomingEvents: upcoming,
-    premium: premium ? { tierId: premium.id, monthlyMinor: premium.monthlyMinor, yearlyMinor: premium.yearlyMinor, oneTimeMinor: premium.oneTimeMinor, benefits: premium.benefits } : null,
+    // `terms`: các kỳ hạn đang bán. `promo`: khuyến mãi đang chạy của chủ hội (hết hạn thì null), giao diện tính giá sau giảm bằng applyPromo.
+    premium: premium ? { tierId: premium.id, monthlyMinor: premium.monthlyMinor, yearlyMinor: premium.yearlyMinor, oneTimeMinor: premium.oneTimeMinor, terms: tierTerms(premium), promo: promoActive(c.pricingPromo, ctx.now()) ? c.pricingPromo : null, benefits: premium.benefits } : null,
   };
 }
 

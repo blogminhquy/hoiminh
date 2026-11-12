@@ -99,6 +99,13 @@
       "when": 1794409293570,
       "tag": "0013_install_gate_push",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794465524373,
+      "tag": "0014_membership_terms",
+      "breakpoints": true
     }
   ]
 }
