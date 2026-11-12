@@ -1,4 +1,4 @@
-// Chủ hội: đăng nhập là vào Bàn điều khiển (thay trang Hôm nay), đi tới Tiền, Cộng sự và Cài đặt 4 nhóm
+// Chủ hội: đăng nhập là vào Bàn điều khiển (thay trang Hôm nay), đi tới Tiền, Affiliate và Cài đặt 4 nhóm
 // trên điện thoại lẫn máy tính. Đường dẫn cũ (Doanh thu, Thanh toán) phải tự chuyển sang trang mới.
 import { expect, test, type Page } from '@playwright/test';
 import { USERS, login } from '../helpers';
@@ -16,7 +16,7 @@ test.describe('điện thoại', () => {
     await expect(page.getByRole('heading', { name: /^Chào / })).toBeVisible();
     // Danh sách "Cần xử lý" luôn có nội dung: hoặc việc cần làm, hoặc dòng báo đã xong hết.
     const todo = page.getByRole('region', { name: 'Cần xử lý' });
-    await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|hết hạn|Hội đã đủ|Mọi việc đã xong/).first()).toBeVisible();
+    await expect(todo.getByText(/yêu cầu rút của affiliate|chờ duyệt|hết hạn|Hội đã đủ|Mọi việc đã xong/).first()).toBeVisible();
     // Tiền bán hàng về thẳng tài khoản chủ hội: không còn "Có thể rút" hay "Đang giữ 14 ngày".
     await expect(page.getByText('Đã thu 30 ngày')).toBeVisible();
     await expect(page.getByText('Có thể rút')).toHaveCount(0);
@@ -59,7 +59,7 @@ test.describe('điện thoại', () => {
     // Mở menu bên trái, chạm tên hội ở đầu menu để chuyển hội. Chủ hội thấy cả nhóm Quản lý trong menu.
     await page.getByRole('button', { name: 'Mở menu' }).click();
     const drawer = page.getByRole('dialog', { name: 'Menu hội' });
-    for (const label of ['Bàn điều khiển', 'Tiền', 'Cộng sự', 'Cài đặt']) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
+    for (const label of ['Bàn điều khiển', 'Tiền', 'Affiliate', 'Cài đặt']) await expect(drawer.getByRole('link', { name: label, exact: true })).toBeVisible();
     // Menu của chủ hội dài hơn màn hình: danh sách mục cuộn được, còn nút Viết bài ghim ở đáy nên luôn thấy.
     const write = drawer.getByRole('link', { name: 'Viết bài' });
     await expect(write).toBeInViewport({ ratio: 1 });
@@ -85,14 +85,14 @@ test.describe('máy tính', () => {
     await expect(page.getByRole('heading', { name: 'Hội đang chạy thế nào' })).toBeVisible();
     await expectNoSideScroll(page, 1360);
 
-    await side.getByRole('link', { name: 'Cộng sự', exact: true }).click();
+    await side.getByRole('link', { name: 'Affiliate', exact: true }).click();
     await expect(page).toHaveURL(/\/minhquy\/cong-su$/);
-    await expect(page.getByRole('heading', { name: 'Cộng sự', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Affiliate', exact: true })).toBeVisible();
 
     await side.getByRole('link', { name: 'Cài đặt' }).click();
     await expect(page).toHaveURL(/\/minhquy\/cai-dat\/chung$/);
     const settings = page.getByRole('navigation', { name: 'Cài đặt' });
-    for (const label of ['Hội', 'Bán hàng', 'Cộng sự', 'Tự động và kết nối']) await expect(settings.getByRole('link', { name: label, exact: true })).toBeVisible();
+    for (const label of ['Hội', 'Bán hàng', 'Affiliate', 'Tự động và kết nối']) await expect(settings.getByRole('link', { name: label, exact: true })).toBeVisible();
     await expect(settings.getByRole('link', { name: /Gói của hội/ })).toHaveAttribute('href', '/admin/goi?hoi=minhquy');
     await expect(settings.getByRole('link')).toHaveCount(6); // 4 nhóm, gói của hội và lối ra trang giới thiệu
     await settings.getByRole('link', { name: 'Tự động và kết nối' }).click();

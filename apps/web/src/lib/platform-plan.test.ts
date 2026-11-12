@@ -48,7 +48,7 @@ describe('tierCards', () => {
     const [f, , pro, unlimited] = tierCards(plans, free, 10, 'yearly', now);
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: tự động hóa', on: false });
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: API', on: false });
-    expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Cộng sự', 'API']);
+    expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Affiliate', 'API']);
     expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu']);
   });
 

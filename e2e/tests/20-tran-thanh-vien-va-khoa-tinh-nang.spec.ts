@@ -1,6 +1,6 @@
 // Luồng 20: trần thành viên theo gói và khóa tính năng trả phí.
 // Hội gói Miễn phí đã đủ chỗ → người mới xin vào thì nằm ở hàng chờ → chủ hội thấy dải báo đủ chỗ, bấm Duyệt thì hiện
-// màn nâng gói thay vì duyệt. Tính năng trả phí (tự động hóa, cộng sự, tên miền riêng) vẫn hiện nhưng kèm ổ khóa và
+// màn nâng gói thay vì duyệt. Tính năng trả phí (tự động hóa, affiliate, tên miền riêng) vẫn hiện nhưng kèm ổ khóa và
 // lời mời nâng gói.
 import { expect, test } from '@playwright/test';
 import { USERS, apiJson, apiToken, login, savePlans } from '../helpers';
@@ -48,7 +48,7 @@ test('tính năng trả phí hiện kèm ổ khóa và lời mời nâng gói', 
   await expect(lock).toBeVisible();
   await expect(lock.getByRole('link', { name: 'Nâng lên Chuyên nghiệp' })).toHaveAttribute('href', /goi=pro/);
   await page.goto('/shopee-0d/cai-dat/cong-su');
-  await expect(page.getByRole('region', { name: 'Cộng sự có từ gói Chuyên nghiệp' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Affiliate có từ gói Chuyên nghiệp' })).toBeVisible();
   // Tên miền riêng: ô nhập bị khóa ngay trong trang Thông tin hội.
   await page.goto('/shopee-0d/cai-dat/chung');
   await expect(page.getByPlaceholder('hoc.tenmien.vn')).toBeDisabled();

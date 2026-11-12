@@ -17,7 +17,7 @@ test.describe('máy tính', () => {
 
     const box = palette.getByRole('combobox');
     await box.fill('hoa hong');
-    await expect(palette.getByRole('option').first()).toContainText('Trả hoa hồng cho cộng sự');
+    await expect(palette.getByRole('option').first()).toContainText('Trả hoa hồng cho affiliate');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/minhquy\/cong-su$/);
     await expect(palette).toHaveCount(0);

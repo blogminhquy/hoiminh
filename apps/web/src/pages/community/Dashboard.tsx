@@ -95,7 +95,7 @@ export default function Dashboard() {
           {!loading && todos.length === 0 && (
             <div className="today-task">
               <span className="today-ring done" aria-hidden="true"><Check size={16} strokeWidth={3} /></span>
-              <span className="flex-grow min-w-0"><span className="block font-semibold text-[16px]">Mọi việc đã xong</span><span className="block muted text-[14px]">Không có đơn chờ xác nhận, yêu cầu rút của cộng sự, người chờ duyệt hay bài chờ duyệt.</span></span>
+              <span className="flex-grow min-w-0"><span className="block font-semibold text-[16px]">Mọi việc đã xong</span><span className="block muted text-[14px]">Không có đơn chờ xác nhận, yêu cầu rút của affiliate, người chờ duyệt hay bài chờ duyệt.</span></span>
             </div>
           )}
           {loading && todos.length === 0 && <div className="today-task muted text-[15px]">Đang kiểm tra…</div>}
@@ -104,7 +104,7 @@ export default function Dashboard() {
         <nav className="owner-tiles md:hidden" aria-label="Quản lý hội">
           <Tile to={`${base}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />
           {(canMoney || can('revenue.read')) && <Tile to={`${base}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
-          {can('affiliates.manage') && <Tile to={`${base}/cong-su`} icon={<Handshake size={20} />} label="Cộng sự" />}
+          {can('affiliates.manage') && <Tile to={`${base}/cong-su`} icon={<Handshake size={20} />} label="Affiliate" />}
           {canOverview && <Tile to={`${base}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
         </nav>
 

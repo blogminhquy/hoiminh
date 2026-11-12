@@ -7,7 +7,7 @@ export const MESSAGES = {
     'nav.feed': 'Bảng tin',
     'nav.members': 'Thành viên',
     'nav.events': 'Sự kiện',
-    'nav.affiliate': 'Xếp hạng cộng sự',
+    'nav.affiliate': 'Xếp hạng affiliate',
     'nav.courses': 'Khóa học',
     'nav.resources': 'Tài nguyên',
     'nav.store': 'Cửa hàng',

@@ -1,4 +1,4 @@
-// Người dùng mẫu: super admin, chủ hội Minh Quý, cộng sự, 30 thành viên.
+// Người dùng mẫu: super admin, chủ hội Minh Quý, affiliate, 30 thành viên.
 import { hashPassword } from '@hoiminh/config';
 import type { Database } from '../client';
 import { userCredentials, users } from '../schema';

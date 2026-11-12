@@ -87,7 +87,7 @@ function InfoTab({ d, communityId, memberId, onClose, onMessage }: { d: MemberDe
         {row(<Wallet size={18} />, sub ? `${money(sub.amountMinor)}/${sub.billingCycle === 'yearly' ? 'năm' : sub.billingCycle === 'one_time' ? 'một lần' : 'tháng'}${sub.provider ? ` · qua ${sub.provider}` : ''}` : 'Chưa trả phí')}
         {row(<Clock size={18} />, renew !== null ? `Gia hạn sau ${Math.max(0, renew)} ngày` : 'Không có kỳ gia hạn')}
         {row(<Trophy size={18} />, `Giá trị trọn đời ${money(m.lifetimeValueCents)}`)}
-        {row(<Users size={18} />, d.referrer ? `Giới thiệu bởi ${d.referrer.name}` : `Nguồn: ${m.source === 'affiliate' ? 'cộng sự' : m.source === 'invite' ? 'lời mời' : m.source === 'discovery' ? 'khám phá' : 'trực tiếp'}`)}
+        {row(<Users size={18} />, d.referrer ? `Giới thiệu bởi ${d.referrer.name}` : `Nguồn: ${m.source === 'affiliate' ? 'affiliate' : m.source === 'invite' ? 'lời mời' : m.source === 'discovery' ? 'khám phá' : 'trực tiếp'}`)}
         {row(<QrCode size={18} />, last ? `Lần cuối: ${fmtDateTime(last.at)} · ${money(last.amountMinor)} · ${last.status === 'paid' ? 'thành công' : last.status}` : 'Chưa có giao dịch')}
       </div>
       <div className="flex-grow" />

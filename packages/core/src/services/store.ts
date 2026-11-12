@@ -36,7 +36,7 @@ export async function listProducts(ctx: Ctx, communityId: string, q: { kind?: 'c
   return { items, counts: Object.fromEntries(counts.map((c) => [c.kind, c.c])) as Record<string, number>, canManage: staff };
 }
 
-/** Trang bán chuẩn: trường cố định + curriculum + giảng viên + FAQ + combo chứa + link cộng sự (mục 163). */
+/** Trang bán chuẩn: trường cố định + curriculum + giảng viên + FAQ + combo chứa + link affiliate (mục 163). */
 export async function getProduct(ctx: Ctx, productId: string) {
   const p = await ctx.db.query.products.findFirst({ where: and(eq(products.id, productId), isNull(products.deletedAt)) });
   if (!p) throw notFound('Sản phẩm không tồn tại');

@@ -1,4 +1,4 @@
-// Rút tiền cộng sự chi trả thủ công (mục 201): tài khoản nhận mã hóa, yêu cầu có snapshot, hold/release/debit, optimistic lock, QR chuyển khoản.
+// Rút tiền affiliate chi trả thủ công (mục 201): tài khoản nhận mã hóa, yêu cầu có snapshot, hold/release/debit, optimistic lock, QR chuyển khoản.
 import { decryptJson, encryptJson, maskAccount } from '@hoiminh/config';
 import { VIETNAM_BANKS, type PayoutProfileInput } from '@hoiminh/contracts';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -52,7 +52,7 @@ export async function requestWithdrawal(ctx: Ctx, programId: string, amountMinor
   return wd;
 }
 
-/** Cộng sự hủy khi còn requested → release. */
+/** Affiliate hủy khi còn requested → release. */
 export async function cancelWithdrawal(ctx: Ctx, withdrawalId: string) {
   const userId = requireUser(ctx);
   const wd = await ctx.db.query.affiliateWithdrawalRequests.findFirst({ where: eq(affiliateWithdrawalRequests.id, withdrawalId) });
@@ -61,7 +61,7 @@ export async function cancelWithdrawal(ctx: Ctx, withdrawalId: string) {
   if (acc?.userId !== userId) throw forbidden();
   if (wd.status !== 'requested') throw invalidState('Chỉ hủy được khi yêu cầu còn ở trạng thái Chờ duyệt');
   await ctx.db.update(affiliateWithdrawalRequests).set({ status: 'cancelled', version: wd.version + 1, reviewedAt: ctx.now() }).where(and(eq(affiliateWithdrawalRequests.id, withdrawalId), eq(affiliateWithdrawalRequests.version, wd.version)));
-  await ledgerEntry(ctx, { affiliateAccountId: wd.affiliateAccountId, entryType: 'release', amountMinor: wd.amountMinor, idempotencyKey: `withdrawal-release:${withdrawalId}`, withdrawalId, note: 'Cộng sự tự hủy' });
+  await ledgerEntry(ctx, { affiliateAccountId: wd.affiliateAccountId, entryType: 'release', amountMinor: wd.amountMinor, idempotencyKey: `withdrawal-release:${withdrawalId}`, withdrawalId, note: 'Affiliate tự hủy' });
   return { ok: true };
 }
 

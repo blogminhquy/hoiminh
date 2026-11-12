@@ -17,7 +17,7 @@ export default function Page() {
   const { user } = useAuth();
   const ref = params.get('ref') ?? readCookie('hm_ref');
 
-  // Ghi cookie giới thiệu 30 ngày để đăng ký/tham gia sau vẫn ghi nhận cộng sự.
+  // Ghi cookie giới thiệu 30 ngày để đăng ký/tham gia sau vẫn ghi nhận affiliate.
   useEffect(() => {
     const r = params.get('ref');
     if (r) document.cookie = `hm_ref=${encodeURIComponent(r)}; path=/; max-age=${30 * 86400}; samesite=lax`;

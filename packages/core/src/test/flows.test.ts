@@ -50,7 +50,7 @@ async function sepayPaid(reference: string, amount: number, content = reference)
 
 describe('Luồng 1: đăng ký → xác minh → tham gia hội miễn phí → tin nhắn chào', () => {
   let userId = '';
-  it('đăng ký với mã cộng sự, nhận mã xác minh 6 số', async () => {
+  it('đăng ký với mã affiliate, nhận mã xác minh 6 số', async () => {
     const s = await register(app.anon(), app.auth, { name: 'Người Mới', email: 'nguoimoi@example.com', password: 'matkhau123', ref: 'hv8k2', communitySlug: 'minhquy', acceptTerms: true });
     userId = s.user.id;
     expect(s.accessToken).toBeTruthy();
@@ -159,7 +159,7 @@ describe('Luồng 3: mua lẻ trong Cửa hàng bằng chuyển khoản tới ch
   });
 });
 
-describe('Luồng 4: cộng sự · hold → available → rút ≥ 500k → xem xét → trả / từ chối', () => {
+describe('Luồng 4: affiliate · hold → available → rút ≥ 500k → xem xét → trả / từ chối', () => {
   it('cron giải phóng hoa hồng quá hạn giữ và ghi credit vào ví', async () => {
     const { sql } = await import('drizzle-orm');
     await app.ctx.db.execute(sql`update affiliate_commissions set available_at = now() - interval '1 day' where status = 'pending'`);
@@ -454,7 +454,7 @@ describe('Công tắc khóa học có tác dụng thật (rà soát 20/09)', () 
     await courses.updateCourse(mq, course.id, { dripEnabled: true });
     expect((await courses.getLesson(cong, l2.id)).dripLocked).toBe(true);
   });
-  it('khóa tắt "cộng sự nhận hoa hồng" thì đơn mua khóa đó không tính hoa hồng', async () => {
+  it('khóa tắt "affiliate nhận hoa hồng" thì đơn mua khóa đó không tính hoa hồng', async () => {
     const mq = await app.as('minhquy');
     const kd = await app.ids(KD);
     const make = async (affiliateEnabled: boolean) => {

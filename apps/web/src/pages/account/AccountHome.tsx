@@ -45,7 +45,7 @@ export default function Page() {
         <nav className="card px-3 py-1 me-list" aria-label={`Quản lý ${shell.community.name}`}>
           <Row to={`/${shell.community.slug}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" hint={shell.community.name} />
           {canRevenue && <Row to={`/${shell.community.slug}/tien`} icon={<Wallet size={20} />} label="Tiền" hint="Nhận tiền, đơn chờ xác nhận, giao dịch" />}
-          {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint="Hội, bán hàng, cộng sự, kết nối" />}
+          {canSettings && <Row to={`/${shell.community.slug}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" hint="Hội, bán hàng, affiliate, kết nối" />}
         </nav>
       )}
 
@@ -54,7 +54,7 @@ export default function Page() {
         <Row to="/thong-bao" icon={<Bell size={20} />} label="Thông báo" badge={badges.data?.unreadNotifications} />
         <Row to="/tin-nhan" icon={<MessageCircle size={20} />} label="Tin nhắn" badge={badges.data?.unreadMessages} />
         <Row to="/hoc" icon={<GraduationCap size={20} />} label="Khóa và tài liệu đã mua" />
-        <Row to="/tai-khoan/cong-su" icon={<Handshake size={20} />} label="Cộng sự" hint="Link giới thiệu, hoa hồng, rút tiền" />
+        <Row to="/tai-khoan/cong-su" icon={<Handshake size={20} />} label="Affiliate" hint="Link giới thiệu, hoa hồng, rút tiền" />
         <Row to="/tai-khoan/goi" icon={<Receipt size={20} />} label="Gói và thanh toán" hint="Gói đang dùng, hóa đơn" />
         <Row to="/admin" icon={<UsersRound size={20} />} label={owns ? 'Hội tôi quản lý' : 'Hội của tôi'} hint={`${communities.length} hội`} />
       </nav>

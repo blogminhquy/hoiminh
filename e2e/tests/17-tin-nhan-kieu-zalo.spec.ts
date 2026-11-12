@@ -33,7 +33,7 @@ test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả 
   // trong cùng phút là chạm hạn mức 10 lần đăng nhập mỗi phút cho một email và bị giữ lại ở trang đăng nhập.
   // Thành viên mới chỉ có hội thoại với chủ hội, nên nhờ Hoàng Vũ nhắn một tin để có hội thoại thứ hai (thử ghim).
   const me = await apiJson<{ userId: string }>(request, await apiToken(request, USERS.member), 'GET', '/v1/me/id');
-  await apiJson(request, await apiToken(request, USERS.affiliate), 'POST', '/v1/me/messages', { recipientUserId: me.userId, body: 'Chào Công, mình là Vũ bên nhóm cộng sự' });
+  await apiJson(request, await apiToken(request, USERS.affiliate), 'POST', '/v1/me/messages', { recipientUserId: me.userId, body: 'Chào Công, mình là Vũ bên nhóm affiliate' });
   await login(page, USERS.member);
   await page.goto('/tin-nhan');
   const list = page.getByRole('region', { name: 'Danh sách hội thoại' });

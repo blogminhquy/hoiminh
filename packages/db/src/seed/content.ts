@@ -27,7 +27,7 @@ Mình bỏ hết, làm lại theo đúng công thức ở bài 2.3:
 
 - Chi ads: \`200.000đ\` · 1.840 lượt xem · 41 email (*2,2%*)
 - Mở tin nhắn chào: 33/41 · bấm link khóa học: 12
-- Đơn: 1 × 490.000đ · hoa hồng cộng sự về ví: **245.000đ** (đang giữ 14 ngày)
+- Đơn: 1 × 490.000đ · hoa hồng affiliate về ví: **245.000đ** (đang giữ 14 ngày)
 
 ## Ba điều mình rút ra
 
@@ -58,7 +58,7 @@ export async function seedContent(db: Database, base: Date, U: Record<string, Se
   await db
     .insert(posts)
     .values([
-      { id: ids.pinned, communityId: c.id, spaceId: c.spaces['thong-bao']!, authorUserId: U.minhquy!.id, title: 'Lộ trình Funnel Money Model 2026: bắt đầu từ đâu?', contentMd: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các cộng sự trả lời trong 24 giờ.\n\n## Lộ trình\n\n1. Học module 1 (miễn phí)\n2. Làm bài tập Offer Canvas\n3. Đặt câu hỏi ở Hỏi đáp', excerpt: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các cộng sự trả lời trong 24 giờ.', pinned: true, likeCount: 24, commentCount: 8, lastCommentAt: daysFrom(base, 0, 7), createdAt: daysFrom(base, -2, 9) },
+      { id: ids.pinned, communityId: c.id, spaceId: c.spaces['thong-bao']!, authorUserId: U.minhquy!.id, title: 'Lộ trình Funnel Money Model 2026: bắt đầu từ đâu?', contentMd: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các affiliate trả lời trong 24 giờ.\n\n## Lộ trình\n\n1. Học module 1 (miễn phí)\n2. Làm bài tập Offer Canvas\n3. Đặt câu hỏi ở Hỏi đáp', excerpt: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các affiliate trả lời trong 24 giờ.', pinned: true, likeCount: 24, commentCount: 8, lastCommentAt: daysFrom(base, 0, 7), createdAt: daysFrom(base, -2, 9) },
       { id: ids.status, communityId: c.id, spaceId: c.spaces['chia-se']!, authorUserId: U.kienbui!.id, title: '', contentMd: 'Vừa học xong module 1. Tối nay ai cùng làm bài tập Offer Canvas không?', excerpt: 'Vừa học xong module 1. Tối nay ai cùng làm bài tập Offer Canvas không?', statusBgKey: 'ngoc', likeCount: 6, commentCount: 3, createdAt: new Date(Date.now() - 40 * 60_000) },
       { id: ids.question, communityId: c.id, spaceId: c.spaces['hoi-dap']!, authorUserId: U.cong!.id, title: 'Mới thanh toán Premium nhưng chưa thấy khóa học mở?', contentMd: 'Mình vừa chuyển khoản gói tháng lúc 9 giờ sáng, đã nhận email xác nhận nhưng vào mục Khóa học vẫn thấy khóa. Cần chờ bao lâu ạ?', excerpt: 'Mình vừa chuyển khoản gói tháng lúc 9 giờ sáng, đã nhận email xác nhận nhưng vào mục Khóa học vẫn thấy khóa. Cần chờ bao lâu ạ?', likeCount: 3, commentCount: 2, lastCommentAt: daysFrom(base, 0, 8), createdAt: new Date(Date.now() - 3 * 3_600_000) },
       { id: ids.diary, communityId: c.id, spaceId: c.spaces['nhat-ky']!, authorUserId: U.dien!.id, title: 'Ngày 3: đơn đầu tiên từ funnel affiliate', contentMd: DIARY_MD, excerpt: 'Sau khi làm lại lead magnet theo bài 2.3, mình chạy 200k tiền ads và có 41 email, 1 đơn 490k. Chưa lãi nhưng tự tin hơn nhiều. Dưới đây là toàn bộ số liệu, ảnh chụp dashboard và 3 điều mình rút ra…', likeCount: 17, commentCount: 6, editedAt: daysFrom(base, -1, 22), lastCommentAt: daysFrom(base, 0, 6), createdAt: daysFrom(base, -1, 21, 14) },
@@ -82,7 +82,7 @@ export async function seedContent(db: Database, base: Date, U: Record<string, Se
     .values([
       { id: optA, pollId, label: 'Lead magnet và Tripwire', sortOrder: 0, voteCount: 2 },
       { id: optB, pollId, label: 'Chạy ads về trang giới thiệu hội', sortOrder: 1, voteCount: 1 },
-      { id: optC, pollId, label: 'Thiết kế hoa hồng cộng sự', sortOrder: 2, voteCount: 0 },
+      { id: optC, pollId, label: 'Thiết kế hoa hồng affiliate', sortOrder: 2, voteCount: 0 },
     ])
     .onConflictDoNothing();
   await db

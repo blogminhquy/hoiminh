@@ -15,7 +15,7 @@ interface Notif { id: string; kind: string; category: string; title: string; bod
 interface List { items: Notif[]; nextCursor: string | null; unreadCount: number }
 interface Prefs { emailDigest: boolean; push: boolean; likes: boolean; perCommunity: Record<string, 'all' | 'mentions' | 'off'> }
 type Filter = 'all' | 'unread' | 'mention' | 'affiliate' | 'system';
-const FILTERS: Array<[Filter, string]> = [['all', 'Tất cả'], ['unread', 'Chưa đọc'], ['mention', 'Nhắc đến'], ['affiliate', 'Cộng sự'], ['system', 'Hệ thống']];
+const FILTERS: Array<[Filter, string]> = [['all', 'Tất cả'], ['unread', 'Chưa đọc'], ['mention', 'Nhắc đến'], ['affiliate', 'Affiliate'], ['system', 'Hệ thống']];
 const ICON: Record<string, [ReactNode, string, string]> = { comment: [<MessageCircle size={12} key="c" />, T.tealSoft, T.tealText], affiliate: [<CircleDollarSign size={12} key="d" />, T.goldSoft, T.goldText], mention: [<AtSign size={12} key="a" />, T.accentSoft, T.accentText], event: [<Calendar size={12} key="e" />, T.tealSoft, T.tealText], payment: [<UserPlus size={12} key="u" />, T.goldSoft, T.goldText], post: [<Megaphone size={12} key="m" />, T.accentSoft, T.accentText], like: [<Heart size={12} key="h" />, T.accentSoft, T.accentText], system: [<Bell size={12} key="b" />, T.bg, T.ink2] };
 
 function dayGroup(at: string): string {

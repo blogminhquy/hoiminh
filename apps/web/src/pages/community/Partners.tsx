@@ -1,5 +1,5 @@
-// Cộng sự (/:slug/cong-su): việc hằng ngày với cộng sự là trả hoa hồng, nên trang này mở thẳng hàng đợi yêu cầu rút
-// (4 ô ví, PayoutQueue, lịch sử, xuất đối soát). Mức hoa hồng là việc đặt một lần, nằm ở Cài đặt, mục Cộng sự.
+// Affiliate (/:slug/cong-su): việc hằng ngày với affiliate là trả hoa hồng, nên trang này mở thẳng hàng đợi yêu cầu rút
+// (4 ô ví, PayoutQueue, lịch sử, xuất đối soát). Mức hoa hồng là việc đặt một lần, nằm ở Cài đặt, mục Affiliate.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { WalletBox, money } from '@hoiminh/ui';
 import { Navigate } from 'react-router-dom';
@@ -21,7 +21,7 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4" style={{ maxWidth: 1080 }}>
       <div className="flex items-center gap-4 flex-wrap">
-        <div><h1 className="serif m-0 text-[28px] font-extrabold">Cộng sự</h1><div className="muted text-[15px]">Yêu cầu rút hoa hồng: bạn chuyển khoản, hệ thống ghi sổ</div></div>
+        <div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate</h1><div className="muted text-[15px]">Yêu cầu rút hoa hồng: bạn chuyển khoản, hệ thống ghi sổ</div></div>
         <span className="flex-grow" />
         <AffiliateTabs slug={shell.community.slug} active="payouts" awaiting={q.data?.stats.awaitingCount} affiliates={q.data?.stats.activeAffiliates} />
       </div>
@@ -33,7 +33,7 @@ export default function Page() {
               <WalletBox label="Chờ bạn chuyển" value={money(d.stats.awaitingTransferMinor)} hint={`${d.stats.awaitingCount} yêu cầu · xử lý trong 3 ngày làm việc`} strong />
               <WalletBox label="Đã trả tháng này" value={money(d.stats.paidThisMonthMinor)} hint={`${d.stats.paidCountThisMonth} lần chuyển khoản`} />
               <WalletBox label={`Đang giữ ${d.program.holdDays} ngày`} value={money(d.stats.holdingMinor)} hint="chưa được rút, chờ hết hạn hoàn tiền" />
-              <WalletBox label="Tổng nợ cộng sự" value={money(d.stats.owedMinor)} hint="chờ chuyển + có thể rút chưa yêu cầu" />
+              <WalletBox label="Tổng nợ affiliate" value={money(d.stats.owedMinor)} hint="chờ chuyển + có thể rút chưa yêu cầu" />
             </div>
             <PayoutQueue queue={d.queue} history={d.history} onChanged={() => { void qc.invalidateQueries({ queryKey: ['payouts'] }); void qc.invalidateQueries({ queryKey: ['affiliate-settings'] }); }} />
             <button type="button" className="muted text-[12px] text-left" onClick={() => void downloadFromApi(`/v1/communities/${shell.community.id}/affiliate/payouts/export.csv`, `doi-soat-cong-su-${shell.community.slug}.csv`)}>Xuất đối soát CSV</button>

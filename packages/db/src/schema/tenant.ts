@@ -130,7 +130,7 @@ export const communityMembers = pgTable(
     tierId: uuid('tier_id').references(() => communityTiers.id),
     /** Id subscription hiện tại (bảng subscriptions, không FK để tránh vòng import). */
     subscriptionId: uuid('subscription_id'),
-    /** Cộng sự đã giới thiệu (affiliate_accounts.id, không FK để tránh vòng import). */
+    /** Affiliate đã giới thiệu (affiliate_accounts.id, không FK để tránh vòng import). */
     referredByAffiliateId: uuid('referred_by_affiliate_id'),
     source: text('source').$type<MemberSource>().notNull().default('direct'),
     lifetimeValueCents: money('lifetime_value_cents').notNull().default(0),

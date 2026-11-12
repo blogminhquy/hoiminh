@@ -18,9 +18,9 @@ interface Stats { plans: PlanRow[]; paidCommunities: number; totalCommunities: n
 interface Flag { key: string; description: string; enabled: boolean; rules: Record<string, unknown> }
 interface AffiliateInfo { program: { commissionRateBps: number; commissionDurationMonths: number | null }; stats: { paidThisMonthMinor: number } }
 // Khóa phải khớp `featureFlags` trong seed và hằng FLAG ở packages/core.
-const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời gian thực', go_live: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng cộng sự', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI', gamification: 'Điểm và cấp độ hoạt động', paypal: 'Cổng PayPal' };
+const FLAG_LABEL: Record<string, string> = { realtime_chat: 'Tin nhắn thời gian thực', go_live: 'Phát trực tiếp trong hội', affiliate_leaderboard: 'Bảng xếp hạng affiliate', store: 'Cửa hàng trong hội', mcp: 'MCP cho AI', gamification: 'Điểm và cấp độ hoạt động', paypal: 'Cổng PayPal' };
 /** Cờ đang chặn đường chạy thật (không chỉ hiển thị): ghi rõ tắt thì mất gì. */
-const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng cộng sự ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
+const FLAG_EFFECT: Record<string, string> = { store: 'tắt: ẩn tab Cửa hàng ở mọi hội và chặn mua sản phẩm', affiliate_leaderboard: 'tắt: ẩn tab Xếp hạng affiliate ở mọi hội', mcp: 'tắt: MCP server không khởi động được', paypal: 'tắt: không chọn được PayPal khi thanh toán' };
 /** Cờ của tính năng chưa xây (thuộc V2): bật hay tắt chưa đổi gì, nên không hiện để khỏi gây hiểu nhầm. */
 const NO_EFFECT = new Set(['realtime_chat', 'go_live', 'gamification']);
 /** Công tắc toàn hệ thống (không phải tính năng của hội): có thẻ riêng ở trang Gói nền tảng, không nằm trong danh sách tính năng. */
@@ -107,7 +107,7 @@ function PlanTable({ stats }: { stats: Stats }) {
 
 export default function Page() {
   const qc = useQueryClient();
-  // Cùng một trang phục vụ hai tab: /he-thong/goi (gói, cộng sự nền tảng) và /he-thong/tinh-nang (cờ tính năng).
+  // Cùng một trang phục vụ hai tab: /he-thong/goi (gói, affiliate nền tảng) và /he-thong/tinh-nang (cờ tính năng).
   const featuresView = useLocation().pathname.endsWith('/tinh-nang');
   const stats = useQuery({ queryKey: ['admin', 'plans'], queryFn: () => api.get<Stats>('/v1/admin/plans') });
   const flags = useQuery({ queryKey: ['admin', 'flags'], queryFn: () => api.get<Flag[]>('/v1/admin/flags') });
@@ -163,10 +163,10 @@ export default function Page() {
       </div>
       <div className="flex gap-4 flex-col md:flex-row">
         <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
-          <span className="font-semibold">Chương trình cộng sự nền tảng</span>
+          <span className="font-semibold">Chương trình affiliate nền tảng</span>
           <div className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">Hoa hồng khi giới thiệu chủ hội mới</span><Link to="/he-thong/cong-su" className="chip" style={{ height: 28, fontSize: 12 }}>{aff.data ? `${aff.data.program.commissionRateBps / 100}%${aff.data.program.commissionDurationMonths ? ` · ${aff.data.program.commissionDurationMonths} tháng` : ''}` : '…'}</Link></div>
           <div className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">Hoa hồng khi giới thiệu thành viên vào hội</span><span className="muted text-[12px]">do chủ hội tự đặt</span></div>
-          <div className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">Đã trả cho cộng sự nền tảng tháng này</span><span className="font-semibold">{money(aff.data?.stats.paidThisMonthMinor ?? 0)}</span></div>
+          <div className="flex items-center gap-2.5 text-[13px]"><span className="flex-grow">Đã trả cho affiliate nền tảng tháng này</span><span className="font-semibold">{money(aff.data?.stats.paidThisMonthMinor ?? 0)}</span></div>
         </div>
         <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>
           <span className="font-semibold">Tính năng</span>

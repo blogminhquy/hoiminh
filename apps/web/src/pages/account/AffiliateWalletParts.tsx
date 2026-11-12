@@ -1,4 +1,4 @@
-// Mảnh Ví cộng sự: form tài khoản nhận tiền (mã hóa), form rút, bảng lịch sử rút, bảng hoa hồng gần đây.
+// Mảnh Ví affiliate: form tài khoản nhận tiền (mã hóa), form rút, bảng lịch sử rút, bảng hoa hồng gần đây.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { VIETNAM_BANKS } from '@hoiminh/contracts';
 import { Button, Field, Input, Select, StatusTag, T, money } from '@hoiminh/ui';

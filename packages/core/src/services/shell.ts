@@ -32,7 +32,7 @@ export async function communityShell(ctx: Ctx, slug: string) {
   const tabs = { ...c.tabs };
   if (!flags[FLAG.store]) tabs.store = false;
   if (!flags[FLAG.affiliateLeaderboard]) tabs.affiliate = false;
-  // Gói của hội: tab Cộng sự chỉ hiện khi gói có cộng sự; người quản lý nhận thêm số liệu gói để giao diện khóa nút và mời nâng gói.
+  // Gói của hội: tab Affiliate chỉ hiện khi gói có affiliate; người quản lý nhận thêm số liệu gói để giao diện khóa nút và mời nâng gói.
   const plan = planOfCommunity(c, await planTable(ctx), ctx.now());
   if (!plan.features.includes('affiliate')) tabs.affiliate = false;
   const manages = access.permissions.has('settings.manage');

@@ -57,10 +57,10 @@ adminRoutes.put('/flags/:key', async (c) => c.json(await featureFlags.setFlag(c.
 adminRoutes.get('/releases', async (c) => c.json(await releases.listReleases(c.get('ctx'))));
 adminRoutes.post('/releases/:versionId/deploy', async (c) => c.json(await releases.deployRelease(c.get('ctx'), c.req.param('versionId'))));
 
-// Cộng sự nền tảng
+// Affiliate nền tảng
 async function platformProgram(c: Ctx$) {
   const p = await c.get('ctx').db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
-  if (!p) throw new Error('Chưa có chương trình cộng sự nền tảng');
+  if (!p) throw new Error('Chưa có chương trình affiliate nền tảng');
   return p;
 }
 adminRoutes.get('/affiliate', async (c) => {

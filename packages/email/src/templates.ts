@@ -101,7 +101,7 @@ export const templates = {
         : `gói <strong>${h(plan)}</strong> của hội <strong>${h(community)}</strong> đã hết hạn. Hội trở về gói Miễn phí: thành viên và dữ liệu vẫn được giữ nguyên, hội chỉ chưa nhận thêm người mới nếu đã vượt trần của gói Miễn phí, và các tính năng của gói trả phí tạm khóa.`}</p>`,
       { label: daysLeft > 0 ? 'Gia hạn gói' : 'Xem các gói', url }),
   commissionAvailable: (to: string, name: string, amount: string, url: string) =>
-    make('commission_available', to, `Hoa hồng ${amount} đã có thể rút`, 'Hoa hồng đã được duyệt', `<p>Chào ${h(name)}, hoa hồng <strong>${h(amount)}</strong> đã hết thời gian giữ và vào số dư có thể rút.</p>`, { label: 'Xem ví cộng sự', url }),
+    make('commission_available', to, `Hoa hồng ${amount} đã có thể rút`, 'Hoa hồng đã được duyệt', `<p>Chào ${h(name)}, hoa hồng <strong>${h(amount)}</strong> đã hết thời gian giữ và vào số dư có thể rút.</p>`, { label: 'Xem ví affiliate', url }),
   withdrawalPaid: (to: string, name: string, amount: string, reference: string) =>
     make('withdrawal_paid', to, `Đã chuyển ${amount} cho bạn`, 'Yêu cầu rút đã được thanh toán', `<p>Chào ${h(name)}, <strong>${h(amount)}</strong> đã được chuyển khoản. Mã tham chiếu: <code>${h(reference)}</code>.</p>`),
   withdrawalRejected: (to: string, name: string, amount: string, reason: string) =>

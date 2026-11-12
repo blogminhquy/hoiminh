@@ -1,4 +1,4 @@
-// Cộng sự hai tầng: chương trình, tài khoản, link, click, attribution, conversion, hoa hồng, sổ cái ví, rút tiền, xếp hạng.
+// Affiliate hai tầng: chương trình, tài khoản, link, click, attribution, conversion, hoa hồng, sổ cái ví, rút tiền, xếp hạng.
 import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, money, timestamps, ts } from './_helpers';
 import { orders, payments } from './commerce';

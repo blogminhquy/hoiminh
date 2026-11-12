@@ -10,7 +10,7 @@ import { shellKey, useShell } from '@/lib/community';
 type Perm = 'everyone' | 'admins_only' | 'premium';
 interface Space { id?: string; name: string; postPermission: Perm; sortOrder: number; postCount?: number }
 interface Feed { tabs: Record<string, boolean>; requireSpace: boolean; moderateNewMembersDays: number; spaces: Space[] }
-const TABS: Array<[string, string, boolean]> = [['feed', 'Bảng tin', true], ['courses', 'Khóa học', false], ['events', 'Sự kiện', false], ['members', 'Thành viên', false], ['affiliate', 'Xếp hạng cộng sự', false], ['store', 'Cửa hàng', false], ['about', 'Giới thiệu', true], ['resources', 'Tài nguyên', false]];
+const TABS: Array<[string, string, boolean]> = [['feed', 'Bảng tin', true], ['courses', 'Khóa học', false], ['events', 'Sự kiện', false], ['members', 'Thành viên', false], ['affiliate', 'Xếp hạng affiliate', false], ['store', 'Cửa hàng', false], ['about', 'Giới thiệu', true], ['resources', 'Tài nguyên', false]];
 const PERM: Array<[Perm, string]> = [['admins_only', 'Chỉ quản trị'], ['everyone', 'Mọi thành viên'], ['premium', 'Thành viên Premium']];
 
 export default function Page() {

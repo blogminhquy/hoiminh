@@ -112,7 +112,7 @@ export default function Page() {
                 <div className="flex items-center"><span className="font-semibold">Người tham gia</span><span className="muted text-[12px] ml-auto">{e.registrationCount} đăng ký</span></div>
                 {e.attendeesVisible ? (
                   <div className="grid grid-cols-6 gap-2">{e.attendees.map((a) => <Link key={a.id} to={`/u/${a.handle}`} className="inline-flex"><Avatar name={a.name} src={a.avatarUrl} color={a.coverColor ?? T.ink} size={40} /></Link>)}{e.registrationCount > e.attendees.length && <span className="w-10 h-10 rounded-full inline-flex items-center justify-center text-[12px] font-bold" style={{ background: T.bg, color: T.ink2 }}>+{e.registrationCount - e.attendees.length}</span>}</div>
-                ) : <div className="muted text-[12px]">Chỉ thành viên Premium và cộng sự thấy danh sách này.</div>}
+                ) : <div className="muted text-[12px]">Chỉ thành viên Premium và affiliate thấy danh sách này.</div>}
               </div>
               {e.series.length > 1 && (
                 <div className="card p-4 flex flex-col gap-2.5">

@@ -21,7 +21,7 @@ const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90,
 const PROVIDER: Record<string, string> = { sepay: 'Chuyển khoản', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal' };
 
 function toCsv(items: Tx[]): string {
-  const rows = [['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ cộng sự', 'Trạng thái'], ...items.map((t) => [fmtDate(t.at), t.customer.name, t.title, PROVIDER[t.provider] ?? t.method, String(t.amountMinor), String(t.commissionMinor), t.status])];
+  const rows = [['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ affiliate', 'Trạng thái'], ...items.map((t) => [fmtDate(t.at), t.customer.name, t.title, PROVIDER[t.provider] ?? t.method, String(t.amountMinor), String(t.commissionMinor), t.status])];
   return rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
 }
 
@@ -54,7 +54,7 @@ function Balance() {
           {d.ready && setup.data?.account && setup.data.pending.length > 0 && <PendingOrders communityId={cid} orders={setup.data.pending} mode={setup.data.account.confirmMode} />}
           {d.affiliatePendingCount > 0 && (
             <Link to={`/${shell.community.slug}/cong-su`} className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-[15px] font-semibold" style={{ background: T.accentSoft, color: T.accentText }}>
-              <Handshake size={18} className="flex-shrink-0" /><span className="flex-grow">{d.affiliatePendingCount} yêu cầu rút của cộng sự đang chờ, cần chuyển {money(d.affiliatePendingMinor)}</span><span className="whitespace-nowrap">Xử lý</span>
+              <Handshake size={18} className="flex-shrink-0" /><span className="flex-grow">{d.affiliatePendingCount} yêu cầu rút của affiliate đang chờ, cần chuyển {money(d.affiliatePendingMinor)}</span><span className="whitespace-nowrap">Xử lý</span>
             </Link>
           )}
         </>
@@ -80,7 +80,7 @@ function Transactions() {
     const a = document.createElement('a'); a.href = url; a.download = `doanh-thu-${shell.community.slug}-${days}d.csv`; a.click(); URL.revokeObjectURL(url);
   };
   const cols = canRefund ? '90px 1.6fr 1.6fr 1.1fr 1.1fr 1.1fr 1fr 96px' : '90px 1.6fr 1.6fr 1.1fr 1.1fr 1.1fr 1fr';
-  const heads = canRefund ? ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ cộng sự', 'Trạng thái', ''] : ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ cộng sự', 'Trạng thái'];
+  const heads = canRefund ? ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ affiliate', 'Trạng thái', ''] : ['Ngày', 'Thành viên', 'Sản phẩm', 'Phương thức', 'Số tiền', 'Nợ affiliate', 'Trạng thái'];
   const minW = canRefund ? 956 : 860;
   return (
     <>
@@ -96,7 +96,7 @@ function Transactions() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard label="Tổng thu" value={money(d.stats.grossMinor)} sub={`${d.stats.txCount} giao dịch · không phí giao dịch`} />
               <StatCard label="Đã thu" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
-              <StatCard label="Nợ cộng sự" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
+              <StatCard label="Nợ affiliate" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
               <StatCard label="Hoàn tiền" value={money(d.stats.refundedMinor)} sub={`${d.stats.refundCount} giao dịch`} subColor={T.ink3} />
             </div>
             <div className="card overflow-hidden table-scroll">

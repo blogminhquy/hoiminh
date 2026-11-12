@@ -1,4 +1,4 @@
-// Doanh thu chủ hội (không phí giao dịch, cột Nợ cộng sự), Cài đặt · Tổng quan, Cài đặt · Thanh toán (nhận tiền).
+// Doanh thu chủ hội (không phí giao dịch, cột Nợ affiliate), Cài đặt · Tổng quan, Cài đặt · Thanh toán (nhận tiền).
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { communities, communityMembers, onboardingProgress, orders, payments, posts, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -10,7 +10,7 @@ function since(days: number, now: Date): Date {
   return new Date(now.getTime() - days * 86_400_000);
 }
 
-/** Màn Doanh thu: 4 ô số + bảng giao dịch có cột hoa hồng cộng sự (chủ hội tự chuyển). */
+/** Màn Doanh thu: 4 ô số + bảng giao dịch có cột hoa hồng affiliate (chủ hội tự chuyển). */
 export async function revenue(ctx: Ctx, communityId: string, q: { days?: number; limit?: number }) {
   await requireCommunityPermission(ctx, communityId, 'revenue.read');
   const from = since(q.days ?? 30, ctx.now());
@@ -80,7 +80,7 @@ export async function settingsOverview(ctx: Ctx, communityId: string, q: { days?
 
 /**
  * Trang Tiền và Bàn điều khiển của chủ hội: hội đã cài nhận tiền chưa, đã thu bao nhiêu trong 30 ngày, còn bao nhiêu
- * đơn chờ chủ hội xác nhận, và yêu cầu rút của cộng sự. Tiền bán hàng về thẳng tài khoản của chủ hội nên không còn
+ * đơn chờ chủ hội xác nhận, và yêu cầu rút của affiliate. Tiền bán hàng về thẳng tài khoản của chủ hội nên không còn
  * "có thể rút" hay "đang giữ 14 ngày".
  */
 export async function payoutSettings(ctx: Ctx, communityId: string) {

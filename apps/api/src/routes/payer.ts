@@ -1,4 +1,4 @@
-// Người chi trả hoa hồng (chủ hội / super admin): xem xét, đánh dấu đã trả, từ chối; cộng sự hủy yêu cầu; link cộng sự /r/:code.
+// Người chi trả hoa hồng (chủ hội / super admin): xem xét, đánh dấu đã trả, từ chối; affiliate hủy yêu cầu; link affiliate /r/:code.
 import { markPaidSchema, rejectWithdrawalSchema } from '@hoiminh/contracts';
 import { affiliate, withdrawals } from '@hoiminh/core';
 import { body, parse, router } from '../lib/hono';
@@ -19,7 +19,7 @@ payerRoutes.post('/withdrawals/:id/reject', requireAuth, async (c) => {
 });
 payerRoutes.post('/withdrawals/:id/cancel', requireAuth, async (c) => c.json(await withdrawals.cancelWithdrawal(c.get('ctx'), c.req.param('id'))));
 
-/** Link cộng sự: ghi click, đặt cookie attribution 30 ngày, chuyển tới đích. */
+/** Link affiliate: ghi click, đặt cookie attribution 30 ngày, chuyển tới đích. */
 export const refRoutes = router();
 refRoutes.get('/:code', async (c) => {
   const ctx = c.get('ctx');

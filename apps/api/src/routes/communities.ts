@@ -1,4 +1,4 @@
-// /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, cộng sự, thanh toán), tổng quan, doanh thu.
+// /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
 import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, payoutAccountInputSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
@@ -67,7 +67,7 @@ communityRoutes.put('/:id/providers', requireAuth, async (c) => {
   return c.json(await revenue.updateEnabledProviders(c.get('ctx'), c.req.param('id'), enabledProviders));
 });
 
-// Cộng sự: cấu hình, xếp hạng, hàng đợi rút
+// Affiliate: cấu hình, xếp hạng, hàng đợi rút
 communityRoutes.get('/:id/affiliate', requireAuth, async (c) => c.json(await affiliate.programSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/affiliate', requireAuth, async (c) => c.json(await affiliate.updateProgram(c.get('ctx'), c.req.param('id'), await parse(affiliateSettingsSchema, await body(c)))));
 communityRoutes.get('/:id/leaderboard', async (c) => {

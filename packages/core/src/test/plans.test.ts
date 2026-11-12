@@ -163,7 +163,7 @@ describe('trần thành viên theo gói', () => {
 });
 
 describe('khóa tính năng trả phí theo gói', () => {
-  it('hội gói Miễn phí: tự động hóa, tên miền riêng, cộng sự, API đều bị chặn với lỗi plan_locked', async () => {
+  it('hội gói Miễn phí: tự động hóa, tên miền riêng, affiliate, API đều bị chặn với lỗi plan_locked', async () => {
     const e1 = await expectCode(automation.createSource(vy, VY, { name: 'Nguồn thử' }), 'plan_locked');
     expect(e1.details).toMatchObject({ reason: 'feature', feature: 'automation', requiredPlanKey: 'pro', requiredPlanName: 'Chuyên nghiệp' });
     await expectCode(communitiesSvc.updateGeneral(vy, VY, { customDomain: 'hoc.vy.vn' }), 'plan_locked');

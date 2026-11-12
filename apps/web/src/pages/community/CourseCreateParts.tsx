@@ -66,7 +66,7 @@ export function AccessBlock({ f, patch }: { f: CourseForm; patch: Patch }) {
         </div>
       )}
       <ToggleRow className="pt-2.5" label="Cho xem thử module đầu tiên với người chưa có quyền" on={f.previewFirstModule} onChange={(v) => patch({ previewFirstModule: v })} />
-      <ToggleRow label="Cộng sự được nhận hoa hồng khi bán lẻ khóa này" on={f.affiliateEnabled && sells} onChange={(v) => patch({ affiliateEnabled: v })} />
+      <ToggleRow label="Affiliate được nhận hoa hồng khi bán lẻ khóa này" on={f.affiliateEnabled && sells} onChange={(v) => patch({ affiliateEnabled: v })} />
     </div>
   );
 }

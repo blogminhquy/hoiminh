@@ -23,7 +23,7 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
     key: 'kd', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'Kinh Doanh Online Cùng AI', slug: 'minhquy',
     mark: 'KD', color: '#D4593A', coverColor: '#0E8E96', tagline: 'Doanh nghiệp\nmột người',
     short: 'Ứng dụng AI xây dựng doanh nghiệp một người.',
-    description: 'Hội dành cho người muốn xây doanh nghiệp một người bằng AI: có lộ trình học rõ ràng, có người trả lời câu hỏi trong 24 giờ, và có cộng sự để cùng bán. Vào miễn phí, học 5 bài đầu, thấy hợp thì nâng cấp.',
+    description: 'Hội dành cho người muốn xây doanh nghiệp một người bằng AI: có lộ trình học rõ ràng, có người trả lời câu hỏi trong 24 giờ, và có affiliate để cùng bán. Vào miễn phí, học 5 bài đầu, thấy hợp thì nâng cấp.',
     category: 'kinh-doanh', pricingMode: 'freemium', monthly: 249_000, yearly: 2_490_000, memberCount: 234, paidCount: 75,
     rules: ['Tôn trọng nhau, không công kích cá nhân', 'Không quảng cáo dịch vụ ngoài khi chưa được phép', 'Đặt câu hỏi đúng chuyên mục, có ngữ cảnh rõ ràng'],
     links: [
@@ -36,8 +36,8 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
   });
   // Hội thứ hai (đã trả gói Khởi đầu) và hội thứ ba đang chờ thanh toán của Minh Quý (màn "Hội của tôi").
   const congsu = await createCommunity(db, base, {
-    key: 'congsu', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'Cộng sự MMO', slug: 'cong-su-mmo', mark: 'AF', color: '#0E8E96',
-    coverColor: '#25201B', tagline: 'Cộng sự', short: 'Nhóm kín cho cộng sự bán khóa học AI.', description: 'Nhóm kín cho cộng sự.',
+    key: 'congsu', owner: U.minhquy!, workspaceKey: 'minhquy', name: 'Affiliate MMO', slug: 'cong-su-mmo', mark: 'AF', color: '#0E8E96',
+    coverColor: '#25201B', tagline: 'Affiliate', short: 'Nhóm kín cho affiliate bán khóa học AI.', description: 'Nhóm kín cho affiliate.',
     category: 'kinh-doanh', pricingMode: 'subscription', monthly: 199_000, yearly: 1_990_000, memberCount: 58, paidCount: 58, discoverable: false, plan: { key: 'starter', cycle: 'yearly', daysLeft: 120 },
     payout: { bankCode: 'VCB', accountNumber: '0071000999888', accountHolder: 'NGUYEN MINH QUY', confirmMode: 'manual' },
   });
@@ -134,7 +134,7 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
     .insert(communityTiers)
     .values([
       { id: tiers.standard, communityId, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 },
-      { id: tiers.premium, communityId, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành cộng sự, hoa hồng 50%', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: s.pricingMode !== 'free', sortOrder: 1, monthlyMinor: s.monthly ?? null, yearlyMinor: s.yearly ?? null, oneTimeMinor: s.oneTime ?? null },
+      { id: tiers.premium, communityId, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: s.pricingMode !== 'free', sortOrder: 1, monthlyMinor: s.monthly ?? null, yearlyMinor: s.yearly ?? null, oneTimeMinor: s.oneTime ?? null },
       { id: tiers.vip, communityId, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần', 'Coaching nhóm hàng tuần'], isDefault: false, isActive: s.key === 'kd', sortOrder: 2, monthlyMinor: s.key === 'kd' ? 2_500_000 : null },
     ])
     .onConflictDoNothing();

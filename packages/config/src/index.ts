@@ -135,9 +135,9 @@ export function isLocalEnv(appEnv: Env['APP_ENV'] | string): boolean {
 
 /** Hằng số nghiệp vụ đã chốt trong kiến trúc. */
 export const BUSINESS = {
-  /** Số ngày giữ hoa hồng cộng sự trong hội (mục 201). */
+  /** Số ngày giữ hoa hồng affiliate trong hội (mục 201). */
   communityHoldDays: 14,
-  /** Số ngày giữ hoa hồng cộng sự nền tảng (mục 201). */
+  /** Số ngày giữ hoa hồng affiliate nền tảng (mục 201). */
   platformHoldDays: 30,
   /** Mức rút tối thiểu mặc định, đơn vị đồng. */
   minWithdrawalMinor: 500_000,
@@ -152,7 +152,7 @@ export const BUSINESS = {
   statusMaxChars: 130,
   /** Polling tin nhắn (giây). */
   messagePollSeconds: 15,
-  /** Snapshot xếp hạng cộng sự (phút). */
+  /** Snapshot xếp hạng affiliate (phút). */
   leaderboardSnapshotMinutes: 10,
   /** Số câu hỏi khi tham gia tối đa. */
   maxJoinQuestions: 3,

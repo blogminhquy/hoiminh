@@ -1,4 +1,4 @@
-// Hồ sơ thành viên (profileMain): bìa + avatar, nhãn, bio, link, 5 số, tab bài viết; rail tiến độ học, hội cùng tham gia, thẻ cộng sự.
+// Hồ sơ thành viên (profileMain): bìa + avatar, nhãn, bio, link, 5 số, tab bài viết; rail tiến độ học, hội cùng tham gia, thẻ affiliate.
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, CommunityMark, Prog, T } from '@hoiminh/ui';
 import { BadgeCheck, ExternalLink, Globe, Heart, MessageCircle, Pencil, Trophy, UserPlus, Video } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function Page() {
                   <div className="flex items-end gap-4 flex-wrap" style={{ marginTop: -40 }}>
                     <span className="inline-flex rounded-full" style={{ border: `4px solid ${T.surface}` }}><Avatar name={u.name} src={u.avatarUrl} color={u.coverColor ?? T.accent} size={96} /></span>
                     <div className="flex-grow pb-1.5 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap"><span className="serif text-[24px] font-extrabold">{u.name}</span>{maxLevel > 0 && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>Cấp {maxLevel}</span>}{top?.tier && top.tier.key !== 'standard' && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{top.tier.name}</span>}{p.leaderboard && <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}><Trophy size={11} />Cộng sự hạng {p.leaderboard.rank}</span>}</div>
+                      <div className="flex items-center gap-2 flex-wrap"><span className="serif text-[24px] font-extrabold">{u.name}</span>{maxLevel > 0 && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>Cấp {maxLevel}</span>}{top?.tier && top.tier.key !== 'standard' && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{top.tier.name}</span>}{p.leaderboard && <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}><Trophy size={11} />Affiliate hạng {p.leaderboard.rank}</span>}</div>
                       <div className="muted text-[13px]">@{u.handle} · Tham gia {fmtDate(u.createdAt)}{u.lastSeenAt ? ` · Hoạt động ${timeAgo(u.lastSeenAt)}` : ''}{u.occupation ? ` · ${u.occupation}` : ''}</div>
                     </div>
                     <div className="flex gap-2 pb-1.5">
@@ -86,7 +86,7 @@ export default function Page() {
               )}
               {p.leaderboard && (
                 <div className="card card-invert p-4 flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Trophy size={14} />Cộng sự tháng {new Date().getMonth() + 1}</div>
+                  <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Trophy size={14} />Affiliate tháng {new Date().getMonth() + 1}</div>
                   <div className="serif text-[20px] font-extrabold">Hạng {p.leaderboard.rank} · {p.leaderboard.referrals} người giới thiệu</div>
                   <div className="text-[13px]" style={{ color: T.sideText }}>{p.leaderboard.paid} người trong số đó đã trả phí</div>
                   {lb && <Link to={`/${lb.slug}/xep-hang`} className="text-[13px] font-semibold" style={{ color: T.gold }}>Xem bảng xếp hạng</Link>}

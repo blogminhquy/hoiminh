@@ -1,6 +1,6 @@
 # Hội Mình
 
-Nền tảng cộng đồng, khóa học và thanh toán cho người Việt: một chủ hội, nhiều hội, bảng tin, khóa học video, sự kiện, cửa hàng, cộng sự (affiliate) và thanh toán qua chuyển khoản QR, MoMo, VNPAY, PayPal. Không thu phí giao dịch; chủ hội trả một gói nền tảng theo tháng hoặc năm.
+Nền tảng cộng đồng, khóa học và thanh toán cho người Việt: một chủ hội, nhiều hội, bảng tin, khóa học video, sự kiện, cửa hàng, affiliate và thanh toán qua chuyển khoản QR, MoMo, VNPAY, PayPal. Không thu phí giao dịch; chủ hội trả một gói nền tảng theo tháng hoặc năm.
 
 Tài liệu kiến trúc: `PLATFORM_ARCHITECTURE_V1_5_SIMPLE_SALES_UX.md`. Thiết kế 50 màn hình: `design/hoi-minh-demo.html`. Quyết định triển khai: `DECISIONS.md`. Tiến trình: `docs/PROGRESS.md`.
 
@@ -23,7 +23,7 @@ Tài khoản mẫu (mật khẩu chung `hoiminh123`):
 |---|---|---|
 | Chủ hội | minhquy@gmail.com | `/minhquy/hom-nay` (Bàn điều khiển), `/minhquy/tien`, `/minhquy/cai-dat`, `/admin` |
 | Super admin | admin@hoiminh.vn | `/he-thong` |
-| Cộng sự | hoangvu@gmail.com | `/tai-khoan/cong-su`, `/minhquy/xep-hang` |
+| Affiliate | hoangvu@gmail.com | `/tai-khoan/cong-su`, `/minhquy/xep-hang` |
 | Thành viên Tiêu chuẩn | congtran@gmail.com | `/minhquy/bang-tin` |
 | Chủ hội gói Miễn phí | vy.english@gmail.com | `/admin` |
 

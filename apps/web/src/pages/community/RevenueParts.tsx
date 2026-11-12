@@ -38,7 +38,7 @@ export function AdminRefundModal({ target, onClose, onSubmit, pending, error }: 
         </div>
         <ul className="text-[13px] muted flex flex-col gap-1 pl-4" style={{ listStyle: 'disc' }}>
           <li>Thành viên mất quyền truy cập phần đã mua ngay lập tức.</li>
-          {(target?.commissionMinor ?? 0) > 0 && <li>Hoa hồng {money(target?.commissionMinor)} của cộng sự sẽ bị đảo khỏi ví.</li>}
+          {(target?.commissionMinor ?? 0) > 0 && <li>Hoa hồng {money(target?.commissionMinor)} của affiliate sẽ bị đảo khỏi ví.</li>}
           <li>{manual ? 'Chuyển khoản: hệ thống chỉ ghi sổ, bạn phải tự chuyển lại tiền cho khách.' : 'Cổng thanh toán sẽ được gọi để hoàn tiền tự động nếu đã có credential.'}</li>
           <li>Thao tác này không hoàn tác được và được ghi vào nhật ký.</li>
         </ul>
