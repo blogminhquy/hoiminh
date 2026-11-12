@@ -144,4 +144,19 @@ describe('tự xác nhận bằng dịch vụ báo có của chủ hội', () =>
     expect((await ownerBankPaid(app, s.reference, s.amountMinor, { token: before })).result).toBe('not_found');
     expect((await ownerBankPaid(app, s.reference, s.amountMinor, { token: after })).result).toBe('processed');
   });
+  it('chủ hội bấm "Gửi thử" bên SePay: Hội Mình nhận, trả 200 và ghi lần báo có, không đụng tới đơn nào', async () => {
+    // Đổi địa chỉ để bắt đầu từ trạng thái chưa nhận lần báo có nào, như lúc chủ hội vừa bật tự xác nhận.
+    const fresh = await ownerPayout.rotatePayoutWebhook(vy, VY);
+    expect(fresh.lastWebhookAt).toBeNull();
+    const token = fresh.webhookUrl.split('/').pop()!;
+    const s = await premium(await app.as('member2'), VY);
+    // Dữ liệu mẫu của SePay: mã giao dịch giả (0), mã thanh toán theo cấu hình của họ, không có mã đơn của Hội Mình.
+    const sample = { id: 0, gateway: 'MBBank', transactionDate: '2026-11-12 10:00:00', accountNumber: '19039998887776', code: 'DH123456', content: 'Thanh toan don hang DH123456', transferType: 'in', transferAmount: 2000, accumulated: 0, subAccount: null, referenceCode: 'FT00000000', description: 'Thanh toan don hang DH123456' };
+    const send = () => ownerPayout.handleOwnerBankWebhook(app.system(), token, { headers: {}, rawBody: JSON.stringify(sample), query: {} });
+    expect(await send()).toMatchObject({ status: 200, result: 'ignored' });
+    expect((await ownerPayout.payoutSetup(vy, VY)).account?.lastWebhookAt).toBeTruthy();
+    // Bấm "Gửi thử" lần nữa (cùng mã giả) vẫn được trả 200 để SePay báo thành công.
+    expect(await send()).toMatchObject({ status: 200, result: 'duplicate' });
+    expect((await orderOf(s.orderId))?.status).toBe('pending');
+  });
 });
