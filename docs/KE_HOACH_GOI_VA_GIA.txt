@@ -1,0 +1,290 @@
+KẾ HOẠCH GÓI VÀ GIÁ HỘI MÌNH
+Ghi lại từ buổi bàn chiến lược ngày 11/11/2026 giữa chủ dự án và Claude.
+Đây là bản ghi quyết định, chưa phải bản triển khai. Chưa có dòng code nào được đổi.
+Bản 2: cập nhật sau lượt chốt thứ hai của chủ dự án cùng ngày.
+
+Cách đọc: mỗi mục ghi rõ trạng thái.
+  [ĐÃ CHỐT]   chủ dự án đã nói rõ là đồng ý hoặc tự đề ra.
+  [CHỜ CHỐT]  chưa quyết, hoặc Claude đề xuất mà chủ dự án chưa xác nhận.
+  [KHÔNG LÀM] đã bàn và quyết định bỏ.
+
+
+==================================================
+1. TƯ DUY GỐC
+==================================================
+
+[ĐÃ CHỐT] Chủ hội kiếm được tiền trước, rồi mới trả tiền để nâng cấp.
+          Gói Miễn phí phải bán hàng và thu tiền được, không cắt công cụ bán hàng.
+
+[ĐÃ CHỐT] Không thu phí trên doanh thu ở bất kỳ gói nào (0% mọi gói).
+          Lý do: ở Việt Nam khó thu, và tiền không đi qua Hội Mình.
+          Chấp nhận gói Miễn phí không sinh lời, lấy lại ở các gói trả phí.
+
+[ĐÃ CHỐT] Giá phải rẻ hơn rất nhiều so với công cụ nước ngoài (Skool, Circle), nhưng vẫn có lãi.
+
+[KHÔNG LÀM] "Miễn phí tới 10 triệu doanh thu đầu tiên". Lý do nâng cấp theo quy mô
+            chỉ là trần thành viên.
+
+
+==================================================
+2. CÁCH BÁN
+==================================================
+
+[ĐÃ CHỐT] Bán theo hội, giống Skool: mỗi gói dùng cho đúng 1 hội.
+
+[ĐÃ CHỐT] Mỗi tài khoản được tạo 1 hội miễn phí. Hội thứ hai trở đi phải là hội trả phí.
+          Một tài khoản tạo được nhiều hội trả phí.
+
+[ĐÃ CHỐT] Hội thứ hai trở đi phải trả ngay khi tạo, không có 14 ngày dùng thử.
+
+[ĐÃ CHỐT] Chỉ bán hai chu kỳ: 3 tháng và 1 năm.
+          Không bán 1 tháng, không bán 6 tháng.
+
+[ĐÃ CHỐT] Giá 1 năm bằng 10 tháng. Giá 3 tháng bằng 3 lần giá tháng.
+
+[ĐÃ CHỐT] Không có dùng thử ở bất kỳ đâu, vì đã có gói Miễn phí.
+          Người mới đăng ký chỉ dùng gói Miễn phí, không được dùng thử gói Chuyên nghiệp.
+
+[ĐÃ CHỐT] Người dùng gói Miễn phí vẫn nhìn thấy các tính năng trả phí,
+          nhưng nút của các tính năng đó bị khóa.
+
+[ĐÃ CHỐT] Không giữ giá cũ 499.000đ cho ai. Nền tảng chưa ra thị trường nên chưa có khách.
+          Gói cũ được thay hẳn bằng bảng gói mới.
+
+[KHÔNG LÀM] "Giá sáng lập" 60.000đ cho 500 hội đầu tiên. Gói Khởi đầu bán 99.000đ từ đầu.
+
+[KHÔNG LÀM] Nhãn "Tạo bằng Hội Mình" trên hội. Không cần thiết.
+
+
+==================================================
+3. BẢNG GÓI
+==================================================
+
+Tất cả mục trong bảng này đều [ĐÃ CHỐT]. Giá ghi theo "quy ra mỗi tháng". Mỗi gói tính cho 1 hội.
+
+GÓI MIỄN PHÍ
+  Giá 0đ, dùng vĩnh viễn.
+  Tối đa 100 thành viên.
+  Bán hàng và thu tiền được.
+  Mỗi tài khoản 1 hội.
+
+GÓI KHỞI ĐẦU
+  Giá 99.000đ/tháng.
+  3 tháng: 297.000đ. 1 năm: 990.000đ.
+  Tối đa 500 thành viên.
+  Không có automation, không có email marketing.
+
+GÓI CHUYÊN NGHIỆP
+  Là gói dành cho người dùng thông thường.
+  Giá 299.000đ/tháng.
+  3 tháng: 897.000đ. 1 năm: 2.990.000đ.
+  Tối đa 5.000 thành viên.
+  Có automation, tên miền riêng, cộng sự, API.
+
+GÓI KHÔNG GIỚI HẠN
+  Bán ngay từ đầu.
+  Giá 799.000đ/tháng.
+  3 tháng: 2.397.000đ. 1 năm: 7.990.000đ.
+  Không giới hạn thành viên.
+  Có mọi thứ của gói Chuyên nghiệp. Tính năng riêng cho gói này để về sau tính.
+
+Hội làm phễu (miễn phí cho thành viên vào, rất đông người):
+  Không có gói riêng. Chọn gói theo số thành viên như mọi hội khác.
+
+
+==================================================
+4. LUẬT VỀ TRẦN THÀNH VIÊN VÀ ĐỔI GÓI
+==================================================
+
+Đếm thành viên
+
+[ĐÃ CHỐT] Đếm tất cả thành viên của hội, ai đã vào hội là tính, không phân biệt
+          có hoạt động hay không.
+
+Khi chạm trần
+
+[ĐÃ CHỐT] Không nhận thêm thành viên mới, và hiện lời mời nâng cấp gói.
+
+[ĐÃ CHỐT] Người mới vẫn gửi yêu cầu vào hội được và nằm ở hàng chờ duyệt.
+          Khi chủ hội bấm nút duyệt thì hiện màn hình nâng cấp gói thay vì duyệt.
+
+[ĐÃ CHỐT] Không xóa thành viên hay dữ liệu nào khi chạm trần.
+
+Nâng gói
+
+[ĐÃ CHỐT] Nâng gói lúc nào cũng được.
+
+[ĐÃ CHỐT] Khi nâng gói, số ngày còn lại của gói cũ được tặng thành số ngày của gói mới,
+          coi như phần thưởng nâng cấp. Không quy thành tiền.
+          Ví dụ theo cách Claude hiểu: hội đang ở gói Khởi đầu còn 60 ngày, mua gói
+          Chuyên nghiệp 3 tháng, thì được dùng gói Chuyên nghiệp 90 ngày cộng 60 ngày.
+
+[ĐÃ CHỐT] Phần tặng ngày chỉ áp dụng khi đi lên gói cao hơn. Đi xuống rồi đi lên lại
+          thì không được tính kiểu này.
+
+Hạ gói
+
+[ĐÃ CHỐT] Không cho mua gói thấp hơn nếu số thành viên hiện tại của hội vượt trần của gói đó.
+
+[CHỜ CHỐT] Hạ gói chỉ có hiệu lực khi hết kỳ đang trả, tức là mua gói thấp ở lần mua kế tiếp.
+
+
+==================================================
+5. TIỀN BÁN HÀNG CỦA HỘI
+==================================================
+
+[ĐÃ CHỐT] Tiền bán hàng của hội về thẳng tài khoản của chủ hội, không đi qua Hội Mình.
+          Chủ hội tự cài tài khoản ngân hàng hoặc bên thứ ba của họ.
+          Hội Mình không lo phần thuế của chủ hội.
+
+[ĐÃ CHỐT] Hội nào chưa cài nhận tiền của chính họ thì chưa bật được thanh toán.
+
+[ĐÃ CHỐT] Tiền mua gói Hội Mình về tài khoản của Hội Mình.
+
+[ĐÃ CHỐT] Chủ dự án sẽ chỉnh phần nhận tiền sau. Hiện code đang chạy ngược lại (xem mục 9).
+
+[CHỜ CHỐT] Hai cách xác nhận đơn: chủ hội nối dịch vụ bên thứ ba của họ để đơn tự xác nhận,
+           hoặc chủ hội bấm "đã nhận tiền" bằng tay. Claude đề xuất có cả hai.
+
+
+==================================================
+6. EMAIL
+==================================================
+
+[ĐÃ CHỐT] Lúc ra mắt chưa xây email marketing. Xây sau.
+
+[ĐÃ CHỐT] Bỏ email thông báo của hội (thông báo bài đăng, gửi cả hội).
+          Thành viên nhận thông báo qua web hoặc ứng dụng.
+
+[ĐÃ CHỐT] Không để "không giới hạn email".
+
+[ĐÃ CHỐT] Giữ nguyên email hệ thống: xác minh tài khoản, đặt lại mật khẩu,
+          biên nhận mua hàng, nhắc gia hạn, nhắc sự kiện đã đăng ký.
+
+[ĐÃ CHỐT] Bản tóm tắt tuần qua email: tạm thời chưa làm.
+
+[CHỜ CHỐT] Email marketing bán thành gói mua riêng bên ngoài các gói. Chủ dự án đang
+           phân vân, có nhắc cả "email marketing và automation mua riêng". Cần làm rõ
+           automation ở đây là automation gửi email, hay cả automation của gói Chuyên nghiệp.
+
+[CHỜ CHỐT] Email ra ngoài hội: bán như phần mua thêm tách khỏi gói Không giới hạn hay không.
+           Chủ dự án muốn cùng bàn lại.
+
+Số liệu tham khảo cho lúc xây email marketing (lấy từ các trang so sánh giá, cần đối chiếu lại):
+  Amazon SES khoảng 0,10 USD cho 1.000 email, tức khoảng 2,6đ mỗi email (tỷ giá 26.000đ).
+  Resend khoảng 10đ đến 23đ mỗi email.
+  Gợi ý giá bán: 10.000 email giá 99.000đ, 50.000 email giá 449.000đ, 200.000 email giá 1.590.000đ.
+  Lãi gộp khoảng 67% đến 74%.
+  Rủi ro chính: Amazon khóa tài khoản gửi nếu tỷ lệ email hỏng hoặc bị báo spam cao.
+  Nên tách email hệ thống (Resend) khỏi email marketing (SES).
+
+
+==================================================
+7. THÔNG BÁO VÀ CÀI RA MÀN HÌNH CHÍNH
+==================================================
+
+Tất cả mục trong phần này đều [ĐÃ CHỐT].
+
+Trên điện thoại, thành viên đã có tài khoản và đã đăng nhập thì bị ẩn tính năng
+và thấy màn hình hướng dẫn "thêm vào màn hình chính". Phải cài mới dùng tiếp.
+
+Trang chủ, trang giới thiệu hội và các trang công khai không bị khóa.
+
+Lần vào đầu tiên cho dùng luôn, từ lần thứ hai mới bắt cài
+(để người vừa trả tiền mua khóa học không bị chặn).
+
+Đang ở trình duyệt trong Zalo, Facebook, Messenger thì đổi hướng dẫn thành
+"Mở bằng Safari hoặc Chrome", kèm link đăng nhập một lần.
+
+Máy hoặc trình duyệt không cài được thì cho vào bình thường.
+
+Android làm nhẹ hơn: cài bằng một lần bấm, hỏi thẳng quyền thông báo.
+
+Xin quyền thông báo đúng lúc, ví dụ ngay sau khi thành viên bình luận.
+
+Làm thành công tắc bật tắt trong quản trị hệ thống, để tắt được ngay nếu
+số người quay lại hội tụt.
+
+
+==================================================
+8. CÁC ĐIỂM CÒN MỞ
+==================================================
+
+Chủ dự án chưa quyết
+
+1. Email marketing: có bán thành gói mua riêng không, và gói đó có gồm automation không.
+2. Email ra ngoài hội: bán thế nào, giá bao nhiêu. Cần bàn lại.
+3. Hai cách xác nhận đơn khi tiền về thẳng chủ hội (tự xác nhận qua bên thứ ba, bấm tay).
+
+Các tình huống Claude thấy cần quyết trước khi triển khai, chưa được bàn
+
+4. Người đã rời hội hoặc bị chặn có tính vào trần không. Claude hiểu là không tính:
+   chỉ đếm người đang là thành viên của hội, bất kể họ có hoạt động hay không.
+5. Hội cho vào tự do, không cần duyệt: khi chạm trần thì người mới chuyển thành chờ duyệt.
+6. Người trả tiền để vào hội đúng lúc hội đã chạm trần: tiền đã về chủ hội,
+   nên cần quyết là chặn thanh toán trước, hay vẫn cho vào.
+7. Hội trả phí hết hạn mà không gia hạn, trong khi số thành viên đã vượt trần gói Miễn phí:
+   khóa gì, giữ gì.
+8. Hạ gói có hiệu lực khi hết kỳ đang trả (mục 4).
+9. Ví dụ về tặng ngày khi nâng gói ở mục 4: xác nhận Claude hiểu đúng.
+
+
+==================================================
+9. HIỆN TRẠNG CODE (bản 1.31.2)
+==================================================
+
+Gói
+  Chỉ có một gói, khóa "hoiminh", 499.000đ/tháng và 4.990.000đ/năm, dùng thử 14 ngày.
+  Hệ thống từ chối tạo gói có khóa khác.
+    packages/core/src/services/platform-billing.ts
+    packages/config/src/index.ts (BUSINESS)
+  Gói gắn với tài khoản chủ hội (workspace), một gói dùng cho mọi hội của tài khoản đó.
+  Chu kỳ chỉ có "monthly" và "yearly".
+    packages/db/src/schema/platform.ts (plans, platform_subscriptions)
+  Bảng plans có sẵn cột quotas và features, nhưng chưa có chỗ nào kiểm tra hạn mức.
+  Hết dùng thử hoặc quá hạn 3 ngày thì khóa tạo nội dung, không xóa dữ liệu.
+  Có nhắc hết hạn dùng thử trước 7, 3, 1 ngày.
+  Trang gói ghi "Một gói duy nhất, đầy đủ tính năng" và "Không giới hạn hội, thành viên".
+    apps/web/src/pages/owner/WorkspacePlan.tsx
+
+Tiền bán hàng
+  Tiền bán hàng của hội đang về tài khoản Hội Mình rồi chuyển cho chủ hội theo yêu cầu
+  (DECISIONS.md mục 23). Chưa có chỗ để chủ hội cài tài khoản nhận tiền riêng.
+  Bảng provider_accounts có sẵn kiểu "workspace" nhưng code mới dùng kiểu "platform".
+    packages/db/src/schema/payments-infra.ts
+
+Thông báo và email
+  Chỉ có bản web, chưa có ứng dụng điện thoại.
+  Chưa thấy phần đẩy thông báo ra điện thoại. Mới có cài đặt bật tắt (emailDigest, push).
+    packages/core/src/services/notifications.ts
+  Email đang gửi qua Resend.
+
+Kiểu hội
+  Đã có hội miễn phí, hội "miễn phí kèm phần trả phí", hội thu phí định kỳ, hội thu một lần.
+    packages/db/src/schema/tenant.ts (PricingMode)
+
+
+==================================================
+10. THỨ TỰ TRIỂN KHAI ĐỀ XUẤT
+==================================================
+
+Bước 1. Chủ hội tự cài nhận tiền, tiền về thẳng họ. Hội chưa cài thì khóa nút mua.
+        Bỏ màn "Có thể rút" và việc giữ tiền 14 ngày của chủ hội.
+
+Bước 2. Chuyển gói từ gắn với tài khoản sang gắn với từng hội.
+        Luật mỗi tài khoản 1 hội miễn phí, hội thứ hai trở đi trả ngay.
+
+Bước 3. Bốn gói và hai chu kỳ 3 tháng, 1 năm. Bỏ hẳn dùng thử và các email nhắc dùng thử.
+        Sửa trang gói và màn quản trị gói. Khóa nút tính năng trả phí ở gói Miễn phí.
+
+Bước 4. Kiểm tra trần thành viên theo gói. Màn hình nâng cấp khi duyệt thành viên lúc chạm trần.
+        Luật nâng gói có tặng ngày, luật không cho mua gói thấp khi vượt trần.
+
+Bước 5. Thông báo đẩy trên web và màn hình hướng dẫn cài ra màn hình chính.
+
+Bước 6. Bỏ email thông báo của hội.
+
+Để sau. Email marketing và email ra ngoài hội (chưa chốt cách bán).
+
+Bước 1 phải xong trước khi mở gói Miễn phí, nếu không Hội Mình phải đối soát và chuyển tiền tay
+cho người dùng không trả phí.
