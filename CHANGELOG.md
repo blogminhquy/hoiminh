@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.32.1 - 2026-11-12
+
+Màn Nhận tiền hướng dẫn chủ hội nối SePay từng bước và tự báo "Đã nối" khi nhận được tín hiệu đầu tiên, để chủ hội biết chắc đơn sẽ tự xác nhận mà không phải chờ tới đơn thật.
+
+### Thay đổi
+
+- **Hướng dẫn nối SePay bốn bước** (Cài đặt, Bán hàng, Nhận tiền, khi chọn "Tự xác nhận"): mở tài khoản SePay và thêm đúng tài khoản ngân hàng đã cài; tạo webhook cho sự kiện "Có tiền vào" rồi dán địa chỉ báo có của hội; chọn không xác thực và không bật mục bỏ qua giao dịch thiếu mã thanh toán; bấm "Gửi thử" trong SePay hoặc chuyển thử một khoản nhỏ. Trước đây chỉ có ba dòng chung chung, không nêu tên dịch vụ.
+- **Dòng trạng thái kết nối.** Chưa nhận lần báo có nào thì ghi "Đang chờ tín hiệu đầu tiên từ SePay" và trang tự hỏi lại máy chủ 5 giây một lần; nhận được (kể cả lần "Gửi thử" của SePay) thì chuyển sang "Đã nối" kèm giờ của lần báo có gần nhất, không cần tải lại trang. Đổi địa chỉ báo có thì quay về trạng thái chờ.
+- Lựa chọn "Tự xác nhận" ghi rõ là nối SePay, làm một lần khoảng 10 phút.
+
+### Kỹ thuật
+
+- Không đổi máy chủ, không có migration. Địa chỉ `/webhooks/bank/<mã>` vốn đã trả 200 và ghi `last_webhook_at` cho dữ liệu mẫu của SePay (mã giao dịch giả 0, không có mã đơn); nay có test giữ hành vi này.
+- `apps/web/src/lib/payout-webhook.ts`: hàm thuần `webhookLink` và `webhookPollMs` quyết định trạng thái và việc tự hỏi lại.
+- Test: web `payout-webhook.test.ts` (3), core `owner-payout.test.ts` thêm 1 trường hợp "Gửi thử", e2e luồng 22 gửi dữ liệu mẫu tới địa chỉ báo có và chờ dòng trạng thái đổi.
+
 ## 1.32.0 - 2026-11-11
 
 Gói Hội Mình đổi theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không còn dùng thử. Hội chạm trần thành viên của gói thì không nhận thêm người mới (không xóa ai), và bốn tính năng trả phí (tự động hóa, tên miền riêng, cộng sự, API) được khóa theo gói. Email thông báo của hội được thay bằng thông báo trong ứng dụng. Tiền bán hàng của hội về thẳng tài khoản ngân hàng của chủ hội, không còn đi qua Hội Mình. Trên điện thoại, thành viên có thể được yêu cầu thêm Hội Mình ra màn hình chính (quản trị hệ thống bật tắt, mặc định đang tắt) và nhận thông báo đẩy.

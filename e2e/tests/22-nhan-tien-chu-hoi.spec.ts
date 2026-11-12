@@ -1,10 +1,11 @@
 // Luồng 22: chủ hội cài nhận tiền. Hội chưa cài thì nút mua bị khóa → chủ hội nhập tài khoản ngân hàng của mình →
 // người mua thấy mã QR tới đúng tài khoản đó, bấm "Tôi đã chuyển khoản" → chủ hội bấm "Đã nhận tiền" → người mua được
-// mở quyền ngay. Tiền không đi qua Hội Mình. Cuối cùng chủ hội chuyển sang tự xác nhận và thấy địa chỉ báo có.
+// mở quyền ngay. Tiền không đi qua Hội Mình. Cuối cùng chủ hội chuyển sang tự xác nhận, thấy
+// hướng dẫn nối SePay kèm địa chỉ báo có, và dòng trạng thái tự báo "Đã nối" khi SePay gửi thử.
 import { expect, test } from '@playwright/test';
 import { USERS, login } from '../helpers';
 
-test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội bấm "Đã nhận tiền" là người mua được mở quyền', async ({ browser, page }) => {
+test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội bấm "Đã nhận tiền" là người mua được mở quyền', async ({ browser, page, request }) => {
   // Người mua: thành viên muốn nâng Premium ở hội của Vy.
   const buyerCtx = await browser.newContext();
   const buyer = await buyerCtx.newPage();
@@ -59,6 +60,16 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await page.goto('/ngoai-ngu-vy/cai-dat/nhan-tien');
   await page.getByRole('radio', { name: /Tự xác nhận/ }).click();
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
-  await expect(page.getByText('Nối dịch vụ báo có của bạn')).toBeVisible();
-  await expect(page.getByText(/\/webhooks\/bank\/[a-f0-9]{40}/)).toBeVisible();
+  const sepay = page.getByRole('region', { name: 'Nối SePay để đơn tự xác nhận' });
+  await expect(sepay.getByText(/Chọn sự kiện/)).toBeVisible();
+  const address = sepay.getByText(/\/webhooks\/bank\/[a-f0-9]{40}/);
+  await expect(address).toBeVisible();
+  await expect(sepay.getByRole('status')).toContainText('Đang chờ tín hiệu đầu tiên từ SePay');
+
+  // Chủ hội bấm "Gửi thử" bên SePay (dữ liệu mẫu, mã giao dịch giả): dòng trạng thái tự chuyển sang "Đã nối",
+  // không cần tải lại trang.
+  const url = (await address.textContent())!.trim();
+  const res = await request.post(url, { data: { id: 0, gateway: 'MBBank', transactionDate: '2026-11-12 10:00:00', accountNumber: '19039998887776', code: 'DH123456', content: 'Thanh toan don hang DH123456', transferType: 'in', transferAmount: 2000, accumulated: 0, subAccount: null, referenceCode: 'FT00000000', description: '' } });
+  expect(res.status()).toBe(200);
+  await expect(sepay.getByRole('status')).toContainText('Đã nối', { timeout: 20_000 });
 });
