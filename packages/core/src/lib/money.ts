@@ -15,6 +15,13 @@ export function periodEnd(start: Date, cycle: 'monthly' | 'yearly' | 'one_time')
   return d;
 }
 
+/** Ngày kết thúc kỳ khi mua `months` tháng (kỳ hạn của gói thành viên). 1 tháng và 12 tháng cho đúng kết quả của `periodEnd`. */
+export function periodEndMonths(start: Date, months: number): Date {
+  const d = new Date(start);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
 /** Mã tham chiếu thanh toán "HM XXXXX" (5 ký tự không gây nhầm). */
 export function newReference(): string {
   return `HM ${randomCode(5)}`;

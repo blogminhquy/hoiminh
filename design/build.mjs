@@ -500,9 +500,11 @@ const settingsNav = (active) => {
   return `<div style="width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;">${items.map(([t, go]) => `<div data-go="${go}" style="padding: 10px 14px; border-radius: 10px;${t === active ? ` background: ${T.goldSoft}; font-weight: 600;` : ` color: ${T.ink2};`}">${t}</div>`).join('')}</div>`;
 };
 const modeCard = (title, sub, on) => `<div style="flex: 1 1 0; min-height: 80px; padding: 16px; border-radius: 12px; border: 1.5px solid ${on ? T.accent : T.line2}; background: ${on ? T.accentSoft : T.surface}; display: flex; flex-direction: column; gap: 4px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid ${on ? T.accent : T.line2}; display: inline-flex; align-items: center; justify-content: center;">${on ? `<span style="width: 8px; height: 8px; border-radius: 999px; background: ${T.accent};"></span>` : ''}</span><span style="font-weight: 600;">${title}</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">${sub}</span></div>`;
-const tierCard = (name, price, sub, benefits, dark = false, toggle = '') => `<div class="card" style="flex: 1 1 0; padding: 20px; display: flex; flex-direction: column; gap: 12px;${dark ? ` background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink};` : ''}">
+// `terms`: các kỳ hạn của gói, mỗi dòng [số tháng, giá, ghi chú]. Có thì thay cho khối giá lớn.
+const termRow = ([months, price, note], dark) => `<div style="display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: ${dark ? T.sideText : T.ink3};"><span style="width: 46px; padding: 6px 0; text-align: center; border-radius: 6px; background: ${dark ? 'rgba(255,253,249,0.1)' : T.bg}; color: ${dark ? '#FFFDF9' : T.ink}; font-weight: 700; font-size: 15px;">${months}</span>tháng<span style="width: 112px; padding: 6px 8px; border-radius: 6px; background: ${dark ? 'rgba(255,253,249,0.1)' : T.bg}; color: ${dark ? '#FFFDF9' : T.ink}; font-weight: 700; font-size: 15px; margin-left: 4px;">${price}</span>đ<span style="margin-left: auto;">${I.x ? I.x(14) : ''}</span></div>${note ? `<div style="font-size: 12px; color: ${dark ? T.sideText : T.ink3};">${note}</div>` : ''}</div>`;
+const tierCard = (name, price, sub, benefits, dark = false, toggle = '', terms = null) => `<div class="card" style="flex: 1 1 0; padding: 20px; display: flex; flex-direction: column; gap: 12px;${dark ? ` background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink};` : ''}">
   <div style="display: flex; align-items: center; justify-content: space-between;"><span style="font-weight: 600; font-size: 15px;">${name}</span>${toggle}</div>
-  <div><div class="serif" style="font-size: 24px; font-weight: 700;">${price}</div><div style="font-size: 12px; color: ${dark ? T.sideText : T.ink3};">${sub}</div></div>
+  ${terms ? `<div style="display: flex; flex-direction: column; gap: 8px;">${terms.map((t) => termRow(t, dark)).join('')}<div style="display: flex; gap: 6px; flex-wrap: wrap;"><span class="tag" style="background: ${dark ? 'rgba(255,253,249,0.12)' : T.bg}; color: ${dark ? '#FFFDF9' : T.ink2};">+ 6 tháng</span><span class="tag" style="color: ${T.teal};">+ Kỳ khác</span></div></div>` : `<div><div class="serif" style="font-size: 24px; font-weight: 700;">${price}</div><div style="font-size: 12px; color: ${dark ? T.sideText : T.ink3};">${sub}</div></div>`}
   <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: ${dark ? T.sideText : T.ink2};">${benefits.map((b) => `<div style="display: flex; align-items: center; gap: 8px;"><span style="color: ${T.teal};">${I.check(14)}</span>${b}</div>`).join('')}<div style="display: flex; align-items: center; gap: 8px; color: ${T.teal};">${I.plus(14)}Thêm quyền lợi</div></div>
 </div>`;
 
@@ -520,15 +522,22 @@ const pricingMain = `
 
     <div style="display: flex; gap: 10px;">
       ${modeCard('Miễn phí', 'Ai cũng vào được', false)}
-      ${modeCard('Thu phí', 'Theo tháng hoặc năm', false)}
+      ${modeCard('Thu phí', 'Theo kỳ hạn 1, 3, 6, 12 tháng', false)}
       ${modeCard('Freemium', 'Vào miễn phí, nâng cấp gói', true)}
       ${modeCard('Trả một lần', 'Truy cập trọn đời', false)}
     </div>
 
     <div style="display: flex; gap: 16px;">
       ${tierCard('Tiêu chuẩn', 'Miễn phí', 'Mặc định khi tham gia', ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'])}
-      ${tierCard('Premium', '249.000đ', 'mỗi tháng · hoặc 2.490.000đ/năm', ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&amp;A hàng tuần'])}
+      ${tierCard('Premium', '249.000đ', 'mỗi tháng', ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&amp;A hàng tuần'], false, '', [['1', '249000', ''], ['3', '649000', `216.333đ mỗi tháng <span style="color: ${T.teal};">· rẻ hơn 13%</span>`], ['12', '2490000', `207.500đ mỗi tháng <span style="color: ${T.teal};">· rẻ hơn 17%</span>`]])}
       ${tierCard('VIP', '2.500.000đ', 'mỗi tháng', ['Coaching 1-1 hàng tuần', 'Coaching nhóm hàng tuần'], true, `<span style="width: 40px; height: 22px; border-radius: 999px; background: ${T.teal}; position: relative; display: inline-block;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span>`)}
+    </div>
+
+    <div class="card" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;"><div style="display: flex; flex-direction: column; flex-grow: 1;"><span style="font-weight: 600;">Khuyến mãi</span><span class="muted" style="font-size: 14px;">Giảm giá mọi kỳ hạn của gói trả phí. Người mua thấy giá gốc gạch đi và giá mới.</span></div><span style="width: 40px; height: 22px; border-radius: 999px; background: ${T.teal}; position: relative; display: inline-block; flex-shrink: 0;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span></div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; padding-top: 12px; border-top: 1px solid ${T.line};">Giảm<span style="width: 64px; padding: 6px 0; text-align: center; border-radius: 6px; background: ${T.bg}; font-weight: 700; font-size: 15px;">20</span>%<span class="tag" style="background: ${T.bg}; color: ${T.ink2};">10%</span><span class="tag" style="background: ${T.ink}; color: #FFFDF9;">20%</span><span class="tag" style="background: ${T.bg}; color: ${T.ink2};">30%</span><span class="tag" style="background: ${T.bg}; color: ${T.ink2};">50%</span></div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">Đến hết ngày<span style="padding: 6px 10px; border-radius: 6px; background: ${T.bg}; font-size: 15px;">20/11/2026</span><span class="muted" style="font-size: 13px; text-decoration: underline;">Bỏ ngày hết</span></div>
+      <div style="font-size: 13px; color: ${T.ink2};">Ví dụ: Premium 1 tháng <span class="muted" style="text-decoration: line-through;">249.000đ</span> còn <strong>199.200đ</strong></div>
     </div>
 
     <div class="card" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">

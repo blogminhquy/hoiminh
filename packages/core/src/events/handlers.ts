@@ -71,10 +71,10 @@ export function registerHandlers(app: AppContext): void {
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
     const user = await userOf(c, p.userId);
     if (!order || !user) return;
-    const meta = order.metadata as { cycle?: 'monthly' | 'yearly' | 'one_time' | 'quarterly'; title?: string; communitySlug?: string; productSlug?: string; kind?: string; planKey?: string; planCommunityId?: string };
+    const meta = order.metadata as { cycle?: 'monthly' | 'yearly' | 'one_time' | 'quarterly'; months?: number; title?: string; communitySlug?: string; productSlug?: string; kind?: string; planKey?: string; planCommunityId?: string };
     const paidAt = order.paidAt ?? c.now();
     if (p.targetType === 'tier' && p.communityId) {
-      await activateTierPurchase(c, { orderId: order.id, userId: p.userId, communityId: p.communityId, tierId: p.targetId, cycle: meta.cycle && meta.cycle !== 'quarterly' ? meta.cycle : 'monthly', amountMinor: p.amountMinor, provider: p.provider, affiliateAccountId: p.affiliateAccountId, paidAt });
+      await activateTierPurchase(c, { orderId: order.id, userId: p.userId, communityId: p.communityId, tierId: p.targetId, cycle: meta.cycle && meta.cycle !== 'quarterly' ? meta.cycle : 'monthly', months: Number.isInteger(meta.months) ? meta.months : null, amountMinor: p.amountMinor, provider: p.provider, affiliateAccountId: p.affiliateAccountId, paidAt });
     } else if (p.targetType === 'product' && p.communityId) {
       const product = await c.db.query.products.findFirst({ where: eq(products.id, p.targetId) });
       await grant(c, { userId: p.userId, workspaceId: p.workspaceId, communityId: p.communityId, resourceType: 'product', resourceId: p.targetId, sourceType: 'purchase', sourceId: order.id });

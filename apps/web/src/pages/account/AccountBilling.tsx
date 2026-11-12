@@ -1,4 +1,5 @@
 // Tài khoản · Gói và thanh toán (accountBillingMain): gói đang dùng (đổi kỳ, hủy/tiếp tục), trọn đời, phương thức, lịch sử + hóa đơn + hoàn tiền.
+import { monthsOfCycle, termUnit } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CommunityMark, T, money } from '@hoiminh/ui';
 import { QrCode } from 'lucide-react';
@@ -11,11 +12,11 @@ import { fmtDate } from '@/lib/format';
 import { HistoryTable, InvoiceModal, RefundModal, providerLabel, type BillingHistoryRow } from './AccountBillingParts';
 
 interface CommunityLite { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null }
-interface Sub { id: string; status: 'active' | 'cancelling' | 'past_due'; billingCycle: 'monthly' | 'yearly'; amountMinor: number; currentPeriodEnd: string; cancelAtPeriodEnd: boolean; provider: string | null; community: CommunityLite | null; tier: { name: string; key: string } | null }
+interface Sub { id: string; status: 'active' | 'cancelling' | 'past_due'; billingCycle: 'monthly' | 'yearly'; /** Số tháng của kỳ đang chạy. Gói mua trước khi có kỳ hạn thì null. */ periodMonths?: number | null; amountMinor: number; currentPeriodEnd: string; cancelAtPeriodEnd: boolean; provider: string | null; community: CommunityLite | null; tier: { name: string; key: string } | null }
 interface Billing { subscriptions: Sub[]; lifetime: Array<{ orderId: string; community: CommunityLite | null; amountMinor: number; paidAt: string | null }>; history: BillingHistoryRow[] }
 
 function SubRow({ s, onToggle, pending }: { s: Sub; onToggle: () => void; pending: boolean }) {
-  const cycle = s.billingCycle === 'yearly' ? 'năm' : 'tháng';
+  const cycle = termUnit(monthsOfCycle(s.billingCycle, s.periodMonths));
   const ending = s.status === 'cancelling' || s.cancelAtPeriodEnd;
   return (
     <div className="flex items-center gap-4 py-4 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
@@ -24,7 +25,7 @@ function SubRow({ s, onToggle, pending }: { s: Sub; onToggle: () => void; pendin
         <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold">{s.community?.name ?? 'Hội Mình'}</span><span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{s.tier?.name ?? 'Gói'}</span>{s.status === 'past_due' && <span className="tag" style={{ background: T.accentSoft, color: T.accentText }}>Quá hạn</span>}</div>
         <div className="muted text-[13px]">{money(s.amountMinor)}/{cycle} · {ending ? `kết thúc ${fmtDate(s.currentPeriodEnd)}` : `gia hạn ${fmtDate(s.currentPeriodEnd)}`} · {providerLabel(s.provider)}</div>
       </div>
-      {s.community && s.billingCycle === 'monthly' && !ending && <Link to={`/${s.community.slug}/thanh-toan?tier=${s.tier?.key ?? 'premium'}&cycle=yearly`} className="btn btn-ghost btn-sm">Đổi sang năm</Link>}
+      {s.community && !ending && <Link to={`/${s.community.slug}/thanh-toan?tier=${s.tier?.key ?? 'premium'}`} className="btn btn-ghost btn-sm">Gia hạn hoặc đổi kỳ</Link>}
       <button type="button" className="btn btn-ghost btn-sm" style={{ color: ending ? T.teal : T.accentText }} disabled={pending} onClick={onToggle}>{ending ? 'Tiếp tục gia hạn' : 'Hủy gia hạn'}</button>
     </div>
   );

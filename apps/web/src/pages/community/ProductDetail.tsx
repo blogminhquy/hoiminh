@@ -70,7 +70,7 @@ export default function Page() {
             )}
             <Faq items={p.page?.faq ?? []} />
           </div>
-          <PriceRail p={p} slug={slug} premium={shell.premium} />
+          <PriceRail p={p} slug={slug} premium={shell.premium} pricingMode={shell.community.pricingMode} />
         </div>
       )}
     </QueryState>

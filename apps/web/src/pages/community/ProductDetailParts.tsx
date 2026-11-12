@@ -4,6 +4,7 @@ import { Avatar, T, money } from '@hoiminh/ui';
 import { BadgeCheck, Check, ChevronDown, ChevronRight, Clock, Copy, Download, FileText, Link as LinkIcon, Lock, MessageCircle, Play, QrCode, ShieldCheck, Sparkles, Video } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { checkoutQuery, entryChoice, type PremiumPricing } from '@/lib/membership';
 import { api, errorMessage } from '@/lib/api';
 import { fmtBytes, fmtDuration } from '@/lib/format';
 
@@ -105,12 +106,13 @@ export function DigitalDownloads({ productId }: { productId: string }) {
   );
 }
 
-export function PriceRail({ p, slug, premium }: { p: Product; slug: string; premium: { monthlyMinor: number | null } | null }) {
+export function PriceRail({ p, slug, premium, pricingMode }: { p: Product; slug: string; premium: PremiumPricing | null; pricingMode: string }) {
   const [copied, setCopied] = useState(false);
   const external = p.page?.salesMode === 'external_landing' && p.page.externalLandingUrl;
   const buyTo = `/${slug}/thanh-toan?product=${p.id}`;
   const firstPreview = p.curriculum.flatMap((m) => m.lessons).find((l) => l.isPreview);
-  const showPremium = premium?.monthlyMinor && p.kind === 'course' && (p.course?.accessMode === 'premium_and_store') && p.viewerTier !== 'premium' && p.viewerTier !== 'vip' && !p.owned;
+  const entry = entryChoice(premium, pricingMode);
+  const showPremium = entry && p.kind === 'course' && (p.course?.accessMode === 'premium_and_store') && p.viewerTier !== 'premium' && p.viewerTier !== 'vip' && !p.owned;
   return (
     <aside className="rail flex flex-col gap-3.5">
       <div className="card p-5 flex flex-col gap-3.5">
@@ -137,9 +139,9 @@ export function PriceRail({ p, slug, premium }: { p: Product; slug: string; prem
       {showPremium && (
         <div className="card card-invert p-[18px] flex flex-col gap-2">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={14} />Rẻ hơn với Premium</div>
-          <div className="serif text-[18px] font-extrabold leading-[1.3]">Premium {money(premium.monthlyMinor)}/tháng mở khóa này và mọi khóa Premium khác</div>
+          <div className="serif text-[18px] font-extrabold leading-[1.3]">Premium {money(entry.payMinor)}/{entry.unit} mở khóa này và mọi khóa Premium khác</div>
           <div className="text-[13px]" style={{ color: T.sideText }}>Bạn đang ở gói {p.viewerTier ? 'Tiêu chuẩn' : 'khách'}. Hủy bất cứ lúc nào.</div>
-          <Link to={`/${slug}/thanh-toan?tier=premium&cycle=monthly`} className="btn btn-primary btn-sm self-start">Nâng cấp Premium</Link>
+          <Link to={`/${slug}/thanh-toan?${checkoutQuery(entry)}`} className="btn btn-primary btn-sm self-start">Nâng cấp Premium</Link>
         </div>
       )}
       {p.inBundles.length > 0 && (

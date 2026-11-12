@@ -1,21 +1,21 @@
-// Bước chọn: /:slug/thanh-toan?tier=premium&cycle=yearly hoặc ?product=<id> → chọn chu kỳ, mã giảm giá, cổng → POST /v1/checkout.
+// Bước chọn: /:slug/thanh-toan?tier=premium&months=3 hoặc ?product=<id> → chọn kỳ hạn, mã giảm giá, cổng → POST /v1/checkout.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, CommunityMark, Radio, T, money } from '@hoiminh/ui';
-import { Check, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Lock, Tag } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import type { Shell } from '@/lib/community';
+import { modeChoices, promoEndLabel, type TermChoice } from '@/lib/membership';
 import { CheckoutFrame, PROVIDERS, ProviderOption, Totals, type Provider } from './CheckoutParts';
 
-type Cycle = 'monthly' | 'yearly' | 'one_time';
 interface ProductLite { id: string; name: string; priceMinor: number; compareAtMinor: number | null; kind: string; slug: string }
 interface ProductList { items: ProductLite[] }
 
-function CycleCard({ on, title, sub, badge, onClick }: { on: boolean; title: string; sub: string; badge?: string; onClick: () => void }) {
+function CycleCard({ on, title, sub, badge, onClick }: { on: boolean; title: string; sub: ReactNode; badge?: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex-1 p-3.5 rounded-xl text-left relative" style={{ border: `1.5px solid ${on ? T.primary : T.line2}`, background: on ? T.primarySoft : T.surface }}>
+    <button type="button" onClick={onClick} className="flex-1 min-w-[150px] p-3.5 rounded-xl text-left relative" style={{ border: `1.5px solid ${on ? T.primary : T.line2}`, background: on ? T.primarySoft : T.surface }}>
       {badge && <span className="tag absolute -top-2.5 right-3" style={{ background: T.ink, color: T.surface }}>{badge}</span>}
       <span className="flex items-center gap-2"><Radio on={on} /><span className="font-semibold">{title}</span></span>
       <span className="block pl-[26px] text-[13px]" style={{ color: T.ink2 }}>{sub}</span>
@@ -23,11 +23,19 @@ function CycleCard({ on, title, sub, badge, onClick }: { on: boolean; title: str
   );
 }
 
-export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref }: { shell: Shell; tierKey: string | null; productId: string | null; initialCycle: string | null; ref: string | null }) {
+/** Lựa chọn mở sẵn: đúng số tháng trên đường dẫn nếu có, không thì theo `cycle` kiểu cũ, không thì kỳ ngắn nhất. */
+function initialChoice(list: TermChoice[], cycle: string | null, months: string | null): number | null {
+  const want = cycle === 'one_time' ? null : Number(months) || (cycle === 'yearly' ? 12 : cycle === 'monthly' ? 1 : 0);
+  return (list.find((x) => x.months === want) ?? list[0])?.months ?? null;
+}
+
+export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, initialMonths, ref }: { shell: Shell; tierKey: string | null; productId: string | null; initialCycle: string | null; initialMonths: string | null; ref: string | null }) {
   const navigate = useNavigate();
   const c = shell.community;
   const premium = shell.premium;
-  const [cycle, setCycle] = useState<Cycle>(initialCycle === 'monthly' || initialCycle === 'one_time' ? initialCycle : premium?.yearlyMinor ? 'yearly' : premium?.monthlyMinor ? 'monthly' : 'one_time');
+  const choices = modeChoices(premium, c.pricingMode);
+  const [months, setMonths] = useState<number | null>(() => initialChoice(choices, initialCycle, initialMonths));
+  const choice = choices.find((x) => x.months === months) ?? choices[0] ?? null;
   // Đơn của hội chỉ trả bằng chuyển khoản tới tài khoản của chủ hội (tiền không qua Hội Mình).
   const provider: Provider = 'sepay';
   const ready = c.paymentsReady;
@@ -38,17 +46,19 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
 
   const m = useMutation({
     mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', {
-      target: product ? { type: 'product', productId: product.id } : { type: 'tier', communityId: c.id, tierKey: tierKey ?? 'premium', cycle },
+      target: product ? { type: 'product', productId: product.id } : { type: 'tier', communityId: c.id, tierKey: tierKey ?? 'premium', ...(choice?.months ? { cycle: choice.months === 12 ? 'yearly' : 'monthly', months: choice.months } : { cycle: 'one_time' }) },
       provider, couponCode: applied ?? undefined, ref: ref ?? undefined, returnUrl: `${window.location.origin}/thanh-toan/`,
     }),
     onSuccess: (r) => navigate(`/thanh-toan/${r.orderId}`),
   });
 
   if (productId && products.isLoading) return <CheckoutFrame backTo={`/${c.slug}/cua-hang`}><LoadingBlock /></CheckoutFrame>;
-  const amount = product ? product.priceMinor : cycle === 'monthly' ? premium?.monthlyMinor ?? 0 : cycle === 'yearly' ? premium?.yearlyMinor ?? 0 : premium?.oneTimeMinor ?? 0;
+  const listAmount = product ? product.priceMinor : choice?.listMinor ?? 0;
+  const amount = product ? product.priceMinor : choice?.payMinor ?? 0;
+  const promo = !product && choice && choice.percentOff > 0 ? premium?.promo ?? null : null;
+  const promoEnd = promoEndLabel(promo);
   const title = product ? product.name : 'Gói Premium';
-  const line = product ? product.name : `Premium · ${cycle === 'monthly' ? '1 tháng' : cycle === 'yearly' ? '12 tháng' : 'trọn đời'}`;
-  const savePct = premium?.monthlyMinor && premium.yearlyMinor ? Math.round((1 - premium.yearlyMinor / (premium.monthlyMinor * 12)) * 100) : 0;
+  const line = product ? product.name : `Premium · ${choice?.months ? `${choice.months} tháng` : 'trọn đời'}`;
   const benefits = product ? ['Truy cập trọn đời', 'Cập nhật miễn phí', 'Hoàn tiền 7 ngày nếu xem chưa quá 20%'] : premium?.benefits ?? [];
 
   return (
@@ -60,11 +70,21 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
               <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={56} radius={14} />
               <div><div className="muted text-[12px]">{product ? 'Mua tại' : 'Nâng cấp tại'} {c.name}</div><div className="serif text-[22px] font-extrabold">{title}</div></div>
             </div>
-            {!product && premium && (
-              <div className="flex gap-2.5 flex-col sm:flex-row">
-                {premium.monthlyMinor ? <CycleCard on={cycle === 'monthly'} title="Theo tháng" sub={`${money(premium.monthlyMinor)} / tháng`} onClick={() => setCycle('monthly')} /> : null}
-                {premium.yearlyMinor ? <CycleCard on={cycle === 'yearly'} title="Theo năm" sub={`${money(premium.yearlyMinor)} / năm · ${money(Math.round(premium.yearlyMinor / 12))} mỗi tháng`} badge={savePct > 0 ? `Tiết kiệm ${savePct}%` : undefined} onClick={() => setCycle('yearly')} /> : null}
-                {premium.oneTimeMinor ? <CycleCard on={cycle === 'one_time'} title="Trọn đời" sub={`${money(premium.oneTimeMinor)} một lần`} onClick={() => setCycle('one_time')} /> : null}
+            {!product && promo && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] font-semibold" style={{ background: T.goldSoft, color: T.goldDark }}><Tag size={16} />Đang giảm {promo.percentOff}%{promoEnd ? ` đến hết ngày ${promoEnd}` : ''}</div>
+            )}
+            {!product && choices.length > 0 && (
+              <div className="flex gap-2.5 flex-col sm:flex-row sm:flex-wrap">
+                {choices.map((x) => (
+                  <CycleCard
+                    key={x.months ?? 'once'}
+                    on={choice?.months === x.months}
+                    title={x.months ? `${x.months} tháng` : 'Trọn đời'}
+                    badge={x.savingPercent > 0 ? `Rẻ hơn ${x.savingPercent}%` : undefined}
+                    sub={<>{x.percentOff > 0 && <span className="line-through muted mr-1.5">{money(x.listMinor)}</span>}<strong style={{ color: T.ink }}>{money(x.payMinor)}</strong>{x.months && x.months > 1 ? ` · ${money(Math.round(x.payMinor / x.months))} mỗi tháng` : x.months ? '' : ' một lần'}</>}
+                    onClick={() => setMonths(x.months)}
+                  />
+                ))}
               </div>
             )}
             <div className="flex flex-col gap-2 text-[13px] pt-1" style={{ color: T.ink2 }}>
@@ -74,7 +94,7 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
               <div className="input flex-1 min-w-0" style={{ width: 'auto' }}><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="flex-grow" /></div>
               <Button className="flex-shrink-0" onClick={() => setApplied(coupon.trim() || null)}>{applied ? 'Đã áp dụng' : 'Áp dụng'}</Button>
             </div>
-            <Totals lines={[{ label: line, amountMinor: amount }, { label: 'Giảm giá', amountMinor: 0 }]} total={amount} referredBy={null} />
+            <Totals lines={[{ label: line, amountMinor: listAmount }, { label: promo ? `Khuyến mãi ${promo.percentOff}%` : 'Giảm giá', amountMinor: amount - listAmount }]} total={amount} referredBy={null} />
             {applied && <div className="muted text-[12px]">Mã {applied} sẽ được kiểm tra khi tạo đơn.</div>}
           </div>
         </div>

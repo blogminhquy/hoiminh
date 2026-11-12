@@ -1,6 +1,6 @@
 // Checkout: tier hội (tháng/năm/một lần), sản phẩm cửa hàng, gói nền tảng. Gọi PaymentService qua adapter, không chạm cổng trực tiếp.
 import type { CheckoutSession, CreateCheckoutInput } from '@hoiminh/contracts';
-import { PLAN_CYCLE, effectivePlanKey, formatMoney, planQuote } from '@hoiminh/contracts';
+import { PLAN_CYCLE, applyPromo, cycleOfMonths, effectivePlanKey, formatMoney, monthsOfCycle, planQuote, termLabel, termPrice, termUnit, tierTerms } from '@hoiminh/contracts';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, providerAccounts, users, type OrderStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -28,8 +28,15 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
     if (!c.doorsOpen) throw invalid('Hội đã đóng cổng');
     const tier = await ctx.db.query.communityTiers.findFirst({ where: and(eq(communityTiers.communityId, c.id), eq(communityTiers.key, t.tierKey), eq(communityTiers.isActive, true)) });
     if (!tier) throw notFound('Gói không tồn tại');
-    const amount = t.cycle === 'monthly' ? tier.monthlyMinor : t.cycle === 'yearly' ? tier.yearlyMinor : tier.oneTimeMinor;
-    if (!amount) throw invalid('Gói này không bán theo chu kỳ đã chọn');
+    // Kỳ hạn người mua chọn. Bản cũ chỉ gửi `cycle`: monthly là 1 tháng, yearly là 12 tháng.
+    const months = t.cycle === 'one_time' ? null : monthsOfCycle(t.cycle, t.months);
+    const listMinor = months === null ? tier.oneTimeMinor : termPrice(tierTerms(tier), months);
+    if (!listMinor) throw invalid(months === null ? 'Gói này không bán trả một lần' : `Gói này không bán kỳ ${termLabel(months)}`);
+    // Khuyến mãi của chủ hội đang chạy thì trừ thẳng vào giá. Tính ở máy chủ, không tin số tiền phía trình duyệt.
+    const promo = applyPromo(listMinor, c.pricingPromo, ctx.now());
+    const amount = promo.payMinor;
+    if (amount <= 0) throw invalid('Gói này chưa có giá');
+    const cycle = months === null ? 'one_time' as const : cycleOfMonths(months);
     // Hội đã chạm trần thành viên của gói: chặn trước khi thu tiền, để không ai trả tiền rồi mà không vào được.
     // Người đang là thành viên (đổi tier, gia hạn) thì không chiếm thêm chỗ nên vẫn mua được.
     const mine = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, c.id), eq(communityMembers.userId, userId)), columns: { status: true } });
@@ -37,8 +44,8 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
       const plan = await communityPlan(ctx, c.id);
       if (plan.full) throw plan.needsPlan ? invalidState('Hội chưa mở') : new AppError('member_cap', 'Hội đang đủ chỗ, chưa nhận thêm thành viên mới. Bạn quay lại sau nhé.', undefined, { communityId: c.id });
     }
-    const cycleLabel = t.cycle === 'monthly' ? 'tháng' : t.cycle === 'yearly' ? 'năm' : 'trọn đời';
-    return { title: `Gói ${tier.name}`, subtitle: `Nâng cấp tại ${c.name}`, amountMinor: amount, currency: 'VND', communityId: c.id, workspaceId: c.workspaceId, targetType: 'tier', targetId: tier.id, metadata: { cycle: t.cycle, tierKey: tier.key, title: `${tier.name} · ${cycleLabel}`, communitySlug: c.slug }, enabledProviders: c.enabledProviders, itemName: `${tier.name} · ${cycleLabel}` };
+    const cycleLabel = months === null ? 'trọn đời' : termUnit(months);
+    return { title: `Gói ${tier.name}`, subtitle: `Nâng cấp tại ${c.name}`, amountMinor: amount, currency: 'VND', communityId: c.id, workspaceId: c.workspaceId, targetType: 'tier', targetId: tier.id, metadata: { cycle, ...(months === null ? {} : { months }), ...(promo.discountMinor > 0 ? { listMinor, promoPercentOff: promo.percentOff } : {}), tierKey: tier.key, title: `${tier.name} · ${cycleLabel}`, communitySlug: c.slug }, enabledProviders: c.enabledProviders, itemName: `${tier.name} · ${cycleLabel}` };
   }
   if (t.type === 'product') {
     const p = await ctx.db.query.products.findFirst({ where: and(eq(products.id, t.productId), isNull(products.deletedAt), eq(products.status, 'published')) });

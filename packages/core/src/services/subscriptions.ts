@@ -4,27 +4,30 @@ import { communities, communityMembers, communityTiers, entitlements, invoices, 
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { invalidState, notFound } from '../errors';
-import { periodEnd } from '../lib/money';
+import { monthsOfCycle } from '@hoiminh/contracts';
+import { periodEndMonths } from '../lib/money';
 import { requireUser } from '../permissions';
 import { audit } from './audit';
 import { grant } from './entitlements';
 
 /** Sau payment.succeeded cho tier: tạo/gia hạn subscription, gán tier cho thành viên (tạo thành viên nếu chưa), cấp entitlement. */
-export async function activateTierPurchase(ctx: Ctx, p: { orderId: string; userId: string; communityId: string; tierId: string; cycle: 'monthly' | 'yearly' | 'one_time'; amountMinor: number; provider: string; affiliateAccountId: string | null; paidAt: Date }) {
+export async function activateTierPurchase(ctx: Ctx, p: { orderId: string; userId: string; communityId: string; tierId: string; cycle: 'monthly' | 'yearly' | 'one_time'; months?: number | null; amountMinor: number; provider: string; affiliateAccountId: string | null; paidAt: Date }) {
   const community = await ctx.db.query.communities.findFirst({ where: eq(communities.id, p.communityId) });
   if (!community) throw notFound();
   const tier = await ctx.db.query.communityTiers.findFirst({ where: eq(communityTiers.id, p.tierId) });
   if (!tier) throw notFound();
-  const end = periodEnd(p.paidAt, p.cycle);
+  // Số tháng đã mua. Đơn cũ không ghi số tháng thì suy từ chu kỳ (monthly là 1, yearly là 12).
+  const months = p.cycle === 'one_time' ? null : monthsOfCycle(p.cycle, p.months);
+  const end = months === null ? null : periodEndMonths(p.paidAt, months);
   let subId: string | null = null;
-  if (p.cycle !== 'one_time') {
+  if (months !== null && p.cycle !== 'one_time') {
     const existing = await ctx.db.query.subscriptions.findFirst({ where: and(eq(subscriptions.userId, p.userId), eq(subscriptions.communityId, p.communityId), inArray(subscriptions.status, ['active', 'cancelling', 'past_due'])) });
     if (existing) {
       const base = existing.currentPeriodEnd > p.paidAt ? existing.currentPeriodEnd : p.paidAt;
-      const [row] = await ctx.db.update(subscriptions).set({ status: 'active', tierId: tier.id, billingCycle: p.cycle, amountMinor: p.amountMinor, currentPeriodStart: p.paidAt, currentPeriodEnd: periodEnd(base, p.cycle)!, cancelAtPeriodEnd: false, cancelledAt: null, provider: p.provider, lastOrderId: p.orderId, updatedAt: ctx.now() }).where(eq(subscriptions.id, existing.id)).returning();
+      const [row] = await ctx.db.update(subscriptions).set({ status: 'active', tierId: tier.id, billingCycle: p.cycle, periodMonths: months, amountMinor: p.amountMinor, currentPeriodStart: p.paidAt, currentPeriodEnd: periodEndMonths(base, months), cancelAtPeriodEnd: false, cancelledAt: null, provider: p.provider, lastOrderId: p.orderId, updatedAt: ctx.now() }).where(eq(subscriptions.id, existing.id)).returning();
       subId = row!.id;
     } else {
-      const [row] = await ctx.db.insert(subscriptions).values({ workspaceId: community.workspaceId, communityId: p.communityId, userId: p.userId, tierId: tier.id, status: 'active', billingCycle: p.cycle, amountMinor: p.amountMinor, currentPeriodStart: p.paidAt, currentPeriodEnd: end!, provider: p.provider, lastOrderId: p.orderId }).returning();
+      const [row] = await ctx.db.insert(subscriptions).values({ workspaceId: community.workspaceId, communityId: p.communityId, userId: p.userId, tierId: tier.id, status: 'active', billingCycle: p.cycle, periodMonths: months, amountMinor: p.amountMinor, currentPeriodStart: p.paidAt, currentPeriodEnd: end!, provider: p.provider, lastOrderId: p.orderId }).returning();
       subId = row!.id;
     }
   }

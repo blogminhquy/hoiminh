@@ -1,7 +1,7 @@
 // Ngữ cảnh hội hiện tại: khung hội theo slug (GET /v1/communities/by-slug/:slug/shell), quyền của người xem.
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
-import type { PlanFeature, PlanKey } from '@hoiminh/contracts';
+import type { PlanFeature, PlanKey, PricingPromo, TierTerm } from '@hoiminh/contracts';
 import { api } from './api';
 
 export interface ShellPlan { key: PlanKey; name: string; memberCap: number | null; features: PlanFeature[]; endsAt: string | null; needsPlan: boolean; full: boolean; isFreeSlot: boolean }
@@ -14,7 +14,8 @@ export interface Shell {
   stats: { members: number; online: number; admins: number; upcomingEvents: number };
   coursePercent: number | null;
   upcomingEvents: Array<{ id: string; title: string; startsAt: string; endsAt: string; kind: string; meetingProvider: string | null; location: string | null }>;
-  premium: { tierId: string; monthlyMinor: number | null; yearlyMinor: number | null; oneTimeMinor: number | null; benefits: string[] } | null;
+  /** Gói Premium đang bán: `terms` là các kỳ hạn (số tháng và giá), `promo` là khuyến mãi đang chạy (hết hạn thì null). */
+  premium: { tierId: string; monthlyMinor: number | null; yearlyMinor: number | null; oneTimeMinor: number | null; terms: TierTerm[]; promo: PricingPromo | null; benefits: string[] } | null;
 }
 
 export const shellKey = (slug: string) => ['shell', slug] as const;

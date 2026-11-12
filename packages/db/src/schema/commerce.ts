@@ -85,7 +85,8 @@ export const offers = pgTable(
     resourceType: text('resource_type').$type<'tier' | 'product' | 'platform_plan'>().notNull(),
     resourceId: text('resource_id').notNull(),
     name: text('name').notNull(),
-    cycle: text('cycle').$type<'monthly' | 'yearly' | 'one_time'>().notNull(),
+    /** 'monthly' (1 tháng), 'yearly' (12 tháng), 'one_time', hoặc 'm<số tháng>' cho kỳ hạn khác. */
+    cycle: text('cycle').$type<'monthly' | 'yearly' | 'one_time' | `m${number}`>().notNull(),
     status: text('status').notNull().default('active'),
     ...timestamps(),
   },
@@ -248,6 +249,8 @@ export const subscriptions = pgTable(
     offerId: uuid('offer_id').references(() => offers.id),
     status: text('status').$type<SubscriptionStatus>().notNull().default('active'),
     billingCycle: text('billing_cycle').$type<'monthly' | 'yearly'>().notNull(),
+    /** Số tháng của kỳ đang trả (1 đến 36). null ở subscription cũ: suy từ `billing_cycle` (monthly là 1, yearly là 12). */
+    periodMonths: integer('period_months'),
     amountMinor: money('amount_minor').notNull(),
     currency: text('currency').notNull().default('VND'),
     currentPeriodStart: ts('current_period_start').notNull(),
