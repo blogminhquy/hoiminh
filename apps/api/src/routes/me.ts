@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
 import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
+import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, push, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -14,7 +14,9 @@ meRoutes.use('*', requireAuth);
 meRoutes.get('/', async (c) => {
   const ctx = c.get('ctx');
   const u = await users.me(ctx);
-  return c.json({ user: auth.toAuthUser(u), profile: u, communities: await shell.myCommunities(ctx) });
+  // `app`: cấu hình toàn hệ thống mà web cần ngay sau khi đăng nhập (công tắc bắt cài ra màn hình chính, khóa đăng ký thông báo đẩy).
+  const app = { installGate: await featureFlags.isEnabled(ctx, featureFlags.FLAG.installGate), push: push.pushConfig(ctx) };
+  return c.json({ user: auth.toAuthUser(u), profile: u, communities: await shell.myCommunities(ctx), app });
 });
 
 /** Trạng thái tích hợp cho MCP và các client dùng API key: MCP server hỏi lúc khởi động. */
@@ -107,6 +109,11 @@ meRoutes.post('/notifications/read', async (c) => {
   await notifications.markRead(c.get('ctx'), id);
   return c.json({ ok: true });
 });
+/** Thông báo đẩy: trình duyệt gửi đăng ký của thiết bị sau khi người dùng cho phép; tắt thì gỡ đăng ký. */
+const pushSubscriptionSchema = z.object({ endpoint: z.string().url().max(1000), keys: z.object({ p256dh: z.string().min(40).max(200), auth: z.string().min(16).max(100) }) });
+meRoutes.get('/push', async (c) => c.json({ ...push.pushConfig(c.get('ctx')), devices: await push.pushDeviceCount(c.get('ctx')) }));
+meRoutes.post('/push/subscribe', rateLimit('write', { scope: 'push' }), async (c) => c.json(await push.subscribePush(c.get('ctx'), await parse(pushSubscriptionSchema, await body(c)), c.req.header('user-agent'))));
+meRoutes.post('/push/unsubscribe', async (c) => c.json(await push.unsubscribePush(c.get('ctx'), (await parse(z.object({ endpoint: z.string().max(1000) }), await body(c))).endpoint)));
 meRoutes.get('/notifications/prefs', async (c) => c.json(await notifications.getPrefs(c.get('ctx'))));
 meRoutes.put('/notifications/prefs', async (c) => c.json(await notifications.updatePrefs(c.get('ctx'), await parse(notificationPrefsSchema, await body(c)))));
 

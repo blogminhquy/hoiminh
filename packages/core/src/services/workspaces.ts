@@ -1,30 +1,28 @@
-// Workspace chủ hội: tạo khi bắt đầu dùng thử, danh sách "Hội của tôi", đội ngũ.
-import { BUSINESS } from '@hoiminh/config';
+// Workspace chủ hội: tạo khi chủ hội bắt đầu, danh sách "Hội của tôi" (kèm gói của từng hội), đội ngũ.
 import { toSlug } from '@hoiminh/contracts';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
-import { communities, communityMembers, communityTiers, orders, platformSubscriptions, users, workspaceMembers, workspaces } from '@hoiminh/db';
+import { communities, communityMembers, communityTiers, orders, users, workspaceMembers, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { addDays } from '../lib/money';
 import { requireUser, requireWorkspaceRole } from '../permissions';
+import { planDaysLeft } from '@hoiminh/contracts';
 import { audit } from './audit';
+import { planOfCommunity, planTable } from './plans';
 
-/** Lấy hoặc tạo workspace mặc định của người dùng (bắt đầu dùng thử 14 ngày, không cần thẻ). */
+/** Lấy hoặc tạo workspace mặc định của người dùng. Không còn dùng thử: workspace hoạt động ngay, gói tính theo từng hội. */
 export async function ensureWorkspace(ctx: Ctx, userId?: string): Promise<typeof workspaces.$inferSelect> {
   const uid = userId ?? requireUser(ctx);
   const existing = await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.ownerUserId, uid), orderBy: desc(workspaces.createdAt) });
   if (existing) return existing;
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, uid) });
-  const trialEndsAt = addDays(ctx.now(), BUSINESS.platformTrialDays);
   const slug = `${toSlug(user?.handle ?? 'ws')}-${Date.now().toString(36).slice(-4)}`;
-  const [ws] = await ctx.db.insert(workspaces).values({ ownerUserId: uid, name: `Workspace của ${user?.name ?? 'bạn'}`, slug, status: 'trial', trialEndsAt }).returning();
+  const [ws] = await ctx.db.insert(workspaces).values({ ownerUserId: uid, name: `Workspace của ${user?.name ?? 'bạn'}`, slug, status: 'active' }).returning();
   await ctx.db.insert(workspaceMembers).values({ workspaceId: ws!.id, userId: uid, role: 'owner' }).onConflictDoNothing();
-  await ctx.db.insert(platformSubscriptions).values({ workspaceId: ws!.id, planKey: 'hoiminh', status: 'trialing', billingCycle: 'monthly', currentPeriodStart: ctx.now(), currentPeriodEnd: trialEndsAt }).onConflictDoNothing();
-  await ctx.events.emit('platform.trial_started', { workspaceId: ws!.id, ownerUserId: uid, trialEndsAt: trialEndsAt.toISOString() });
   await audit(ctx, { action: 'workspace.create', resourceType: 'workspace', resourceId: ws!.id, workspaceId: ws!.id });
   return ws!;
 }
 
-/** Màn "Hội của tôi": hội mình làm chủ (kèm số liệu 30 ngày), hội tham gia, gói nền tảng, đội ngũ. */
+/** Màn "Hội của tôi": hội mình làm chủ (kèm số liệu 30 ngày và gói của từng hội), hội tham gia, đội ngũ. */
 export async function myWorkspaceHome(ctx: Ctx) {
   const userId = requireUser(ctx);
   const owned = await ctx.db.select({ ws: workspaces }).from(workspaces).where(eq(workspaces.ownerUserId, userId));
@@ -49,15 +47,24 @@ export async function myWorkspaceHome(ctx: Ctx) {
     .leftJoin(communityTiers, eq(communityTiers.id, communityMembers.tierId))
     .where(and(eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling'])));
   const primaryWs = owned[0]?.ws ?? null;
-  const platformSub = primaryWs ? await ctx.db.query.platformSubscriptions.findFirst({ where: eq(platformSubscriptions.workspaceId, primaryWs.id) }) : null;
+  const table = await planTable(ctx);
+  const now = ctx.now();
+  const planOf = (c: typeof communities.$inferSelect) => {
+    const p = planOfCommunity(c, table, now);
+    return { key: p.key, name: p.name, memberCap: p.memberCap, features: p.features, endsAt: p.endsAt, daysLeft: planDaysLeft(p.endsAt, now), boughtKey: p.boughtKey, boughtEndsAt: p.boughtEndsAt, isFreeSlot: p.isFreeSlot, needsPlan: p.needsPlan, full: p.full };
+  };
+  // Hội miễn phí của tài khoản chỉ tính trên các hội mình làm chủ (không tính hội mình chỉ là quản trị viên).
+  const ownWsIds = new Set(owned.map((o) => o.ws.id));
+  const freeSlotUsed = ownedCommunities.some((r) => r.c.isFreeSlot && ownWsIds.has(r.c.workspaceId));
   const team = primaryWs
     ? await ctx.db.select({ m: workspaceMembers, u: { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor } }).from(workspaceMembers).innerJoin(users, eq(users.id, workspaceMembers.userId)).where(eq(workspaceMembers.workspaceId, primaryWs.id))
     : [];
   const totalMembers = ownedCommunities.reduce((n, c) => n + c.c.memberCount, 0);
   return {
     workspace: primaryWs,
-    platformSubscription: platformSub,
-    owned: ownedCommunities.map((r) => ({ ...r.c, revenue30Minor: Number(r.revenue30) })),
+    /** Tài khoản đã dùng hội miễn phí chưa: rồi thì hội tạo thêm phải có gói trả phí. */
+    freeSlotUsed,
+    owned: ownedCommunities.map((r) => ({ ...r.c, revenue30Minor: Number(r.revenue30), plan: planOf(r.c) })),
     joined: joined.filter((j) => !wsIds.includes(j.c.workspaceId)).map((j) => ({ ...j.c, role: j.m.role, tier: j.tier, nextRenewalAt: j.m.nextRenewalAt })),
     team: team.map((t) => ({ ...t.u, role: t.m.role })),
     totals: { communities: ownedCommunities.length, members: totalMembers },
@@ -73,15 +80,3 @@ export async function inviteTeamMember(ctx: Ctx, workspaceId: string, email: str
   await audit(ctx, { action: 'workspace.team_invite', resourceType: 'workspace', resourceId: workspaceId, workspaceId, metadata: { email, role } });
   return { invited: true };
 }
-
-/** Workspace còn được tạo nội dung không (hết dùng thử/hết hạn thì khóa, mục 202). */
-export async function assertWorkspaceUnlocked(ctx: Ctx, workspaceId: string): Promise<void> {
-  const ws = await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, workspaceId), columns: { contentLockedAt: true, status: true } });
-  if (ws?.contentLockedAt || ws?.status === 'locked') {
-    const { AppError } = await import('../errors');
-    throw new AppError('plan_locked', 'Gói nền tảng đã hết hạn. Thanh toán để tiếp tục tạo nội dung, dữ liệu vẫn được giữ.');
-  }
-}
-
-export const trialWindow = (now: Date) => ({ from: now, to: addDays(now, BUSINESS.platformTrialDays) });
-export { gte };

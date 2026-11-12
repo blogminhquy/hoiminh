@@ -1,6 +1,8 @@
 // Hợp đồng thương mại: sản phẩm, offer, checkout, thanh toán, hoàn tiền, gói nền tảng.
 import { z } from 'zod';
 import { amountMinorSchema, billingCycleSchema, currencySchema, idSchema, paymentProviderSchema } from './common';
+import { bankCodeSchema } from './affiliate';
+import { paidPlanKeySchema, planCycleSchema } from './plans';
 
 export const productKindSchema = z.enum(['course', 'bundle', 'digital']);
 export type ProductKind = z.infer<typeof productKindSchema>;
@@ -50,7 +52,7 @@ export const storeQuerySchema = z.object({
 export const checkoutTargetSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tier'), communityId: idSchema, tierKey: z.enum(['premium', 'vip', 'standard']), cycle: billingCycleSchema }),
   z.object({ type: z.literal('product'), productId: idSchema }),
-  z.object({ type: z.literal('platform'), workspaceId: idSchema, cycle: z.enum(['monthly', 'yearly']) }),
+  z.object({ type: z.literal('platform'), communityId: idSchema, planKey: paidPlanKeySchema, cycle: planCycleSchema }),
 ]);
 export type CheckoutTarget = z.infer<typeof checkoutTargetSchema>;
 
@@ -74,6 +76,10 @@ export const paymentInstructionSchema = z.discriminatedUnion('kind', [
     accountHolder: z.string(),
     amountMinor: amountMinorSchema,
     transferContent: z.string(),
+    /** Tiền về tài khoản của ai: 'owner' = thẳng tài khoản chủ hội (đơn của hội); không có = tài khoản Hội Mình (đơn gói). */
+    payee: z.literal('owner').optional(),
+    /** Với đơn trả thẳng chủ hội: 'auto' = tự xác nhận khi tiền về, 'manual' = chủ hội bấm "Đã nhận tiền". */
+    confirmMode: z.enum(['manual', 'auto']).optional(),
   }),
   z.object({ kind: z.literal('redirect'), url: z.string(), deeplink: z.string().optional() }),
 ]);
@@ -107,3 +113,14 @@ export const couponSchema = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
   appliesTo: z.enum(['all', 'tier', 'product']).default('all'),
 });
+
+/** Chủ hội cài tài khoản nhận tiền của chính mình: tiền bán hàng của hội về thẳng tài khoản này. */
+export const payoutConfirmModeSchema = z.enum(['manual', 'auto']);
+export type PayoutConfirmMode = z.infer<typeof payoutConfirmModeSchema>;
+export const payoutAccountInputSchema = z.object({
+  bankCode: bankCodeSchema,
+  accountNumber: z.string().trim().regex(/^\d{6,20}$/, 'Số tài khoản gồm 6 tới 20 chữ số'),
+  accountHolder: z.string().trim().min(3, 'Tên chủ tài khoản cần ít nhất 3 ký tự').max(80).transform((v) => v.toUpperCase()),
+  confirmMode: payoutConfirmModeSchema.default('manual'),
+});
+export type PayoutAccountInput = z.infer<typeof payoutAccountInputSchema>;

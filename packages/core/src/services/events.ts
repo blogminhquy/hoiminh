@@ -8,7 +8,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { scheduleRemindersForEvent } from './event-reminders';
 import { memberTierKey } from './entitlements';
-import { assertWorkspaceUnlocked } from './workspaces';
+import { assertCommunityHasPlan } from './plans';
 
 function meetingProvider(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -60,8 +60,8 @@ export async function listEvents(ctx: Ctx, communityId: string, q: { filter?: 'u
 /** Tạo sự kiện; lặp thì sinh N buổi trong chuỗi; tùy chọn đăng bài thông báo. */
 export async function createEvent(ctx: Ctx, communityId: string, input: CreateEventInput) {
   const userId = requireUser(ctx);
-  const access = await requireCommunityPermission(ctx, communityId, 'event.manage');
-  await assertWorkspaceUnlocked(ctx, access.workspaceId);
+  await requireCommunityPermission(ctx, communityId, 'event.manage');
+  await assertCommunityHasPlan(ctx, communityId);
   const start = new Date(input.startsAt);
   const end = new Date(input.endsAt);
   if (end <= start) throw invalid('Giờ kết thúc phải sau giờ bắt đầu');

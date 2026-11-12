@@ -9,6 +9,7 @@ import { communities, communityMembers, courseProgress, invoices, orders, paymen
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { AppError, invalid, invalidState, notFound } from '../errors';
+import { isOwnerPayee } from '../lib/payee';
 import { paymentsFor } from '../lib/payment-accounts';
 import { requireCommunityPermission, requireSuperAdmin, requireUser } from '../permissions';
 import { audit } from './audit';
@@ -62,10 +63,13 @@ async function processEvent(ctx: Ctx, provider: string, event: NormalizedEvent, 
   const ref = event.reference ? referenceWithSpace(event.reference) : null;
   // Chuyển khoản (SePay) được khớp với đơn của mọi cổng, vì khách có thể chọn MoMo rồi lại chuyển khoản đúng nội dung.
   // Các cổng khác chỉ khớp đơn của chính cổng đó, để webhook PayPal (USD) không bao giờ xác nhận đơn VND.
-  const payment = !ref ? null
+  const found = !ref ? null
     : await ctx.db.query.payments.findFirst({ where: and(eq(payments.reference, ref), eq(payments.provider, provider)) })
       ?? (provider === 'sepay' ? await ctx.db.query.payments.findFirst({ where: and(eq(payments.reference, ref), eq(payments.currency, 'VND')) }) : undefined)
       ?? null;
+  // Đơn của hội trả thẳng vào tài khoản chủ hội: webhook của tài khoản Hội Mình không được xác nhận nó. Tiền chuyển nhầm
+  // vào tài khoản Hội Mình với mã của đơn đó thì nằm ở đối soát (sai nội dung) để quản trị xử lý tay.
+  const payment = found && isOwnerPayee(found) ? null : found;
   if (provider === 'sepay') {
     const status = !payment ? (event.reference ? 'wrong_content' : 'missing_code') : payment.status === 'succeeded' ? 'duplicate' : payment.amountMinor !== event.amountMinor ? 'amount_mismatch' : 'matched';
     await ctx.db.insert(reconciliationItems).values({ provider, providerTransactionId: event.providerEventId, bankContent: event.bankContent ?? '', bankAccount: event.bankAccount ?? null, referenceCode: event.reference ? referenceWithSpace(event.reference) : null, amountMinor: event.amountMinor, expectedMinor: payment?.amountMinor ?? null, status, paymentId: payment?.id ?? null, orderId: payment?.orderId ?? null, webhookEventId, transactionAt: event.transactionAt, matchedAt: status === 'matched' ? ctx.now() : null }).onConflictDoNothing();

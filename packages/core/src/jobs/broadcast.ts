@@ -1,9 +1,9 @@
-// Email broadcast bài viết: job cha chia thành viên thành lô; mỗi lô lọc theo tùy chọn thông báo, khử trùng từng người rồi gửi.
-import { templates } from '@hoiminh/email';
+// Báo bài viết cho cả hội: job cha chia thành viên thành lô; mỗi lô khử trùng từng người rồi tạo thông báo trong ứng dụng.
 import { asc, eq, inArray, sql } from 'drizzle-orm';
-import { communities, notificationPrefs, posts, users } from '@hoiminh/db';
+import { communities, posts, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
+import { notify } from '../services/notifications';
 import { chunk, claimRecipients, FANOUT_CHUNK } from './fanout';
 import { scheduleJob } from './schedule';
 
@@ -23,22 +23,25 @@ export async function runPostBroadcast(ctx: Ctx, p: { postId: string }, opts: { 
   return 'sent';
 }
 
-/** Một lô: bỏ người tắt email, claim từng người, gửi. Tôn trọng tùy chọn thông báo (mục 195). */
+/**
+ * Một lô: claim từng người rồi tạo thông báo trong ứng dụng (chuông thông báo, web và ứng dụng). Không gửi email:
+ * email thông báo của hội đã bỏ theo kế hoạch 11/11/2026, email chỉ còn dùng cho việc hệ thống (xác minh, đặt lại
+ * mật khẩu, biên nhận, nhắc gia hạn, nhắc sự kiện). `notify` tự tôn trọng tùy chọn "tắt thông báo hội này" của từng người.
+ */
 export async function runPostBroadcastBatch(ctx: Ctx, p: { postId: string; userIds: string[] }): Promise<'sent' | 'stale'> {
   const post = await ctx.db.query.posts.findFirst({ where: eq(posts.id, p.postId) });
   if (!post) return 'stale';
   const community = await ctx.db.query.communities.findFirst({ where: eq(communities.id, post.communityId) });
   if (!community) return 'stale';
-  const rows = await ctx.db.select({ id: users.id, email: users.email, name: users.name }).from(users).where(inArray(users.id, p.userIds)).orderBy(asc(users.id));
-  const prefs = rows.length ? await ctx.db.query.notificationPrefs.findMany({ where: inArray(notificationPrefs.userId, rows.map((r) => r.id)) }) : [];
-  const optedOut = new Set(prefs.filter((x) => x.emailDigest === false || x.perCommunity[post.communityId] === 'off').map((x) => x.userId));
-  const eligible = rows.filter((r) => !optedOut.has(r.id));
+  const rows = await ctx.db.select({ id: users.id }).from(users).where(inArray(users.id, p.userIds)).orderBy(asc(users.id));
+  // Người viết bài không cần được báo về bài của chính mình.
+  const eligible = rows.filter((r) => r.id !== post.authorUserId);
   const claimed = new Set(await claimRecipients(ctx, broadcastKey(post.id), eligible.map((r) => r.id)));
+  const title = post.title || post.excerpt.slice(0, 60);
   let sent = 0;
   for (const r of eligible) {
     if (!claimed.has(r.id)) continue;
-    // Kết quả gửi được RecordingSender ghi vào email_logs.
-    await ctx.email.send(templates.broadcastPost(r.email, community.name, post.title || post.excerpt.slice(0, 60), post.excerpt, `${ctx.env.APP_URL}/${community.slug}/bai-viet/${post.id}`));
+    await notify(ctx, { userId: r.id, communityId: community.id, kind: 'post.broadcast', category: 'post', title: `${community.name}: ${title}`, body: post.excerpt, actorUserId: post.authorUserId, link: `/${community.slug}/bai-viet/${post.id}`, actionLabel: 'Đọc bài' });
     sent++;
   }
   ctx.log.info('post.broadcast.batch.done', { postId: post.id, sent });

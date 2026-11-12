@@ -4,18 +4,23 @@ import { id, money, timestamps, ts } from './_helpers';
 import { communities, workspaces } from './tenant';
 import { users } from './users';
 
+/**
+ * Bảng gói (kế hoạch 11/11/2026): bốn gói `free`, `starter`, `pro`, `unlimited`, mỗi gói cho một hội.
+ * Quản trị chỉ nhập `monthlyMinor`; giá 3 tháng = 3 lần, giá 1 năm = 10 lần (cột `yearlyMinor` giữ bản sao của 10 lần).
+ * `quotas.members` là trần thành viên (null = không giới hạn); `features` là các tính năng trả phí được bật.
+ */
 export const plans = pgTable('plans', {
   key: text('key').primaryKey(),
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
   monthlyMinor: money('monthly_minor').notNull(),
   yearlyMinor: money('yearly_minor').notNull(),
-  trialDays: integer('trial_days').notNull().default(14),
+  /** Không còn dùng thử (luôn 0); cột giữ lại để không phải xóa dữ liệu. */
+  trialDays: integer('trial_days').notNull().default(0),
   quotas: jsonb('quotas').$type<Record<string, number | null>>().notNull().default({}),
   features: jsonb('features').$type<string[]>().notNull().default([]),
-  /** Cách thu tiền gói: 'gateway' = thanh toán trong Hội Mình (QR, MoMo, VNPAY, PayPal); 'link' = mở link của hệ thống thanh toán ngoài. */
+  /** Không còn dùng: gói chỉ thu qua thanh toán trong Hội Mình. Ba cột giữ lại để không phải xóa dữ liệu. */
   paymentMode: text('payment_mode').$type<'gateway' | 'link'>().notNull().default('gateway'),
-  /** Link thanh toán ngoài cho từng chu kỳ (chỉ dùng khi paymentMode = 'link'); rỗng thì chu kỳ đó không bán. */
   monthlyPayUrl: text('monthly_pay_url'),
   yearlyPayUrl: text('yearly_pay_url'),
   isActive: boolean('is_active').notNull().default(true),
@@ -23,14 +28,16 @@ export const plans = pgTable('plans', {
   ...timestamps(),
 });
 
+/** Kỳ trả tiền gói của một hội: mỗi hội tối đa một dòng, ghi gói, chu kỳ, ngày bắt đầu và ngày hết hạn. */
 export const platformSubscriptions = pgTable(
   'platform_subscriptions',
   {
     id: id(),
     workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    communityId: uuid('community_id').notNull().references(() => communities.id, { onDelete: 'cascade' }),
     planKey: text('plan_key').notNull().references(() => plans.key),
-    status: text('status').$type<'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'>().notNull().default('trialing'),
-    billingCycle: text('billing_cycle').$type<'monthly' | 'yearly'>().notNull().default('monthly'),
+    status: text('status').$type<'active' | 'expired' | 'cancelled'>().notNull().default('active'),
+    billingCycle: text('billing_cycle').$type<'quarterly' | 'yearly'>().notNull().default('quarterly'),
     currentPeriodStart: ts('current_period_start').notNull(),
     currentPeriodEnd: ts('current_period_end').notNull(),
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
@@ -39,7 +46,7 @@ export const platformSubscriptions = pgTable(
     remindersSent: jsonb('reminders_sent').$type<string[]>().notNull().default([]),
     ...timestamps(),
   },
-  (t) => [uniqueIndex('platform_subscriptions_workspace_uq').on(t.workspaceId), index('platform_subscriptions_period_idx').on(t.status, t.currentPeriodEnd)],
+  (t) => [uniqueIndex('platform_subscriptions_community_uq').on(t.communityId), index('platform_subscriptions_workspace_idx').on(t.workspaceId), index('platform_subscriptions_period_idx').on(t.status, t.currentPeriodEnd)],
 );
 
 export const subscriptionUsage = pgTable(

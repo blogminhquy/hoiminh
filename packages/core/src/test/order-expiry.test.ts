@@ -6,8 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runSweep } from '../jobs/sweep';
 import { withSystemScope } from '../lib/tenant-scope';
 import * as checkout from '../services/checkout';
-import * as paymentsSvc from '../services/payments';
-import { createTestApp, type TestApp } from './setup';
+import { createTestApp, ownerBankPaid, type TestApp } from './setup';
 
 let app: TestApp;
 beforeAll(async () => {
@@ -25,10 +24,8 @@ const expireNow = (orderId: string) => app.ctx.db.execute(sql`update orders set 
 const orderRow = (id: string) => app.ctx.db.query.orders.findFirst({ where: eq(orders.id, id) });
 const paymentRow = (orderId: string) => app.ctx.db.query.payments.findFirst({ where: eq(payments.orderId, orderId) });
 const sweep = () => withSystemScope(app.system(), (c) => runSweep(c));
-function sepayPaid(reference: string, amount: number) {
-  const body = { id: Math.floor(Math.random() * 1e9), gateway: 'Vietcombank', transactionDate: '2026-09-14 09:03:11', accountNumber: '0071000123456', code: null, content: `ck ${reference}`, transferType: 'in', transferAmount: amount, accumulated: 0, subAccount: null, referenceCode: 'FT1', description: '' };
-  return paymentsSvc.handleWebhook(app.system(), 'sepay', { headers: { authorization: `Apikey ${app.ctx.env.SEPAY_API_KEY}` }, rawBody: JSON.stringify(body), query: {} });
-}
+/** Đơn của hội trả thẳng vào tài khoản chủ hội: ngân hàng của chủ hội báo có về địa chỉ riêng của hội. */
+const sepayPaid = (reference: string, amount: number) => ownerBankPaid(app, reference, amount);
 
 describe('effectiveOrderStatus', () => {
   // Mốc giờ đủ xa nên không bị lệch dù beforeAll dựng DB mất vài giây.

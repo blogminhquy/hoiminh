@@ -12,9 +12,9 @@ interface Overview {
   config: Array<{ key: string; label: string; detail: string; severity: 'error' | 'warn' }>;
   infra: { email: string; emailFrom: string; media: string; mediaKind: 'r2' | 'local'; env: string };
   totals: { users: number; usersNew: number; communities: number; communitiesNew: number; gmvMinor: number; platformRevenueMinor: number; failedPayments: number; totalPayments: number };
-  todo: { unmatched: number; webhookFailures: number; reported: number; trialsEnding: number };
+  todo: { unmatched: number; webhookFailures: number; reported: number; plansEnding: number };
   daily: Array<{ date: string; amountMinor: number }>; byProvider: Array<{ provider: string; amountMinor: number }>;
-  recentCommunities: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; pricingMode: string; memberCount: number; ownerName: string; workspaceStatus: string }>;
+  recentCommunities: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; pricingMode: string; memberCount: number; ownerName: string; planName: string; planKey: string }>;
 }
 const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý']];
 const PROVIDER: Record<string, string> = { sepay: 'Chuyển khoản QR', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal' };
@@ -90,7 +90,7 @@ export default function Page() {
                   <Todo icon={<Wallet size={14} />} bg={T.accentSoft} fg={T.accentText} text={`${d.todo.unmatched} giao dịch chuyển khoản chưa khớp nội dung`} action="Đối soát" to="/he-thong/thanh-toan" />
                   <Todo icon={<ExternalLink size={14} />} bg={T.accentSoft} fg={T.accentText} text={`Webhook thất bại ${d.todo.webhookFailures} lần trong 24 giờ`} action="Xem log" to="/he-thong/nhat-ky" />
                   <Todo icon={<Users size={14} />} bg={T.goldSoft} fg={T.goldText} text={`${d.todo.reported} hội bị báo cáo nội dung`} action="Xem" to="/he-thong/ho-tro" />
-                  <Todo icon={<BadgeCheck size={14} />} bg={T.tealSoft} fg={T.tealText} text={`${d.todo.trialsEnding} hội sắp hết 14 ngày dùng thử`} action="Nhắc thanh toán" to="/he-thong/hoi" />
+                  <Todo icon={<BadgeCheck size={14} />} bg={T.tealSoft} fg={T.tealText} text={`${d.todo.plansEnding} hội có gói hết hạn trong 7 ngày tới`} action="Xem các hội" to="/he-thong/hoi" />
                 </div>
               </div>
               <div className="card overflow-hidden table-scroll">
@@ -99,7 +99,7 @@ export default function Page() {
                   <div key={c.id} className="grid gap-3 items-center px-5 py-2.5 text-[13px]" style={{ gridTemplateColumns: '2fr 1.4fr 0.8fr 0.8fr 1fr', minWidth: 640, borderTop: `1px solid ${T.line}` }}>
                     <div className="flex items-center gap-2.5 min-w-0"><CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={32} radius={9} /><Link to={`/${c.slug}`} className="font-semibold truncate" style={{ color: T.ink }}>{c.name}</Link></div>
                     <span className="truncate">{c.ownerName}</span>
-                    <span className="tag" style={{ background: c.workspaceStatus === 'active' ? T.goldSoft : T.bg, color: c.workspaceStatus === 'active' ? T.goldText : T.ink2, width: 'fit-content' }}>{c.workspaceStatus === 'active' ? 'Trả phí' : 'Dùng thử'}</span>
+                    <span className="tag" style={{ background: c.planKey !== 'free' ? T.goldSoft : T.bg, color: c.planKey !== 'free' ? T.goldText : T.ink2, width: 'fit-content' }}>{c.planName}</span>
                     <span>{c.memberCount}</span>
                     <span className="muted">{MODE[c.pricingMode] ?? c.pricingMode}</span>
                   </div>

@@ -16,19 +16,24 @@ test.describe('điện thoại', () => {
     await expect(page.getByRole('heading', { name: /^Chào / })).toBeVisible();
     // Danh sách "Cần xử lý" luôn có nội dung: hoặc việc cần làm, hoặc dòng báo đã xong hết.
     const todo = page.getByRole('region', { name: 'Cần xử lý' });
-    await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|Gói Hội Mình|Dùng thử|Mọi việc đã xong/).first()).toBeVisible();
-    await expect(page.getByText('Có thể rút')).toBeVisible();
+    await expect(todo.getByText(/yêu cầu rút của cộng sự|chờ duyệt|hết hạn|Hội đã đủ|Mọi việc đã xong/).first()).toBeVisible();
+    // Tiền bán hàng về thẳng tài khoản chủ hội: không còn "Có thể rút" hay "Đang giữ 14 ngày".
+    await expect(page.getByText('Đã thu 30 ngày')).toBeVisible();
+    await expect(page.getByText('Có thể rút')).toHaveCount(0);
     await expect(page.getByText('Ghé hội hôm nay')).toHaveCount(0);
     await expectNoSideScroll(page, 390);
 
     const nav = page.getByRole('navigation', { name: 'Điều hướng chính' });
     await expect(nav.getByRole('link', { name: 'Quản lý', exact: true })).toHaveAttribute('aria-current', 'page');
 
-    // Ô lối tắt: Tiền gom số dư và giao dịch về một trang, vẫn thuộc tab Quản lý.
+    // Ô lối tắt: Tiền gom phần nhận tiền và giao dịch về một trang, vẫn thuộc tab Quản lý.
     await page.getByRole('navigation', { name: 'Quản lý hội' }).getByRole('link', { name: 'Tiền' }).click();
     await expect(page).toHaveURL(/\/minhquy\/tien$/);
     await expect(page.getByRole('heading', { name: 'Tiền', exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Số dư' }).getByText('Có thể rút')).toBeVisible();
+    const money = page.getByRole('region', { name: 'Nhận tiền' });
+    await expect(money.getByText('Đã thu 30 ngày')).toBeVisible();
+    await expect(money.getByText(/chuyển khoản thẳng tới Vietcombank 0071000999888/)).toBeVisible();
+    await expect(money.getByRole('link', { name: 'Tài khoản nhận tiền' })).toHaveAttribute('href', '/minhquy/cai-dat/nhan-tien');
     await expect(page.getByRole('heading', { name: 'Doanh thu' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Quản lý', exact: true })).toHaveAttribute('aria-current', 'page');
     await expectNoSideScroll(page, 390);
@@ -88,7 +93,8 @@ test.describe('máy tính', () => {
     await expect(page).toHaveURL(/\/minhquy\/cai-dat\/chung$/);
     const settings = page.getByRole('navigation', { name: 'Cài đặt' });
     for (const label of ['Hội', 'Bán hàng', 'Cộng sự', 'Tự động và kết nối']) await expect(settings.getByRole('link', { name: label, exact: true })).toBeVisible();
-    await expect(settings.getByRole('link')).toHaveCount(5); // 4 nhóm và lối ra trang giới thiệu
+    await expect(settings.getByRole('link', { name: /Gói của hội/ })).toHaveAttribute('href', '/admin/goi?hoi=minhquy');
+    await expect(settings.getByRole('link')).toHaveCount(6); // 4 nhóm, gói của hội và lối ra trang giới thiệu
     await settings.getByRole('link', { name: 'Tự động và kết nối' }).click();
     await expect(page).toHaveURL(/\/minhquy\/cai-dat\/tien-ich$/);
     await page.getByRole('navigation', { name: 'Tự động và kết nối' }).getByRole('link', { name: 'Nhà phát triển' }).click();

@@ -9,7 +9,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { canAccessCourse } from './entitlements';
 import { releaseFiles } from './files';
-import { assertWorkspaceUnlocked } from './workspaces';
+import { assertCommunityHasPlan } from './plans';
 
 /** Thư viện khóa học của hội: thẻ có % tiến độ, nhãn Nháp/khóa, khối "Học tiếp". */
 export async function listCourses(ctx: Ctx, communityId: string) {
@@ -141,7 +141,7 @@ export async function completeLesson(ctx: Ctx, lessonId: string) {
 export async function createCourse(ctx: Ctx, communityId: string, input: CreateCourseInput) {
   const userId = requireUser(ctx);
   const access = await requireCommunityPermission(ctx, communityId, 'course.manage');
-  await assertWorkspaceUnlocked(ctx, access.workspaceId);
+  await assertCommunityHasPlan(ctx, communityId);
   const cover = input.coverFileId ? await ctx.db.query.files.findFirst({ where: eq(files.id, input.coverFileId) }) : null;
   const [c] = await ctx.db.insert(courses).values({ workspaceId: access.workspaceId, communityId, ownerUserId: userId, title: input.title, slug: `${toSlug(input.title)}-${Date.now().toString(36).slice(-4)}`, shortDescription: input.shortDescription, descriptionMd: input.descriptionMd, coverUrl: cover?.url ?? null, coverColor: input.coverColor ?? '#D4593A', introVideoUrl: input.introVideoUrl ?? null, accessMode: input.accessMode, priceMinor: input.priceMinor ?? null, compareAtMinor: input.compareAtMinor ?? null, previewFirstModule: input.previewFirstModule, affiliateEnabled: input.affiliateEnabled, dripEnabled: input.dripEnabled, certificateEnabled: input.certificateEnabled, sequential: input.sequential, hiddenFromStore: input.hiddenFromStore, status: 'draft' }).returning();
   await audit(ctx, { action: 'course.create', resourceType: 'course', resourceId: c!.id, communityId });

@@ -1,6 +1,6 @@
 // Webhook nhận từ cổng thanh toán (không cần đăng nhập, verify chữ ký trong service) + trang mô phỏng cho sandbox không credential.
 import { hmacHex, isLocalEnv, type Env } from '@hoiminh/config';
-import { paymentsService, AppError } from '@hoiminh/core';
+import { ownerPayout, paymentsService, AppError } from '@hoiminh/core';
 import { MomoAdapter, vnpQueryString } from '@hoiminh/payments';
 import { query, router, type Ctx$ } from '../lib/hono';
 import { rateLimit } from '../middleware/rate-limit';
@@ -20,6 +20,11 @@ for (const provider of ['sepay', 'momo', 'paypal'] as const) {
     return r.body === null ? c.body(null, r.status as 204) : c.json(r.body as Record<string, unknown>, r.status as 200);
   });
 }
+// Dịch vụ báo có của chủ hội (định dạng SePay) gọi về địa chỉ riêng của từng hội; mã trong địa chỉ là bí mật.
+webhookRoutes.post('/bank/:token', async (c) => {
+  const r = await ownerPayout.handleOwnerBankWebhook(c.get('ctx'), c.req.param('token'), await incoming(c));
+  return c.json(r.body as Record<string, unknown>, r.status as 200);
+});
 // VNPAY gọi IPN bằng GET với query string; return URL của trình duyệt không được tin (chỉ để hiển thị).
 webhookRoutes.get('/vnpay', async (c) => {
   const r = await paymentsService.handleWebhook(c.get('ctx'), 'vnpay', await incoming(c));

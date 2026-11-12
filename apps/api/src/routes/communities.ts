@@ -1,11 +1,12 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, cộng sự, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
-import { affiliate, communities, members, revenue, shell, withdrawals } from '@hoiminh/core';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, payoutAccountInputSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliate, communities, members, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { body, csv, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
+import { rateLimit } from '../middleware/rate-limit';
 
 export const communityRoutes = router();
 
@@ -55,6 +56,11 @@ communityRoutes.post('/:id/archive', requireAuth, async (c) => {
 });
 communityRoutes.get('/:id/overview', requireAuth, async (c) => c.json(await revenue.settingsOverview(c.get('ctx'), c.req.param('id'), { days: query(c).days ? Number(query(c).days) : undefined })));
 communityRoutes.get('/:id/revenue', requireAuth, async (c) => c.json(await revenue.revenue(c.get('ctx'), c.req.param('id'), { days: query(c).days ? Number(query(c).days) : undefined })));
+/** Nhận tiền của chủ hội: tài khoản ngân hàng, cách xác nhận đơn, đơn chờ xác nhận. */
+communityRoutes.get('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.payoutSetup(c.get('ctx'), c.req.param('id'))));
+communityRoutes.put('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.savePayoutAccount(c.get('ctx'), c.req.param('id'), await parse(payoutAccountInputSchema, await body(c)))));
+communityRoutes.post('/:id/payout-account/rotate-webhook', requireAuth, async (c) => c.json(await ownerPayout.rotatePayoutWebhook(c.get('ctx'), c.req.param('id'))));
+communityRoutes.post('/:id/orders/:orderId/confirm-received', requireAuth, rateLimit('write', { scope: 'confirm-received' }), async (c) => c.json(await ownerPayout.confirmOwnerOrder(c.get('ctx'), c.req.param('id'), c.req.param('orderId'))));
 communityRoutes.get('/:id/payout', requireAuth, async (c) => c.json(await revenue.payoutSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/providers', requireAuth, async (c) => {
   const { enabledProviders } = await parse(z.object({ enabledProviders: z.array(z.enum(['sepay', 'momo', 'vnpay', 'paypal'])) }), await body(c));

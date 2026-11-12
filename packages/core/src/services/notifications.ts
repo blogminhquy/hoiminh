@@ -5,6 +5,7 @@ import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireUser } from '../permissions';
+import { queuePush } from './push';
 
 export interface NotifyInput {
   userId: string;
@@ -32,6 +33,8 @@ export async function notify(ctx: Ctx, input: NotifyInput): Promise<void> {
     userId: input.userId, communityId: input.communityId ?? null, kind: input.kind, category: input.category ?? 'all', title: input.title, body: input.body ?? '',
     actorUserId: input.actorUserId ?? null, link: input.link ?? null, actionLabel: input.actionLabel ?? null, data: input.data ?? {},
   });
+  // Thông báo đẩy ra điện thoại (nếu người nhận đã bật và máy chủ có khóa VAPID). Cũng là việc phụ như tín hiệu bên dưới.
+  await queuePush(ctx, input.userId, { title: input.title, body: input.body ?? '', link: input.link ?? null, tag: input.kind }).catch((err) => ctx.log.warn('push.queue_failed', { err: String(err) }));
   // Đẩy tín hiệu là phụ: lỗi không được làm hỏng việc tạo thông báo.
   await ctx.realtime?.publish([input.userId], { type: 'notification' }).catch((err) => ctx.log.warn('realtime.publish_failed', { err: String(err) }));
 }

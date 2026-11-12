@@ -10,7 +10,7 @@ import { fmtCount } from '@/lib/format';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
 
-interface JoinResult { member: { status: string }; alreadyMember?: boolean }
+interface JoinResult { member: { status: string }; alreadyMember?: boolean; waitlisted?: boolean }
 
 function JoinQuestionsModal({ d, open, onClose, onSubmit, saving, error }: { d: AboutPage; open: boolean; onClose: () => void; onSubmit: (answers: Array<{ questionId: string; answer: string }>) => void; saving: boolean; error: unknown }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -53,7 +53,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
       setAsking(false);
       await qc.invalidateQueries({ queryKey: ['me'] });
       await qc.invalidateQueries({ queryKey: ['about', c.slug] });
-      if (r.member.status === 'pending') { setNotice('Đã gửi yêu cầu, chờ chủ hội duyệt.'); return; }
+      if (r.member.status === 'pending') { setNotice(r.waitlisted ? 'Hội đang đủ chỗ. Yêu cầu của bạn đã vào hàng chờ, chủ hội sẽ duyệt khi có chỗ.' : 'Đã gửi yêu cầu, chờ chủ hội duyệt.'); return; }
       rememberCommunitySlug(c.slug);
       navigate(`/${c.slug}/bang-tin`);
     },
@@ -69,7 +69,9 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
 
   const priceMain = d.pricing.mode === 'subscription' && d.pricing.premiumMonthlyMinor ? money(d.pricing.premiumMonthlyMinor) : d.pricing.mode === 'one_time' && d.pricing.oneTimeMinor ? money(d.pricing.oneTimeMinor) : 'Miễn phí';
   const priceSub = d.pricing.mode === 'subscription' ? '/tháng' : d.pricing.mode === 'one_time' ? 'trọn đời' : 'để tham gia';
-  const label = member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
+  // Hội thu phí mà chủ hội chưa cài nhận tiền: chưa có tài khoản nào để chuyển khoản tới, nên khóa nút tham gia.
+  const payLocked = paid && !member && !d.pricing.paymentsReady;
+  const label = member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : payLocked ? 'Hội chưa mở thanh toán' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
   const others = Math.max(0, d.stats.members - d.sampleMembers.length);
 
   return (
@@ -107,7 +109,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
             {d.pricing.mode === 'freemium' && d.pricing.premiumMonthlyMinor ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Premium {money(d.pricing.premiumMonthlyMinor)}/tháng để mở toàn bộ khóa học</div> : null}
             {d.pricing.mode === 'subscription' && d.pricing.premiumYearlyMinor ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {money(d.pricing.premiumYearlyMinor)}/năm</div> : null}
           </div>
-          <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={pending || (!member && !c.doorsOpen)} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
+          <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={pending || payLocked || (!member && !c.doorsOpen)} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
           {(notice || join.isError) && <div className="text-[12px]" style={{ color: join.isError ? T.accentText : T.tealText }}>{join.isError ? errorMessage(join.error) : notice}</div>}
           {d.referrer && (
             <div className="flex items-center gap-2 rounded-[10px] text-[12px]" style={{ padding: '10px 12px', background: T.goldSoft, color: T.goldDark }}><Users size={14} />Bạn được <strong className="mx-1">{d.referrer.name}</strong> giới thiệu</div>

@@ -1,5 +1,5 @@
 // Bàn điều khiển của chủ hội và quản trị: thay trang Hôm nay của thành viên. Một màn trả lời ba câu:
-// có gì cần xử lý, hội đang chạy thế nào, tiền đang ở đâu. Mọi con số lấy từ API sẵn có (tổng quan, số dư,
+// có gì cần xử lý, hội đang chạy thế nào, tiền đang ở đâu. Mọi con số lấy từ API sẵn có (tổng quan, nhận tiền,
 // danh sách thành viên, bảng tin, gói Hội Mình), phần nào người xem không có quyền thì không gọi và không hiện.
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, Bars, Chip, DateBlock, Prog, StatCard, T, money } from '@hoiminh/ui';
@@ -13,19 +13,18 @@ import { useAuth } from '@/lib/auth';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate, fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
 import { buildOwnerTodos, type OwnerPlan, type OwnerTodo } from '@/lib/owner-todo';
-import { WS_HOME_KEY, type WorkspaceHome } from '@/pages/owner/WorkspaceHomeParts';
 
 interface Overview {
   stats: { newMembers: number; newMembersDeltaPct: number | null; revenueMinor: number; revenueDeltaPct: number | null; paying: number; premium: number; vip: number; churned: number; churnRatePct: number; posts: number };
   daily: Array<{ date: string; amountMinor: number }>; checklist: Array<{ key: string; label: string; done: boolean }>;
   activity: Array<{ kind: 'payment' | 'post' | 'join'; actor: string; actor_id: string; what: string | null; at: string }>;
 }
-interface Payout { availableMinor: number; holdingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number }
+interface Payout { ready: boolean; received30Minor: number; pendingCount: number; pendingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number }
 
 const RANGES: Array<[number, string]> = [[7, '7 ngày'], [30, '30 ngày'], [90, 'Quý']];
 const delta = (p: number | null) => (p === null ? 'kỳ trước chưa có dữ liệu' : `${p >= 0 ? '+' : ''}${p}% so với kỳ trước`);
 const describe = (a: Overview['activity'][number]) => (a.kind === 'payment' ? <><strong>{a.actor}</strong> thanh toán {a.what ?? ''}</> : a.kind === 'post' ? <><strong>{a.actor}</strong> đăng bài {a.what ? `“${a.what}”` : ''}</> : <><strong>{a.actor}</strong> tham gia hội</>);
-const TODO_ICON: Record<OwnerTodo['key'], ReactNode> = { plan: <Sparkles size={20} />, payouts: <Handshake size={20} />, members: <UserPlus size={20} />, posts: <FileClock size={20} /> };
+const TODO_ICON: Record<OwnerTodo['key'], ReactNode> = { plan: <Sparkles size={20} />, payout: <Wallet size={20} />, orders: <Wallet size={20} />, payouts: <Handshake size={20} />, members: <UserPlus size={20} />, posts: <FileClock size={20} /> };
 
 function TodoRow({ todo }: { todo: OwnerTodo }) {
   return (
@@ -60,24 +59,19 @@ export default function Dashboard() {
   const payout = useQuery({ queryKey: ['payout-settings', cid], queryFn: () => api.get<Payout>(`/v1/communities/${cid}/payout`), enabled: canMoney });
   const pending = useQuery({ queryKey: ['members', cid, 'pending-count'], queryFn: () => api.get<{ counts: Record<string, number> }>(`/v1/communities/${cid}/members?status=pending&limit=1`), enabled: can('member.manage') });
   const feed = useQuery({ queryKey: ['feed', cid, 'today'], queryFn: () => api.get<{ items: FeedPost[] }>(`/v1/communities/${cid}/feed`), enabled: can('post.moderate') && shell.community.tabs.feed !== false });
-  // Gói Hội Mình là việc của người đứng tên không gian làm việc, quản trị được mời không cần thấy.
-  const workspace = useQuery({ queryKey: WS_HOME_KEY, queryFn: () => api.get<WorkspaceHome>('/v1/me/workspace'), enabled: shell.viewer.role === 'owner' });
-
-  const ws = workspace.data?.workspace;
-  const sub = workspace.data?.platformSubscription;
-  const plan: OwnerPlan | null = ws && ws.id === shell.community.workspaceId && ws.ownerUserId === user?.id
-    ? { status: sub?.status ?? 'trialing', endsAt: sub?.currentPeriodEnd ?? ws.trialEndsAt, locked: Boolean(ws.contentLockedAt) }
-    : null;
+  // Gói của hội là việc của chủ hội (người trả tiền), quản trị được mời không cần thấy.
+  const plan: OwnerPlan | null = shell.viewer.role === 'owner' ? shell.plan : null;
   const now = new Date();
   const todos = buildOwnerTodos({
     slug: shell.community.slug,
     now,
     affiliatePayouts: payout.data ? { count: payout.data.affiliatePendingCount, amountMinor: payout.data.affiliatePendingMinor } : null,
+    payout: payout.data ? { ready: payout.data.ready, pendingCount: payout.data.pendingCount, pendingMinor: payout.data.pendingMinor, sells: shell.community.pricingMode !== 'free' || shell.community.tabs.store !== false } : null,
     pendingMembers: pending.data?.counts.pending ?? null,
     pendingPosts: feed.data ? feed.data.items.filter((p) => p.moderationStatus === 'pending').length : null,
     plan,
   });
-  const loading = (canMoney && payout.isLoading) || pending.isLoading || feed.isLoading || workspace.isLoading;
+  const loading = (canMoney && payout.isLoading) || pending.isLoading || feed.isLoading;
   const from = new Date(Date.now() - days * 86_400_000);
 
   return (
@@ -89,9 +83,9 @@ export default function Dashboard() {
           <span className="font-bold text-[17px] pt-1">{loading ? 'Đang xem hôm nay có gì…' : todos.length ? `Có ${todos.length} việc cần xử lý` : 'Không có gì cần xử lý'}</span>
           {canMoney && payout.data && (
             <div className="owner-money">
-              <div><span className="muted text-[14px] block">Có thể rút</span><span className="serif text-[24px] font-extrabold">{money(payout.data.availableMinor)}</span></div>
-              <div><span className="muted text-[14px] block">Đang giữ 14 ngày</span><span className="serif text-[24px] font-extrabold">{money(payout.data.holdingMinor)}</span></div>
-              <Link to={`${base}/tien`} className="btn btn-gold btn-sm"><Wallet size={16} />Xem tiền</Link>
+              <div><span className="muted text-[14px] block">Đã thu 30 ngày</span><span className="serif text-[24px] font-extrabold">{money(payout.data.received30Minor)}</span></div>
+              <div><span className="muted text-[14px] block">Đơn chờ xác nhận</span><span className="serif text-[24px] font-extrabold">{payout.data.pendingCount}</span></div>
+              <Link to={payout.data.ready ? `${base}/tien` : `${base}/cai-dat/nhan-tien`} className="btn btn-gold btn-sm"><Wallet size={16} />{payout.data.ready ? 'Xem tiền' : 'Cài nhận tiền'}</Link>
             </div>
           )}
         </section>
@@ -101,7 +95,7 @@ export default function Dashboard() {
           {!loading && todos.length === 0 && (
             <div className="today-task">
               <span className="today-ring done" aria-hidden="true"><Check size={16} strokeWidth={3} /></span>
-              <span className="flex-grow min-w-0"><span className="block font-semibold text-[16px]">Mọi việc đã xong</span><span className="block muted text-[14px]">Không có yêu cầu rút, người chờ duyệt hay bài chờ duyệt.</span></span>
+              <span className="flex-grow min-w-0"><span className="block font-semibold text-[16px]">Mọi việc đã xong</span><span className="block muted text-[14px]">Không có đơn chờ xác nhận, yêu cầu rút của cộng sự, người chờ duyệt hay bài chờ duyệt.</span></span>
             </div>
           )}
           {loading && todos.length === 0 && <div className="today-task muted text-[15px]">Đang kiểm tra…</div>}

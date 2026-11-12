@@ -25,6 +25,7 @@ function statusOf(code: ErrorCode): number {
       return 404;
     case 'conflict':
     case 'invalid_state':
+    case 'member_cap':
     case 'insufficient_balance':
       return 409;
     case 'validation_error':

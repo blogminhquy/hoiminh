@@ -36,7 +36,9 @@ export async function applyUpdate(targetBuildId?: string): Promise<void> {
     if ('caches' in window) await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
   } catch { /* bỏ qua */ }
   try {
-    if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map((r) => r.unregister()));
+    // Service worker của Hội Mình chỉ lo thông báo đẩy và không lưu bản sao nào: giữ nó lại (gỡ là mất đăng ký thông báo
+    // của thiết bị), chỉ bảo nó tự cập nhật. Service worker lạ khác thì gỡ như trước.
+    if ('serviceWorker' in navigator) await Promise.all((await navigator.serviceWorker.getRegistrations()).map((r) => ((r.active ?? r.installing ?? r.waiting)?.scriptURL.endsWith('/sw.js') ? r.update().then(() => true, () => true) : r.unregister())));
   } catch { /* bỏ qua */ }
   window.location.reload();
 }

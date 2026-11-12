@@ -8,17 +8,22 @@ import type { SeedCommunity } from './community';
 import { daysFrom, sid } from './ids';
 import type { SeedUser } from './users';
 
-/** Gói duy nhất "hoiminh" và các cấu hình nền tảng. */
+/** Bốn gói Hội Mình (kế hoạch 11/11/2026), kỳ trả tiền của các hội đang dùng gói trả phí, và các cấu hình nền tảng. */
 export async function seedPlatform(db: Database, base: Date, U: Record<string, SeedUser>, main: SeedCommunity, others: SeedCommunity[]): Promise<void> {
+  const allFeatures = ['automation', 'custom_domain', 'affiliate', 'api'];
   await db
     .insert(plans)
-    .values({ key: 'hoiminh', name: 'Hội Mình', description: 'Một gói duy nhất, đầy đủ tính năng, không thu phí giao dịch.', monthlyMinor: 499_000, yearlyMinor: 4_990_000, trialDays: 14, quotas: { communities: null, members: null, courses: null, events: null, broadcasts_per_month: null }, features: ['affiliate', 'store', 'custom_domain', 'plugins', 'api', 'webhooks', 'mcp'] })
+    .values([
+      { key: 'free', name: 'Miễn phí', description: 'Dùng vĩnh viễn, bán hàng và thu tiền được.', monthlyMinor: 0, yearlyMinor: 0, trialDays: 0, quotas: { members: 100 }, features: [], sortOrder: 0 },
+      { key: 'starter', name: 'Khởi đầu', description: 'Cho hội đang lớn.', monthlyMinor: 99_000, yearlyMinor: 990_000, trialDays: 0, quotas: { members: 500 }, features: [], sortOrder: 1 },
+      { key: 'pro', name: 'Chuyên nghiệp', description: 'Có tự động hóa, tên miền riêng, cộng sự, API.', monthlyMinor: 299_000, yearlyMinor: 2_990_000, trialDays: 0, quotas: { members: 5_000 }, features: allFeatures, sortOrder: 2 },
+      { key: 'unlimited', name: 'Không giới hạn', description: 'Không giới hạn thành viên, có mọi thứ của Chuyên nghiệp.', monthlyMinor: 799_000, yearlyMinor: 7_990_000, trialDays: 0, quotas: { members: null }, features: allFeatures, sortOrder: 3 },
+    ])
     .onConflictDoNothing();
-  const subs: Array<[SeedCommunity, 'active' | 'trialing', 'monthly' | 'yearly', number]> = [
-    [main, 'active', 'monthly', 17], [others[2]!, 'active', 'yearly', 200], [others[3]!, 'active', 'yearly', 150], [others[4]!, 'active', 'yearly', 300], [others[5]!, 'trialing', 'monthly', 3], [others[6]!, 'trialing', 'monthly', 9],
-  ];
-  for (const [c, status, cycle, daysLeft] of subs) {
-    await db.insert(platformSubscriptions).values({ id: await sid(`platsub:${c.workspaceId}`), workspaceId: c.workspaceId, planKey: 'hoiminh', status, billingCycle: cycle, currentPeriodStart: daysFrom(base, daysLeft - (cycle === 'monthly' ? 30 : 365)), currentPeriodEnd: daysFrom(base, daysLeft), provider: status === 'active' ? 'sepay' : null }).onConflictDoNothing();
+  for (const c of [main, ...others]) {
+    if (!c.plan) continue;
+    const days = c.plan.cycle === 'quarterly' ? 90 : 365;
+    await db.insert(platformSubscriptions).values({ id: await sid(`platsub:${c.id}`), workspaceId: c.workspaceId, communityId: c.id, planKey: c.plan.key, status: 'active', billingCycle: c.plan.cycle, currentPeriodStart: daysFrom(base, c.plan.daysLeft - days), currentPeriodEnd: daysFrom(base, c.plan.daysLeft), provider: 'sepay' }).onConflictDoNothing();
   }
   await db
     .insert(providerAccounts)
@@ -57,6 +62,7 @@ export async function seedPlatform(db: Database, base: Date, U: Record<string, S
       { key: 'mcp', description: 'MCP cho AI', enabled: true },
       { key: 'gamification', description: 'Điểm và cấp độ hoạt động (mục 65, để sau)', enabled: false },
       { key: 'paypal', description: 'Cổng PayPal', enabled: false },
+      { key: 'install_gate', description: 'Bắt thành viên đã đăng nhập trên điện thoại cài Hội Mình ra màn hình chính (từ lần vào thứ hai)', enabled: false },
     ])
     .onConflictDoNothing();
   for (const step of ['logo', 'first_post', 'first_course', 'payout_connected']) {

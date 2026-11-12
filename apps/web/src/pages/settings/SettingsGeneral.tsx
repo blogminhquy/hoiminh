@@ -5,6 +5,7 @@ import { Button, CommunityMark, Field, Input, SaveBar, Select, T, Textarea } fro
 import { Check, Globe, Image as ImageIcon, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LockTag, hasPlanFeature } from '@/components/PlanGate';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
@@ -16,6 +17,8 @@ interface Form { name: string; slug: string; shortDescription: string; descripti
 
 export default function Page() {
   const shell = useShell();
+  // Tên miền riêng là tính năng trả phí: gói chưa có thì ô nhập bị khóa, tên miền đã gắn từ trước vẫn giữ.
+  const domainLocked = !hasPlanFeature(shell, 'custom_domain');
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -73,7 +76,7 @@ export default function Page() {
       <JoinQuestionsCard communityId={shell.community.id} slug={shell.community.slug} initial={q.data?.joinQuestions ?? []} />
       <div className="card flex flex-col gap-3.5" style={{ padding: '20px 24px' }}>
         <span className="font-semibold">Nâng cao</span>
-        <Field label="Tên miền riêng" hint="Trỏ bản ghi CNAME về hoiminh.com, SSL cấp tự động"><div className="flex gap-2 items-center flex-wrap"><Input value={f.customDomain} onChange={(e) => patch({ customDomain: e.target.value })} placeholder="hoc.tenmien.vn" style={{ width: 320, maxWidth: '100%' }} />{q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : f.customDomain ? <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Chờ DNS</span> : null}</div></Field>
+        <Field label="Tên miền riêng" hint={domainLocked ? 'Tên miền riêng có từ gói cao hơn. Nâng gói cho hội để gắn tên miền của bạn.' : 'Trỏ bản ghi CNAME về hoiminh.com, SSL cấp tự động'}><div className="flex gap-2 items-center flex-wrap"><Input value={f.customDomain} disabled={domainLocked} onChange={(e) => patch({ customDomain: e.target.value })} placeholder="hoc.tenmien.vn" style={{ width: 320, maxWidth: '100%' }} />{domainLocked && <><LockTag feature="custom_domain" />{shell.viewer.role === 'owner' && <Link to={`/admin/goi?hoi=${shell.community.slug}`} className="btn btn-ghost btn-sm">Xem các gói</Link>}</>}{q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : f.customDomain ? <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Chờ DNS</span> : null}</div></Field>
       </div>
       <div className="flex items-center gap-3 px-5 py-4 rounded-xl" style={{ border: `1px dashed ${T.line2}` }}><div className="flex-grow"><div className="font-semibold" style={{ color: T.accentText }}>Lưu trữ cộng đồng</div><div className="muted text-[12px]">Ẩn khỏi mọi người, giữ toàn bộ dữ liệu, có thể mở lại</div></div><Button size="sm" style={{ color: T.accentText }} loading={archive.isPending} onClick={() => { if (window.confirm('Lưu trữ hội này? Thành viên sẽ không vào được cho tới khi mở lại.')) archive.mutate(); }}>Lưu trữ</Button></div>
     </>

@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App, type InMemoryQueue } from '@hoiminh/core';
+import { SEED_BANK_WEBHOOK_TOKEN } from '@hoiminh/db/seed';
 import { openSeededTestDb } from '@hoiminh/db/testing';
 import { fakeBucket, fakeImages } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -70,14 +71,17 @@ describe('API', () => {
     expect(about.status).toBe(200);
     expect((await about.json()).referrer.name).toBe('Hoàng Vũ');
   });
-  it('checkout SePay rồi webhook HTTP báo có → đơn paid', async () => {
+  it('checkout chuyển khoản tới chủ hội rồi ngân hàng của chủ hội báo có qua HTTP → đơn paid', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;
     const co = await json('/v1/checkout', { method: 'POST', auth: t, body: JSON.stringify({ target: { type: 'tier', communityId, tierKey: 'premium', cycle: 'yearly' }, provider: 'sepay' }) });
     expect(co.status).toBe(201);
     const session = await co.json();
     expect(session.instruction.kind).toBe('bank_qr');
-    const wh = await json('/webhooks/sepay', { method: 'POST', headers: { Authorization: `Apikey ${app.ctx.env.SEPAY_API_KEY}` }, body: JSON.stringify({ id: 777001, gateway: 'Vietcombank', transactionDate: '2026-09-14 09:03:11', accountNumber: '0071000123456', code: null, content: `CONG TRAN ck ${session.reference}`, transferType: 'in', transferAmount: session.amountMinor, accumulated: 0, subAccount: null, referenceCode: 'X1', description: '' }) });
+    // Đơn của hội trả thẳng vào tài khoản chủ hội: dịch vụ báo có của chủ hội gọi về địa chỉ riêng của hội.
+    expect(session.instruction.payee).toBe('owner');
+    expect((await json('/webhooks/bank/' + 'f'.repeat(40), { method: 'POST', body: '{}' })).status).toBe(404);
+    const wh = await json(`/webhooks/bank/${SEED_BANK_WEBHOOK_TOKEN}`, { method: 'POST', body: JSON.stringify({ id: 777001, gateway: 'Vietcombank', transactionDate: '2026-09-14 09:03:11', accountNumber: '0071000123456', code: null, content: `CONG TRAN ck ${session.reference}`, transferType: 'in', transferAmount: session.amountMinor, accumulated: 0, subAccount: null, referenceCode: 'X1', description: '' }) });
     expect(wh.status).toBe(200);
     const order = await json(`/v1/orders/${session.orderId}`, { auth: t });
     expect((await order.json()).status).toBe('paid');

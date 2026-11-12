@@ -15,6 +15,7 @@ export const createPostSchema = z.object({
   imageFileIds: z.array(idSchema).max(20).default([]),
   videoUrl: z.string().url().nullable().optional(),
   linkUrl: z.string().url().nullable().optional(),
+  /** Báo bài này cho tất cả thành viên bằng thông báo trong ứng dụng. Tên trường giữ từ thời còn gửi email, để API không đổi. */
   broadcastEmail: z.boolean().default(false),
   poll: z
     .object({

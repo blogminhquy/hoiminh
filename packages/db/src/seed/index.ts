@@ -53,3 +53,4 @@ export async function seedAll(db: Database, opts: SeedOptions): Promise<SeedSumm
 
 export { SEED_PASSWORD, sid } from './ids';
 export { SEED_PEOPLE } from './users';
+export { SEED_BANK_WEBHOOK_TOKEN } from './community';

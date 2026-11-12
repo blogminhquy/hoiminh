@@ -1,7 +1,7 @@
 // Luồng 9 (V2, mục 153): người ngoài hội mua lẻ một khóa → KHÔNG bị tự thêm vào hội →
 // được đưa về Khu học tập /hoc → mở bài học ở đó mà không cần đi qua khung hội.
 import { expect, test } from '@playwright/test';
-import { readOrder, sepayWebhook, uniqueEmail } from '../helpers';
+import { readOrder, ownerBankWebhook, uniqueEmail } from '../helpers';
 
 test('mua lẻ không vào hội, học ở Khu học tập', async ({ page, request }) => {
   const email = uniqueEmail('mualeh');
@@ -23,13 +23,12 @@ test('mua lẻ không vào hội, học ở Khu học tập', async ({ page, req
 
   // Trang thanh toán mở được cho người ngoài hội (đường vào từ link cộng sự hoặc trang bán hàng).
   await page.goto('/minhquy/thanh-toan?product=funnel-money-model-2026');
-  await page.getByRole('button', { name: 'Chuyển khoản QR' }).click();
   await page.getByRole('button', { name: /Lấy mã QR chuyển khoản/ }).click();
   await expect(page).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
   // Đọc mã tham chiếu trên trang đơn rồi giả lập ngân hàng báo có.
   const { reference, amountMinor } = await readOrder(page);
-  expect(await sepayWebhook(request, `NGUOI MUA LE ck ${reference}`, amountMinor)).toBe(200);
+  expect(await ownerBankWebhook(request, `NGUOI MUA LE ck ${reference}`, amountMinor)).toBe(200);
 
   // Thanh toán xong tự chuyển về Khu học tập, không phải vào khung hội (họ không phải thành viên).
   await expect(page).toHaveURL(/\/hoc$/, { timeout: 30_000 });

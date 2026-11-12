@@ -9,7 +9,9 @@ import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
 import { releaseFiles } from './files';
-import { assertWorkspaceUnlocked, ensureWorkspace } from './workspaces';
+import { paymentsReady } from './owner-payout';
+import { ownerHasFreeCommunity, requirePlanFeature } from './plans';
+import { ensureWorkspace } from './workspaces';
 
 const DEFAULT_SPACES: Array<[string, string, 'everyone' | 'admins_only' | 'premium', string]> = [['Thông báo', 'thong-bao', 'admins_only', 'accent'], ['Hỏi đáp', 'hoi-dap', 'everyone', 'teal'], ['Chia sẻ', 'chia-se', 'everyone', 'accent'], ['Nhật ký', 'nhat-ky', 'everyone', 'gold'], ['Câu chuyện', 'cau-chuyen', 'premium', 'gold']];
 
@@ -29,10 +31,14 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
   const userId = requireUser(ctx);
   const ws = input.workspaceId ? await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, input.workspaceId) }) : await ensureWorkspace(ctx, userId);
   if (!ws) throw notFound('Workspace không tồn tại');
-  await assertWorkspaceUnlocked(ctx, ws.id);
   await assertSlugAvailable(ctx, input.slug);
+  // Mỗi tài khoản một hội miễn phí. Hội thứ hai trở đi được tạo ở trạng thái chờ thanh toán (nháp, chưa ai vào được)
+  // và mở ngay khi tiền gói về (activatePlatformPurchase). Không có dùng thử.
+  const isFreeSlot = !(await ownerHasFreeCommunity(ctx, ws.ownerUserId));
   const created = await ctx.db.transaction(async (tx) => {
-    const [c] = await tx.insert(communities).values({ workspaceId: ws.id, name: input.name, slug: input.slug, shortDescription: input.shortDescription, description: input.description || input.shortDescription, category: input.category, logoMark: markOf(input.name), pricingMode: input.pricingMode, status: 'active', coverTagline: input.name }).returning();
+    // Hội miễn phí cũ đã lưu trữ thì nhường suất miễn phí cho hội mới, để mỗi tài khoản luôn chỉ có một suất.
+    if (isFreeSlot) await tx.update(communities).set({ isFreeSlot: false }).where(and(eq(communities.isFreeSlot, true), inArray(communities.workspaceId, tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerUserId, ws.ownerUserId)))));
+    const [c] = await tx.insert(communities).values({ workspaceId: ws.id, name: input.name, slug: input.slug, shortDescription: input.shortDescription, description: input.description || input.shortDescription, category: input.category, logoMark: markOf(input.name), pricingMode: input.pricingMode, status: isFreeSlot ? 'active' : 'draft', lockedReason: isFreeSlot ? null : 'plan_required', discoverable: isFreeSlot, isFreeSlot, coverTagline: input.name }).returning();
     const hasFree = input.pricingMode === 'free' || input.pricingMode === 'freemium';
     const [standard] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 }).returning();
     const [premium] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành cộng sự', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: input.pricingMode !== 'free', sortOrder: 1, monthlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumMonthlyMinor ?? 249_000), yearlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumYearlyMinor ?? 2_490_000), oneTimeMinor: input.pricingMode === 'one_time' ? (input.oneTimeMinor ?? 990_000) : null }).returning();
@@ -47,8 +53,8 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     await syncTierOffers(tx as unknown as Ctx['db'], c!.id, ws.id, [standard!, premium!]);
     return c!;
   });
-  await audit(ctx, { action: 'community.create', resourceType: 'community', resourceId: created.id, workspaceId: ws.id, communityId: created.id });
-  return created;
+  await audit(ctx, { action: 'community.create', resourceType: 'community', resourceId: created.id, workspaceId: ws.id, communityId: created.id, metadata: { isFreeSlot } });
+  return { ...created, needsPlan: !isFreeSlot };
 }
 
 /** Đồng bộ offer/giá cho từng tier (tháng, năm, một lần). */
@@ -95,7 +101,7 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     courses: courseList, sampleMembers: members.map((m) => m.u), joinQuestions: questions, referrer,
     stats: { members: c.memberCount, online: online?.c ?? 0, courses: courseList.length, paid: c.paidMemberCount },
     viewer: access ? { role: access.role, memberStatus: access.memberStatus, tierId: access.tierId } : null,
-    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null },
+    pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null },
   };
 }
 
@@ -103,12 +109,14 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
 export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; links?: Array<{ label: string; url: string }> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   if (input.slug) await assertSlugAvailable(ctx, input.slug, communityId);
+  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { logoUrl: true, coverUrl: true, customDomain: true } });
+  // Tên miền riêng là tính năng trả phí: chỉ chặn khi gắn hoặc đổi tên miền, còn gỡ tên miền thì gói nào cũng làm được.
+  if (input.customDomain && input.customDomain !== before?.customDomain) await requirePlanFeature(ctx, communityId, 'custom_domain');
   const patch: Partial<typeof communities.$inferInsert> = { updatedAt: ctx.now() };
   for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'links'] as const) {
     if (input[k] !== undefined) (patch as Record<string, unknown>)[k] = input[k];
   }
   if (input.name) patch.logoMark = markOf(input.name);
-  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { logoUrl: true, coverUrl: true } });
   const [row] = await ctx.db.update(communities).set(patch).where(eq(communities.id, communityId)).returning();
   // Đổi hoặc gỡ logo/ảnh bìa thì tệp cũ trên R2 không còn ai dùng.
   const replaced = [input.logoUrl !== undefined && input.logoUrl !== before?.logoUrl ? before?.logoUrl : null, input.coverUrl !== undefined && input.coverUrl !== before?.coverUrl ? before?.coverUrl : null];

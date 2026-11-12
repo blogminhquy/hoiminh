@@ -10,21 +10,22 @@ import { saveBlob, toCsvBlob } from '@/lib/download';
 import { daysUntil, fmtCount } from '@/lib/format';
 import { SITE_HOST } from '@/lib/site';
 
-interface Row { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; memberCount: number; lockedReason: string | null; owner: { id: string; name: string; email: string }; workspaceStatus: string; trialEndsAt: string | null; gmv30Minor: number; planCycle: string | null }
+interface Row { id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; status: string; memberCount: number; lockedReason: string | null; owner: { id: string; name: string; email: string }; planKey: string; planName: string; planEndsAt: string | null; needsPlan: boolean; gmv30Minor: number; planCycle: string | null }
 interface List { items: Row[]; counts: Record<string, number> }
 type Status = 'active' | 'draft' | 'archived' | 'locked' | 'reported';
 const STATUSES: Array<[Status, string]> = [['active', 'Hoạt động'], ['draft', 'Nháp'], ['archived', 'Lưu trữ'], ['locked', 'Bị khóa']];
 /** /he-thong/ho-tro: cùng bảng nhưng mở sẵn hội bị báo cáo và hội đã khóa, là hai việc cần xử lý. */
 const SUPPORT_STATUSES: Array<[Status, string]> = [['reported', 'Bị báo cáo'], ['locked', 'Bị khóa'], ['active', 'Hoạt động']];
 
-function planOf(r: Row): string { return r.planCycle === 'yearly' ? 'Năm' : r.planCycle === 'monthly' ? 'Tháng' : 'Dùng thử'; }
+/** Gói đang có hiệu lực của hội và chu kỳ đang trả. */
+function planOf(r: Row): string { return r.needsPlan ? 'Chưa có gói' : r.planKey === 'free' ? r.planName : `${r.planName} · ${r.planCycle === 'yearly' ? '1 năm' : '3 tháng'}`; }
 function stateOf(r: Row): [string, string] {
   if (r.status === 'locked') return ['Đã khóa', T.accentText];
-  if (r.lockedReason) return ['Bị báo cáo', T.accentText];
+  if (r.lockedReason && r.lockedReason !== 'plan_required') return ['Bị báo cáo', T.accentText];
   if (r.status === 'archived') return ['Lưu trữ', T.ink3];
-  if (r.status === 'draft') return ['Nháp', T.ink3];
-  const d = r.planCycle ? null : daysUntil(r.trialEndsAt);
-  if (d !== null && d <= 3) return [d < 0 ? 'Hết dùng thử' : `Còn ${d} ngày thử`, T.goldText];
+  if (r.status === 'draft') return [r.lockedReason === 'plan_required' ? 'Chờ thanh toán gói' : 'Nháp', T.ink3];
+  const d = r.planKey === 'free' ? null : daysUntil(r.planEndsAt);
+  if (d !== null && d <= 7) return [`Gói còn ${Math.max(d, 0)} ngày`, T.goldText];
   return ['Hoạt động', T.teal];
 }
 
@@ -60,7 +61,7 @@ export default function Page() {
               <div key={r.id} className="grid gap-3 items-center px-5 py-3 text-[13px]" style={{ gridTemplateColumns: cols, minWidth: 960, borderTop: `1px solid ${T.line}` }}>
                 <div className="flex items-center gap-2.5 min-w-0"><CommunityMark mark={r.logoMark} color={r.logoColor} url={r.logoUrl} size={34} radius={9} /><div className="min-w-0"><div className="font-semibold truncate">{r.name}</div><div className="muted text-[12px] truncate">{SITE_HOST}/{r.slug}</div></div></div>
                 <span className="truncate">{r.owner.name}</span>
-                <span className="tag" style={{ background: plan === 'Dùng thử' ? T.bg : T.goldSoft, color: plan === 'Dùng thử' ? T.ink2 : T.goldText, width: 'fit-content' }}>{plan}</span>
+                <span className="tag" style={{ background: r.planKey === 'free' ? T.bg : T.goldSoft, color: r.planKey === 'free' ? T.ink2 : T.goldText, width: 'fit-content' }}>{plan}</span>
                 <span>{fmtCount(r.memberCount)}</span>
                 <span className="font-semibold">{money(r.gmv30Minor)}</span>
                 <span className="font-semibold" style={{ color }}>{st}</span>

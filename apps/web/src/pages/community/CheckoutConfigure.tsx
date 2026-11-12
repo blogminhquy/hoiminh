@@ -1,9 +1,9 @@
 // Bước chọn: /:slug/thanh-toan?tier=premium&cycle=yearly hoặc ?product=<id> → chọn chu kỳ, mã giảm giá, cổng → POST /v1/checkout.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, CommunityMark, Radio, T, money } from '@hoiminh/ui';
-import { Check } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import type { Shell } from '@/lib/community';
@@ -28,12 +28,13 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
   const c = shell.community;
   const premium = shell.premium;
   const [cycle, setCycle] = useState<Cycle>(initialCycle === 'monthly' || initialCycle === 'one_time' ? initialCycle : premium?.yearlyMinor ? 'yearly' : premium?.monthlyMinor ? 'monthly' : 'one_time');
-  const [provider, setProvider] = useState<Provider>('sepay');
+  // Đơn của hội chỉ trả bằng chuyển khoản tới tài khoản của chủ hội (tiền không qua Hội Mình).
+  const provider: Provider = 'sepay';
+  const ready = c.paymentsReady;
   const [coupon, setCoupon] = useState('');
   const [applied, setApplied] = useState<string | null>(null);
   const products = useQuery({ queryKey: ['products', c.id], queryFn: () => api.get<ProductList>(`/v1/communities/${c.id}/products`), enabled: Boolean(productId) });
   const product = productId ? products.data?.items.find((p) => p.id === productId || p.slug === productId) ?? null : null;
-  const enabled = c.enabledProviders.length ? c.enabledProviders : ['sepay', 'momo', 'vnpay'];
 
   const m = useMutation({
     mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', {
@@ -78,11 +79,20 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ref
           </div>
         </div>
         <div className="w-full md:w-[520px] flex flex-col gap-3 md:pt-9">
-          <span className="font-semibold">Chọn cách thanh toán</span>
-          {PROVIDERS.map((p) => <ProviderOption key={p.key} p={p} on={provider === p.key} disabled={!enabled.includes(p.key)} onClick={() => setProvider(p.key)} />)}
-          {m.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
-          <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="mt-1.5">{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán qua ${PROVIDERS.find((p) => p.key === provider)?.name}`}</Button>
-          <div className="muted text-[12px] text-center">Không thu phí giao dịch · hóa đơn gửi về email của bạn</div>
+          <span className="font-semibold">Cách thanh toán</span>
+          <ProviderOption p={{ ...PROVIDERS[0]!, desc: `Quét bằng app ngân hàng, tiền chuyển thẳng tới chủ hội ${c.name}` }} on />
+          {m.isError && <div className="text-[14px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
+          {ready ? (
+            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="mt-1.5">Lấy mã QR chuyển khoản</Button>
+          ) : (
+            <>
+              <Button size="lg" disabled className="mt-1.5" icon={<Lock size={18} />}>Hội chưa mở thanh toán</Button>
+              <div className="text-[14px] text-center" style={{ color: T.goldText }}>{shell.viewer.permissions.includes('billing.manage')
+                ? <>Bạn chưa cài tài khoản nhận tiền. <Link to={`/${c.slug}/cai-dat/nhan-tien`} className="font-semibold underline">Cài nhận tiền</Link> để mở nút mua.</>
+                : 'Chủ hội chưa cài tài khoản nhận tiền nên chưa mua được. Bạn quay lại sau nhé.'}</div>
+            </>
+          )}
+          <div className="muted text-[13px] text-center">Hội Mình không thu phí giao dịch và không giữ tiền của bạn</div>
         </div>
       </div>
     </CheckoutFrame>

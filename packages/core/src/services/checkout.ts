@@ -1,17 +1,19 @@
 // Checkout: tier hội (tháng/năm/một lần), sản phẩm cửa hàng, gói nền tảng. Gọi PaymentService qua adapter, không chạm cổng trực tiếp.
 import type { CheckoutSession, CreateCheckoutInput } from '@hoiminh/contracts';
-import { formatMoney } from '@hoiminh/contracts';
+import { PLAN_CYCLE, effectivePlanKey, formatMoney, planQuote } from '@hoiminh/contracts';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, plans, products, providerAccounts, users, workspaces, type OrderStatus } from '@hoiminh/db';
+import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, providerAccounts, users, type OrderStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
-import { AppError, conflict, invalid, notFound } from '../errors';
+import { AppError, conflict, invalid, invalidState, notFound } from '../errors';
 import { applyCoupon, newReference } from '../lib/money';
 import { requireUser, requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { ownsProduct } from './entitlements';
 import { FLAG, requireFlag } from './feature-flags';
 import { paymentsFor } from '../lib/payment-accounts';
+import { notifyOwnerOfTransfer, ownerBankInstruction, paymentsNotReadyError, payoutAccountForCheckout } from './owner-payout';
+import { communityPlan, planTable } from './plans';
 
 interface Resolved {
   title: string; subtitle: string; amountMinor: number; currency: 'VND' | 'USD'; communityId: string | null; workspaceId: string | null;
@@ -28,6 +30,13 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
     if (!tier) throw notFound('Gói không tồn tại');
     const amount = t.cycle === 'monthly' ? tier.monthlyMinor : t.cycle === 'yearly' ? tier.yearlyMinor : tier.oneTimeMinor;
     if (!amount) throw invalid('Gói này không bán theo chu kỳ đã chọn');
+    // Hội đã chạm trần thành viên của gói: chặn trước khi thu tiền, để không ai trả tiền rồi mà không vào được.
+    // Người đang là thành viên (đổi tier, gia hạn) thì không chiếm thêm chỗ nên vẫn mua được.
+    const mine = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, c.id), eq(communityMembers.userId, userId)), columns: { status: true } });
+    if (mine?.status !== 'active' && mine?.status !== 'cancelling') {
+      const plan = await communityPlan(ctx, c.id);
+      if (plan.full) throw plan.needsPlan ? invalidState('Hội chưa mở') : new AppError('member_cap', 'Hội đang đủ chỗ, chưa nhận thêm thành viên mới. Bạn quay lại sau nhé.', undefined, { communityId: c.id });
+    }
     const cycleLabel = t.cycle === 'monthly' ? 'tháng' : t.cycle === 'yearly' ? 'năm' : 'trọn đời';
     return { title: `Gói ${tier.name}`, subtitle: `Nâng cấp tại ${c.name}`, amountMinor: amount, currency: 'VND', communityId: c.id, workspaceId: c.workspaceId, targetType: 'tier', targetId: tier.id, metadata: { cycle: t.cycle, tierKey: tier.key, title: `${tier.name} · ${cycleLabel}`, communitySlug: c.slug }, enabledProviders: c.enabledProviders, itemName: `${tier.name} · ${cycleLabel}` };
   }
@@ -39,27 +48,42 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
     const c = await ctx.db.query.communities.findFirst({ where: eq(communities.id, p.communityId) });
     return { title: p.name, subtitle: `Mua tại ${c?.name ?? 'Cửa hàng'}`, amountMinor: p.priceMinor, currency: p.currency as 'VND', communityId: p.communityId, workspaceId: p.workspaceId, targetType: 'product', targetId: p.id, metadata: { cycle: 'one_time', title: p.name, kind: p.kind, communitySlug: c?.slug, productSlug: p.slug }, enabledProviders: c?.enabledProviders ?? ['sepay', 'momo', 'vnpay'], itemName: p.name };
   }
-  await requireWorkspaceRole(ctx, t.workspaceId, ['owner']);
-  const ws = await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, t.workspaceId) });
-  if (!ws) throw notFound('Workspace không tồn tại');
-  const plan = await ctx.db.query.plans.findFirst({ where: eq(plans.key, ws.planKey) });
-  if (!plan) throw notFound('Gói nền tảng không tồn tại');
-  // Quản trị đã chuyển gói sang link thanh toán ngoài: không tạo đơn qua cổng trong Hội Mình nữa.
-  if (plan.paymentMode === 'link') throw new AppError('payment_error', 'Gói Hội Mình đang thanh toán qua link ngoài, mở trang Gói Hội Mình để tới trang thanh toán');
-  const amount = t.cycle === 'monthly' ? plan.monthlyMinor : plan.yearlyMinor;
-  return { title: `Gói ${plan.name} · ${t.cycle === 'monthly' ? 'theo tháng' : 'theo năm'}`, subtitle: 'Gói nền tảng cho chủ hội', amountMinor: amount, currency: 'VND', communityId: null, workspaceId: ws.id, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, title: `Hội Mình · ${t.cycle === 'monthly' ? 'tháng' : 'năm'}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `Hội Mình · ${t.cycle === 'monthly' ? 'tháng' : 'năm'}` };
+  // Gói Hội Mình cho một hội: chỉ chủ workspace mua được. Tiền gói về tài khoản của Hội Mình.
+  const c = await ctx.db.query.communities.findFirst({ where: and(eq(communities.id, t.communityId), isNull(communities.deletedAt)) });
+  if (!c) throw notFound('Hội không tồn tại');
+  await requireWorkspaceRole(ctx, c.workspaceId, ['owner']);
+  const table = await planTable(ctx);
+  const plan = table.find((p) => p.key === t.planKey);
+  if (!plan || plan.key === 'free') throw notFound('Gói không tồn tại');
+  const now = ctx.now();
+  const current = table.find((p) => p.key === effectivePlanKey(c.planKey, c.planEndsAt, now))!;
+  const q = planQuote({ now, current: { key: current.key, endsAt: c.planEndsAt }, target: plan, cycle: t.cycle, members: c.memberCount });
+  if (q.blocked === 'cap') throw invalidState(`Hội đang có ${c.memberCount.toLocaleString('vi-VN')} thành viên, nhiều hơn trần ${plan.memberCap?.toLocaleString('vi-VN')} của gói ${plan.name}, nên chưa mua được gói này.`);
+  if (q.blocked === 'lower') throw invalidState(`Hội đang ở gói ${current.name} và còn hạn. Chỉ mua được gói thấp hơn khi hết kỳ đang trả.`);
+  if (q.amountMinor <= 0) throw invalid('Gói này chưa có giá');
+  const label = PLAN_CYCLE[t.cycle].label;
+  const title = `Gói ${plan.name} · ${label}`;
+  return { title, subtitle: `Gói Hội Mình cho ${c.name}`, amountMinor: q.amountMinor, currency: 'VND', communityId: null, workspaceId: c.workspaceId, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, planKey: plan.key, planCommunityId: c.id, communitySlug: c.slug, title: `${title} · ${c.name}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `${title} · ${c.name}` };
 }
 
-/** Tạo đơn + thanh toán + hướng dẫn (QR hoặc redirect). Đơn chờ hết hạn sau 30 phút. */
+/** Tạo đơn + thanh toán + hướng dẫn (QR hoặc redirect). Đơn chờ hết hạn sau 30 phút (24 giờ với đơn chủ hội tự bấm xác nhận). */
 export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Promise<CheckoutSession> {
   const userId = requireUser(ctx);
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
   const r = await resolveTarget(ctx, userId, input);
-  const providerAccount = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, input.provider), eq(providerAccounts.scopeType, 'platform')) });
-  if (providerAccount && !providerAccount.enabled) throw new AppError('payment_error', 'Cổng thanh toán này đang tạm tắt, chọn cách khác');
-  if (input.provider === 'paypal') await requireFlag(ctx, FLAG.paypal, 'PayPal chưa mở trên nền tảng này', { workspaceId: r.workspaceId });
-  if (!r.enabledProviders.includes(input.provider) && r.targetType !== 'platform') throw new AppError('payment_error', 'Hội này không nhận thanh toán qua cổng đã chọn');
+  // Đơn của hội (gói thành viên, sản phẩm): tiền về thẳng tài khoản của chủ hội bằng chuyển khoản. Hội chưa cài tài
+  // khoản nhận tiền thì chưa bán được. Các cổng của Hội Mình (MoMo, VNPAY, PayPal, tài khoản SePay của Hội Mình) chỉ
+  // dùng cho đơn gói Hội Mình, vì tiền qua các cổng đó về tài khoản của Hội Mình.
+  const ownerAccount = r.targetType !== 'platform' && r.communityId ? await payoutAccountForCheckout(ctx, r.communityId) : null;
+  if (r.targetType !== 'platform') {
+    if (!ownerAccount) throw paymentsNotReadyError();
+    if (input.provider !== 'sepay') throw new AppError('payment_error', 'Hội này nhận tiền bằng chuyển khoản ngân hàng');
+  } else {
+    const providerAccount = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, input.provider), eq(providerAccounts.scopeType, 'platform')) });
+    if (providerAccount && !providerAccount.enabled) throw new AppError('payment_error', 'Cổng thanh toán này đang tạm tắt, chọn cách khác');
+    if (input.provider === 'paypal') await requireFlag(ctx, FLAG.paypal, 'PayPal chưa mở trên nền tảng này', { workspaceId: r.workspaceId });
+  }
 
   let coupon: typeof coupons.$inferSelect | null = null;
   if (input.couponCode) {
@@ -96,13 +120,17 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   }
 
   const reference = newReference();
-  const adapter = (await paymentsFor(ctx)).get(input.provider);
+  // Đơn chủ hội tự bấm xác nhận thì giữ 24 giờ, vì chủ hội không ngồi chờ từng đơn; các đơn khác giữ 30 phút.
+  const holdMinutes = ownerAccount?.confirmMode === 'manual' ? 24 * 60 : 30;
   const order = await ctx.db.transaction(async (tx) => {
-    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider: input.provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + 30 * 60_000) }).returning();
+    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider: input.provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + holdMinutes * 60_000) }).returning();
     await tx.insert(orderItems).values({ orderId: o!.id, resourceType: r.targetType, resourceId: r.targetId, name: r.itemName, unitMinor: r.amountMinor, totalMinor: total });
     return o!;
   });
-  const checkout = await adapter.createCheckout({ reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl: input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`, ipnUrl: `${ctx.env.API_URL}/webhooks/${input.provider}` });
+  // Đơn của hội: không gọi cổng nào, chỉ dựng mã QR chuyển khoản tới tài khoản của chủ hội.
+  const checkout = ownerAccount
+    ? { providerPaymentId: null, instruction: ownerBankInstruction(ownerAccount, total, reference), settlement: undefined, raw: { payee: 'owner', bankCode: ownerAccount.bankCode } as Record<string, unknown> }
+    : await (await paymentsFor(ctx)).get(input.provider).createCheckout({ reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl: input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`, ipnUrl: `${ctx.env.API_URL}/webhooks/${input.provider}` });
   const [payment] = await ctx.db.insert(payments).values({ workspaceId: r.workspaceId, communityId: r.communityId, orderId: order.id, customerUserId: userId, provider: input.provider, providerPaymentId: checkout.providerPaymentId, amountMinor: total, currency: r.currency, status: 'pending', paymentMethod: input.provider === 'sepay' ? 'bank_transfer' : input.provider, reference, instruction: { ...(checkout.instruction as unknown as Record<string, unknown>), ...(checkout.settlement ? { settlement: checkout.settlement } : {}) } }).returning();
   await ctx.db.insert(paymentAttempts).values({ paymentId: payment!.id, provider: input.provider, status: 'created', request: { reference, amountMinor: total }, response: checkout.raw });
   await audit(ctx, { action: 'checkout.create', resourceType: 'order', resourceId: order.id, communityId: r.communityId, workspaceId: r.workspaceId, metadata: { provider: input.provider, amountMinor: total } });
@@ -130,7 +158,7 @@ export async function orderStatus(ctx: Ctx, orderId: string) {
     ? Boolean(await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, o.communityId), eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling'])) }))
     : false;
   const nextUrl = o.targetType === 'platform'
-    ? '/admin'
+    ? (meta.communitySlug ? `/admin/goi?hoi=${meta.communitySlug}` : '/admin')
     : o.targetType === 'product'
       ? (isMember ? `/${meta.communitySlug}/cua-hang/${meta.productSlug ?? ''}` : '/hoc')
       : `/${meta.communitySlug}/khoa-hoc`;
@@ -149,7 +177,11 @@ export async function markProcessing(ctx: Ctx, orderId: string) {
   if (effectiveOrderStatus(o, ctx.now()) === 'expired') return orderStatus(ctx, orderId);
   const p = await ctx.db.query.payments.findFirst({ where: and(eq(payments.orderId, orderId), eq(payments.customerUserId, userId)) });
   if (!p) throw notFound();
-  if (p.status === 'pending') await ctx.db.update(payments).set({ status: 'processing', updatedAt: ctx.now() }).where(eq(payments.id, p.id));
+  if (p.status === 'pending') {
+    await ctx.db.update(payments).set({ status: 'processing', updatedAt: ctx.now() }).where(eq(payments.id, p.id));
+    // Đơn trả thẳng chủ hội, chủ hội tự bấm xác nhận: báo cho chủ hội biết có người vừa chuyển khoản.
+    await notifyOwnerOfTransfer(ctx, o, p);
+  }
   return orderStatus(ctx, orderId);
 }
 

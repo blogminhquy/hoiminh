@@ -7,6 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { InviteModal } from '@/components/InviteModal';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, apiFetch, errorMessage } from '@/lib/api';
+import { MemberCapBanner } from '@/components/PlanGate';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate, timeAgo } from '@/lib/format';
 import { Directory, MessageModal, type MemberUser } from './MembersExtra';
@@ -88,6 +89,7 @@ function ManageMembers({ communityId, slug }: { communityId: string; slug: strin
         <Button icon={<Download size={18} />} loading={exporting} onClick={() => void exportCsv()}>Xuất CSV</Button>
         <Button variant="primary" icon={<Plus size={18} />} onClick={() => setInvite(true)}>Mời</Button>
       </div>
+      <MemberCapBanner />
       <label className="input" style={{ maxWidth: 380 }}><Search size={18} style={{ color: T.ink3 }} /><input placeholder="Tìm theo tên, email, @tên…" value={q} onChange={(e) => setQ(e.target.value)} /></label>
 
       {query.isLoading ? <LoadingBlock rows={3} /> : query.isError ? <ErrorBox message={errorMessage(query.error)} onRetry={() => void query.refetch()} /> : rows.length === 0 ? <Empty title="Không có thành viên nào" hint="Thử đổi trạng thái hoặc bỏ bộ lọc" /> : (

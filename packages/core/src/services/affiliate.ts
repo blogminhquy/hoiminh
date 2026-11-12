@@ -8,6 +8,7 @@ import { forbidden, notFound } from '../errors';
 import { commissionOf } from '../lib/money';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
+import { communityHasFeature, requirePlanFeature } from './plans';
 
 /** Số dư ví từ sổ cái: credit + release + adjustment − hold − debit. */
 export async function walletBalance(ctx: Ctx, affiliateAccountId: string): Promise<{ available: number; credited: number; held: number; debited: number }> {
@@ -100,6 +101,8 @@ export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: strin
     program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, p.communityId) });
     // Khóa học bán lẻ có công tắc "Cộng sự được nhận hoa hồng khi bán lẻ khóa này". Tắt thì không tính.
     if (p.targetType === 'product' && !(await productsAllowCommission(ctx, p.orderId))) return null;
+    // Cộng sự là tính năng trả phí của gói hội: hội xuống gói không có cộng sự thì đơn mới không sinh hoa hồng.
+    if (!(await communityHasFeature(ctx, p.communityId, 'affiliate'))) return null;
   }
   if (!program || program.status !== 'active' || !accountId) return null;
   const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, accountId) });
@@ -164,6 +167,8 @@ export async function programSettings(ctx: Ctx, communityId: string) {
 }
 export async function updateProgram(ctx: Ctx, communityId: string, input: { enabled: boolean; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; leaderboardVisibility: 'members' | 'affiliates_only' | 'hidden'; leaderboardShowMoney: boolean }) {
   await requireCommunityPermission(ctx, communityId, 'affiliates.manage');
+  // Bật chương trình cần gói có cộng sự; tắt thì gói nào cũng làm được.
+  if (input.enabled) await requirePlanFeature(ctx, communityId, 'affiliate');
   const [row] = await ctx.db.update(affiliatePrograms).set({ status: input.enabled ? 'active' : 'paused', commissionRateBps: input.commissionRateBps, holdDays: input.holdDays, minWithdrawalMinor: input.minWithdrawalMinor, leaderboardVisibility: input.leaderboardVisibility, leaderboardShowMoney: input.leaderboardShowMoney, updatedAt: ctx.now() }).where(eq(affiliatePrograms.communityId, communityId)).returning();
   await audit(ctx, { action: 'affiliate.update_program', resourceType: 'affiliate_program', resourceId: row!.id, communityId, metadata: input });
   return row!;

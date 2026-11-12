@@ -1,12 +1,16 @@
 // Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Cộng sự và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams, type RouteObject } from 'react-router-dom';
+import { InstallGate } from '@/components/InstallGate';
+import { FeatureGate } from '@/components/PlanGate';
 import { LoadingBlock } from '@/components/QueryState';
 import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
 import { AccountShell, LearnerShell } from '@/layouts/LearnerShell';
 import { WorkspaceShell } from '@/layouts/WorkspaceShell';
 
+// InstallGate bọc mọi khu vực của người đã đăng nhập (trừ Quản trị hệ thống): trên điện thoại, từ lần vào thứ hai,
+// phải thêm Hội Mình ra màn hình chính. Các trang công khai (trang chủ, đăng nhập, thanh toán) không đi qua cổng này.
 const page = (loader: () => Promise<{ default: ComponentType }>) => {
   const C = lazy(loader);
   return (
@@ -32,6 +36,7 @@ const publicRoutes: RouteObject[] = [
   { path: '/dat-lai-mat-khau', element: page(() => import('@/pages/public/ResetPassword')) },
   { path: '/xac-minh-email', element: page(() => import('@/pages/public/VerifyEmail')) },
   { path: '/kich-hoat', element: page(() => import('@/pages/public/Activate')) },
+  { path: '/vao', element: page(() => import('@/pages/public/LoginLink')) },
   { path: '/auth/callback', element: page(() => import('@/pages/public/AuthCallback')) },
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
@@ -40,7 +45,7 @@ const publicRoutes: RouteObject[] = [
 ];
 
 const ownerRoutes: RouteObject = {
-  element: <WorkspaceShell />,
+  element: <InstallGate><WorkspaceShell /></InstallGate>,
   children: [
     { path: '/admin', element: page(() => import('@/pages/owner/WorkspaceHome')) },
     { path: '/admin/tao-hoi', element: page(() => import('@/pages/owner/WorkspaceCreate')) },
@@ -51,7 +56,7 @@ const ownerRoutes: RouteObject = {
 
 // Khu học tập của người mua lẻ (V2, mục 153): chạy ngoài khung hội, dùng được khi người dùng không thuộc hội nào.
 const learnerRoutes: RouteObject = {
-  element: <LearnerShell />,
+  element: <InstallGate><LearnerShell /></InstallGate>,
   children: [
     { path: '/hoc', element: page(() => import('@/pages/learner/Library')) },
     { path: '/hoc/bai/:lessonId', element: page(() => import('@/pages/community/Classroom')) },
@@ -59,7 +64,7 @@ const learnerRoutes: RouteObject = {
 };
 
 const accountRoutes: RouteObject = {
-  element: <AccountShell />,
+  element: <InstallGate><AccountShell /></InstallGate>,
   children: [
     { path: '/tin-nhan', element: page(() => import('@/pages/account/Messages')) },
     { path: '/thong-bao', element: page(() => import('@/pages/account/Notifications')) },
@@ -83,7 +88,7 @@ const communityRoutes: RouteObject = {
     { index: true, element: page(() => import('@/pages/public/CommunityAbout')) },
     { path: 'thanh-toan', element: page(() => import('@/pages/community/Checkout')) },
     {
-      element: <AppShell />,
+      element: <InstallGate><AppShell /></InstallGate>,
       children: [
         { path: 'hom-nay', element: page(() => import('@/pages/community/Today')) },
         { path: 'bang-tin', element: page(() => import('@/pages/community/Feed')) },
@@ -118,12 +123,13 @@ const communityRoutes: RouteObject = {
             { path: 'chung', element: page(() => import('@/pages/settings/SettingsGeneral')) },
             { path: 'bang-tin', element: page(() => import('@/pages/settings/SettingsFeed')) },
             { path: 'gia', element: page(() => import('@/pages/settings/SettingsPricing')) },
-            { path: 'cong-su', element: page(() => import('@/pages/settings/SettingsAffiliate')) },
+            { path: 'nhan-tien', element: page(() => import('@/pages/settings/SettingsPayout')) },
+            { path: 'cong-su', element: <FeatureGate feature="affiliate">{page(() => import('@/pages/settings/SettingsAffiliate'))}</FeatureGate> },
             { path: 'tien-ich', element: page(() => import('@/pages/settings/SettingsPlugins')) },
-            { path: 'nguon-dong-bo', element: page(() => import('@/pages/settings/SettingsSources')) },
-            { path: 'quy-tac', element: page(() => import('@/pages/settings/SettingsRules')) },
-            { path: 'lien-he', element: page(() => import('@/pages/settings/SettingsContacts')) },
-            { path: 'nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
+            { path: 'nguon-dong-bo', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsSources'))}</FeatureGate> },
+            { path: 'quy-tac', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsRules'))}</FeatureGate> },
+            { path: 'lien-he', element: <FeatureGate feature="automation">{page(() => import('@/pages/settings/SettingsContacts'))}</FeatureGate> },
+            { path: 'nha-phat-trien', element: <FeatureGate feature="api">{page(() => import('@/pages/owner/Developer'))}</FeatureGate> },
           ],
         },
       ],

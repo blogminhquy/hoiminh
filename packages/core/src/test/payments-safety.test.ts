@@ -7,7 +7,7 @@ import * as admin from '../services/admin';
 import * as checkout from '../services/checkout';
 import * as featureFlags from '../services/feature-flags';
 import * as paymentsSvc from '../services/payments';
-import { createTestApp, type TestApp } from './setup';
+import { createTestApp, ownerBankPaid, type TestApp } from './setup';
 
 let app: TestApp;
 
@@ -37,7 +37,8 @@ async function buyPrompts(user: 'dien' | 'cong' | 'thulan' | 'hongkim' | 'hoangv
 describe('Xác nhận thanh toán không bị trùng', () => {
   it('hai webhook đến cùng lúc cho một đơn chỉ cấp một hóa đơn', async () => {
     const s = await buyPrompts('dien');
-    await Promise.all([sepayPaid(s.reference, s.amountMinor), sepayPaid(s.reference, s.amountMinor)]);
+    // Hai lần báo có cùng lúc cho một đơn của hội (tiền về tài khoản chủ hội).
+    await Promise.all([ownerBankPaid(app, s.reference, s.amountMinor), ownerBankPaid(app, s.reference, s.amountMinor)]);
     const rows = await app.ctx.db.select().from(invoices).where(eq(invoices.orderId, s.orderId));
     expect(rows).toHaveLength(1);
     const order = await app.ctx.db.query.orders.findFirst({ where: eq(orders.id, s.orderId) });
@@ -56,7 +57,7 @@ describe('Xác nhận thanh toán không bị trùng', () => {
 describe('Hoàn tiền', () => {
   it('hoàn nhiều lần một phần, không vượt số đã thu', async () => {
     const s = await buyPrompts('thulan');
-    await sepayPaid(s.reference, s.amountMinor);
+    await ownerBankPaid(app, s.reference, s.amountMinor);
     const pay = (await app.ctx.db.query.payments.findFirst({ where: eq(payments.orderId, s.orderId) }))!;
     const sys = app.system();
     await paymentsSvc.applyRefund(sys, pay.id, 50_000, 'một phần', null);
@@ -76,10 +77,9 @@ describe('Hoàn tiền', () => {
 
   it('API key không hoàn được đơn gói nền tảng (không thuộc hội nào)', async () => {
     const sys = app.system();
-    // Chủ hội Thảo Vy trả gói nền tảng năm qua chuyển khoản.
-    const vyWs = await app.ids('workspace:thaovy');
+    // Chủ hội Thảo Vy trả gói Khởi đầu 1 năm cho hội của mình qua chuyển khoản.
     const vy = { ...sys, actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
-    const s = await checkout.createCheckout(vy, { target: { type: 'platform', workspaceId: vyWs, cycle: 'yearly' }, provider: 'sepay' });
+    const s = await checkout.createCheckout(vy, { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'starter', cycle: 'yearly' }, provider: 'sepay' });
     await sepayPaid(s.reference, s.amountMinor);
     const order = await app.ctx.db.query.orders.findFirst({ where: and(eq(orders.id, s.orderId), eq(orders.status, 'paid')) });
     expect(order).toBeTruthy();
@@ -92,10 +92,10 @@ describe('Hoàn tiền', () => {
 });
 
 describe('PayPal', () => {
-  /** Chủ hội Thảo Vy mua gói nền tảng năm (không phụ thuộc cổng hội cho phép). */
+  /** Chủ hội Thảo Vy mua gói Khởi đầu 1 năm cho hội (không phụ thuộc cổng hội cho phép). */
   async function vyPlatform(provider: 'sepay' | 'paypal') {
     const vy = { ...app.system(), actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
-    return checkout.createCheckout(vy, { target: { type: 'platform', workspaceId: await app.ids('workspace:thaovy'), cycle: 'yearly' }, provider });
+    return checkout.createCheckout(vy, { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'starter', cycle: 'yearly' }, provider });
   }
 
   it('so với số USD đã thu, không nhầm với tiền VND của đơn', async () => {
@@ -124,14 +124,19 @@ describe('PayPal', () => {
 });
 
 describe('Credential nhập ở trang quản trị', () => {
-  it('được dùng để xác minh webhook, và sửa một ô không làm mất ô khác', async () => {
+  it('được dùng để xác minh webhook của tài khoản Hội Mình (đơn mua gói), và sửa một ô không làm mất ô khác', async () => {
     const adminCtx = await app.as('admin');
+    const vy = { ...app.system(), actor: { type: 'user' as const, userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
+    const buyPlan = async () => checkout.createCheckout(vy, { target: { type: 'platform', communityId: await app.ids('community:vy'), planKey: 'starter', cycle: 'yearly' }, provider: 'sepay' });
     await admin.updateProvider(adminCtx, 'sepay', { credentials: { apiKey: 'khoa-that-tu-trang-quan-tri' } });
-    const s = await buyPrompts('thulan');
+    const s = await buyPlan();
     expect((await sepayPaid(s.reference, s.amountMinor)).result).toBe('invalid_signature');
     await admin.updateProvider(adminCtx, 'sepay', { credentials: { apiKey: '', bankAccount: '999888777' } });
-    const s2 = await buyPrompts('thulan');
+    const s2 = await buyPlan();
     expect((s2.instruction as { accountNumber?: string }).accountNumber).toBe('999888777');
     expect((await sepayPaid(s2.reference, s2.amountMinor, 'khoa-that-tu-trang-quan-tri')).result).toBe('processed');
+    // Tài khoản của Hội Mình đổi không ảnh hưởng đơn của hội: đơn đó vẫn dùng tài khoản của chủ hội.
+    const hoi = await buyPrompts('hongkim');
+    expect(hoi.instruction).toMatchObject({ payee: 'owner', accountNumber: '0071000999888' });
   });
 });

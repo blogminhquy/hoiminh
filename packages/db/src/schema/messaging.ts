@@ -122,3 +122,23 @@ export const notificationPrefs = pgTable('notification_prefs', {
   perCommunity: jsonb('per_community').$type<Record<string, 'all' | 'mentions' | 'off'>>().notNull().default({}),
   updatedAt: ts('updated_at').notNull().defaultNow(),
 });
+
+/**
+ * Đăng ký nhận thông báo đẩy (Web Push) của một trình duyệt hoặc ứng dụng đã cài ra màn hình chính.
+ * Mỗi thiết bị một dòng; dịch vụ đẩy báo đăng ký đã chết (404, 410) thì dòng bị xóa.
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    failureCount: integer('failure_count').notNull().default(0),
+    lastSuccessAt: ts('last_success_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint), index('push_subscriptions_user_idx').on(t.userId)],
+);

@@ -13,6 +13,7 @@ import { normalizeTagName } from '../lib/inbound-payload';
 import { audit } from './audit';
 import { tagsByEmail } from './automation';
 import { getCommunityBySlug } from './communities';
+import { assertRoomForMember, communityPlan } from './plans';
 
 /** Tham gia hội miễn phí (free/freemium). Hội thu phí đi qua checkout. */
 export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: Array<{ questionId: string; answer: string }>; ref?: string | null }) {
@@ -40,7 +41,11 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     const attr = await raw(ctx.db, sql`select a.affiliate_account_id from affiliate_attributions a join affiliate_programs p on p.id = a.program_id where a.user_id = ${userId} and p.community_id = ${c.id} and a.expires_at > now() order by a.attributed_at desc limit 1`);
     affiliateId = (attr[0] as { affiliate_account_id: string } | undefined)?.affiliate_account_id ?? null;
   }
-  const status: MemberStatus = instant ? 'active' : 'pending';
+  // Hội đã chạm trần thành viên của gói: người mới vẫn gửi yêu cầu được và nằm ở hàng chờ duyệt, không ai bị từ chối.
+  const plan = await communityPlan(ctx, c.id);
+  if (plan.needsPlan) throw invalidState('Hội chưa mở');
+  const waitlisted = plan.full;
+  const status: MemberStatus = instant && !waitlisted ? 'active' : 'pending';
   const values = { communityId: c.id, userId, role: 'member' as const, status, tierId: tier?.id ?? null, referredByAffiliateId: affiliateId, source: affiliateId ? ('affiliate' as const) : ('direct' as const), joinedAt: ctx.now(), lastActiveAt: ctx.now(), churnedAt: null, updatedAt: ctx.now() };
   const [member] = existing
     ? await ctx.db.update(communityMembers).set(values).where(eq(communityMembers.id, existing.id)).returning()
@@ -55,7 +60,7 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     if (affiliateId) await ctx.db.update(affiliateAccounts).set({ signupCount: sql`${affiliateAccounts.signupCount} + 1` }).where(eq(affiliateAccounts.id, affiliateId));
     await ctx.events.emit('member.joined', { communityId: c.id, userId, memberId: member!.id, source: values.source, referredByAffiliateId: affiliateId });
   }
-  return { member: member!, alreadyMember: false };
+  return { member: member!, alreadyMember: false, waitlisted };
 }
 
 /** Danh sách thành viên với bộ lọc (mục 189). */
@@ -159,6 +164,8 @@ export async function memberAction(ctx: Ctx, communityId: string, memberId: stri
     await ctx.db.update(communityMembers).set({ status: 'churned', bannedAt: null, updatedAt: ctx.now() }).where(eq(communityMembers.id, memberId));
   } else if (action === 'approve') {
     if (m.status !== 'pending') throw invalidState('Thành viên không ở trạng thái chờ duyệt');
+    // Chạm trần của gói thì không duyệt thêm: lỗi `member_cap` mang số liệu để giao diện mở màn nâng gói.
+    await assertRoomForMember(ctx, communityId);
     await ctx.db.update(communityMembers).set({ status: 'active', updatedAt: ctx.now() }).where(eq(communityMembers.id, memberId));
     await ctx.db.update(communities).set({ memberCount: sql`${communities.memberCount} + 1` }).where(eq(communities.id, communityId));
     await ctx.events.emit('member.joined', { communityId, userId: m.userId, memberId, source: m.source, referredByAffiliateId: m.referredByAffiliateId });

@@ -1,8 +1,9 @@
 // Bàn điều khiển của chủ hội: dựng danh sách "Cần xử lý" từ số liệu thật (yêu cầu rút của cộng sự,
-// người chờ duyệt vào hội, bài chờ duyệt, gói Hội Mình sắp hết hạn). Hàm thuần để test được, không gọi API ở đây.
+// người chờ duyệt vào hội, bài chờ duyệt, gói của hội sắp hết hạn hoặc đã chạm trần thành viên). Hàm thuần để test được, không gọi API ở đây.
 import { money } from './format';
 
-export interface OwnerPlan { status: 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired'; endsAt: string | null; locked: boolean }
+/** Gói đang có hiệu lực của hội đang mở (lấy từ khung hội). */
+export interface OwnerPlan { key: string; name: string; endsAt: string | null; memberCap: number | null; needsPlan: boolean; full: boolean }
 export interface OwnerTodoInput {
   slug: string;
   now: Date;
@@ -11,34 +12,41 @@ export interface OwnerTodoInput {
   pendingMembers: number | null;
   pendingPosts: number | null;
   plan: OwnerPlan | null;
+  /** Nhận tiền của hội: đã cài chưa, bao nhiêu đơn chờ chủ hội bấm "Đã nhận tiền", hội có bán gì không. */
+  payout?: { ready: boolean; pendingCount: number; pendingMinor: number; sells: boolean } | null;
 }
-export interface OwnerTodo { key: 'plan' | 'payouts' | 'members' | 'posts'; title: string; hint: string; to: string; label: string; urgent: boolean }
+export interface OwnerTodo { key: 'plan' | 'payout' | 'orders' | 'payouts' | 'members' | 'posts'; title: string; hint: string; to: string; label: string; urgent: boolean }
 
 /** Số ngày còn lại tới một thời điểm, làm tròn lên. Đã qua thì trả 0. */
 export function daysLeft(until: string | Date, now: Date): number {
   return Math.max(0, Math.ceil((new Date(until).getTime() - now.getTime()) / 86_400_000));
 }
 
-/** Gói Hội Mình chỉ thành việc cần làm khi đã hết hạn hoặc còn từ 7 ngày trở xuống. */
-function planTodo(plan: OwnerPlan, now: Date): OwnerTodo | null {
-  const to = '/admin/goi';
-  if (plan.locked || plan.status === 'expired' || plan.status === 'past_due') {
-    return { key: 'plan', title: 'Gói Hội Mình đã hết hạn', hint: 'Tạo nội dung đang tạm khóa, dữ liệu vẫn được giữ', to, label: 'Thanh toán', urgent: true };
-  }
-  if (!plan.endsAt || plan.status === 'cancelled') return null;
+/** Gói của hội thành việc cần làm khi: hội chưa có gói, hội đã chạm trần thành viên, hoặc gói trả phí còn từ 7 ngày trở xuống. */
+function planTodo(plan: OwnerPlan, slug: string, now: Date): OwnerTodo | null {
+  const to = `/admin/goi?hoi=${slug}`;
+  if (plan.needsPlan) return { key: 'plan', title: 'Hội chưa có gói', hint: 'Hội thứ hai trở đi cần gói trả phí để chạy, dữ liệu vẫn được giữ', to, label: 'Chọn gói', urgent: true };
+  if (plan.full) return { key: 'plan', title: `Hội đã đủ ${(plan.memberCap ?? 0).toLocaleString('vi-VN')} thành viên của gói ${plan.name}`, hint: 'Người mới đang nằm ở hàng chờ, nâng gói để nhận thêm', to, label: 'Nâng gói', urgent: true };
+  if (plan.key === 'free' || !plan.endsAt) return null;
   const left = daysLeft(plan.endsAt, now);
   if (left > 7) return null;
   const when = left === 0 ? 'hôm nay' : `sau ${left} ngày`;
-  if (plan.status === 'trialing') return { key: 'plan', title: `Dùng thử hết ${when}`, hint: 'Chọn gói để hội không bị khóa tạo nội dung', to, label: 'Chọn gói', urgent: left <= 2 };
-  return { key: 'plan', title: `Gói Hội Mình hết hạn ${when}`, hint: 'Gia hạn để hội chạy liên tục', to, label: 'Gia hạn', urgent: left <= 2 };
+  return { key: 'plan', title: `Gói ${plan.name} hết hạn ${when}`, hint: 'Gia hạn để giữ trần thành viên và tính năng của gói', to, label: 'Gia hạn', urgent: left <= 2 };
 }
 
 /** Danh sách việc cần xử lý, việc gấp và việc dính tới tiền lên trước. Rỗng nghĩa là không có gì cần làm. */
 export function buildOwnerTodos(input: OwnerTodoInput): OwnerTodo[] {
   const base = `/${input.slug}`;
   const out: OwnerTodo[] = [];
-  const plan = input.plan ? planTodo(input.plan, input.now) : null;
+  const plan = input.plan ? planTodo(input.plan, input.slug, input.now) : null;
   if (plan) out.push(plan);
+  // Tiền bán hàng về thẳng tài khoản chủ hội: chưa cài thì nút mua khóa; có đơn chờ thì người mua đang đợi được mở quyền.
+  if (input.payout && !input.payout.ready && input.payout.sells) {
+    out.push({ key: 'payout', title: 'Hội chưa cài nhận tiền', hint: 'Các nút mua đang khóa, nhập tài khoản ngân hàng của bạn để mở', to: `${base}/cai-dat/nhan-tien`, label: 'Cài ngay', urgent: true });
+  }
+  if (input.payout && input.payout.pendingCount > 0) {
+    out.push({ key: 'orders', title: `${input.payout.pendingCount} đơn chờ bạn xác nhận đã nhận tiền`, hint: `Tổng ${money(input.payout.pendingMinor)}, người mua đang chờ được mở quyền`, to: `${base}/tien`, label: 'Xác nhận', urgent: true });
+  }
   if (input.affiliatePayouts && input.affiliatePayouts.count > 0) {
     out.push({ key: 'payouts', title: `${input.affiliatePayouts.count} yêu cầu rút của cộng sự`, hint: `Cần chuyển ${money(input.affiliatePayouts.amountMinor)}`, to: `${base}/cong-su`, label: 'Xử lý', urgent: true });
   }

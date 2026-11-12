@@ -15,15 +15,15 @@ describe('fold', () => {
 describe('ownerCommands', () => {
   it('chủ hội có đủ việc làm ngay, nơi đi tới và cài đặt, mọi đường dẫn nằm trong hội đang mở', () => {
     const list = ownerCommands(owner);
-    expect(ids(list)).toEqual(expect.arrayContaining(['post', 'invite', 'approve', 'course', 'event', 'product', 'payouts', 'withdraw', 'refund', 'go-money', 'set-pricing', 'set-dev', 'set-plan', 'set-sources', 'set-automation', 'set-contacts']));
+    expect(ids(list)).toEqual(expect.arrayContaining(['post', 'invite', 'approve', 'course', 'event', 'product', 'payouts', 'payout-account', 'confirm-orders', 'refund', 'go-money', 'set-pricing', 'set-dev', 'set-plan', 'set-sources', 'set-automation', 'set-contacts']));
     expect(list.find((c) => c.id === 'payouts')?.to).toBe('/minhquy/cong-su');
     expect(list.find((c) => c.id === 'approve')?.to).toBe('/minhquy/thanh-vien?trang-thai=pending');
     expect(new Set(ids(list)).size).toBe(list.length);
   });
 
-  it('quản trị không có billing.manage thì không có rút tiền, hoàn tiền; không phải chủ thì không có khóa API và gói', () => {
+  it('quản trị không có billing.manage thì không có cài nhận tiền, xác nhận đơn, hoàn tiền; không phải chủ thì không có khóa API và gói', () => {
     const admin = ownerCommands({ ...owner, role: 'admin', permissions: OWNER.filter((p) => p !== 'billing.manage') });
-    for (const id of ['withdraw', 'refund', 'set-dev', 'set-plan']) expect(ids(admin)).not.toContain(id);
+    for (const id of ['payout-account', 'confirm-orders', 'refund', 'set-dev', 'set-plan']) expect(ids(admin)).not.toContain(id);
     expect(ids(admin)).toContain('go-money');
     expect(ids(admin)).toContain('export-revenue');
   });
@@ -47,7 +47,8 @@ describe('searchCommands', () => {
     expect(searchCommands(list, '   ')).toEqual(list);
   });
   it('gõ không dấu vẫn ra', () => {
-    expect(searchCommands(list, 'rut tien')[0]?.id).toBe('withdraw');
+    // Người quen chữ "rút tiền" vẫn tìm ra chỗ cài tài khoản nhận tiền.
+    expect(searchCommands(list, 'rut tien')[0]?.id).toBe('payout-account');
     expect(searchCommands(list, 'hoa hong').map((c) => c.id)).toEqual(expect.arrayContaining(['payouts', 'set-affiliate']));
   });
   it('khớp ở đầu tên lệnh đứng trước khớp bằng từ khóa', () => {

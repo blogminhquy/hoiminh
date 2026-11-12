@@ -12,7 +12,7 @@ export const PROVIDERS: Array<{ key: Provider; name: string; desc: string; logo:
   { key: 'vnpay', name: 'VNPAY', desc: 'Thẻ nội địa hoặc QR ngân hàng', logo: 'VNPAY', bg: '#0A5EB0' },
   { key: 'paypal', name: 'PayPal', desc: 'Thanh toán bằng USD cho khách quốc tế', logo: 'PayPal', bg: '#003087' },
 ];
-export interface BankQr { kind: 'bank_qr'; qrImageUrl: string; bankName: string; bankCode: string; accountNumber: string; accountHolder: string; amountMinor: number; transferContent: string }
+export interface BankQr { kind: 'bank_qr'; qrImageUrl: string; bankName: string; bankCode: string; accountNumber: string; accountHolder: string; amountMinor: number; transferContent: string; /** 'owner' = tiền về thẳng tài khoản chủ hội. */ payee?: 'owner'; confirmMode?: 'manual' | 'auto' }
 export interface Redirect { kind: 'redirect'; url: string; deeplink?: string }
 export type Instruction = BankQr | Redirect;
 
@@ -59,7 +59,7 @@ export function BankQrCard({ i }: { i: BankQr }) {
         <div><div className="muted text-[12px]">Số tài khoản</div><div className="font-semibold flex items-center gap-1.5">{i.accountNumber} <CopyBtn text={i.accountNumber} /></div></div>
         <div><div className="muted text-[12px]">Số tiền</div><div className="font-semibold flex items-center gap-1.5">{money(i.amountMinor)} <CopyBtn text={String(i.amountMinor)} /></div></div>
         <div><div className="muted text-[12px]">Nội dung chuyển khoản</div><div className="font-bold flex items-center gap-1.5" style={{ color: T.accent }}>{i.transferContent} <CopyBtn text={i.transferContent} /></div></div>
-        <div className="muted text-[12px]">Giữ đúng nội dung để hệ thống nhận diện</div>
+        <div className="muted text-[13px]">{i.payee === 'owner' ? 'Tiền chuyển thẳng tới chủ hội. Giữ đúng nội dung để đơn được xác nhận.' : 'Giữ đúng nội dung để hệ thống nhận diện'}</div>
       </div>
     </div>
   );

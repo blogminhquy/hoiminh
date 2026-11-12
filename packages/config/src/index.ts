@@ -37,6 +37,14 @@ export const envSchema = z.object({
   YOUTUBE_API_KEY: z.string().default(''),
   EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
 
+  /**
+   * Tùy chọn: cặp khóa VAPID để gửi thông báo đẩy (Web Push). Tạo bằng `node scripts/generate-vapid.mjs`.
+   * Thiếu một trong hai khóa thì thông báo đẩy tắt hẳn, mọi thứ khác chạy bình thường.
+   */
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:hotro@hoiminh.vn'),
+
   R2_ACCOUNT_ID: z.string().default(''),
   R2_ACCESS_KEY_ID: z.string().default(''),
   R2_SECRET_ACCESS_KEY: z.string().default(''),
@@ -135,12 +143,6 @@ export const BUSINESS = {
   minWithdrawalMinor: 500_000,
   /** Cookie attribution affiliate, số ngày (mục 108). */
   affiliateCookieDays: 30,
-  /** Dùng thử gói nền tảng, số ngày (mục 202). */
-  platformTrialDays: 14,
-  /** Giá gói nền tảng theo tháng, đồng. */
-  platformMonthlyMinor: 499_000,
-  /** Giá gói nền tảng theo năm = 10 tháng, đồng. */
-  platformYearlyMinor: 4_990_000,
   /** Hoàn tiền khóa học mua lẻ trong 7 ngày nếu xem chưa quá 20%. */
   courseRefundDays: 7,
   courseRefundMaxProgressPercent: 20,
@@ -154,8 +156,8 @@ export const BUSINESS = {
   leaderboardSnapshotMinutes: 10,
   /** Số câu hỏi khi tham gia tối đa. */
   maxJoinQuestions: 3,
-  /** Nhắc gia hạn gói nền tảng trước N ngày. */
-  trialReminderDays: [7, 3, 1],
+  /** Nhắc gia hạn gói Hội Mình trước N ngày (giá và trần của bốn gói nằm ở bảng plans, mặc định ở @hoiminh/contracts). */
+  planReminderDays: [7, 3, 1],
   /** Tiền tệ mặc định. */
   defaultCurrency: 'VND',
   defaultTimezone: 'Asia/Ho_Chi_Minh',
@@ -165,6 +167,6 @@ export const BUSINESS = {
 /** Slug bị cấm dùng cho hội (trùng route hệ thống). */
 export const RESERVED_SLUGS = new Set([
   'admin', 'he-thong', 'api', 'v1', 'kham-pha', 'dang-nhap', 'dang-ky', 'quen-mat-khau', 'dat-lai-mat-khau',
-  'xac-minh-email', 'kich-hoat', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
+  'xac-minh-email', 'kich-hoat', 'vao', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
   'static', 'hoiminh', 'www', 'app', 'mail', 'support', 'help',
 ]);

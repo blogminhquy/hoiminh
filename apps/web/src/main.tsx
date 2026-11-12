@@ -7,7 +7,11 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import './index.css';
 import { AuthProvider } from './lib/auth';
+import { registerServiceWorker } from './lib/pwa';
 import { useAutoUpdate } from './lib/version';
+
+// Service worker (thông báo đẩy) và sự kiện cài một lần bấm của Android phải được lắng nghe ngay từ đầu.
+registerServiceWorker();
 
 // Gắn giao diện trước khi render để không nháy nền sáng rồi mới tối.
 applyTheme(readTheme());
