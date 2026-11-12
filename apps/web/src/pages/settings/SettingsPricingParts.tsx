@@ -7,7 +7,7 @@ export interface Tier { id?: string; key: 'standard' | 'premium' | 'vip'; name: 
 export const MODES: Array<[Mode, string, string]> = [['free', 'Miễn phí', 'Ai cũng vào được'], ['subscription', 'Thu phí', 'Theo tháng hoặc năm'], ['freemium', 'Freemium', 'Vào miễn phí, nâng cấp gói'], ['one_time', 'Trả một lần', 'Truy cập trọn đời']];
 export const DEFAULT_TIERS: Tier[] = [
   { key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: true, isActive: true, monthlyMinor: null, yearlyMinor: null, oneTimeMinor: null },
-  { key: 'premium', name: 'Premium', description: '', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành cộng sự', 'Q&A hàng tuần'], isDefault: false, isActive: true, monthlyMinor: 249_000, yearlyMinor: 2_490_000, oneTimeMinor: null },
+  { key: 'premium', name: 'Premium', description: '', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate', 'Q&A hàng tuần'], isDefault: false, isActive: true, monthlyMinor: 249_000, yearlyMinor: 2_490_000, oneTimeMinor: null },
   { key: 'vip', name: 'VIP', description: '', benefits: ['Coaching 1-1 hàng tuần'], isDefault: false, isActive: false, monthlyMinor: 2_500_000, yearlyMinor: null, oneTimeMinor: null },
 ];
 

@@ -25,13 +25,13 @@ export const COURSE_SPECS: CourseSpec[] = [
       m('Tư duy mô hình tiền', ['Tiền chảy theo mô hình, không theo may mắn', 490], ['Ba con số quyết định lãi', 622], ['Điểm hòa vốn sớm là gì', 465], ['Ví dụ: shop 1 người thu 30 triệu', 725], ['Bài tập: vẽ dòng tiền của bạn', null]),
       m('Thiết kế Offer', ['Khách hàng thực sự mua gì', 552], ['Ba lớp giá trị của một offer', 664], ['Viết offer bằng công thức giá trị', 761], ['Định giá theo kết quả', 535], ['Bảo hành và đảo ngược rủi ro', 450], ['Bài tập: Offer Canvas của bạn', null]),
       m('Lead magnet và Tripwire', ...gen('Lead magnet bài', 7)),
-      m('Scale bằng cộng sự affiliate', ['Thiết kế hoa hồng 50%', 610], ...gen('Scale bài', 7, 2)),
+      m('Scale bằng affiliate', ['Thiết kế hoa hồng 50%', 610], ...gen('Scale bài', 7, 2)),
     ],
   },
   { key: 'fbads', title: 'Facebook Ads chuyển đổi 2026', slug: 'facebook-ads-2026', color: '#0E8E96', accessMode: 'premium', sortOrder: 1, short: 'Chạy quảng cáo về trang giới thiệu, retarget và đo lường đăng ký.', modules: [m('Nền tảng', ...gen('Nền tảng bài', 14)), m('Chiến dịch', ...gen('Chiến dịch bài', 14)), m('Retarget', ...gen('Retarget bài', 14)), m('Đo lường', ...gen('Đo lường bài', 13))] },
   { key: 'aiagent', title: 'AI Agent cho người bán hàng', slug: 'ai-agent-cho-nguoi-ban-hang', color: '#3E5C7A', accessMode: 'premium_and_store', price: 1_200_000, compareAt: 1_900_000, sortOrder: 2, short: 'Dựng trợ lý trả lời khách, chốt đơn và chăm sóc sau bán.', modules: [m('Trợ lý AI làm được gì', ['Trợ lý AI khác chatbot cũ chỗ nào', 460], ['Ba việc giao cho AI ngay hôm nay', 552], ['Chuẩn bị tài khoản và dữ liệu shop', null], ['Bài tập: liệt kê 20 câu khách hay hỏi', null]), m('Dựng trợ lý trả lời khách', ...gen('Dựng bài', 9)), m('Chốt đơn và chăm sóc sau bán', ...gen('Chốt đơn bài', 9))] },
-  { key: 'affiliate', title: 'Kiếm tiền với Funnel Affiliate', slug: 'kiem-tien-voi-funnel-affiliate', color: '#7A5C3E', accessMode: 'premium_and_store', price: 490_000, sortOrder: 3, short: 'Chương trình cộng sự: nhận link, chia sẻ, nhận hoa hồng định kỳ.', modules: [m('Bắt đầu', ...gen('Bắt đầu bài', 6)), m('Kéo 100 đăng ký đầu tiên', ...gen('Kéo bài', 6)), m('Tối ưu chuyển đổi', ...gen('Tối ưu bài', 6))] },
-  { key: 'congsu', title: 'Chương trình Cộng sự MMO', slug: 'chuong-trinh-cong-su-mmo', color: '#5C7A3E', accessMode: 'all_members', status: 'draft', sortOrder: 4, short: 'Khóa nội bộ cho cộng sự, đang soạn.', modules: [m('Giới thiệu', ...gen('Giới thiệu bài', 6))] },
+  { key: 'affiliate', title: 'Kiếm tiền với Funnel Affiliate', slug: 'kiem-tien-voi-funnel-affiliate', color: '#7A5C3E', accessMode: 'premium_and_store', price: 490_000, sortOrder: 3, short: 'Chương trình affiliate: nhận link, chia sẻ, nhận hoa hồng định kỳ.', modules: [m('Bắt đầu', ...gen('Bắt đầu bài', 6)), m('Kéo 100 đăng ký đầu tiên', ...gen('Kéo bài', 6)), m('Tối ưu chuyển đổi', ...gen('Tối ưu bài', 6))] },
+  { key: 'congsu', title: 'Chương trình Affiliate MMO', slug: 'chuong-trinh-cong-su-mmo', color: '#5C7A3E', accessMode: 'all_members', status: 'draft', sortOrder: 4, short: 'Khóa nội bộ cho affiliate, đang soạn.', modules: [m('Giới thiệu', ...gen('Giới thiệu bài', 6))] },
 ];
 
 export interface SeedCourses {

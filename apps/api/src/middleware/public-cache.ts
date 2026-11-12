@@ -16,7 +16,7 @@ function edgeCache(): Cache | null {
 export function publicCache(seconds = 60): MiddlewareHandler<Env> {
   return async (c, next) => {
     const url = new URL(c.req.url);
-    // `ref` ghi nhận lượt giới thiệu của cộng sự, nên không được trả từ cache.
+    // `ref` ghi nhận lượt giới thiệu của affiliate, nên không được trả từ cache.
     if (c.req.method !== 'GET' || c.req.header('authorization') || readCookie(c, ACCESS_COOKIE) || url.searchParams.has('ref') || !PUBLIC_PATHS.some((r) => r.test(url.pathname))) return next();
     const cache = edgeCache();
     const key = new Request(url.toString(), { method: 'GET' });

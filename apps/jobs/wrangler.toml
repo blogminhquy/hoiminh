@@ -60,7 +60,7 @@ max_retries = 0
 
 [triggers]
 # Không còn cron mỗi phút: việc nền chạy theo sự kiện (Queue, delay ≤ 24 giờ). Cron chỉ là lưới an toàn.
-# 10 phút: snapshot xếp hạng cộng sự + bộ quét thưa (đẩy job hẹn giờ sắp tới hạn, cứu tin mất, dọn cờ hết hạn đơn/trạng thái sự kiện)
+# 10 phút: snapshot xếp hạng affiliate + bộ quét thưa (đẩy job hẹn giờ sắp tới hạn, cứu tin mất, dọn cờ hết hạn đơn/trạng thái sự kiện)
 # 18:00 UTC = 01:00 giờ Việt Nam: giải phóng hoa hồng, churn, gói nền tảng, dọn bảng job, đối soát nhắc sự kiện
 crons = ["*/10 * * * *", "0 18 * * *"]
 

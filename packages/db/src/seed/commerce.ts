@@ -18,7 +18,7 @@ export async function seedCommerce(db: Database, base: Date, U: Record<string, S
     { key: 'combo', kind: 'bundle' as const, name: 'Combo Kinh doanh AI trọn bộ', slug: 'combo-kinh-doanh-ai', short: 'Sở hữu toàn bộ khóa học hiện có và các khóa ra mắt trong 12 tháng tới.', color: '#1F1B17', price: 5_000_000, compare: 9_000_000, sales: 12 },
     { key: 'fmm', kind: 'course' as const, name: 'Funnel Money Model 2026', slug: 'funnel-money-model-2026', short: 'Thiết kế offer, lead magnet và tripwire để hoàn vốn quảng cáo sớm.', color: '#D4593A', price: 1_000_000, compare: 1_686_000, course: 'fmm', sales: 128, launch: daysFrom(base, 2, 14) },
     { key: 'fbads', kind: 'course' as const, name: 'Facebook Ads chuyển đổi 2026', slug: 'facebook-ads-2026', short: 'Chạy quảng cáo về trang giới thiệu, retarget và đo lường đăng ký.', color: '#0E8E96', price: 1_500_000, course: 'fbads', sales: 96 },
-    { key: 'affiliate', kind: 'course' as const, name: 'Kiếm tiền với Funnel Affiliate', slug: 'kiem-tien-voi-funnel-affiliate', short: 'Chương trình cộng sự: nhận link, chia sẻ, nhận hoa hồng định kỳ.', color: '#7A5C3E', price: 490_000, course: 'affiliate', sales: 41 },
+    { key: 'affiliate', kind: 'course' as const, name: 'Kiếm tiền với Funnel Affiliate', slug: 'kiem-tien-voi-funnel-affiliate', short: 'Chương trình affiliate: nhận link, chia sẻ, nhận hoa hồng định kỳ.', color: '#7A5C3E', price: 490_000, course: 'affiliate', sales: 41 },
     { key: 'aiagent', kind: 'course' as const, name: 'AI Agent cho người bán hàng', slug: 'ai-agent-cho-nguoi-ban-hang', short: 'Dựng trợ lý trả lời khách, chốt đơn và chăm sóc sau bán.', color: '#3E5C7A', price: 1_200_000, compare: 1_900_000, course: 'aiagent', sales: 37 },
     { key: 'prompts', kind: 'digital' as const, name: '120 prompt viết bài bán hàng', slug: '120-prompt-viet-bai-ban-hang', short: 'Dùng ngay với ChatGPT, Claude hoặc Gemini. Cập nhật miễn phí.', color: '#C89B3C', price: 199_000, sales: 210 },
   ];
@@ -33,7 +33,7 @@ export async function seedCommerce(db: Database, base: Date, U: Record<string, S
       .insert(productPages)
       .values({
         id: await sid(`ppage:${s.key}`), workspaceId: c.workspaceId, productId: id, headline: s.name, subheadline: s.short,
-        benefits: s.key === 'fmm' ? ['Viết một offer bằng công thức giá trị trong 1 buổi', 'Dựng lead magnet một trang kéo email với chi phí thấp', 'Đặt giá tripwire để hoàn vốn ads ngay đơn đầu', 'Đọc 3 con số quyết định lãi của funnel', 'Thiết kế hoa hồng cộng sự 50% mà vẫn có lãi', 'Có bộ template: Offer Canvas, kịch bản tin nhắn chào, bảng theo dõi'] : [s.short],
+        benefits: s.key === 'fmm' ? ['Viết một offer bằng công thức giá trị trong 1 buổi', 'Dựng lead magnet một trang kéo email với chi phí thấp', 'Đặt giá tripwire để hoàn vốn ads ngay đơn đầu', 'Đọc 3 con số quyết định lãi của funnel', 'Thiết kế hoa hồng affiliate 50% mà vẫn có lãi', 'Có bộ template: Offer Canvas, kịch bản tin nhắn chào, bảng theo dõi'] : [s.short],
         faq: [
           { q: 'Mình là thành viên Premium thì có phải mua không?', a: 'Không. Premium mở khóa toàn bộ khóa học trong hội, kể cả khóa này và các khóa ra mắt sau.' },
           { q: 'Mua lẻ thì học được bao lâu?', a: 'Trọn đời, kể cả khi bạn rời hội. Cập nhật mới của khóa cũng được nhận.' },

@@ -90,7 +90,7 @@
     },
     {
       "file": "Affiliate.dc.html",
-      "title": "Xếp hạng cộng sự",
+      "title": "Xếp hạng affiliate",
       "x": 1540,
       "y": 7620,
       "w": 1440,
@@ -146,7 +146,7 @@
     },
     {
       "file": "AffiliateWallet.dc.html",
-      "title": "Tài khoản · Cộng sự (ví và rút tiền)",
+      "title": "Tài khoản · Affiliate (ví và rút tiền)",
       "x": 0,
       "y": 11650,
       "w": 1440,
@@ -242,7 +242,7 @@
     },
     {
       "file": "SettingsAffiliate.dc.html",
-      "title": "Cài đặt · Cộng sự",
+      "title": "Cài đặt · Affiliate",
       "x": 1540,
       "y": 18460,
       "w": 1440,
@@ -250,7 +250,7 @@
     },
     {
       "file": "SettingsAffiliatePayouts.dc.html",
-      "title": "Cài đặt · Cộng sự · Yêu cầu rút",
+      "title": "Cài đặt · Affiliate · Yêu cầu rút",
       "x": 3080,
       "y": 18460,
       "w": 1440,
@@ -322,7 +322,7 @@
     },
     {
       "file": "AdminAffiliate.dc.html",
-      "title": "Hệ thống · Cộng sự nền tảng",
+      "title": "Hệ thống · Affiliate nền tảng",
       "x": 1540,
       "y": 23570,
       "w": 1440,

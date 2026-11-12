@@ -1,4 +1,4 @@
-// Chip chuyển giữa ba chỗ của cộng sự: Yêu cầu rút (trang Cộng sự), Xếp hạng, Mức hoa hồng (Cài đặt).
+// Chip chuyển giữa ba chỗ của affiliate: Yêu cầu rút (trang Affiliate), Xếp hạng, Mức hoa hồng (Cài đặt).
 import { Link } from 'react-router-dom';
 
 export function AffiliateTabs({ slug, active, awaiting, affiliates }: { slug: string; active: 'config' | 'payouts'; awaiting?: number; affiliates?: number }) {

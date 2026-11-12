@@ -1,4 +1,4 @@
-// Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Cộng sự và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
+// Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Affiliate và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams, type RouteObject } from 'react-router-dom';
 import { InstallGate } from '@/components/InstallGate';

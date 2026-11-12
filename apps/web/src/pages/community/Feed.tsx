@@ -56,7 +56,7 @@ function Rail({ shell }: { shell: Shell }) {
       {premium && (
         <div className="card card-invert p-[18px] flex flex-col gap-2.5">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.gold }}><Sparkles size={16} /> Gói Premium</div>
-          <div className="serif text-[19px] font-bold leading-[1.3]">Mở khóa toàn bộ khóa học và trở thành cộng sự</div>
+          <div className="serif text-[19px] font-bold leading-[1.3]">Mở khóa toàn bộ khóa học và trở thành affiliate</div>
           <div className="text-[13px]" style={{ color: T.sideText }}>{price !== null ? `${money(price)}/${cycle}` : ''} · hủy bất cứ lúc nào</div>
           <Link to={`/${c.slug}/thanh-toan?tier=premium&cycle=${premium.monthlyMinor ? 'monthly' : premium.yearlyMinor ? 'yearly' : 'one_time'}`} className="btn btn-primary w-full mt-1">Nâng cấp ngay</Link>
         </div>

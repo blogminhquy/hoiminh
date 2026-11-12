@@ -1,4 +1,4 @@
-// Chương trình cộng sự hội + nền tảng, 5 cộng sự có ví, hoa hồng, sổ cái, yêu cầu rút, snapshot xếp hạng.
+// Chương trình affiliate hội + nền tảng, 5 affiliate có ví, hoa hồng, sổ cái, yêu cầu rút, snapshot xếp hạng.
 import { encryptJson, maskAccount } from '@hoiminh/config';
 import type { Database } from '../client';
 import {
@@ -11,15 +11,15 @@ import type { SeedUser } from './users';
 
 interface Ctx { db: Database; base: Date; U: Record<string, SeedUser>; c: SeedCommunity; key: string; appUrl: string }
 
-/** Tạo chương trình, tài khoản cộng sự và toàn bộ dữ liệu tiền. */
+/** Tạo chương trình, tài khoản affiliate và toàn bộ dữ liệu tiền. */
 export async function seedAffiliate(db: Database, base: Date, U: Record<string, SeedUser>, c: SeedCommunity, opts: { encryptionKey: string; appUrl: string }): Promise<void> {
   const programId = await sid('program:kd');
   const platformProgramId = await sid('program:platform');
   await db
     .insert(affiliatePrograms)
     .values([
-      { id: programId, scopeType: 'community', communityId: c.id, workspaceId: c.workspaceId, name: 'Cộng sự Kinh Doanh Online Cùng AI', commissionRateBps: 5000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: U.minhquy!.id },
-      { id: platformProgramId, scopeType: 'platform', name: 'Cộng sự nền tảng Hội Mình', commissionRateBps: 4000, commissionDurationMonths: 12, holdDays: 30, minWithdrawalMinor: 500_000, payerUserId: U.admin!.id },
+      { id: programId, scopeType: 'community', communityId: c.id, workspaceId: c.workspaceId, name: 'Affiliate Kinh Doanh Online Cùng AI', commissionRateBps: 5000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: U.minhquy!.id },
+      { id: platformProgramId, scopeType: 'platform', name: 'Affiliate nền tảng Hội Mình', commissionRateBps: 4000, commissionDurationMonths: 12, holdDays: 30, minWithdrawalMinor: 500_000, payerUserId: U.admin!.id },
     ])
     .onConflictDoNothing();
 
@@ -53,7 +53,7 @@ export async function seedAffiliate(db: Database, base: Date, U: Record<string, 
   for (const who of ['dien', 'hongkim', 'cong', 'kienbui']) {
     await db.insert(affiliateAttributions).values({ id: await sid(`attr:hv:${who}`), affiliateAccountId: accountIds.hoangvu!, programId, userId: U[who]!.id, attributedAt: daysFrom(base, -U[who]!.joinedDaysAgo - 1), expiresAt: daysFrom(base, 29) }).onConflictDoNothing();
   }
-  // Hoa hồng khớp màn Ví cộng sự (nhìn từ góc Minh Quý là cộng sự, và Hoàng Vũ là người giới thiệu Điền/Hồng Kim/Công).
+  // Hoa hồng khớp màn Ví affiliate (nhìn từ góc Minh Quý là affiliate, và Hoàng Vũ là người giới thiệu Điền/Hồng Kim/Công).
   await commission(ctx, { key: 'hv:dien', acc: accountIds.hoangvu!, programId, who: 'dien', order: 'dien', base: 249_000, status: 'pending', days: 0 });
   await commission(ctx, { key: 'hv:hongkim', acc: accountIds.hoangvu!, programId, who: 'hongkim', order: 'hongkim', base: 2_490_000, status: 'available', days: -18 });
   await commission(ctx, { key: 'hv:cong', acc: accountIds.hoangvu!, programId, who: 'cong', order: 'cong', base: 249_000, status: 'reversed', days: -3 });
@@ -71,7 +71,7 @@ export async function seedAffiliate(db: Database, base: Date, U: Record<string, 
   await commission(ctx, { key: 'mq:m5', acc: accountIds.minhquy!, programId, who: 'member7', base: 1_000_000, status: 'available', days: -26 });
   await commission(ctx, { key: 'mq:m6', acc: accountIds.minhquy!, programId, who: 'member8', base: 249_000, status: 'pending', days: -3 });
 
-  // Yêu cầu rút: hàng đợi + lịch sử khớp màn Cài đặt · Cộng sự · Yêu cầu rút.
+  // Yêu cầu rút: hàng đợi + lịch sử khớp màn Cài đặt · Affiliate · Yêu cầu rút.
   await withdrawal(ctx, { key: 'hv:req', acc: accountIds.hoangvu!, programId, amount: 1_500_000, status: 'requested', days: 0, hour: 9 });
   await withdrawal(ctx, { key: 'hk:rev', acc: accountIds.hongkim!, programId, amount: 620_000, status: 'reviewing', days: -1, hour: 21 });
   await withdrawal(ctx, { key: 'dn:req', acc: accountIds.dien!, programId, amount: 500_000, status: 'requested', days: -2, hour: 18 });
@@ -83,7 +83,7 @@ export async function seedAffiliate(db: Database, base: Date, U: Record<string, 
   await withdrawal(ctx, { key: 'mq:paid1', acc: accountIds.minhquy!, programId, amount: 2_000_000, status: 'paid', days: -9, hour: 11, ref: 'FT26090512873' });
   await withdrawal(ctx, { key: 'mq:paid2', acc: accountIds.minhquy!, programId, amount: 490_000, status: 'paid', days: -25, hour: 11, ref: 'FT26082010021' });
 
-  // Cộng sự nền tảng (super admin xử lý).
+  // Affiliate nền tảng (super admin xử lý).
   const plat: Array<[string, string, number, 'requested' | 'reviewing', ['VCB' | 'ACB' | 'VTB', string, string]]> = [
     ['lehanh', 'lh1p2', 1_996_000, 'requested', ['ACB', '2210021234', 'LE THI HANH']],
     ['thaovy', 'tv9z8', 998_000, 'requested', ['VTB', '107774112233', 'TRAN THAO VY']],
@@ -144,5 +144,5 @@ async function withdrawal(ctx: Ctx, o: { key: string; acc: string; programId: st
     await ctx.db.insert(affiliateWalletEntries).values({ id: await sid(`wallet:release:${o.key}`), affiliateAccountId: o.acc, withdrawalId: id, entryType: 'release', amountMinor: o.amount, idempotencyKey: `withdrawal-release:${id}`, note: 'Mở khóa để ghi nợ', createdAt: daysFrom(at, 1) }).onConflictDoNothing();
     await ctx.db.insert(affiliateWalletEntries).values({ id: await sid(`wallet:debit:${o.key}`), affiliateAccountId: o.acc, withdrawalId: id, entryType: 'debit', amountMinor: o.amount, idempotencyKey: `withdrawal-debit:${id}`, note: o.ref ?? null, createdAt: daysFrom(at, 1) }).onConflictDoNothing();
   }
-  if (o.status === 'rejected' || o.status === 'cancelled') await ctx.db.insert(affiliateWalletEntries).values({ id: await sid(`wallet:release:${o.key}`), affiliateAccountId: o.acc, withdrawalId: id, entryType: 'release', amountMinor: o.amount, idempotencyKey: `withdrawal-release:${id}`, note: o.reason ?? 'Cộng sự tự hủy', createdAt: daysFrom(at, 1) }).onConflictDoNothing();
+  if (o.status === 'rejected' || o.status === 'cancelled') await ctx.db.insert(affiliateWalletEntries).values({ id: await sid(`wallet:release:${o.key}`), affiliateAccountId: o.acc, withdrawalId: id, entryType: 'release', amountMinor: o.amount, idempotencyKey: `withdrawal-release:${id}`, note: o.reason ?? 'Affiliate tự hủy', createdAt: daysFrom(at, 1) }).onConflictDoNothing();
 }

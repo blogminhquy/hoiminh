@@ -1,4 +1,4 @@
-// Luồng 1: đăng ký với mã cộng sự → xác minh email (OTP test 482913) → trang giới thiệu → tham gia Freemium → Bảng tin có dữ liệu.
+// Luồng 1: đăng ký với mã affiliate → xác minh email (OTP test 482913) → trang giới thiệu → tham gia Freemium → Bảng tin có dữ liệu.
 import { expect, test } from '@playwright/test';
 import { uniqueEmail } from '../helpers';
 

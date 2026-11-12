@@ -19,9 +19,9 @@ describe('buildOwnerTodos', () => {
     expect(buildOwnerTodos({ ...base, affiliatePayouts: { count: 0, amountMinor: 0 }, pendingMembers: 0, pendingPosts: 0, plan: { key: 'pro', name: 'Chuyên nghiệp', endsAt: inDays(20), memberCap: 5_000, needsPlan: false, full: false } })).toEqual([]);
   });
 
-  it('yêu cầu rút của cộng sự nêu số yêu cầu, số tiền và dẫn tới trang Cộng sự', () => {
+  it('yêu cầu rút của affiliate nêu số yêu cầu, số tiền và dẫn tới trang Affiliate', () => {
     const [t] = buildOwnerTodos({ ...base, affiliatePayouts: { count: 2, amountMinor: 1_250_000 } });
-    expect(t).toMatchObject({ key: 'payouts', title: '2 yêu cầu rút của cộng sự', to: '/minhquy/cong-su', urgent: true });
+    expect(t).toMatchObject({ key: 'payouts', title: '2 yêu cầu rút của affiliate', to: '/minhquy/cong-su', urgent: true });
     expect(t?.hint).toContain('1.250.000');
   });
 

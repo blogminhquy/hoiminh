@@ -1,4 +1,4 @@
-// Tài khoản · Cộng sự (affiliateWalletMain): chọn chương trình, link + 3 số, 4 ô ví, tài khoản nhận tiền, rút tiền, lịch sử rút, hoa hồng gần đây.
+// Tài khoản · Affiliate (affiliateWalletMain): chọn chương trình, link + 3 số, 4 ô ví, tài khoản nhận tiền, rút tiền, lịch sử rút, hoa hồng gần đây.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Chip, T, WalletBox, money } from '@hoiminh/ui';
 import { Check, Copy } from 'lucide-react';
@@ -20,11 +20,11 @@ export default function Page() {
   const q = useQuery({ queryKey: ['wallet', current], queryFn: () => api.get<Wallet>(`/v1/me/affiliate/${current}`), enabled: Boolean(current) });
   const refresh = () => qc.invalidateQueries({ queryKey: ['wallet', current] });
   const copy = (link: string) => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
-  if (programs.data && programs.data.length === 0) return <div className="card p-8 text-center"><div className="font-semibold">Chưa có chương trình cộng sự</div><div className="muted text-[13px] mt-1">Tham gia một hội có bật cộng sự để nhận link giới thiệu.</div></div>;
+  if (programs.data && programs.data.length === 0) return <div className="card p-8 text-center"><div className="font-semibold">Chưa có chương trình affiliate</div><div className="muted text-[13px] mt-1">Tham gia một hội có bật affiliate để nhận link giới thiệu.</div></div>;
   if (!programId && current) return <Navigate to={`/tai-khoan/cong-su/${current}`} replace />;
   return (
     <>
-      <div><h1 className="serif m-0 text-[28px] font-extrabold">Cộng sự</h1><div className="muted text-[13px]">Giới thiệu một lần, nhận hoa hồng mỗi kỳ người đó trả phí.{q.data ? ` ${q.data.communityName} · hoa hồng ${q.data.commissionRateBps / 100}%` : ''}</div></div>
+      <div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate</h1><div className="muted text-[13px]">Giới thiệu một lần, nhận hoa hồng mỗi kỳ người đó trả phí.{q.data ? ` ${q.data.communityName} · hoa hồng ${q.data.commissionRateBps / 100}%` : ''}</div></div>
       {(programs.data?.length ?? 0) > 1 && <div className="flex gap-2 flex-wrap">{programs.data?.map((p) => <Chip key={p.id} on={p.id === current} onClick={() => { window.location.assign(`/tai-khoan/cong-su/${p.id}`); }}>{p.name} · {p.rateBps / 100}%</Chip>)}</div>}
       <QueryState q={q} rows={5}>
         {(w) => (

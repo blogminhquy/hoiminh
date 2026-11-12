@@ -38,7 +38,7 @@ export async function updateProfile(ctx: Ctx, input: ProfileUpdate) {
   return row!;
 }
 
-/** Hồ sơ công khai theo handle: thống kê, bài viết, tiến độ, hội cùng tham gia, hạng cộng sự. */
+/** Hồ sơ công khai theo handle: thống kê, bài viết, tiến độ, hội cùng tham gia, hạng affiliate. */
 export async function publicProfile(ctx: Ctx, handle: string) {
   const user = await ctx.db.query.users.findFirst({ where: eq(users.handle, handle) });
   if (!user || user.status === 'deleted') throw notFound('Không tìm thấy thành viên');

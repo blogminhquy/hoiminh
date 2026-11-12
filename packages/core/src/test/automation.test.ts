@@ -194,12 +194,12 @@ describe('quy tắc: gắn thẻ thì cho vào hội', () => {
   it('hội thu phí: khách mới kích hoạt xong là thành viên, gỡ thẻ thì rời hội; quy tắc không có bước email vẫn gửi thư mời kích hoạt', async () => {
     const owner = await app.as('minhquy');
     const email = 'cong.su.moi@example.com';
-    await automation.createRule(owner, kd, { name: 'Vào hội Cộng sự', tag: 'partner', actions: [{ type: 'grant_membership', communityId: congsu, tierKey: 'premium', durationDays: null }] });
-    await automation.receiveInbound(app.system(), tokenOf(sourceUrl), { name: 'Cộng Sự Mới', email, tags: ['partner'] });
+    await automation.createRule(owner, kd, { name: 'Vào hội Affiliate', tag: 'partner', actions: [{ type: 'grant_membership', communityId: congsu, tierKey: 'premium', durationDays: null }] });
+    await automation.receiveInbound(app.system(), tokenOf(sourceUrl), { name: 'Affiliate Mới', email, tags: ['partner'] });
     const [mail] = emailsTo(email);
     expect(mail!.template).toBe('activation_invite');
-    expect(mail!.html).toContain('Cộng sự MMO');
-    const r = await engine.activate(app.anon(), app.auth, claimTokenIn(mail!.html), { name: 'Cộng Sự', password: 'matkhau-moi-123' });
+    expect(mail!.html).toContain('Affiliate MMO');
+    const r = await engine.activate(app.anon(), app.auth, claimTokenIn(mail!.html), { name: 'Affiliate', password: 'matkhau-moi-123' });
     expect(r.redirect).toBe('/cong-su-mmo/hom-nay');
     const user = await app.ctx.db.query.users.findFirst({ where: eq(users.email, email) });
     const memberOf = () => app.ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.userId, user!.id), eq(communityMembers.communityId, congsu)) });

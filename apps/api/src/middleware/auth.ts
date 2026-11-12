@@ -43,7 +43,7 @@ export function authMiddleware(app: App): MiddlewareHandler<Env> {
     c.header('x-request-id', requestId);
     // Mọi truy vấn của request chạy trong một transaction có biến phiên của actor (RLS).
     // Điểm vào máy-với-máy không có actor mà vẫn phải ghi xuyên tenant: webhook cổng
-    // thanh toán, trang mô phỏng sandbox, đếm lượt bấm link cộng sự, phát tệp theo URL ký.
+    // thanh toán, trang mô phỏng sandbox, đếm lượt bấm link affiliate, phát tệp theo URL ký.
     if (NO_DB_PATHS.includes(path)) {
       c.set('ctx', ctx);
       await next();

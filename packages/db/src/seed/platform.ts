@@ -16,7 +16,7 @@ export async function seedPlatform(db: Database, base: Date, U: Record<string, S
     .values([
       { key: 'free', name: 'Miễn phí', description: 'Dùng vĩnh viễn, bán hàng và thu tiền được.', monthlyMinor: 0, yearlyMinor: 0, trialDays: 0, quotas: { members: 100 }, features: [], sortOrder: 0 },
       { key: 'starter', name: 'Khởi đầu', description: 'Cho hội đang lớn.', monthlyMinor: 99_000, yearlyMinor: 990_000, trialDays: 0, quotas: { members: 500 }, features: [], sortOrder: 1 },
-      { key: 'pro', name: 'Chuyên nghiệp', description: 'Có tự động hóa, tên miền riêng, cộng sự, API.', monthlyMinor: 299_000, yearlyMinor: 2_990_000, trialDays: 0, quotas: { members: 5_000 }, features: allFeatures, sortOrder: 2 },
+      { key: 'pro', name: 'Chuyên nghiệp', description: 'Có tự động hóa, tên miền riêng, affiliate, API.', monthlyMinor: 299_000, yearlyMinor: 2_990_000, trialDays: 0, quotas: { members: 5_000 }, features: allFeatures, sortOrder: 2 },
       { key: 'unlimited', name: 'Không giới hạn', description: 'Không giới hạn thành viên, có mọi thứ của Chuyên nghiệp.', monthlyMinor: 799_000, yearlyMinor: 7_990_000, trialDays: 0, quotas: { members: null }, features: allFeatures, sortOrder: 3 },
     ])
     .onConflictDoNothing();
@@ -57,7 +57,7 @@ export async function seedPlatform(db: Database, base: Date, U: Record<string, S
     .values([
       { key: 'realtime_chat', description: 'Tin nhắn thời gian thực', enabled: false },
       { key: 'go_live', description: 'Phát trực tiếp trong hội', enabled: false },
-      { key: 'affiliate_leaderboard', description: 'Bảng xếp hạng cộng sự', enabled: true },
+      { key: 'affiliate_leaderboard', description: 'Bảng xếp hạng affiliate', enabled: true },
       { key: 'store', description: 'Cửa hàng trong hội', enabled: true },
       { key: 'mcp', description: 'MCP cho AI', enabled: true },
       { key: 'gamification', description: 'Điểm và cấp độ hoạt động (mục 65, để sau)', enabled: false },
@@ -107,7 +107,7 @@ async function seedMessaging(db: Database, base: Date, U: Record<string, SeedUse
   const mq = U.minhquy!.id;
   const notifs: Array<[string, string, string, string, string, number, boolean, string | null, string]> = [
     ['n1', 'comment', 'comment', 'Công Trần đã bình luận về bài của bạn: “Cảm ơn anh, em đã vào học được rồi ạ”', 'Kinh Doanh Online Cùng AI · Hỏi đáp', -0.4, true, 'Trả lời', 'cong'],
-    ['n2', 'affiliate.commission_available', 'affiliate', 'Hoa hồng 124.500đ từ giới thiệu của bạn đã được duyệt sau 14 ngày giữ', 'Cộng sự · Kinh Doanh Online Cùng AI', -2, true, null, 'hoangvu'],
+    ['n2', 'affiliate.commission_available', 'affiliate', 'Hoa hồng 124.500đ từ giới thiệu của bạn đã được duyệt sau 14 ngày giữ', 'Affiliate · Kinh Doanh Online Cùng AI', -2, true, null, 'hoangvu'],
     ['n3', 'mention', 'mention', 'Hồng Kim đã nhắc đến bạn trong “Ngày 3: đơn đầu tiên từ funnel affiliate”', 'Kinh Doanh Online Cùng AI · Nhật ký', -3, true, 'Xem', 'hongkim'],
     ['n4', 'event.reminder', 'event', 'Sự kiện Q&A tuần: Funnel Money Model bắt đầu sau 1 giờ', 'Kinh Doanh Online Cùng AI · Sự kiện', -5, true, 'Vào phòng', 'minhquy'],
     ['n5', 'member.tier_changed', 'payment', 'Điền Phạm Ngọc đã nâng cấp lên Premium qua link của Hoàng Vũ', 'Chủ cộng đồng · Kinh Doanh Online Cùng AI', -24, true, null, 'dien'],

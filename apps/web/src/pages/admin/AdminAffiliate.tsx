@@ -1,4 +1,4 @@
-// Hệ thống · Cộng sự nền tảng (saAffiliateMain): 3 ô ví, hàng đợi rút (PayoutQueue), cấu hình hoa hồng toàn hệ thống, đối tác lớn với mức riêng.
+// Hệ thống · Affiliate nền tảng (saAffiliateMain): 3 ô ví, hàng đợi rút (PayoutQueue), cấu hình hoa hồng toàn hệ thống, đối tác lớn với mức riêng.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Field, Input, Select, T, WalletBox, money } from '@hoiminh/ui';
 import { Download } from 'lucide-react';
@@ -45,7 +45,7 @@ export default function Page() {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['admin', 'affiliate'] }); };
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Cộng sự nền tảng</h1><div className="muted text-[13px]">Người giới thiệu chủ hội mới cho Hội Mình. Cùng một cơ chế chi trả thủ công như chủ hội trả cộng sự trong hội.</div></div><span className="flex-grow" /><button type="button" className="btn btn-ghost btn-sm" onClick={() => void downloadFromApi('/v1/admin/affiliate/export.csv', 'cong-su-nen-tang.csv')}><Download size={14} />Xuất đối soát</button></div>
+      <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate nền tảng</h1><div className="muted text-[13px]">Người giới thiệu chủ hội mới cho Hội Mình. Cùng một cơ chế chi trả thủ công như chủ hội trả affiliate trong hội.</div></div><span className="flex-grow" /><button type="button" className="btn btn-ghost btn-sm" onClick={() => void downloadFromApi('/v1/admin/affiliate/export.csv', 'cong-su-nen-tang.csv')}><Download size={14} />Xuất đối soát</button></div>
       <LedgerNotice who="Quản trị viên có quyền affiliates:manage" />
       <QueryState q={q} rows={5}>
         {(d) => (
@@ -62,7 +62,7 @@ export default function Page() {
               <ProgramForm p={d.program} onSaved={refresh} />
               <div className="card overflow-hidden">
                 <div className="flex items-center px-5 py-3.5 gap-2 flex-wrap"><span className="font-semibold">Đối tác lớn</span><span className="muted text-[12px]">hoa hồng riêng thắng mức chung</span></div>
-                {d.partners.length === 0 && <div className="muted text-[13px] px-5 pb-4">Chưa có cộng sự nền tảng.</div>}
+                {d.partners.length === 0 && <div className="muted text-[13px] px-5 pb-4">Chưa có affiliate nền tảng.</div>}
                 {d.partners.map((p) => <PartnerRow key={p.id} p={p} defaultBps={d.program.commissionRateBps} onSaved={refresh} />)}
               </div>
             </div>

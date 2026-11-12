@@ -1,4 +1,4 @@
-// Điều phối seed: 1 super admin, chủ hội Minh Quý với hội Freemium, 4 khóa học, 30+ thành viên, 6 sự kiện, 6 sản phẩm, cộng sự có ví.
+// Điều phối seed: 1 super admin, chủ hội Minh Quý với hội Freemium, 4 khóa học, 30+ thành viên, 6 sự kiện, 6 sản phẩm, affiliate có ví.
 import type { Database } from '../client';
 import { users } from '../schema';
 import { seedAffiliate } from './affiliate';

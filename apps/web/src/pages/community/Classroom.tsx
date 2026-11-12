@@ -54,7 +54,7 @@ function LockedPlayer({ d, slug, courseHref }: { d: LessonDto; slug: string; cou
       <div className="card relative flex flex-col items-center text-center gap-3 p-6 w-full" style={{ maxWidth: 460 }}>
         <span className="w-12 h-12 rounded-full inline-flex items-center justify-center" style={{ background: T.goldSoft, color: T.goldText }}><Lock size={22} /></span>
         <div className="serif text-[20px] font-extrabold leading-[1.3]">{d.sequentialLocked ? 'Học xong bài trước để mở bài này' : d.dripLocked ? 'Bài này mở theo lịch' : store ? 'Bài này nằm trong khóa bán lẻ' : 'Bài này nằm trong gói Premium'}</div>
-        <div className="text-[14px]" style={{ color: T.ink2 }}>{d.sequentialLocked ? 'Khóa này yêu cầu học theo thứ tự. Bấm "Đánh dấu hoàn thành" ở bài trước rồi quay lại.' : d.dripLocked ? `Bài sẽ mở sau khi bạn học được một thời gian trong khóa.` : `Mở khóa ${remaining} bài còn lại, tài nguyên, Q&A hằng tuần${store ? '' : ' và quyền làm cộng sự'}.`}</div>
+        <div className="text-[14px]" style={{ color: T.ink2 }}>{d.sequentialLocked ? 'Khóa này yêu cầu học theo thứ tự. Bấm "Đánh dấu hoàn thành" ở bài trước rồi quay lại.' : d.dripLocked ? `Bài sẽ mở sau khi bạn học được một thời gian trong khóa.` : `Mở khóa ${remaining} bài còn lại, tài nguyên, Q&A hằng tuần${store ? '' : ' và quyền làm affiliate'}.`}</div>
         {!d.dripLocked && !d.sequentialLocked && <div className="flex gap-2 pt-1 flex-wrap justify-center"><Link to={to} className="btn btn-primary">{store ? 'Mua khóa học' : 'Nâng cấp Premium'}</Link><Link to={courseHref} className="btn btn-ghost">Xem quyền lợi</Link></div>}
         <span className="muted text-[12px]">Hủy bất cứ lúc nào · thanh toán bằng chuyển khoản, MoMo, VNPAY</span>
       </div>

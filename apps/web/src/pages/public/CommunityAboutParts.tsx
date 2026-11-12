@@ -127,9 +127,9 @@ export function Benefits({ d }: { d: AboutPage }) {
   const first = d.courses[0];
   const items: Array<[ReactNode, string, string]> = [
     [<BookOpen size={18} key="b" />, first ? `Lộ trình ${first.title}` : 'Khóa học theo lộ trình', first ? `${first.lessonCount} bài${first.accessMode === 'free' ? ', học miễn phí' : d.pricing.mode === 'freemium' ? ', module 1 miễn phí' : ''}` : 'Sắp ra mắt'],
-    [<MessageCircle size={18} key="c" />, 'Hỏi đáp có người trả lời', d.owner ? `${d.owner.name} và cộng sự` : 'Người dẫn dắt và cộng sự'],
+    [<MessageCircle size={18} key="c" />, 'Hỏi đáp có người trả lời', d.owner ? `${d.owner.name} và affiliate` : 'Người dẫn dắt và affiliate'],
     [<Calendar size={18} key="e" />, 'Sự kiện trực tiếp', 'Q&A, workshop, có bản ghi'],
-    [<Trophy size={18} key="t" />, 'Chương trình cộng sự', 'Giới thiệu bạn bè, nhận hoa hồng mỗi kỳ'],
+    [<Trophy size={18} key="t" />, 'Chương trình affiliate', 'Giới thiệu bạn bè, nhận hoa hồng mỗi kỳ'],
     [<Store size={18} key="s" />, 'Cửa hàng khóa học và tài liệu', 'Combo, prompt, template'],
     [<Users size={18} key="u" />, 'Cộng đồng người làm thật', `${fmtCount(d.stats.members)} thành viên${d.stats.paid ? `, ${fmtCount(d.stats.paid)} đang trả phí` : ''}`],
   ];
@@ -183,7 +183,7 @@ export function CourseList({ d, member }: { d: AboutPage; member: boolean }) {
 export function Faq({ d }: { d: AboutPage }) {
   const free = d.pricing.mode === 'free' || d.pricing.mode === 'freemium';
   const qa: Array<[string, string]> = [
-    [free ? 'Vào miễn phí thì học được gì?' : 'Tôi nhận được gì sau khi thanh toán?', free ? 'Bảng tin, Hỏi đáp, sự kiện công khai và phần miễn phí của mọi khóa học.' : 'Toàn bộ bảng tin, khóa học, sự kiện và quyền trở thành cộng sự của hội.'],
+    [free ? 'Vào miễn phí thì học được gì?' : 'Tôi nhận được gì sau khi thanh toán?', free ? 'Bảng tin, Hỏi đáp, sự kiện công khai và phần miễn phí của mọi khóa học.' : 'Toàn bộ bảng tin, khóa học, sự kiện và quyền trở thành affiliate của hội.'],
     ['Thanh toán bằng cách nào?', 'Chuyển khoản QR, MoMo hoặc VNPAY. Quyền truy cập mở tự động sau khi tiền về, thường dưới 1 phút.'],
     ['Hủy gói có mất dữ liệu không?', 'Không. Bạn giữ quyền đến hết kỳ đã trả, tiến độ học được giữ lại nếu quay lại.'],
   ];

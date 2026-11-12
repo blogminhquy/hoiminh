@@ -21,7 +21,7 @@ test('mua lẻ không vào hội, học ở Khu học tập', async ({ page, req
   await page.keyboard.type('482913');
   await expect(page).not.toHaveURL(/xac-minh-email/, { timeout: 20_000 });
 
-  // Trang thanh toán mở được cho người ngoài hội (đường vào từ link cộng sự hoặc trang bán hàng).
+  // Trang thanh toán mở được cho người ngoài hội (đường vào từ link affiliate hoặc trang bán hàng).
   await page.goto('/minhquy/thanh-toan?product=funnel-money-model-2026');
   await page.getByRole('button', { name: /Lấy mã QR chuyển khoản/ }).click();
   await expect(page).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/, { timeout: 20_000 });

@@ -17,7 +17,7 @@ const PLANS_QUERY = { queryKey: ['plans'], queryFn: () => api.get<PlanDef[]>('/v
 export const FEATURE_PITCH: Record<PlanFeature, { short: string; long: string }> = {
   automation: { short: 'Thẻ và quy tắc KHI... THÌ...', long: 'Tự cho khách vào hội, mở khóa học, gửi email khi có đơn từ landing bắn về. Bạn không phải làm tay từng người.' },
   custom_domain: { short: 'Hội chạy trên tên miền của bạn', long: 'Thành viên vào hội bằng địa chỉ của riêng bạn thay vì địa chỉ của Hội Mình.' },
-  affiliate: { short: 'Người khác giới thiệu và nhận hoa hồng', long: 'Mỗi cộng sự có link riêng, Hội Mình ghi nhận đơn và tính hoa hồng theo mức bạn đặt.' },
+  affiliate: { short: 'Người khác giới thiệu và nhận hoa hồng', long: 'Mỗi affiliate có link riêng, Hội Mình ghi nhận đơn và tính hoa hồng theo mức bạn đặt.' },
   api: { short: 'Nối hội với hệ thống khác', long: 'Đọc và ghi dữ liệu của hội từ công cụ bên ngoài bằng khóa API, nhận sự kiện qua webhook.' },
 };
 

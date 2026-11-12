@@ -1,4 +1,4 @@
-// Xếp hạng cộng sự (affiliateMain): chip kỳ, bục top 3, bảng hạng; rail link của bạn + số liệu, cách tính, tổng cộng sự kỳ này.
+// Xếp hạng affiliate (affiliateMain): chip kỳ, bục top 3, bảng hạng; rail link của bạn + số liệu, cách tính, tổng affiliate kỳ này.
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, Chip, Prog, T, money } from '@hoiminh/ui';
 import { Check, Clock, Copy, Link as LinkIcon, ShieldCheck, Users, Wallet } from 'lucide-react';
@@ -46,13 +46,13 @@ export default function Page() {
     <div className="two-col">
       <div className="main flex flex-col gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Xếp hạng cộng sự</h1>
+          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Xếp hạng affiliate</h1>
           <div className="flex gap-2 md:ml-3">{PERIODS.map(([k, l]) => <Chip key={k} on={period === k} onClick={() => setPeriod(k)}>{l}</Chip>)}</div>
           <span className="flex-grow" />
           {q.data?.computedAt && <span className="muted text-[13px]">Cập nhật {timeAgo(q.data.computedAt)}</span>}
         </div>
         {denied ? (
-          <div className="card p-8 text-center flex flex-col items-center gap-2"><div className="font-semibold">{q.error instanceof ApiError ? q.error.message : 'Bảng xếp hạng chưa mở'}</div><div className="muted text-[13px]">Vào Tài khoản · Cộng sự để lấy link giới thiệu của bạn.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm mt-1">Ví cộng sự</Link></div>
+          <div className="card p-8 text-center flex flex-col items-center gap-2"><div className="font-semibold">{q.error instanceof ApiError ? q.error.message : 'Bảng xếp hạng chưa mở'}</div><div className="muted text-[13px]">Vào Tài khoản · Affiliate để lấy link giới thiệu của bạn.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm mt-1">Ví affiliate</Link></div>
         ) : (
           <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có xếp hạng kỳ này', hint: 'Bảng cập nhật 10 phút một lần khi có hoa hồng phát sinh' }}>
             {(d) => {
@@ -68,7 +68,7 @@ export default function Page() {
                   </div>
                   {rest.length > 0 && (
                     <div className="card overflow-hidden table-scroll">
-                      <div className="grid gap-3 px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 640 }}><span className="th">Hạng</span><span className="th">Cộng sự</span><span className="th">Giới thiệu</span><span className="th">Trả phí</span><span className="th">Doanh thu</span><span className="th">Hoa hồng</span><span className="th">So kỳ trước</span></div>
+                      <div className="grid gap-3 px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 640 }}><span className="th">Hạng</span><span className="th">Affiliate</span><span className="th">Giới thiệu</span><span className="th">Trả phí</span><span className="th">Doanh thu</span><span className="th">Hoa hồng</span><span className="th">So kỳ trước</span></div>
                       {rest.map((r) => (
                         <div key={r.user.id} className="grid gap-3 items-center px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 640, borderTop: `1px solid ${T.line}`, background: r.isMe ? T.goldSoft : undefined }}>
                           <span className="font-bold" style={{ color: T.ink2 }}>{r.rank}</span>
@@ -97,7 +97,7 @@ export default function Page() {
               <div className="grid grid-cols-3 gap-2 pt-2.5" style={{ borderTop: `1px solid ${T.line}` }}>{[[q.data.me.clicks, 'Lượt bấm'], [q.data.me.signups, 'Đăng ký'], [q.data.me.paid, 'Trả phí']].map(([v, l]) => <div key={String(l)} className="text-center"><div className="font-bold text-[18px]">{v}</div><div className="muted text-[12px]">{l}</div></div>)}</div>
             </>
           ) : (
-            <><div className="muted text-[13px]">Bạn chưa là cộng sự của hội này.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm self-start">Lấy link cộng sự</Link></>
+            <><div className="muted text-[13px]">Bạn chưa là affiliate của hội này.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm self-start">Lấy link affiliate</Link></>
           )}
         </div>
         {q.data && (
@@ -108,8 +108,8 @@ export default function Page() {
         )}
         {q.data && (
           <div className="card p-4 flex flex-col gap-2">
-            <div className="font-semibold">Tổng cộng sự kỳ này</div>
-            <div className="flex items-baseline gap-2"><span className="serif text-[26px] font-extrabold">{q.data.stats.activeAffiliates}</span><span className="muted text-[13px]">cộng sự có phát sinh</span></div>
+            <div className="font-semibold">Tổng affiliate kỳ này</div>
+            <div className="flex items-baseline gap-2"><span className="serif text-[26px] font-extrabold">{q.data.stats.activeAffiliates}</span><span className="muted text-[13px]">affiliate có phát sinh</span></div>
             <Prog value={Math.round(q.data.stats.referredRevenueShare * 100)} />
             <div className="muted text-[12px]">{Math.round(q.data.stats.referredRevenueShare * 100)}% doanh thu kỳ này đến từ giới thiệu</div>
           </div>

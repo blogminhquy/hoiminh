@@ -48,7 +48,7 @@ export async function issueSession(ctx: Ctx, provider: AuthProvider, user: typeo
   return { accessToken: token, refreshToken: refresh.raw, expiresAt: expiresAt.toISOString(), user: toAuthUser(user) };
 }
 
-/** Đăng ký tài khoản, gửi mã xác minh, phát user.registered (attribution cộng sự xử lý ở handler). */
+/** Đăng ký tài khoản, gửi mã xác minh, phát user.registered (attribution affiliate xử lý ở handler). */
 export async function register(ctx: Ctx, provider: AuthProvider, input: RegisterInput, meta?: { userAgent?: string }): Promise<AuthSession> {
   const existing = await ctx.db.query.users.findFirst({ where: eq(users.email, input.email) });
   if (existing) throw conflict('Email đã được đăng ký, hãy đăng nhập');

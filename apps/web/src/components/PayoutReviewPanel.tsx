@@ -38,7 +38,7 @@ export function PayoutReviewPanel({ data, request, conflict, onReload, paying, r
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-grow min-w-0">
           <div className="font-bold text-[15px]">{request.user.name} · {amount}</div>
-          <div className="muted text-[12px]">{request.user.email} · tiền đã bị khóa khỏi số dư có thể rút của cộng sự</div>
+          <div className="muted text-[12px]">{request.user.email} · tiền đã bị khóa khỏi số dư có thể rút của affiliate</div>
         </div>
         <Tag tone="teal"><Check size={11} />Đã mở số tài khoản · ghi vào nhật ký</Tag>
       </div>

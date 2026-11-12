@@ -56,7 +56,7 @@ export default function Page() {
       ? <>Bạn được <strong>{who}</strong> giới thiệu vào <strong>{about.data.community.name}</strong></>
       : <>Bạn đang đăng ký để tham gia <strong>{about.data.community.name}</strong></>;
   } else if (ref && !hoi) {
-    referral = <>Bạn đến từ link giới thiệu của một cộng sự</>;
+    referral = <>Bạn đến từ link giới thiệu của một affiliate</>;
   }
 
   return (

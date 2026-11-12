@@ -1,4 +1,4 @@
-// Khung Cài đặt hội: 4 nhóm thay cho 10 mục cũ (Hội, Bán hàng, Cộng sự, Tự động và kết nối). Nhóm có hơn một trang
+// Khung Cài đặt hội: 4 nhóm thay cho 10 mục cũ (Hội, Bán hàng, Affiliate, Tự động và kết nối). Nhóm có hơn một trang
 // thì hiện hàng tab con ngay trên nội dung. Máy tính: danh mục bên trái. Điện thoại: /cai-dat là danh sách nhóm
 // (SettingsHome), vào trang con thì có nút quay lại. Chỉ người có settings.manage hoặc billing.manage.
 import { T } from '@hoiminh/ui';
@@ -22,7 +22,7 @@ export function settingsGroups(shell: Shell): SettingsGroup[] {
   return [
     { key: 'hoi', label: 'Hội', hint: 'Tên, logo, quy tắc, câu hỏi khi tham gia, chuyên mục', icon: <Store size={20} />, tabs: [{ label: 'Thông tin', to: `${base}/chung` }, { label: 'Bảng tin và chuyên mục', to: `${base}/bang-tin` }] },
     { key: 'ban-hang', label: 'Bán hàng', hint: 'Giá, gói thành viên, tài khoản nhận tiền của bạn', icon: <Tag size={20} />, tabs: [{ label: 'Giá và gói', to: `${base}/gia` }, { label: 'Nhận tiền', to: `${base}/nhan-tien` }] },
-    { key: 'cong-su', label: 'Cộng sự', hint: 'Mức hoa hồng, thời gian giữ, bảng xếp hạng', icon: <Handshake size={20} />, tabs: [{ label: 'Mức hoa hồng', to: `${base}/cong-su`, locked: lock('affiliate') }] },
+    { key: 'cong-su', label: 'Affiliate', hint: 'Mức hoa hồng, thời gian giữ, bảng xếp hạng', icon: <Handshake size={20} />, tabs: [{ label: 'Mức hoa hồng', to: `${base}/cong-su`, locked: lock('affiliate') }] },
     { key: 'ket-noi', label: 'Tự động và kết nối', hint: 'Tin nhắn chào, nhận đơn từ landing, thẻ và quy tắc tự động, khóa API', icon: <Plug size={20} />, tabs: connect },
   ];
 }

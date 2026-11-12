@@ -2,7 +2,7 @@
 // bấm vào để chuyển hội). Điện thoại: header có nút mở menu, tên hội và tìm kiếm; menu trượt ra từ bên trái
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
-// Quản lý (Tiền, Cộng sự, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
+// Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
 import { Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, LayoutDashboard, Lock, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -58,7 +58,7 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
         {tabs.feed !== false && <NavItem collapsed={collapsed} to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
         {tabs.events !== false && <NavItem collapsed={collapsed} to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
         {tabs.members !== false && <NavItem collapsed={collapsed} to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
-        {tabs.affiliate !== false && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng cộng sự" />}
+        {tabs.affiliate !== false && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng affiliate" />}
       </div>
       {(tabs.courses !== false || tabs.store !== false) && (
         <>
@@ -75,7 +75,7 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
           <div className="nav-group">Quản lý</div>
           <div className="flex flex-col gap-0.5">
             {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem collapsed={collapsed} to={`/${s}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
-            {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Cộng sự" end />}
+            {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Affiliate" end />}
             {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem collapsed={collapsed} to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
           </div>
         </>
@@ -216,7 +216,7 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
   );
 }
 
-/** Đường dẫn đang mở thuộc nhóm nào trên thanh dưới. Trang tài khoản, tin nhắn, thông báo thuộc "Tôi". Tiền, Cộng sự, Cài đặt thuộc mục đầu (Quản lý). */
+/** Đường dẫn đang mở thuộc nhóm nào trên thanh dưới. Trang tài khoản, tin nhắn, thông báo thuộc "Tôi". Tiền, Affiliate, Cài đặt thuộc mục đầu (Quản lý). */
 export function mobileSection(pathname: string, slug: string): 'today' | 'learn' | 'community' | 'me' | null {
   const base = `/${slug}/`;
   if (!pathname.startsWith(base)) return /^\/(tai-khoan|tin-nhan|thong-bao|u\/|hoc)/.test(pathname) ? 'me' : null;

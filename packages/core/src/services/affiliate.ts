@@ -28,12 +28,12 @@ export async function ledgerEntry(ctx: Ctx, e: { affiliateAccountId: string; ent
   return rows.length > 0;
 }
 
-/** Tài khoản cộng sự của user trong chương trình (tạo nếu chưa có, chương trình phải đang bật). */
+/** Tài khoản affiliate của user trong chương trình (tạo nếu chưa có, chương trình phải đang bật). */
 export async function ensureAccount(ctx: Ctx, userId: string, programId: string) {
   const existing = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.userId, userId), eq(affiliateAccounts.programId, programId)) });
   if (existing) return existing;
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, programId) });
-  if (!program) throw notFound('Chương trình cộng sự không tồn tại');
+  if (!program) throw notFound('Chương trình affiliate không tồn tại');
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId), columns: { handle: true } });
   let code = `${(user?.handle ?? 'hm').replace(/-/g, '').slice(0, 6)}${randomCode(3).toLowerCase()}`;
   for (let i = 0; i < 5; i++) {
@@ -99,9 +99,9 @@ export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: strin
     }
   } else if (p.communityId) {
     program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, p.communityId) });
-    // Khóa học bán lẻ có công tắc "Cộng sự được nhận hoa hồng khi bán lẻ khóa này". Tắt thì không tính.
+    // Khóa học bán lẻ có công tắc "Affiliate được nhận hoa hồng khi bán lẻ khóa này". Tắt thì không tính.
     if (p.targetType === 'product' && !(await productsAllowCommission(ctx, p.orderId))) return null;
-    // Cộng sự là tính năng trả phí của gói hội: hội xuống gói không có cộng sự thì đơn mới không sinh hoa hồng.
+    // Affiliate là tính năng trả phí của gói hội: hội xuống gói không có affiliate thì đơn mới không sinh hoa hồng.
     if (!(await communityHasFeature(ctx, p.communityId, 'affiliate'))) return null;
   }
   if (!program || program.status !== 'active' || !accountId) return null;
@@ -157,24 +157,24 @@ export async function releaseDueCommissions(ctx: Ctx): Promise<number> {
   return n;
 }
 
-/** Cài đặt · Cộng sự của chủ hội. */
+/** Cài đặt · Affiliate của chủ hội. */
 export async function programSettings(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'affiliates.manage');
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, communityId) });
-  if (!program) throw notFound('Chưa có chương trình cộng sự');
+  if (!program) throw notFound('Chưa có chương trình affiliate');
   const stats = await programStats(ctx, program.id);
   return { program, stats };
 }
 export async function updateProgram(ctx: Ctx, communityId: string, input: { enabled: boolean; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; leaderboardVisibility: 'members' | 'affiliates_only' | 'hidden'; leaderboardShowMoney: boolean }) {
   await requireCommunityPermission(ctx, communityId, 'affiliates.manage');
-  // Bật chương trình cần gói có cộng sự; tắt thì gói nào cũng làm được.
+  // Bật chương trình cần gói có affiliate; tắt thì gói nào cũng làm được.
   if (input.enabled) await requirePlanFeature(ctx, communityId, 'affiliate');
   const [row] = await ctx.db.update(affiliatePrograms).set({ status: input.enabled ? 'active' : 'paused', commissionRateBps: input.commissionRateBps, holdDays: input.holdDays, minWithdrawalMinor: input.minWithdrawalMinor, leaderboardVisibility: input.leaderboardVisibility, leaderboardShowMoney: input.leaderboardShowMoney, updatedAt: ctx.now() }).where(eq(affiliatePrograms.communityId, communityId)).returning();
   await audit(ctx, { action: 'affiliate.update_program', resourceType: 'affiliate_program', resourceId: row!.id, communityId, metadata: input });
   return row!;
 }
 
-/** Thống kê chương trình: cộng sự có phát sinh tháng này, % doanh thu từ giới thiệu, đã trả / chờ / đang giữ. */
+/** Thống kê chương trình: affiliate có phát sinh tháng này, % doanh thu từ giới thiệu, đã trả / chờ / đang giữ. */
 export async function programStats(ctx: Ctx, programId: string) {
   const r = await raw(ctx.db, sql`
     select
@@ -194,14 +194,14 @@ export async function programStats(ctx: Ctx, programId: string) {
   return { activeAffiliates: Number(row.active_affiliates), paidThisMonthMinor: Number(row.paid_this_month), awaitingTransferMinor: Number(row.awaiting_transfer), awaitingCount: Number(row.awaiting_count), holdingMinor: Number(row.holding), availableUnrequestedMinor: Number(row.available_unrequested), owedMinor: Number(row.awaiting_transfer) + Number(row.available_unrequested), referredRevenueShare: totalRevenue ? Math.round((referred / totalRevenue) * 100) : 0, paidCountThisMonth: Number(row.paid_count) };
 }
 
-/** Ví của tôi cho một chương trình (Tài khoản → Cộng sự): link + 3 số + 4 ô ví + hoa hồng gần đây. */
+/** Ví của tôi cho một chương trình (Tài khoản → Affiliate): link + 3 số + 4 ô ví + hoa hồng gần đây. */
 export async function myWallet(ctx: Ctx, programId: string) {
   const userId = requireUser(ctx);
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, programId) });
   if (!program) throw notFound();
   if (program.scopeType === 'community' && program.communityId) {
     const access = await resolveCommunityAccess(ctx, program.communityId);
-    if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để làm cộng sự');
+    if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để làm affiliate');
   }
   const acc = await ensureAccount(ctx, userId, programId);
   const link = await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, acc.id) });
@@ -225,7 +225,7 @@ export async function myWallet(ctx: Ctx, programId: string) {
   };
 }
 
-/** Các chương trình mà tôi có thể làm cộng sự (nền tảng + hội đang tham gia có bật). */
+/** Các chương trình mà tôi có thể làm affiliate (nền tảng + hội đang tham gia có bật). */
 export async function myPrograms(ctx: Ctx) {
   const userId = requireUser(ctx);
   const platform = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
@@ -233,7 +233,7 @@ export async function myPrograms(ctx: Ctx) {
   return [...(platform ? [{ id: platform.id, name: 'Nền tảng Hội Mình', scope: 'platform' as const, community: null, rateBps: platform.commissionRateBps }] : []), ...rows.map((r) => ({ id: r.p.id, name: r.c.name, scope: 'community' as const, community: r.c, rateBps: r.p.commissionRateBps }))];
 }
 
-/** Xếp hạng cộng sự từ snapshot (mục 200) + dòng "bạn" + cột phải. */
+/** Xếp hạng affiliate từ snapshot (mục 200) + dòng "bạn" + cột phải. */
 export async function leaderboard(ctx: Ctx, communityId: string, period: 'month' | 'quarter' | 'all') {
   const access = await resolveCommunityAccess(ctx, communityId);
   if (!access.permissions.has('community.read')) throw forbidden();
@@ -242,7 +242,7 @@ export async function leaderboard(ctx: Ctx, communityId: string, period: 'month'
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   const myAcc = userId ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.userId, userId), eq(affiliateAccounts.programId, program.id)) }) : null;
   if (program.leaderboardVisibility === 'hidden' && !access.permissions.has('affiliates.manage')) throw forbidden('Bảng xếp hạng đã tắt');
-  if (program.leaderboardVisibility === 'affiliates_only' && !myAcc && !access.permissions.has('affiliates.manage')) throw forbidden('Lấy link cộng sự để xem bảng xếp hạng');
+  if (program.leaderboardVisibility === 'affiliates_only' && !myAcc && !access.permissions.has('affiliates.manage')) throw forbidden('Lấy link affiliate để xem bảng xếp hạng');
   const now = ctx.now();
   const periodType = period === 'all' ? 'all_time' : period;
   const periodKey = period === 'all' ? 'all' : period === 'month' ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}` : `${now.getFullYear()}-Q${Math.floor(now.getMonth() / 3) + 1}`;

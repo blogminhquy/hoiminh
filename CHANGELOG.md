@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.32.2 - 2026-11-12
+
+Chữ "Cộng sự" trên toàn giao diện đổi thành "Affiliate", theo yêu cầu của chủ dự án. Chỉ đổi chữ, không đổi tính năng.
+
+### Thay đổi
+
+- **"Cộng sự" thành "Affiliate" ở mọi nơi người dùng đọc:** thanh bên và trang Affiliate của hội, Cài đặt, Affiliate, trang Tài khoản, Affiliate (ví và rút tiền), bảng Xếp hạng affiliate, bàn điều khiển, lời mời nâng gói, bảng gói, bảng lệnh nhanh, thông báo, email và phần Hệ thống, Affiliate nền tảng.
+- Hội tạo mới có sẵn quyền lợi "Trở thành affiliate" ở gói Premium, và chương trình tên "Affiliate <tên hội>".
+- Địa chỉ trang giữ nguyên (`/cong-su`, `/tai-khoan/cong-su`, `/cai-dat/cong-su`), nên link đã gửi cho thành viên vẫn mở được.
+
+### Kỹ thuật
+
+- Không đổi máy chủ, không có migration. Dữ liệu đã lưu không tự đổi: hội đã tạo từ trước vẫn giữ dòng quyền lợi "Trở thành cộng sự" và tên chương trình cũ cho tới khi chủ hội sửa.
+- Chú thích trong mã, dữ liệu mẫu (seed), test và các màn thiết kế (`design/build.mjs`, dựng lại bằng `node design/build.mjs`) đổi cùng lúc. Nhật ký thay đổi cũ, `DECISIONS.md`, tài liệu kiến trúc và các migration đã chạy giữ nguyên chữ cũ.
+
 ## 1.32.1 - 2026-11-12
 
 Màn Nhận tiền hướng dẫn chủ hội nối SePay từng bước và tự báo "Đã nối" khi nhận được tín hiệu đầu tiên, để chủ hội biết chắc đơn sẽ tự xác nhận mà không phải chờ tới đơn thật.

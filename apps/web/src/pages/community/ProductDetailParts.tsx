@@ -1,4 +1,4 @@
-// Mảnh trang bán (productDetailMain): rail giá + CTA, tải tệp sản phẩm số đã mua, thẻ Premium, combo chứa, link cộng sự; khối lợi ích, giáo trình, FAQ.
+// Mảnh trang bán (productDetailMain): rail giá + CTA, tải tệp sản phẩm số đã mua, thẻ Premium, combo chứa, link affiliate; khối lợi ích, giáo trình, FAQ.
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, T, money } from '@hoiminh/ui';
 import { BadgeCheck, Check, ChevronDown, ChevronRight, Clock, Copy, Download, FileText, Link as LinkIcon, Lock, MessageCircle, Play, QrCode, ShieldCheck, Sparkles, Video } from 'lucide-react';
@@ -150,7 +150,7 @@ export function PriceRail({ p, slug, premium }: { p: Product; slug: string; prem
       )}
       {p.affiliateLink && (
         <div className="card p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-[13px] font-semibold"><LinkIcon size={14} />Bạn là cộng sự</div>
+          <div className="flex items-center gap-2 text-[13px] font-semibold"><LinkIcon size={14} />Bạn là affiliate</div>
           <div className="input text-[12px]" style={{ height: 36, color: T.ink }}><span className="flex-grow truncate">{p.affiliateLink.replace(/^https?:\/\//, '')}</span><button type="button" aria-label="Sao chép" onClick={() => { void navigator.clipboard?.writeText(p.affiliateLink ?? '').then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }} style={{ color: copied ? T.teal : T.ink3 }}>{copied ? <Check size={14} /> : <Copy size={14} />}</button></div>
           <div className="muted text-[12px]">Hoa hồng theo cấu hình hội · tính mỗi đơn qua link này</div>
         </div>

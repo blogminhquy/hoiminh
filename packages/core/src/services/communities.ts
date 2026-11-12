@@ -1,4 +1,4 @@
-// Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/cộng sự, khám phá.
+// Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/affiliate, khám phá.
 import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
 import { ABOUT_MEDIA_MAX, parseVideoUrl, type CreateCommunityInput, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
@@ -26,7 +26,7 @@ export async function assertSlugAvailable(ctx: Ctx, slug: string, exceptId?: str
   if (row && row.id !== exceptId) throw conflict('Đường dẫn đã có hội khác dùng');
 }
 
-/** Tạo hội mới với tier, chuyên mục, plugin mặc định và chương trình cộng sự (tắt). */
+/** Tạo hội mới với tier, chuyên mục, plugin mặc định và chương trình affiliate (tắt). */
 export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
   const userId = requireUser(ctx);
   const ws = input.workspaceId ? await ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, input.workspaceId) }) : await ensureWorkspace(ctx, userId);
@@ -41,13 +41,13 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     const [c] = await tx.insert(communities).values({ workspaceId: ws.id, name: input.name, slug: input.slug, shortDescription: input.shortDescription, description: input.description || input.shortDescription, category: input.category, logoMark: markOf(input.name), pricingMode: input.pricingMode, status: isFreeSlot ? 'active' : 'draft', lockedReason: isFreeSlot ? null : 'plan_required', discoverable: isFreeSlot, isFreeSlot, coverTagline: input.name }).returning();
     const hasFree = input.pricingMode === 'free' || input.pricingMode === 'freemium';
     const [standard] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 }).returning();
-    const [premium] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành cộng sự', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: input.pricingMode !== 'free', sortOrder: 1, monthlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumMonthlyMinor ?? 249_000), yearlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumYearlyMinor ?? 2_490_000), oneTimeMinor: input.pricingMode === 'one_time' ? (input.oneTimeMinor ?? 990_000) : null }).returning();
+    const [premium] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'premium', name: 'Premium', description: 'Mở khóa toàn bộ', benefits: ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate', 'Q&A hàng tuần'], isDefault: !hasFree, isActive: input.pricingMode !== 'free', sortOrder: 1, monthlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumMonthlyMinor ?? 249_000), yearlyMinor: input.pricingMode === 'one_time' ? null : (input.premiumYearlyMinor ?? 2_490_000), oneTimeMinor: input.pricingMode === 'one_time' ? (input.oneTimeMinor ?? 990_000) : null }).returning();
     await tx.insert(communityTiers).values({ communityId: c!.id, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần'], isDefault: false, isActive: false, sortOrder: 2 });
     for (const [i, [name, slug, perm, color]] of DEFAULT_SPACES.entries()) await tx.insert(spaces).values({ communityId: c!.id, name, slug, postPermission: perm, colorKey: color, sortOrder: i });
     for (const [key, enabled] of [['welcome_dm', true], ['instant_approval', true], ['links', true], ['webhook', false], ['meta_pixel', false]] as const) {
       await tx.insert(communityPlugins).values({ communityId: c!.id, pluginKey: key, enabled, config: key === 'welcome_dm' ? { senderUserId: userId, template: 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true } : {} });
     }
-    await tx.insert(affiliatePrograms).values({ scopeType: 'community', communityId: c!.id, workspaceId: ws.id, name: `Cộng sự ${input.name}`, status: 'paused', commissionRateBps: 4000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: ws.ownerUserId });
+    await tx.insert(affiliatePrograms).values({ scopeType: 'community', communityId: c!.id, workspaceId: ws.id, name: `Affiliate ${input.name}`, status: 'paused', commissionRateBps: 4000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: ws.ownerUserId });
     await tx.insert(communityMembers).values({ communityId: c!.id, userId: ws.ownerUserId, role: 'owner', status: 'active', tierId: premium!.id, level: 1 });
     await tx.update(communities).set({ memberCount: 1 }).where(eq(communities.id, c!.id));
     await syncTierOffers(tx as unknown as Ctx['db'], c!.id, ws.id, [standard!, premium!]);

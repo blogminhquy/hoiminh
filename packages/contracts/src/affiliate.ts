@@ -1,4 +1,4 @@
-// Hợp đồng cộng sự (affiliate): ví, tài khoản nhận tiền, yêu cầu rút, xếp hạng.
+// Hợp đồng affiliate: ví, tài khoản nhận tiền, yêu cầu rút, xếp hạng.
 import { z } from 'zod';
 import { amountMinorSchema, idSchema } from './common';
 

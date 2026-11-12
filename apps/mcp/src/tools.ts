@@ -14,7 +14,7 @@ const defs = {
   create_event: { description: 'Tạo sự kiện (ISO 8601 cho startsAt/endsAt).', schema: z.object({ communityId, title: z.string(), startsAt: z.string(), endsAt: z.string(), meetingUrl: z.string().url().optional(), recurrence: z.enum(['none', 'weekly', 'monthly']).default('none'), occurrences: z.number().int().default(4), access: z.enum(['all_members', 'premium', 'public']).default('all_members') }) },
   get_member_progress: { description: 'Tiến độ học và thanh toán của một thành viên.', schema: z.object({ communityId, memberId: z.string().uuid() }) },
   send_announcement: { description: 'Đăng thông báo lên Bảng tin và gửi email cho toàn bộ thành viên.', schema: z.object({ communityId, title: z.string(), contentMd: z.string() }) },
-  list_withdrawals: { description: 'Hàng đợi yêu cầu rút tiền của cộng sự trong hội.', schema: z.object({ communityId }) },
+  list_withdrawals: { description: 'Hàng đợi yêu cầu rút tiền của affiliate trong hội.', schema: z.object({ communityId }) },
   mark_withdrawal_paid: { description: 'Đánh dấu yêu cầu rút đã chuyển khoản với mã tham chiếu (cần scope affiliates:manage).', schema: z.object({ withdrawalId: z.string().uuid(), transferReference: z.string(), version: z.number().int() }) },
 } as const;
 

@@ -55,7 +55,7 @@ export function registerHandlers(app: AppContext): void {
     }
     await c.email.send(templates.welcomeMember(user.email, user.name, community.name, `${c.env.APP_URL}/${community.slug}/bang-tin`));
     const owner = await c.db.query.workspaces.findFirst({ where: eq(workspaces.id, community.workspaceId), columns: { ownerUserId: true } });
-    if (owner && owner.ownerUserId !== p.userId) await notify(c, { userId: owner.ownerUserId, communityId: p.communityId, kind: 'member.joined', category: 'all', title: `${user.name} vừa tham gia ${community.name}`, body: p.referredByAffiliateId ? 'qua link cộng sự' : '', actorUserId: p.userId, link: `/${community.slug}/thanh-vien` });
+    if (owner && owner.ownerUserId !== p.userId) await notify(c, { userId: owner.ownerUserId, communityId: p.communityId, kind: 'member.joined', category: 'all', title: `${user.name} vừa tham gia ${community.name}`, body: p.referredByAffiliateId ? 'qua link affiliate' : '', actorUserId: p.userId, link: `/${community.slug}/thanh-vien` });
     await dispatch(c, community.workspaceId, 'member.joined', { communityId: p.communityId, userId: p.userId, memberId: p.memberId, email: user.email, name: user.name, source: p.source });
   });
 
@@ -103,7 +103,7 @@ export function registerHandlers(app: AppContext): void {
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.succeeded', category: 'payment', title: `Thanh toán ${formatMoney(p.amountMinor, p.currency as 'VND')} thành công · ${meta.title ?? ''}`, body: 'Quyền truy cập đã được mở', link: link.replace(c.env.APP_URL, ''), actionLabel: 'Vào học' });
     if (community) {
       const owner = await c.db.query.workspaces.findFirst({ where: eq(workspaces.id, community.workspaceId), columns: { ownerUserId: true } });
-      if (owner && owner.ownerUserId !== p.userId) await notify(c, { userId: owner.ownerUserId, communityId: p.communityId, kind: 'member.paid', category: 'payment', title: `${user.name} đã thanh toán ${formatMoney(p.amountMinor)} · ${meta.title ?? ''}`, body: p.affiliateAccountId ? 'qua link cộng sự' : '', actorUserId: p.userId, link: `/${community.slug}/doanh-thu` });
+      if (owner && owner.ownerUserId !== p.userId) await notify(c, { userId: owner.ownerUserId, communityId: p.communityId, kind: 'member.paid', category: 'payment', title: `${user.name} đã thanh toán ${formatMoney(p.amountMinor)} · ${meta.title ?? ''}`, body: p.affiliateAccountId ? 'qua link affiliate' : '', actorUserId: p.userId, link: `/${community.slug}/doanh-thu` });
     }
     await dispatch(c, p.workspaceId, 'payment.succeeded', { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, email: user.email, amountMinor: p.amountMinor, currency: p.currency, provider: p.provider, targetType: p.targetType, targetId: p.targetId, title: meta.title });
   });
@@ -189,7 +189,7 @@ export function registerHandlers(app: AppContext): void {
     const c = ctx(ev);
     const program = await raw(c.db, sql`select payer_user_id, community_id, name from affiliate_programs where id = ${p.programId}`);
     const pr = program[0] as { payer_user_id: string | null; community_id: string | null; name: string } | undefined;
-    if (pr?.payer_user_id) await notify(c, { userId: pr.payer_user_id, communityId: pr.community_id, kind: 'affiliate.withdrawal_requested', category: 'affiliate', title: `Yêu cầu rút ${formatMoney(p.amountMinor)} mới từ cộng sự`, link: pr.community_id ? `/${(await communityOf(c, pr.community_id))?.slug}/cai-dat/cong-su/rut-tien` : '/he-thong/cong-su', actionLabel: 'Xử lý' });
+    if (pr?.payer_user_id) await notify(c, { userId: pr.payer_user_id, communityId: pr.community_id, kind: 'affiliate.withdrawal_requested', category: 'affiliate', title: `Yêu cầu rút ${formatMoney(p.amountMinor)} mới từ affiliate`, link: pr.community_id ? `/${(await communityOf(c, pr.community_id))?.slug}/cai-dat/cong-su/rut-tien` : '/he-thong/cong-su', actionLabel: 'Xử lý' });
   });
 
   bus.on('affiliate.withdrawal_paid', async (p, ev) => {

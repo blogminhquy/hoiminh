@@ -15,7 +15,7 @@ export const planFeatureSchema = z.enum(PLAN_FEATURES);
 export const PLAN_FEATURE_LABEL: Record<PlanFeature, string> = {
   automation: 'Tự động hóa',
   custom_domain: 'Tên miền riêng',
-  affiliate: 'Cộng sự',
+  affiliate: 'Affiliate',
   api: 'API',
 };
 

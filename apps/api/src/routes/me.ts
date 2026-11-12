@@ -1,4 +1,4 @@
-// /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, cộng sự (ví, rút tiền), thông báo, tin nhắn.
+// /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, affiliate (ví, rút tiền), thông báo, tin nhắn.
 import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
 import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, push, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
@@ -81,7 +81,7 @@ meRoutes.post('/orders/:id/refund', async (c) => {
   return c.json(await paymentsService.requestRefund(c.get('ctx'), c.req.param('id'), reason));
 });
 
-// Cộng sự của tôi
+// Affiliate của tôi
 meRoutes.get('/affiliate/programs', async (c) => c.json(await affiliate.myPrograms(c.get('ctx'))));
 meRoutes.get('/affiliate/:programId', async (c) => {
   const ctx = c.get('ctx');

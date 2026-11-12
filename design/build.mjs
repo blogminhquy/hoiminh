@@ -121,7 +121,7 @@ function shell({ active, main, height = 960 }) {
       ${nav('feed', I.home(20), 'Bảng tin')}
       ${nav('members', I.users(20), 'Thành viên')}
       ${nav('events', I.calendar(20), 'Sự kiện', `<span style="font-size: 11px; font-weight: 600; background: ${T.accent}; color: #FFFDF9; border-radius: 999px; padding: 1px 7px;">2</span>`)}
-      ${nav('affiliate', I.trophy(20), 'Xếp hạng cộng sự')}
+      ${nav('affiliate', I.trophy(20), 'Xếp hạng affiliate')}
     </div>
 
     <div class="nav-group">Học tập</div>
@@ -275,7 +275,7 @@ const feedMain = `
       pinned: true, cat: 'Thông báo', catBg: T.accentSoft, catFg: '#9C3A21',
       name: 'Minh Quý', initials: 'MQ', avBg: T.ink, level: 7, time: '2 ngày trước',
       title: 'Lộ trình Funnel Money Model 2026: bắt đầu từ đâu?',
-      excerpt: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các cộng sự trả lời trong 24 giờ.',
+      excerpt: 'Chào cả nhà. Tuần này mình mở lại toàn bộ module 1 cho thành viên miễn phí. Ai mới vào hãy học 5 bài đầu trước rồi đặt câu hỏi ở mục Hỏi đáp, mình và các affiliate trả lời trong 24 giờ.',
       likes: 24, comments: 8,
     })}
 
@@ -318,7 +318,7 @@ const feedMain = `
 
     <div class="card" style="padding: 18px; background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink}; display: flex; flex-direction: column; gap: 10px;">
       <div style="display: flex; align-items: center; gap: 8px; color: ${T.gold}; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">${I.spark(16)}Gói Premium</div>
-      <div class="serif" style="font-size: 19px; font-weight: 700; line-height: 1.3;">Mở khóa toàn bộ khóa học và trở thành cộng sự</div>
+      <div class="serif" style="font-size: 19px; font-weight: 700; line-height: 1.3;">Mở khóa toàn bộ khóa học và trở thành affiliate</div>
       <div style="font-size: 13px; color: ${T.sideText};">249.000đ/tháng · hủy bất cứ lúc nào</div>
       <div class="btn btn-primary" style="width: 100%; margin-top: 4px;" data-go="checkout">Nâng cấp ngay</div>
     </div>
@@ -374,7 +374,7 @@ const classroomMain = `
         ${lessonRow('2.6 Bài tập: Offer Canvas của bạn', 'todo', 'Bài tập')}
       </div>
       ${moduleHead('3. Lead magnet và Tripwire', '7 bài', false)}
-      ${moduleHead('4. Scale bằng cộng sự affiliate', '8 bài', false)}
+      ${moduleHead('4. Scale bằng affiliate', '8 bài', false)}
       <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 4px;">
         ${lessonRow('4.1 Thiết kế hoa hồng 50%', 'lock', 'Premium')}
       </div>
@@ -448,7 +448,7 @@ const membersMain = `
     ${memberRow('ĐN', T.teal, 'Điền Phạm Ngọc', 'dien-pham-ngoc', 'Premium', T.goldSoft, '#8A6A1E', '13/09/2026', '3 giờ trước')}
     ${memberRow('HK', '#7A5C3E', 'Hồng Kim', 'hong-kim', 'Premium', T.goldSoft, '#8A6A1E', '11/09/2026', 'Hôm qua')}
     ${memberRow('KB', '#5C7A3E', 'Kiên Bùi', 'kien-bui', 'Miễn phí', T.bg, T.ink2, '10/09/2026', '4 ngày trước')}
-    ${memberRow('HV', T.accent, 'Hoàng Vũ', 'hoang-vu', 'Cộng sự', T.tealSoft, '#0B6F75', '02/08/2026', '1 giờ trước')}
+    ${memberRow('HV', T.accent, 'Hoàng Vũ', 'hoang-vu', 'Affiliate', T.tealSoft, '#0B6F75', '02/08/2026', '1 giờ trước')}
   </div>
 
   <!-- Modal overlay -->
@@ -496,7 +496,7 @@ const membersMain = `
 
 // ---------- Pricing.dc.html : Cài đặt · Giá và gói ----------
 const settingsNav = (active) => {
-  const items = [['Tổng quan', 's-overview'], ['Khám phá', ''], ['Mời thành viên', ''], ['Chung', 's-general'], ['Giá và gói', 'settings'], ['Cộng sự (Affiliate)', 's-affiliate'], ['Tiện ích', 's-plugins'], ['Bảng tin', 's-feed'], ['Thông báo', ''], ['Thanh toán', 's-payout']];
+  const items = [['Tổng quan', 's-overview'], ['Khám phá', ''], ['Mời thành viên', ''], ['Chung', 's-general'], ['Giá và gói', 'settings'], ['Affiliate', 's-affiliate'], ['Tiện ích', 's-plugins'], ['Bảng tin', 's-feed'], ['Thông báo', ''], ['Thanh toán', 's-payout']];
   return `<div style="width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;">${items.map(([t, go]) => `<div data-go="${go}" style="padding: 10px 14px; border-radius: 10px;${t === active ? ` background: ${T.goldSoft}; font-weight: 600;` : ` color: ${T.ink2};`}">${t}</div>`).join('')}</div>`;
 };
 const modeCard = (title, sub, on) => `<div style="flex: 1 1 0; min-height: 80px; padding: 16px; border-radius: 12px; border: 1.5px solid ${on ? T.accent : T.line2}; background: ${on ? T.accentSoft : T.surface}; display: flex; flex-direction: column; gap: 4px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="width: 18px; height: 18px; border-radius: 999px; border: 2px solid ${on ? T.accent : T.line2}; display: inline-flex; align-items: center; justify-content: center;">${on ? `<span style="width: 8px; height: 8px; border-radius: 999px; background: ${T.accent};"></span>` : ''}</span><span style="font-weight: 600;">${title}</span></div><span class="muted" style="font-size: 12px; padding-left: 26px;">${sub}</span></div>`;
@@ -527,7 +527,7 @@ const pricingMain = `
 
     <div style="display: flex; gap: 16px;">
       ${tierCard('Tiêu chuẩn', 'Miễn phí', 'Mặc định khi tham gia', ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'])}
-      ${tierCard('Premium', '249.000đ', 'mỗi tháng · hoặc 2.490.000đ/năm', ['Mở khóa toàn bộ khóa học', 'Trở thành cộng sự, hoa hồng 50%', 'Q&amp;A hàng tuần'])}
+      ${tierCard('Premium', '249.000đ', 'mỗi tháng · hoặc 2.490.000đ/năm', ['Mở khóa toàn bộ khóa học', 'Trở thành affiliate, hoa hồng 50%', 'Q&amp;A hàng tuần'])}
       ${tierCard('VIP', '2.500.000đ', 'mỗi tháng', ['Coaching 1-1 hàng tuần', 'Coaching nhóm hàng tuần'], true, `<span style="width: 40px; height: 22px; border-radius: 999px; background: ${T.teal}; position: relative; display: inline-block;"><span style="position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 999px; background: #fff;"></span></span>`)}
     </div>
 
@@ -577,7 +577,7 @@ const storeMain = `
     ${product({ coverBg: T.ink, coverText: 'Combo 9 khóa học', type: 'Combo · 9 khóa học · 41 giờ', name: 'Combo Kinh doanh AI trọn bộ', desc: 'Sở hữu toàn bộ khóa học hiện có và các khóa ra mắt trong 12 tháng tới.', price: '5.000.000đ', old: '9.000.000đ', off: 44, combo: true })}
     ${product({ coverBg: T.accent, coverText: 'Funnel Money Model 2026', type: 'Khóa học video · 31 bài · 6,6 giờ', name: 'Funnel Money Model 2026', desc: 'Thiết kế offer, lead magnet và tripwire để hoàn vốn quảng cáo sớm.', price: '1.000.000đ', old: '1.686.000đ', off: 41 })}
     ${product({ coverBg: T.teal, coverText: 'Facebook Ads 2026', type: 'Khóa học video · 55 bài · 9,5 giờ', name: 'Facebook Ads chuyển đổi 2026', desc: 'Chạy quảng cáo về trang giới thiệu, retarget và đo lường đăng ký.', price: '', owned: true })}
-    ${product({ coverBg: '#7A5C3E', coverText: 'Funnel Affiliate', type: 'Khóa học video · 18 bài · 3,2 giờ', name: 'Kiếm tiền với Funnel Affiliate', desc: 'Chương trình cộng sự: nhận link, chia sẻ, nhận hoa hồng định kỳ.', price: '490.000đ' })}
+    ${product({ coverBg: '#7A5C3E', coverText: 'Funnel Affiliate', type: 'Khóa học video · 18 bài · 3,2 giờ', name: 'Kiếm tiền với Funnel Affiliate', desc: 'Chương trình affiliate: nhận link, chia sẻ, nhận hoa hồng định kỳ.', price: '490.000đ' })}
     ${product({ coverBg: '#3E5C7A', coverText: 'AI Agent cho người bán hàng', type: 'Khóa học video · 22 bài · 4,1 giờ', name: 'AI Agent cho người bán hàng', desc: 'Dựng trợ lý trả lời khách, chốt đơn và chăm sóc sau bán.', price: '1.200.000đ', old: '1.900.000đ', off: 37 })}
     ${product({ coverBg: T.gold, coverText: '120 prompt bán hàng', type: 'Tài liệu · PDF + TXT', name: '120 prompt viết bài bán hàng', desc: 'Dùng ngay với ChatGPT, Claude hoặc Gemini. Cập nhật miễn phí.', price: '199.000đ' })}
   </div>
@@ -751,7 +751,7 @@ const eventsMain = `
 
     <div class="th" style="padding-top: 8px;">Tuần sau</div>
     ${eventRow({ dow: 'T4', day: '24', bg: T.bg, fg: T.ink2, title: 'Q&amp;A tuần: Lead magnet và Tripwire', time: '20:00 – 21:30', kind: 'Zoom', host: 'Minh Quý', hostInit: 'MQ', hostBg: T.ink, going: 12, state: 'open' })}
-    ${eventRow({ dow: 'CN', day: '27', bg: T.bg, fg: T.ink2, title: 'Cà phê cộng sự: chia sẻ cách kéo 100 đăng ký đầu tiên', time: '09:30 – 11:00', kind: 'YouTube Live', host: 'Hồng Kim', hostInit: 'HK', hostBg: '#7A5C3E', going: 9, state: 'open' })}
+    ${eventRow({ dow: 'CN', day: '27', bg: T.bg, fg: T.ink2, title: 'Cà phê affiliate: chia sẻ cách kéo 100 đăng ký đầu tiên', time: '09:30 – 11:00', kind: 'YouTube Live', host: 'Hồng Kim', hostInit: 'HK', hostBg: '#7A5C3E', going: 9, state: 'open' })}
   </div>
 
   <aside style="width: 312px; display: flex; flex-direction: column; gap: 16px;">
@@ -779,7 +779,7 @@ const eventsMain = `
   </aside>
 </div>`;
 
-// ---------- Affiliate.dc.html : Xếp hạng cộng sự ----------
+// ---------- Affiliate.dc.html : Xếp hạng affiliate ----------
 const podium = (rank, initials, bg, name, referrals, paid, commission, first = false) => `
 <div class="card" style="flex: 1 1 0; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;${first ? ` background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink};` : ''}">
   <div style="width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; background: ${first ? T.gold : T.bg}; color: ${first ? T.ink : T.ink2};">${rank}</div>
@@ -804,7 +804,7 @@ const affiliateMain = `
 <div style="display: flex; gap: 32px; height: 100%;">
   <div style="width: 780px; display: flex; flex-direction: column; gap: 16px;">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Xếp hạng cộng sự</h1>
+      <h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Xếp hạng affiliate</h1>
       <div style="display: flex; gap: 8px; margin-left: 12px;"><span class="chip on">Tháng 9</span><span class="chip">Quý 3</span><span class="chip">Từ đầu</span></div>
       <span style="flex-grow: 1;"></span>
       <span class="muted" style="font-size: 13px;">Cập nhật 10 phút trước</span>
@@ -818,7 +818,7 @@ const affiliateMain = `
 
     <div class="card" style="overflow: hidden;">
       <div style="display: grid; grid-template-columns: 56px 2fr 1fr 1fr 1.2fr 1.2fr 80px; gap: 12px; padding: 12px 20px;">
-        <span class="th">Hạng</span><span class="th">Cộng sự</span><span class="th">Giới thiệu</span><span class="th">Trả phí</span><span class="th">Doanh thu</span><span class="th">Hoa hồng</span><span class="th">So tháng trước</span>
+        <span class="th">Hạng</span><span class="th">Affiliate</span><span class="th">Giới thiệu</span><span class="th">Trả phí</span><span class="th">Doanh thu</span><span class="th">Hoa hồng</span><span class="th">So tháng trước</span>
       </div>
       ${rankRow(4, 'ĐN', T.teal, 'Điền Phạm Ngọc', 'dien-pham-ngoc', 9, 6, '1.494.000đ', '747.000đ', '+2')}
       ${rankRow(5, 'DN', '#3E5C7A', 'Duy Nguyễn', 'duy-nguyen', 8, 5, '1.245.000đ', '622.500đ', '—')}
@@ -850,8 +850,8 @@ const affiliateMain = `
     </div>
 
     <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-      <div style="font-weight: 600;">Tổng cộng sự tháng này</div>
-      <div style="display: flex; align-items: baseline; gap: 8px;"><span class="serif" style="font-size: 26px; font-weight: 800;">41</span><span class="muted" style="font-size: 13px;">cộng sự có phát sinh</span></div>
+      <div style="font-weight: 600;">Tổng affiliate tháng này</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;"><span class="serif" style="font-size: 26px; font-weight: 800;">41</span><span class="muted" style="font-size: 13px;">affiliate có phát sinh</span></div>
       <div class="prog"><div style="width: 62%;"></div></div>
       <div class="muted" style="font-size: 12px;">62% doanh thu tháng này đến từ giới thiệu</div>
     </div>
@@ -888,7 +888,7 @@ const messagesMain = `
       ${convo({ initials: 'ĐN', bg: T.teal, name: 'Điền Phạm Ngọc', community: 'Kinh Doanh Online Cùng AI', preview: 'Mình không vào xem được các bài học', time: '22 giờ', unread: 1, on: true })}
       ${convo({ initials: 'CT', bg: '#7A5C3E', name: 'Công Trần', community: 'Kinh Doanh Online Cùng AI', preview: 'Chào Công, chào mừng bạn đến với…', time: '15 giờ', auto: true })}
       ${convo({ initials: 'DN', bg: '#3E5C7A', name: 'Duy Nguyễn', community: 'Kinh Doanh Online Cùng AI', preview: 'Chào Duy, chào mừng bạn đến với…', time: '15 giờ', auto: true })}
-      ${convo({ initials: 'HV', bg: T.accent, name: 'Hoàng Vũ', community: 'Cộng sự', preview: 'Tháng này em lên 23 người trả phí rồi anh', time: 'Hôm qua', unread: 2 })}
+      ${convo({ initials: 'HV', bg: T.accent, name: 'Hoàng Vũ', community: 'Affiliate', preview: 'Tháng này em lên 23 người trả phí rồi anh', time: 'Hôm qua', unread: 2 })}
       ${convo({ initials: 'HK', bg: '#7A5C3E', name: 'Hồng Kim', community: 'Kinh Doanh Online Cùng AI', preview: 'Bạn: Mai mình gửi bản ghi buổi Q&amp;A nhé', time: '3 ngày' })}
       ${convo({ initials: 'TL', bg: '#5C3E7A', name: 'Thu Lan', community: 'Faceless YouTube Foundation', preview: 'Cảm ơn anh, em đã nhận được link', time: '4 ngày' })}
     </div>
@@ -960,7 +960,7 @@ const notificationsMain = `
   <div style="width: 780px; display: flex; flex-direction: column; gap: 16px;">
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Thông báo</h1>
-      <div style="display: flex; gap: 8px; margin-left: 12px;"><span class="chip on">Tất cả</span><span class="chip">Chưa đọc · 5</span><span class="chip">Nhắc đến</span><span class="chip">Cộng sự</span><span class="chip">Hệ thống</span></div>
+      <div style="display: flex; gap: 8px; margin-left: 12px;"><span class="chip on">Tất cả</span><span class="chip">Chưa đọc · 5</span><span class="chip">Nhắc đến</span><span class="chip">Affiliate</span><span class="chip">Hệ thống</span></div>
       <span style="flex-grow: 1;"></span>
       <span class="btn btn-ghost btn-sm">${I.checkcheck(14)}Đánh dấu tất cả đã đọc</span>
     </div>
@@ -968,7 +968,7 @@ const notificationsMain = `
     <div class="card" style="overflow: hidden;">
       <div class="th" style="padding: 12px 20px 8px;">Hôm nay</div>
       ${notif({ initials: 'CT', bg: '#7A5C3E', icon: I.chat(12), iconBg: T.tealSoft, iconFg: '#0B6F75', text: `${b('Công Trần')} đã bình luận về bài của bạn: “Cảm ơn anh, em đã vào học được rồi ạ”`, meta: 'Kinh Doanh Online Cùng AI · Hỏi đáp', time: '25 phút trước', unread: true, action: 'Trả lời' })}
-      ${notif({ initials: 'HV', bg: T.accent, icon: I.dollar(12), iconBg: T.goldSoft, iconFg: '#8A6A1E', text: `Hoa hồng ${b('124.500đ')} từ giới thiệu của bạn đã được duyệt sau 14 ngày giữ`, meta: 'Cộng sự · Kinh Doanh Online Cùng AI', time: '2 giờ trước', unread: true })}
+      ${notif({ initials: 'HV', bg: T.accent, icon: I.dollar(12), iconBg: T.goldSoft, iconFg: '#8A6A1E', text: `Hoa hồng ${b('124.500đ')} từ giới thiệu của bạn đã được duyệt sau 14 ngày giữ`, meta: 'Affiliate · Kinh Doanh Online Cùng AI', time: '2 giờ trước', unread: true })}
       ${notif({ initials: 'HK', bg: '#7A5C3E', icon: I.at(12), iconBg: T.accentSoft, iconFg: '#9C3A21', text: `${b('Hồng Kim')} đã nhắc đến bạn trong “Ngày 3: đơn đầu tiên từ funnel affiliate”`, meta: 'Kinh Doanh Online Cùng AI · Nhật ký', time: '3 giờ trước', unread: true, action: 'Xem' })}
       ${notif({ initials: 'MQ', bg: T.ink, icon: I.calendar(12), iconBg: T.tealSoft, iconFg: '#0B6F75', text: `Sự kiện ${b('Q&amp;A tuần: Funnel Money Model')} bắt đầu sau 1 giờ`, meta: 'Kinh Doanh Online Cùng AI · Sự kiện', time: '19:00', unread: true, action: 'Vào phòng' })}
       <div class="th" style="padding: 16px 20px 8px;">Hôm qua</div>
@@ -1075,12 +1075,12 @@ const wdStatus = (s) => ({
 }[s]);
 const statusTag = (s) => { const [l, bg, fg] = wdStatus(s); return `<span class="tag" style="background: ${bg}; color: ${fg}; width: fit-content;">${l}</span>`; };
 const walletBox = (label, value, hint, strong = false) => `<div class="card" style="flex: 1 1 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;${strong ? ` background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink};` : ''}"><span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: ${strong ? T.gold : T.ink3};">${label}</span><span class="serif" style="font-size: 24px; font-weight: 800;">${value}</span><span style="font-size: 12px; color: ${strong ? T.sideText : T.ink3};">${hint}</span></div>`;
-const ledgerNotice = (who) => `<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: ${T.goldSoft}; color: #5C4A16; font-size: 13px; line-height: 1.5;"><span style="flex-shrink: 0; color: #8A6A1E;">${I.shield(20)}</span><div><strong>Hội Mình không tự chuyển tiền cho cộng sự.</strong> ${who} chuyển khoản bằng app ngân hàng của mình rồi ghi mã tham chiếu vào đây. Số dư cộng sự là sổ cái bất biến (ghi có, khóa, trả lại, ghi nợ, điều chỉnh), không sửa tay được.</div></div>`;
+const ledgerNotice = (who) => `<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: ${T.goldSoft}; color: #5C4A16; font-size: 13px; line-height: 1.5;"><span style="flex-shrink: 0; color: #8A6A1E;">${I.shield(20)}</span><div><strong>Hội Mình không tự chuyển tiền cho affiliate.</strong> ${who} chuyển khoản bằng app ngân hàng của mình rồi ghi mã tham chiếu vào đây. Số dư affiliate là sổ cái bất biến (ghi có, khóa, trả lại, ghi nợ, điều chỉnh), không sửa tay được.</div></div>`;
 
 const queueRow = (init, bg, name, email, amount, account, date, status, open = false) => `<div style="display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 110px; gap: 12px; align-items: center; padding: 12px 20px; border-top: 1px solid ${T.line}; font-size: 13px;${open ? ` background: ${T.goldSoft};` : ''}"><div style="display: flex; align-items: center; gap: 10px;">${avatar(init, bg, 32, 12)}<div><div style="font-weight: 600;">${name}</div><div class="muted" style="font-size: 12px;">${email}</div></div></div><span style="font-weight: 700;">${amount}</span><span class="muted">${account}</span><span class="muted">${date}</span>${statusTag(status)}<span class="btn btn-ghost btn-sm" style="width: fit-content; justify-self: end;">${open ? 'Đóng' : 'Xem xét'}</span></div>`;
 const reviewPanel = ({ name, amount, email, holder, bank, account, ref }) => `
 <div style="padding: 20px; border-top: 1px solid ${T.line}; background: ${T.surface}; display: flex; flex-direction: column; gap: 16px;">
-  <div style="display: flex; align-items: center; gap: 12px;"><div style="flex-grow: 1;"><div style="font-weight: 700; font-size: 15px;">${name} · ${amount}</div><div class="muted" style="font-size: 12px;">${email} · tiền đã bị khóa khỏi số dư có thể rút của cộng sự</div></div><span class="tag" style="background: ${T.tealSoft}; color: #0B6F75;">${I.check(11)}Đã mở số tài khoản · ghi vào nhật ký</span></div>
+  <div style="display: flex; align-items: center; gap: 12px;"><div style="flex-grow: 1;"><div style="font-weight: 700; font-size: 15px;">${name} · ${amount}</div><div class="muted" style="font-size: 12px;">${email} · tiền đã bị khóa khỏi số dư có thể rút của affiliate</div></div><span class="tag" style="background: ${T.tealSoft}; color: #0B6F75;">${I.check(11)}Đã mở số tài khoản · ghi vào nhật ký</span></div>
   <div style="display: flex; gap: 20px;">
     <div style="display: grid; grid-template-columns: 130px 1fr; row-gap: 10px; column-gap: 12px; font-size: 14px; flex-grow: 1; align-content: start;">
       <span class="muted">Chủ tài khoản</span><span style="font-weight: 600;">${holder}</span>
@@ -1101,28 +1101,28 @@ const reviewPanel = ({ name, amount, email, holder, bank, account, ref }) => `
 </div>`;
 const historyRow = (name, amount, date, status, note) => `<div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr; gap: 12px; align-items: center; padding: 10px 20px; border-top: 1px solid ${T.line}; font-size: 13px;"><span style="font-weight: 500;">${name}</span><span style="font-weight: 600;">${amount}</span><span class="muted">${date}</span>${statusTag(status)}<span class="muted">${note}</span></div>`;
 
-const affiliateTabs = (active) => `<div style="display: flex; gap: 8px;">${[['Cấu hình', 's-affiliate'], ['Yêu cầu rút · 3', 's-affiliate-payouts'], ['Cộng sự · 41', 'affiliate']].map(([l, go]) => `<span class="chip${active === go ? ' on' : ''}" data-go="${go}">${l}</span>`).join('')}</div>`;
+const affiliateTabs = (active) => `<div style="display: flex; gap: 8px;">${[['Cấu hình', 's-affiliate'], ['Yêu cầu rút · 3', 's-affiliate-payouts'], ['Affiliate · 41', 'affiliate']].map(([l, go]) => `<span class="chip${active === go ? ' on' : ''}" data-go="${go}">${l}</span>`).join('')}</div>`;
 
-// ---------- SettingsAffiliate.dc.html : Cài đặt · Cộng sự ----------
-const affiliateSettingsMain = settingsPage('Cộng sự (Affiliate)', `
-  ${saveBar('Cộng sự', 'Thưởng cho thành viên giới thiệu bạn bè bằng hoa hồng định kỳ')}
+// ---------- SettingsAffiliate.dc.html : Cài đặt · Affiliate ----------
+const affiliateSettingsMain = settingsPage('Affiliate', `
+  ${saveBar('Affiliate', 'Thưởng cho thành viên giới thiệu bạn bè bằng hoa hồng định kỳ')}
   ${affiliateTabs('s-affiliate')}
   ${ledgerNotice('Bạn')}
   <div style="display: flex; gap: 16px;">
     <div class="card" style="flex: 1.4 1 0; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
       ${field('Mức hoa hồng', `<div style="display: flex; flex-direction: column; gap: 8px;">${[['Tắt', false], ['10%', false], ['20%', false], ['30%', false], ['40% · khuyên dùng', false], ['50%', true]].map(([l, on]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 14px;${on ? ' font-weight: 600;' : ''}">${radio(on)}${l}</div>`).join('')}</div>`, 'Tính trên mỗi kỳ thanh toán của người được giới thiệu')}
-      ${field('Thời gian giữ hoa hồng', `<div class="input" style="color: ${T.ink}; width: 220px;"><span style="flex-grow: 1;">14 ngày</span>${I.down(16)}</div>`, 'Để xử lý hoàn tiền trước khi cộng sự được rút')}
-      ${field('Mức rút tối thiểu', `<div class="input" style="color: ${T.ink}; width: 220px;"><span style="flex-grow: 1;">500.000đ</span></div>`, 'Cộng sự chỉ gửi được yêu cầu rút từ mức này')}
+      ${field('Thời gian giữ hoa hồng', `<div class="input" style="color: ${T.ink}; width: 220px;"><span style="flex-grow: 1;">14 ngày</span>${I.down(16)}</div>`, 'Để xử lý hoàn tiền trước khi affiliate được rút')}
+      ${field('Mức rút tối thiểu', `<div class="input" style="color: ${T.ink}; width: 220px;"><span style="flex-grow: 1;">500.000đ</span></div>`, 'Affiliate chỉ gửi được yêu cầu rút từ mức này')}
     </div>
     <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 16px;">
       <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-        <span style="font-weight: 600;">Bảng xếp hạng cộng sự</span>
+        <span style="font-weight: 600;">Bảng xếp hạng affiliate</span>
         ${[['Mọi thành viên thấy', true], ['Chỉ người đã lấy link', false], ['Tắt bảng xếp hạng', false]].map(([l, on]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 14px;">${radio(on)}${l}</div>`).join('')}
         <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; padding-top: 12px; border-top: 1px solid ${T.line};"><span style="flex-grow: 1;">Hiện số tiền doanh thu và hoa hồng</span>${toggle(true)}</div>
       </div>
       <div class="card" style="padding: 20px; background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink}; display: flex; flex-direction: column; gap: 10px;">
         <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: ${T.gold};">Tháng này</span>
-        <div style="display: flex; gap: 20px;"><div><div class="serif" style="font-size: 22px; font-weight: 800;">41</div><div style="font-size: 12px; color: ${T.sideText};">cộng sự có phát sinh</div></div><div><div class="serif" style="font-size: 22px; font-weight: 800;">62%</div><div style="font-size: 12px; color: ${T.sideText};">doanh thu từ giới thiệu</div></div></div>
+        <div style="display: flex; gap: 20px;"><div><div class="serif" style="font-size: 22px; font-weight: 800;">41</div><div style="font-size: 12px; color: ${T.sideText};">affiliate có phát sinh</div></div><div><div class="serif" style="font-size: 22px; font-weight: 800;">62%</div><div style="font-size: 12px; color: ${T.sideText};">doanh thu từ giới thiệu</div></div></div>
         <div style="font-size: 13px; color: ${T.sideText};">Đã trả: 5.790.000đ · chờ bạn chuyển: 2.620.000đ · đang giữ: 1.245.000đ</div>
         <span class="btn btn-primary btn-sm" data-go="s-affiliate-payouts" style="align-self: flex-start;">Xử lý 3 yêu cầu rút</span>
       </div>
@@ -1135,7 +1135,7 @@ const feedSettingsMain = settingsPage('Bảng tin', `
   ${saveBar('Bảng tin', 'Tab, chuyên mục và quyền đăng bài')}
   <div class="card" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
     <span style="font-weight: 600;">Tab hiển thị</span>
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 32px;">${[['Bảng tin', true, true], ['Khóa học', true], ['Sự kiện', true], ['Thành viên', true], ['Xếp hạng cộng sự', true], ['Cửa hàng', true], ['Giới thiệu', true, true], ['Tài nguyên', false]].map(([l, on, lock]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0;"><span style="flex-grow: 1;">${l}</span>${lock ? `<span class="muted" style="font-size: 12px;">luôn bật</span>` : toggle(on)}</div>`).join('')}</div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 32px;">${[['Bảng tin', true, true], ['Khóa học', true], ['Sự kiện', true], ['Thành viên', true], ['Xếp hạng affiliate', true], ['Cửa hàng', true], ['Giới thiệu', true, true], ['Tài nguyên', false]].map(([l, on, lock]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0;"><span style="flex-grow: 1;">${l}</span>${lock ? `<span class="muted" style="font-size: 12px;">luôn bật</span>` : toggle(on)}</div>`).join('')}</div>
   </div>
   <div class="card" style="overflow: hidden;">
     <div style="display: flex; align-items: center; padding: 16px 20px;"><span style="font-weight: 600;">Chuyên mục</span><span style="flex-grow: 1;"></span><span class="btn btn-ghost btn-sm">${I.plus(14)}Thêm chuyên mục</span></div>
@@ -1175,7 +1175,7 @@ const payoutMain = settingsPage('Thanh toán', `
     <div style="display: flex; align-items: center; padding: 16px 20px;"><span style="font-weight: 600;">Lịch sử rút tiền</span><span style="flex-grow: 1;"></span><a href="#" style="font-size: 13px; font-weight: 600;">Xem tất cả</a></div>
     ${[['05/09/2026', '8.000.000đ', 'Vietcombank •••• 4521', 'Đã chuyển'], ['22/08/2026', '6.500.000đ', 'Vietcombank •••• 4521', 'Đã chuyển'], ['08/08/2026', '4.200.000đ', 'Vietcombank •••• 4521', 'Đã chuyển']].map(([d, a, acc, st]) => `<div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr 1fr; gap: 12px; padding: 12px 20px; border-top: 1px solid ${T.line}; font-size: 13px;"><span>${d}</span><span style="font-weight: 600;">${a}</span><span class="muted">${acc}</span><span style="color: ${T.teal}; font-weight: 600;">${st}</span></div>`).join('')}
   </div>
-  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; background: ${T.goldSoft}; color: #5C4A16; font-size: 13px;">${I.users(16)}<span style="flex-grow: 1;">Hoa hồng cộng sự không bị trừ ở đây. Bạn nhận đủ rồi tự chuyển cho cộng sự khi họ yêu cầu rút.</span><span data-go="s-affiliate-payouts" style="font-weight: 600; color: #8A6A1E; white-space: nowrap;">3 yêu cầu đang chờ</span></div>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; background: ${T.goldSoft}; color: #5C4A16; font-size: 13px;">${I.users(16)}<span style="flex-grow: 1;">Hoa hồng affiliate không bị trừ ở đây. Bạn nhận đủ rồi tự chuyển cho affiliate khi họ yêu cầu rút.</span><span data-go="s-affiliate-payouts" style="font-weight: 600; color: #8A6A1E; white-space: nowrap;">3 yêu cầu đang chờ</span></div>
   <div class="muted" style="font-size: 12px; display: flex; align-items: center; gap: 6px;">${I.shield(14)}Hội Mình không thu phí giao dịch. Thành viên trả bao nhiêu, bạn nhận đủ bấy nhiêu.</div>`);
 
 // ---------- Revenue.dc.html : Doanh thu ----------
@@ -1191,11 +1191,11 @@ const revenueMain = `
   <div style="display: flex; gap: 12px;">
     ${statCard('Tổng thu', '18.675.000đ', '75 giao dịch · không phí giao dịch')}
     ${statCard('Đã vào số dư', '18.426.000đ', 'sau 1 hoàn tiền', T.teal)}
-    ${statCard('Nợ cộng sự', '3.865.000đ', 'bạn tự chuyển khoản · 31 giao dịch có giới thiệu', '#8A6A1E')}
+    ${statCard('Nợ affiliate', '3.865.000đ', 'bạn tự chuyển khoản · 31 giao dịch có giới thiệu', '#8A6A1E')}
     ${statCard('Hoàn tiền', '249.000đ', '1 giao dịch', T.ink3)}
   </div>
   <div class="card" style="overflow: hidden;">
-    <div style="display: grid; grid-template-columns: 90px 1.6fr 1.6fr 1.1fr 1.1fr 1.1fr 1fr; gap: 12px; padding: 12px 20px;"><span class="th">Ngày</span><span class="th">Thành viên</span><span class="th">Sản phẩm</span><span class="th">Phương thức</span><span class="th">Số tiền</span><span class="th">Nợ cộng sự</span><span class="th">Trạng thái</span></div>
+    <div style="display: grid; grid-template-columns: 90px 1.6fr 1.6fr 1.1fr 1.1fr 1.1fr 1fr; gap: 12px; padding: 12px 20px;"><span class="th">Ngày</span><span class="th">Thành viên</span><span class="th">Sản phẩm</span><span class="th">Phương thức</span><span class="th">Số tiền</span><span class="th">Nợ affiliate</span><span class="th">Trạng thái</span></div>
     ${txRow('14/09', 'ĐN', T.teal, 'Điền Phạm Ngọc', 'Premium · tháng', 'Chuyển khoản', '249.000đ', '12.450đ', '124.500đ', '236.550đ', 'Thành công', T.teal)}
     ${txRow('14/09', 'TL', '#5C3E7A', 'Thu Lan', 'Combo 9 khóa học', 'MoMo', '5.000.000đ', '300.000đ', '0đ', '4.700.000đ', 'Thành công', T.teal)}
     ${txRow('13/09', 'HK', '#7A5C3E', 'Hồng Kim', 'Premium · năm', 'VNPAY', '2.490.000đ', '174.300đ', '1.245.000đ', '2.315.700đ', 'Thành công', T.teal)}
@@ -1208,7 +1208,7 @@ const revenueMain = `
 
 // ---------- AccountBilling.dc.html : Tài khoản · Gói và thanh toán (thành viên) ----------
 const accountNav = (active) => {
-  const items = [['Cộng đồng của tôi', 'ws-home'], ['Hồ sơ', 'profile-edit'], ['Cộng sự', 'my-affiliate'], ['Tài khoản', ''], ['Thông báo', 'notifications'], ['Tin nhắn', 'messages'], ['Gói và thanh toán', 'account'], ['Giao diện', '']];
+  const items = [['Cộng đồng của tôi', 'ws-home'], ['Hồ sơ', 'profile-edit'], ['Affiliate', 'my-affiliate'], ['Tài khoản', ''], ['Thông báo', 'notifications'], ['Tin nhắn', 'messages'], ['Gói và thanh toán', 'account'], ['Giao diện', '']];
   return `<div style="width: 220px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;">${items.map(([t, go]) => `<div data-go="${go}" style="padding: 10px 14px; border-radius: 10px;${t === active ? ` background: ${T.goldSoft}; font-weight: 600;` : ` color: ${T.ink2};`}">${t}</div>`).join('')}</div>`;
 };
 const subRow = (mark, markBg, comm, plan, price, next, method, actions) => `<div style="display: flex; align-items: center; gap: 16px; padding: 16px 0; border-top: 1px solid ${T.line};"><div style="width: 44px; height: 44px; border-radius: 12px; background: ${markBg}; color: #FFFDF9; display: inline-flex; align-items: center; justify-content: center; font-family: Montserrat, 'Segoe UI', Arial, sans-serif; font-weight: 800; flex-shrink: 0;">${mark}</div><div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">${comm}</span><span class="tag" style="background: ${T.goldSoft}; color: #8A6A1E;">${plan}</span></div><div class="muted" style="font-size: 13px;">${price} · gia hạn ${next} · ${method}</div></div>${actions}</div>`;
@@ -1256,7 +1256,7 @@ const checkoutBody = `
           <div style="flex: 1 1 0; padding: 14px; border-radius: 12px; border: 1.5px solid ${T.accent}; background: ${T.accentSoft}; position: relative;"><span class="tag" style="position: absolute; top: -10px; right: 12px; background: ${T.ink}; color: #FFFDF9;">Tiết kiệm 17%</span><div style="display: flex; align-items: center; gap: 8px;">${radio(true)}<span style="font-weight: 600;">Theo năm</span></div><div style="padding-left: 26px; font-size: 13px; color: ${T.ink2};">2.490.000đ / năm · 207.500đ mỗi tháng</div></div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: ${T.ink2}; padding-top: 4px;">
-          ${['Mở khóa toàn bộ khóa học và tài nguyên', 'Trở thành cộng sự, hoa hồng 50%', 'Q&amp;A trực tiếp hằng tuần', 'Hủy bất cứ lúc nào, giữ quyền đến hết kỳ'].map((b) => `<div style="display: flex; align-items: center; gap: 8px;"><span style="color: ${T.teal};">${I.check(14)}</span>${b}</div>`).join('')}
+          ${['Mở khóa toàn bộ khóa học và tài nguyên', 'Trở thành affiliate, hoa hồng 50%', 'Q&amp;A trực tiếp hằng tuần', 'Hủy bất cứ lúc nào, giữ quyền đến hết kỳ'].map((b) => `<div style="display: flex; align-items: center; gap: 8px;"><span style="color: ${T.teal};">${I.check(14)}</span>${b}</div>`).join('')}
         </div>
         <div style="display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid ${T.line};"><div class="input" style="flex-grow: 1; height: 40px;"><span>Mã giảm giá</span></div><span class="btn btn-ghost">Áp dụng</span></div>
         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; padding-top: 8px; border-top: 1px solid ${T.line};">
@@ -1323,7 +1323,7 @@ const wsHomeMain = `
   </div>
   <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
     ${hoiCard('KD', T.accent, 'Kinh Doanh Online Cùng AI', 'minhquy', '234', '75', '18,7tr', 'Freemium')}
-    ${hoiCard('AF', T.teal, 'Cộng sự MMO', 'cong-su-mmo', '58', '58', '6,2tr', 'Thu phí')}
+    ${hoiCard('AF', T.teal, 'Affiliate MMO', 'cong-su-mmo', '58', '58', '6,2tr', 'Thu phí')}
     ${hoiCard('AI', '#7A5C3E', 'AI Agent cho chủ shop', 'ai-agent-shop', '0', '0', '0đ', '', 'Chủ hội', true)}
   </div>
   <div style="display: flex; gap: 20px;">
@@ -1384,7 +1384,7 @@ const classroomFreeMain = `
       ${moduleHead('2. Thiết kế Offer', '6 bài', false)}
       <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 4px;">${lessonRow('2.1 Khách hàng thực sự mua gì', 'lock', 'Premium')}${lessonRow('2.2 Ba lớp giá trị của một offer', 'lock', 'Premium')}</div>
       ${moduleHead('3. Lead magnet và Tripwire', '7 bài', false)}
-      ${moduleHead('4. Scale bằng cộng sự affiliate', '8 bài', false)}
+      ${moduleHead('4. Scale bằng affiliate', '8 bài', false)}
     </div>
     <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
       <div style="position: relative; aspect-ratio: 16 / 9; border-radius: 16px; background: #171310; overflow: hidden; display: flex; align-items: center; justify-content: center;">
@@ -1392,7 +1392,7 @@ const classroomFreeMain = `
         <div style="position: relative; width: 460px; padding: 28px; border-radius: 16px; background: ${T.surface}; display: flex; flex-direction: column; gap: 12px; text-align: center; align-items: center;">
           <span style="width: 48px; height: 48px; border-radius: 999px; background: ${T.goldSoft}; color: #8A6A1E; display: inline-flex; align-items: center; justify-content: center;">${I.lock(22)}</span>
           <div class="serif" style="font-size: 20px; font-weight: 800; line-height: 1.3;">Bài này nằm trong gói Premium</div>
-          <div style="font-size: 14px; color: ${T.ink2};">Mở khóa 21 bài còn lại, tài nguyên, Q&amp;A hằng tuần và quyền làm cộng sự với hoa hồng 50%.</div>
+          <div style="font-size: 14px; color: ${T.ink2};">Mở khóa 21 bài còn lại, tài nguyên, Q&amp;A hằng tuần và quyền làm affiliate với hoa hồng 50%.</div>
           <div style="display: flex; gap: 8px; padding-top: 4px;"><span class="btn btn-primary" data-go="checkout">Nâng cấp · 249.000đ/tháng</span><span class="btn btn-ghost">Xem quyền lợi</span></div>
           <span class="muted" style="font-size: 12px;">Hủy bất cứ lúc nào · thanh toán bằng chuyển khoản, MoMo, VNPAY</span>
         </div>
@@ -1429,7 +1429,7 @@ function saShell({ active, main }) {
     <div class="nav-group">Cấu hình</div>
     <div style="display: flex; flex-direction: column; gap: 2px;">
       ${nav('sa-plans', I.badge(20), 'Gói nền tảng')}
-      ${nav('sa-affiliate', I.trophy(20), 'Cộng sự nền tảng')}
+      ${nav('sa-affiliate', I.trophy(20), 'Affiliate nền tảng')}
       ${nav('sa-flags', I.settings(20), 'Tính năng và giới hạn')}
     </div>
     <div class="nav-group">Giám sát</div>
@@ -1545,7 +1545,7 @@ const saPlansMain = `
         <div style="flex: 1 1 0; padding: 14px 16px; border-radius: 12px; background: rgba(255,253,249,0.08);"><div style="font-size: 12px; color: ${T.sideText};">Dùng thử</div><div class="serif" style="font-size: 26px; font-weight: 800;">14 ngày</div><div style="font-size: 12px; color: ${T.sideText};">137 đang thử · 41% chuyển trả phí</div></div>
       </div>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; font-size: 13px; color: ${T.sideText}; padding-top: 12px; border-top: 1px solid rgba(255,253,249,0.15);">
-        ${['Không giới hạn hội, thành viên, khóa học, video, sự kiện', 'Không thu phí giao dịch', 'Cộng sự và bảng xếp hạng cộng sự', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động và tiện ích', 'Nhận tiền qua chuyển khoản QR, MoMo, VNPAY, PayPal', 'API, webhook và MCP'].map((f) => `<div style="display: flex; align-items: center; gap: 8px;"><span style="color: ${T.teal};">${I.check(14)}</span>${f}</div>`).join('')}
+        ${['Không giới hạn hội, thành viên, khóa học, video, sự kiện', 'Không thu phí giao dịch', 'Affiliate và bảng xếp hạng affiliate', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động và tiện ích', 'Nhận tiền qua chuyển khoản QR, MoMo, VNPAY, PayPal', 'API, webhook và MCP'].map((f) => `<div style="display: flex; align-items: center; gap: 8px;"><span style="color: ${T.teal};">${I.check(14)}</span>${f}</div>`).join('')}
       </div>
     </div>
     <div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 12px;">
@@ -1554,14 +1554,14 @@ const saPlansMain = `
   </div>
   <div style="display: flex; gap: 16px;">
     <div class="card" style="flex: 1 1 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
-      <span style="font-weight: 600;">Chương trình cộng sự nền tảng</span>
+      <span style="font-weight: 600;">Chương trình affiliate nền tảng</span>
       <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Hoa hồng khi giới thiệu chủ hội mới</span><span class="chip" style="height: 28px; font-size: 12px;">40% · 12 tháng ${I.down(12)}</span></div>
       <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Hoa hồng khi giới thiệu thành viên vào hội</span><span class="muted" style="font-size: 12px;">do chủ hội tự đặt</span></div>
-      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Đã trả cho cộng sự nền tảng tháng này</span><span style="font-weight: 600;">18.400.000đ</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Đã trả cho affiliate nền tảng tháng này</span><span style="font-weight: 600;">18.400.000đ</span></div>
     </div>
     <div class="card" style="flex: 1 1 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
       <span style="font-weight: 600;">Tính năng đang bật theo giai đoạn</span>
-      ${[['Tin nhắn thời gian thực', 'Tắt · V2', false], ['Phát trực tiếp trong hội', 'Tắt · V2', false], ['Bảng xếp hạng cộng sự', 'Bật cho mọi hội', true], ['Cửa hàng trong hội', 'Bật cho mọi hội', true], ['MCP cho AI', 'Bật cho mọi hội', true]].map(([k, v, on]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">${k}</span><span class="muted" style="font-size: 12px;">${v}</span>${toggle(on)}</div>`).join('')}
+      ${[['Tin nhắn thời gian thực', 'Tắt · V2', false], ['Phát trực tiếp trong hội', 'Tắt · V2', false], ['Bảng xếp hạng affiliate', 'Bật cho mọi hội', true], ['Cửa hàng trong hội', 'Bật cho mọi hội', true], ['MCP cho AI', 'Bật cho mọi hội', true]].map(([k, v, on]) => `<div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">${k}</span><span class="muted" style="font-size: 12px;">${v}</span>${toggle(on)}</div>`).join('')}
     </div>
   </div>
 </div>`;
@@ -1570,17 +1570,17 @@ const saPlansMain = `
 // ================= AFFILIATE: chi trả thủ công (mô hình Tiền Nhà Mình) =================
 
 // ---------- SettingsAffiliatePayouts.dc.html : Chủ hội duyệt rút ----------
-const affiliatePayoutsMain = settingsPage('Cộng sự (Affiliate)', `
-  <div style="display: flex; align-items: center; gap: 16px;"><div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Yêu cầu rút của cộng sự</h1><div class="muted" style="font-size: 13px;">Bạn chuyển khoản, hệ thống ghi sổ</div></div><span style="flex-grow: 1;"></span>${affiliateTabs('s-affiliate-payouts')}</div>
+const affiliatePayoutsMain = settingsPage('Affiliate', `
+  <div style="display: flex; align-items: center; gap: 16px;"><div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Yêu cầu rút của affiliate</h1><div class="muted" style="font-size: 13px;">Bạn chuyển khoản, hệ thống ghi sổ</div></div><span style="flex-grow: 1;"></span>${affiliateTabs('s-affiliate-payouts')}</div>
   ${ledgerNotice('Bạn')}
   <div style="display: flex; gap: 12px;">
     ${walletBox('Chờ bạn chuyển', '2.620.000đ', '3 yêu cầu · xử lý trong 3 ngày làm việc', true)}
     ${walletBox('Đã trả tháng này', '5.790.000đ', '12 lần chuyển khoản')}
     ${walletBox('Đang giữ 14 ngày', '1.245.000đ', 'chưa được rút, chờ hết hạn hoàn tiền')}
-    ${walletBox('Tổng nợ cộng sự', '3.865.000đ', 'chờ chuyển + có thể rút chưa yêu cầu')}
+    ${walletBox('Tổng nợ affiliate', '3.865.000đ', 'chờ chuyển + có thể rút chưa yêu cầu')}
   </div>
   <div class="card" style="overflow: hidden;">
-    <div style="display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 110px; gap: 12px; padding: 12px 20px;"><span class="th">Cộng sự</span><span class="th">Số tiền</span><span class="th">Tài khoản nhận</span><span class="th">Gửi lúc</span><span class="th">Trạng thái</span><span></span></div>
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 110px; gap: 12px; padding: 12px 20px;"><span class="th">Affiliate</span><span class="th">Số tiền</span><span class="th">Tài khoản nhận</span><span class="th">Gửi lúc</span><span class="th">Trạng thái</span><span></span></div>
     ${queueRow('HV', T.accent, 'Hoàng Vũ', 'hoangvu@gmail.com', '1.500.000đ', 'Vietcombank ••••8812', '14/09 09:20', 'requested')}
     ${queueRow('HK', '#7A5C3E', 'Hồng Kim', 'kimhong.hn@gmail.com', '620.000đ', 'Techcombank ••••3305', '13/09 21:04', 'reviewing', true)}
     ${reviewPanel({ name: 'Hồng Kim', amount: '620.000đ', email: 'kimhong.hn@gmail.com', holder: 'NGUYEN THI HONG KIM', bank: 'Techcombank', account: '19033305118011', ref: 'HM CS HK 0913' })}
@@ -1588,20 +1588,20 @@ const affiliatePayoutsMain = settingsPage('Cộng sự (Affiliate)', `
   </div>
   <div class="card" style="overflow: hidden;">
     <div style="display: flex; align-items: center; padding: 14px 20px;"><span style="font-weight: 600;">Đã xử lý gần đây</span><span style="flex-grow: 1;"></span><span class="btn btn-ghost btn-sm">${I.download(14)}Xuất đối soát</span></div>
-    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr; gap: 12px; padding: 0 20px 8px;"><span class="th">Cộng sự</span><span class="th">Số tiền</span><span class="th">Ngày</span><span class="th">Trạng thái</span><span class="th">Mã tham chiếu / lý do</span></div>
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr; gap: 12px; padding: 0 20px 8px;"><span class="th">Affiliate</span><span class="th">Số tiền</span><span class="th">Ngày</span><span class="th">Trạng thái</span><span class="th">Mã tham chiếu / lý do</span></div>
     ${historyRow('Hoàng Vũ', '2.000.000đ', '05/09', 'paid', 'FT26090512873')}
     ${historyRow('Kiên Bùi', '750.000đ', '03/09', 'paid', 'FT26090309112')}
     ${historyRow('Thu Lan', '500.000đ', '01/09', 'rejected', 'Sai tên chủ tài khoản, đã hoàn về ví')}
-    ${historyRow('Duy Nguyễn', '600.000đ', '28/08', 'cancelled', 'Cộng sự tự hủy')}
+    ${historyRow('Duy Nguyễn', '600.000đ', '28/08', 'cancelled', 'Affiliate tự hủy')}
   </div>`);
 
-// ---------- AffiliateWallet.dc.html : Ví cộng sự của thành viên ----------
+// ---------- AffiliateWallet.dc.html : Ví affiliate của thành viên ----------
 const commRow = (init, bg, name, plan, base, comm, status, unlock) => `<div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 1.2fr; gap: 12px; align-items: center; padding: 10px 20px; border-top: 1px solid ${T.line}; font-size: 13px;"><div style="display: flex; align-items: center; gap: 8px;">${avatar(init, bg, 26, 10)}<span style="font-weight: 500;">${name}</span></div><span class="muted">${plan}</span><span class="muted">${base}</span><span style="font-weight: 600;">${comm}</span>${statusTag(status)}<span class="muted">${unlock}</span></div>`;
 const affiliateWalletMain = `
 <div style="display: flex; gap: 32px; height: 100%;">
-  ${accountNav('Cộng sự')}
+  ${accountNav('Affiliate')}
   <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; max-width: 880px;">
-    <div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Cộng sự</h1><div class="muted" style="font-size: 13px;">Giới thiệu một lần, nhận hoa hồng mỗi kỳ người đó trả phí. Kinh Doanh Online Cùng AI · hoa hồng 50%</div></div>
+    <div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Affiliate</h1><div class="muted" style="font-size: 13px;">Giới thiệu một lần, nhận hoa hồng mỗi kỳ người đó trả phí. Kinh Doanh Online Cùng AI · hoa hồng 50%</div></div>
     <div class="card" style="padding: 18px 20px; display: flex; align-items: center; gap: 12px;">
       <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: ${T.accent};">Link của bạn</span><div class="input" style="color: ${T.ink};"><span style="flex-grow: 1;">hoiminh.vn/minhquy?ref=mq8k2</span>${I.copy(16)}</div></div>
       <div style="display: flex; gap: 20px; padding: 0 12px;">${[['128', 'Lượt bấm'], ['4', 'Đăng ký'], ['3', 'Trả phí']].map(([v, l]) => `<div style="text-align: center;"><div style="font-weight: 700; font-size: 18px;">${v}</div><div class="muted" style="font-size: 12px;">${l}</div></div>`).join('')}</div>
@@ -1642,10 +1642,10 @@ const affiliateWalletMain = `
   </div>
 </div>`;
 
-// ---------- AdminAffiliate.dc.html : Cộng sự nền tảng (super admin) ----------
+// ---------- AdminAffiliate.dc.html : Affiliate nền tảng (super admin) ----------
 const saAffiliateMain = `
 <div style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
-  <div style="display: flex; align-items: center; gap: 12px;"><div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Cộng sự nền tảng</h1><div class="muted" style="font-size: 13px;">Người giới thiệu chủ hội mới cho Hội Mình. Cùng một cơ chế chi trả thủ công như chủ hội trả cộng sự trong hội.</div></div><span style="flex-grow: 1;"></span><span class="btn btn-ghost btn-sm">${I.download(14)}Xuất đối soát</span></div>
+  <div style="display: flex; align-items: center; gap: 12px;"><div><h1 class="serif" style="margin: 0; font-size: 28px; font-weight: 800;">Affiliate nền tảng</h1><div class="muted" style="font-size: 13px;">Người giới thiệu chủ hội mới cho Hội Mình. Cùng một cơ chế chi trả thủ công như chủ hội trả affiliate trong hội.</div></div><span style="flex-grow: 1;"></span><span class="btn btn-ghost btn-sm">${I.download(14)}Xuất đối soát</span></div>
   ${ledgerNotice('Quản trị viên có quyền affiliates:manage')}
   <div style="display: flex; gap: 16px;">
     <div style="flex: 1.5 1 0; display: flex; flex-direction: column; gap: 12px;">
@@ -1655,7 +1655,7 @@ const saAffiliateMain = `
         ${walletBox('Đã trả tháng này', '18.400.000đ', '31 lần chuyển khoản')}
       </div>
       <div class="card" style="overflow: hidden;">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 110px; gap: 12px; padding: 12px 20px;"><span class="th">Cộng sự</span><span class="th">Số tiền</span><span class="th">Tài khoản nhận</span><span class="th">Gửi lúc</span><span class="th">Trạng thái</span><span></span></div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 110px; gap: 12px; padding: 12px 20px;"><span class="th">Affiliate</span><span class="th">Số tiền</span><span class="th">Tài khoản nhận</span><span class="th">Gửi lúc</span><span class="th">Trạng thái</span><span></span></div>
         ${queueRow('LH', '#5C7A3E', 'Lê Hạnh', 'hanh.yoga@gmail.com', '1.996.000đ', 'ACB ••••2210', '14/09 08:12', 'requested')}
         ${queueRow('TV', '#3E5C7A', 'Trần Thảo Vy', 'vy.english@gmail.com', '998.000đ', 'Vietinbank ••••7741', '13/09 15:30', 'requested')}
         ${queueRow('NH', T.teal, 'Nguyễn Huân', 'huan@huan.vn', '1.856.000đ', 'Vietcombank ••••5520', '13/09 10:02', 'reviewing', true)}
@@ -1718,7 +1718,7 @@ const signupPlanBody = `
       <div style="display: flex; align-items: baseline; gap: 12px; justify-content: center;"><span class="serif" style="font-size: 34px; font-weight: 800;">Hội Mình</span><span style="font-size: 22px; font-weight: 600;">4.990.000đ/năm</span></div>
       <div style="text-align: center; font-size: 13px; color: ${T.sideText}; margin-top: -14px;">tương đương 416.000đ/tháng · gói tháng 499.000đ</div>
       <div style="display: flex; flex-direction: column; gap: 12px;">
-        ${['<strong>Không giới hạn</strong> hội, thành viên, khóa học, video, sự kiện', '<strong>Không thu phí giao dịch</strong>, bạn nhận đủ tiền thành viên trả', 'Nhận tiền qua <strong>chuyển khoản QR, MoMo, VNPAY</strong>, PayPal cho khách quốc tế', 'Cộng sự và bảng xếp hạng cộng sự', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động, tiện ích, API và webhook'].map(planFeature).join('')}
+        ${['<strong>Không giới hạn</strong> hội, thành viên, khóa học, video, sự kiện', '<strong>Không thu phí giao dịch</strong>, bạn nhận đủ tiền thành viên trả', 'Nhận tiền qua <strong>chuyển khoản QR, MoMo, VNPAY</strong>, PayPal cho khách quốc tế', 'Affiliate và bảng xếp hạng affiliate', 'Cửa hàng bán khóa học, combo, tài liệu', 'Tên miền riêng', 'Tin nhắn chào tự động, tiện ích, API và webhook'].map(planFeature).join('')}
       </div>
       <span class="btn btn-primary" data-go="register" style="height: 54px; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 12px;">Dùng thử 14 ngày miễn phí</span>
       <div style="text-align: center; font-size: 13px; color: ${T.sideMuted};">Không cần thẻ. Hết dùng thử, thanh toán bằng chuyển khoản hoặc MoMo, hủy bất cứ lúc nào.</div>
@@ -1847,13 +1847,13 @@ const aboutBody = `
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <h1 class="serif" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.2;">Kinh Doanh Online Cùng AI</h1>
-          <p style="margin: 0; font-size: 16px; line-height: 1.7; color: ${T.ink2};">Hội dành cho người muốn xây doanh nghiệp một người bằng AI: có lộ trình học rõ ràng, có người trả lời câu hỏi trong 24 giờ, và có cộng sự để cùng bán. Vào miễn phí, học 5 bài đầu, thấy hợp thì nâng cấp.</p>
+          <p style="margin: 0; font-size: 16px; line-height: 1.7; color: ${T.ink2};">Hội dành cho người muốn xây doanh nghiệp một người bằng AI: có lộ trình học rõ ràng, có người trả lời câu hỏi trong 24 giờ, và có affiliate để cùng bán. Vào miễn phí, học 5 bài đầu, thấy hợp thì nâng cấp.</p>
         </div>
 
         <div class="card" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 14px;">
           <div style="font-weight: 700; font-size: 16px;">Bạn nhận được gì khi tham gia</div>
           <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px;">
-            ${[[I.book(18), 'Lộ trình Funnel Money Model 2026', '31 bài, module 1 miễn phí'], [I.chat(18), 'Hỏi đáp có người trả lời', 'Minh Quý và cộng sự, trong 24 giờ'], [I.calendar(18), 'Q&amp;A trực tiếp hằng tuần', 'Tối thứ tư, có bản ghi'], [I.trophy(18), 'Chương trình cộng sự 50%', 'Giới thiệu bạn bè, nhận hoa hồng mỗi kỳ'], [I.store(18), 'Cửa hàng khóa học và tài liệu', 'Combo, prompt, template'], [I.users(18), 'Cộng đồng người làm thật', '234 thành viên, 75 đang trả phí']].map(([ic, t, d]) => `<div style="display: flex; gap: 12px; align-items: flex-start;"><span style="width: 36px; height: 36px; border-radius: 10px; background: ${T.accentSoft}; color: #9C3A21; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">${ic}</span><div><div style="font-weight: 600; font-size: 14px;">${t}</div><div class="muted" style="font-size: 13px;">${d}</div></div></div>`).join('')}
+            ${[[I.book(18), 'Lộ trình Funnel Money Model 2026', '31 bài, module 1 miễn phí'], [I.chat(18), 'Hỏi đáp có người trả lời', 'Minh Quý và affiliate, trong 24 giờ'], [I.calendar(18), 'Q&amp;A trực tiếp hằng tuần', 'Tối thứ tư, có bản ghi'], [I.trophy(18), 'Chương trình affiliate 50%', 'Giới thiệu bạn bè, nhận hoa hồng mỗi kỳ'], [I.store(18), 'Cửa hàng khóa học và tài liệu', 'Combo, prompt, template'], [I.users(18), 'Cộng đồng người làm thật', '234 thành viên, 75 đang trả phí']].map(([ic, t, d]) => `<div style="display: flex; gap: 12px; align-items: flex-start;"><span style="width: 36px; height: 36px; border-radius: 10px; background: ${T.accentSoft}; color: #9C3A21; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">${ic}</span><div><div style="font-weight: 600; font-size: 14px;">${t}</div><div class="muted" style="font-size: 13px;">${d}</div></div></div>`).join('')}
           </div>
         </div>
 
@@ -1919,7 +1919,7 @@ const profileMain = `
         <div style="display: flex; align-items: flex-end; gap: 16px; margin-top: -40px;">
           <span style="border: 4px solid ${T.surface}; border-radius: 999px; display: inline-flex;">${avatar('HV', T.accent, 96, 30)}</span>
           <div style="flex-grow: 1; padding-bottom: 6px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="serif" style="font-size: 24px; font-weight: 800;">Hoàng Vũ</span><span class="tag" style="background: ${T.goldSoft}; color: #8A6A1E;">Cấp 5</span><span class="tag" style="background: ${T.goldSoft}; color: #8A6A1E;">Premium</span><span class="tag" style="background: ${T.tealSoft}; color: #0B6F75;">${I.trophy(11)}Cộng sự hạng 1</span></div>
+            <div style="display: flex; align-items: center; gap: 8px;"><span class="serif" style="font-size: 24px; font-weight: 800;">Hoàng Vũ</span><span class="tag" style="background: ${T.goldSoft}; color: #8A6A1E;">Cấp 5</span><span class="tag" style="background: ${T.goldSoft}; color: #8A6A1E;">Premium</span><span class="tag" style="background: ${T.tealSoft}; color: #0B6F75;">${I.trophy(11)}Affiliate hạng 1</span></div>
             <div class="muted" style="font-size: 13px;">@hoang-vu · Tham gia 02/08/2026 · Hoạt động 1 giờ trước</div>
           </div>
           <div style="display: flex; gap: 8px; padding-bottom: 6px;"><span class="btn btn-ghost btn-sm">${I.userplus(14)}Theo dõi</span><span class="btn btn-dark btn-sm" data-go="messages">${I.chat(14)}Nhắn tin</span><span class="btn btn-ghost btn-sm">${I.more(14)}</span></div>
@@ -1948,7 +1948,7 @@ const profileMain = `
       ${[['KD', T.accent, 'Kinh Doanh Online Cùng AI', 'Quản trị viên'], ['YT', T.teal, 'Faceless YouTube Foundation', 'Thành viên']].map(([m, bg, n, r]) => `<div style="display: flex; align-items: center; gap: 10px;" data-go="about"><div style="width: 32px; height: 32px; border-radius: 9px; background: ${bg}; color: #FFFDF9; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; font-family: Montserrat, 'Segoe UI', Arial, sans-serif;">${m}</div><div style="flex-grow: 1;"><div style="font-size: 13px; font-weight: 600;">${n}</div><div class="muted" style="font-size: 12px;">${r}</div></div></div>`).join('')}
     </div>
     <div class="card" style="padding: 16px; background: ${T.ink}; color: #FFFDF9; border-color: ${T.ink}; display: flex; flex-direction: column; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 8px; color: ${T.gold}; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">${I.trophy(14)}Cộng sự tháng 9</div>
+      <div style="display: flex; align-items: center; gap: 8px; color: ${T.gold}; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">${I.trophy(14)}Affiliate tháng 9</div>
       <div class="serif" style="font-size: 20px; font-weight: 800;">Hạng 1 · 34 người giới thiệu</div>
       <div style="font-size: 13px; color: ${T.sideText};">23 người trong số đó đã trả phí</div>
       <span data-go="affiliate" style="font-size: 13px; font-weight: 600; color: ${T.gold};">Xem bảng xếp hạng</span>
@@ -2034,7 +2034,7 @@ const postDetailMain = `
         <ul>
           <li>Chi ads: <code>200.000đ</code> · 1.840 lượt xem · 41 email (<em>2,2%</em>)</li>
           <li>Mở tin nhắn chào: 33/41 · bấm link khóa học: 12</li>
-          <li>Đơn: 1 × 490.000đ · hoa hồng cộng sự về ví: <strong>245.000đ</strong> (đang giữ 14 ngày)</li>
+          <li>Đơn: 1 × 490.000đ · hoa hồng affiliate về ví: <strong>245.000đ</strong> (đang giữ 14 ngày)</li>
         </ul>
         <h2>Ba điều mình rút ra</h2>
         <p><strong>1. Tin nhắn chào quan trọng hơn trang bán.</strong> 33 người mở tin nhắn, chỉ 12 người vào trang bán, nhưng 1 người mua đến từ nhóm đã trả lời tin nhắn.</p>
@@ -2181,7 +2181,7 @@ const eventDetailMain = `
     <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
       <div style="display: flex; align-items: center;"><span style="font-weight: 600;">Người tham gia</span><span class="muted" style="font-size: 12px; margin-left: auto;">64 đăng ký</span></div>
       <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;">${[['MQ', T.ink], ['HV', T.accent], ['HK', '#7A5C3E'], ['ĐN', T.teal], ['KB', '#5C7A3E'], ['CT', '#7A5C3E'], ['DN', '#3E5C7A'], ['TL', '#5C3E7A'], ['LH', '#5C7A3E'], ['TV', '#3E5C7A'], ['NH', T.teal]].map(([i, bg]) => `<span data-go="profile" style="display: inline-flex;">${avatar(i, bg, 40, 13)}</span>`).join('')}<span style="width: 40px; height: 40px; border-radius: 999px; background: ${T.bg}; color: ${T.ink2}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">+53</span></div>
-      <div class="muted" style="font-size: 12px;">Chỉ thành viên Premium và cộng sự thấy danh sách này.</div>
+      <div class="muted" style="font-size: 12px;">Chỉ thành viên Premium và affiliate thấy danh sách này.</div>
     </div>
     <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
       <div style="font-weight: 600;">Trong chuỗi này</div>
@@ -2216,7 +2216,7 @@ const productDetailMain = `
     <div class="card" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 14px;">
       <div style="font-weight: 700; font-size: 16px;">Sau khóa này bạn làm được gì</div>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; font-size: 14px;">
-        ${['Viết một offer bằng công thức giá trị trong 1 buổi', 'Dựng lead magnet một trang kéo email với chi phí thấp', 'Đặt giá tripwire để hoàn vốn ads ngay đơn đầu', 'Đọc 3 con số quyết định lãi của funnel', 'Thiết kế hoa hồng cộng sự 50% mà vẫn có lãi', 'Có bộ template: Offer Canvas, kịch bản tin nhắn chào, bảng theo dõi'].map((b) => `<div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: ${T.teal}; flex-shrink: 0; margin-top: 2px;">${I.check(16)}</span>${b}</div>`).join('')}
+        ${['Viết một offer bằng công thức giá trị trong 1 buổi', 'Dựng lead magnet một trang kéo email với chi phí thấp', 'Đặt giá tripwire để hoàn vốn ads ngay đơn đầu', 'Đọc 3 con số quyết định lãi của funnel', 'Thiết kế hoa hồng affiliate 50% mà vẫn có lãi', 'Có bộ template: Offer Canvas, kịch bản tin nhắn chào, bảng theo dõi'].map((b) => `<div style="display: flex; gap: 10px; align-items: flex-start;"><span style="color: ${T.teal}; flex-shrink: 0; margin-top: 2px;">${I.check(16)}</span>${b}</div>`).join('')}
       </div>
     </div>
 
@@ -2227,7 +2227,7 @@ const productDetailMain = `
         <div style="display: flex; flex-direction: column; padding: 0 4px;">${curriculumLesson('1.1 Tiền chảy theo mô hình, không theo may mắn', '08:10', true)}${curriculumLesson('1.2 Ba con số quyết định lãi', '10:22', true)}${curriculumLesson('1.3 Điểm hòa vốn sớm là gì', '07:45')}${curriculumLesson('1.4 Ví dụ: shop 1 người thu 30 triệu', '12:05')}${curriculumLesson('1.5 Bài tập: vẽ dòng tiền của bạn', 'Bài tập')}</div>
         ${moduleHead('2. Thiết kế Offer', '6 bài · 1 giờ 2 phút', false)}
         ${moduleHead('3. Lead magnet và Tripwire', '7 bài · 1 giờ 48 phút', false)}
-        ${moduleHead('4. Scale bằng cộng sự affiliate', '8 bài · 2 giờ 4 phút', false)}
+        ${moduleHead('4. Scale bằng affiliate', '8 bài · 2 giờ 4 phút', false)}
         ${moduleHead('Tài liệu đi kèm', '5 tệp · PDF, TXT, bảng tính', false)}
       </div>
     </div>
@@ -2272,7 +2272,7 @@ const productDetailMain = `
       <div style="display: flex; gap: 10px; align-items: center;" data-go="store"><div style="width: 44px; height: 44px; border-radius: 10px; background: ${T.ink}; flex-shrink: 0;"></div><div><div style="font-size: 13px; font-weight: 600;">Combo Kinh doanh AI trọn bộ</div><div class="muted" style="font-size: 12px;">9 khóa · 5.000.000đ · tiết kiệm 44%</div></div></div>
     </div>
     <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;">${I.link(14)}Bạn là cộng sự</div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;">${I.link(14)}Bạn là affiliate</div>
       <div class="input" style="height: 36px; font-size: 12px; color: ${T.ink};"><span style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">hoiminh.vn/minhquy/fmm-2026?ref=mq8k2</span>${I.copy(14)}</div>
       <div class="muted" style="font-size: 12px;">Hoa hồng 50% · 500.000đ mỗi đơn qua link này</div>
     </div>
@@ -2311,7 +2311,7 @@ const coursesMain = `
     ${courseCard({ bg: T.teal, name: 'Facebook Ads chuyển đổi 2026', meta: '55 bài · 9 giờ 30 phút', progress: 100, state: 'done', cta: 'Xem lại' })}
     ${courseCard({ bg: '#3E5C7A', name: 'AI Agent cho người bán hàng', meta: '22 bài · 4 giờ 6 phút', progress: 8, state: 'learning', cta: 'Tiếp tục' })}
     ${courseCard({ bg: '#7A5C3E', name: 'Kiếm tiền với Funnel Affiliate', meta: '18 bài · 3 giờ 12 phút · dành cho Premium', progress: 0, state: 'lock', cta: '' })}
-    ${courseCard({ bg: '#5C7A3E', name: 'Chương trình Cộng sự MMO', meta: '6 bài · chỉ bạn thấy', progress: 0, state: 'draft', cta: '' })}
+    ${courseCard({ bg: '#5C7A3E', name: 'Chương trình Affiliate MMO', meta: '6 bài · chỉ bạn thấy', progress: 0, state: 'draft', cta: '' })}
   </div>
 </div>`;
 
@@ -2353,7 +2353,7 @@ const courseOverviewMain = `
       ${ovModule(1, 'Tư duy mô hình tiền', 5, 5, '42 phút', false)}
       ${ovModule(2, 'Thiết kế Offer', 2, 6, '1 giờ 2 phút', true, lessonRow('2.1 Khách hàng thực sự mua gì', 'done', '09:12') + lessonRow('2.2 Ba lớp giá trị của một offer', 'done', '11:04') + lessonRow('2.3 Viết offer bằng công thức giá trị', 'now', '12:41') + lessonRow('2.4 Định giá theo kết quả', 'todo', '08:55') + lessonRow('2.5 Bảo hành và đảo ngược rủi ro', 'todo', '07:30') + lessonRow('2.6 Bài tập: Offer Canvas của bạn', 'todo', 'Bài tập'))}
       ${ovModule(3, 'Lead magnet và Tripwire', 0, 7, '1 giờ 48 phút', false)}
-      ${ovModule(4, 'Scale bằng cộng sự affiliate', 0, 8, '2 giờ 4 phút', false)}
+      ${ovModule(4, 'Scale bằng affiliate', 0, 8, '2 giờ 4 phút', false)}
     </div>
 
     <div class="card" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 12px;">
@@ -2425,7 +2425,7 @@ const courseCreateMain = `
         ${accessOption('Premium miễn phí + bán lẻ cho người khác', 'Cách thường dùng: Premium học luôn, người khác mua lẻ', true, `<div style="display: flex; gap: 10px; padding: 8px 0 0 28px;"><div style="display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px;">Giá bán lẻ</span><div class="input" style="width: 160px; height: 36px; color: ${T.ink}; font-weight: 600;"><span style="flex-grow: 1;">1.200.000</span><span class="muted">đ</span></div></div><div style="display: flex; flex-direction: column; gap: 4px;"><span class="muted" style="font-size: 12px;">Giá gốc (gạch)</span><div class="input" style="width: 160px; height: 36px; color: ${T.ink};"><span style="flex-grow: 1;">1.900.000</span><span class="muted">đ</span></div></div></div>`)}
       </div>
       <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; padding-top: 10px; border-top: 1px solid ${T.line};"><span style="flex-grow: 1;">Cho xem thử module đầu tiên với người chưa có quyền</span>${toggle(true)}</div>
-      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Cộng sự được nhận hoa hồng khi bán lẻ khóa này</span>${toggle(true)}</div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px;"><span style="flex-grow: 1;">Affiliate được nhận hoa hồng khi bán lẻ khóa này</span>${toggle(true)}</div>
     </div>
 
     <div class="card" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
@@ -2603,12 +2603,12 @@ const SCREENS = [
   { key: 'product', file: 'ProductDetail', title: 'Chi tiết sản phẩm', group: 'Thành viên', build: () => shell({ active: 'store', main: productDetailMain, height: 2100 }), h: 2100 },
   { key: 'events', file: 'Events', title: 'Sự kiện', group: 'Thành viên', build: () => shell({ active: 'events', main: eventsMain }) },
   { key: 'event', file: 'EventDetail', title: 'Chi tiết sự kiện', group: 'Thành viên', build: () => shell({ active: 'events', main: eventDetailMain, height: 1500 }), h: 1500 },
-  { key: 'affiliate', file: 'Affiliate', title: 'Xếp hạng cộng sự', group: 'Thành viên', build: () => shell({ active: 'affiliate', main: affiliateMain }) },
+  { key: 'affiliate', file: 'Affiliate', title: 'Xếp hạng affiliate', group: 'Thành viên', build: () => shell({ active: 'affiliate', main: affiliateMain }) },
   { key: 'messages', file: 'Messages', title: 'Tin nhắn', group: 'Thành viên', build: () => shell({ active: 'messages', main: messagesMain }) },
   { key: 'notifications', file: 'Notifications', title: 'Thông báo', group: 'Thành viên', build: () => shell({ active: 'notifications', main: notificationsMain }) },
   { key: 'profile', file: 'Profile', title: 'Hồ sơ thành viên', group: 'Thành viên', build: () => shell({ active: 'members', main: profileMain }), h: 1100 },
   { key: 'profile-edit', file: 'ProfileEdit', title: 'Tài khoản · Hồ sơ (chỉnh sửa)', group: 'Thành viên', build: () => shell({ active: 'account', main: profileEditMain }), h: 1150 },
-  { key: 'my-affiliate', file: 'AffiliateWallet', title: 'Tài khoản · Cộng sự (ví và rút tiền)', group: 'Thành viên', build: () => shell({ active: 'affiliate', main: affiliateWalletMain }), h: 1250 },
+  { key: 'my-affiliate', file: 'AffiliateWallet', title: 'Tài khoản · Affiliate (ví và rút tiền)', group: 'Thành viên', build: () => shell({ active: 'affiliate', main: affiliateWalletMain }), h: 1250 },
   { key: 'account', file: 'AccountBilling', title: 'Tài khoản · Gói và thanh toán', group: 'Thành viên', build: () => shell({ active: 'account', main: accountBillingMain }) },
   { key: 'checkout', file: 'Checkout', title: 'Thanh toán gói Premium', group: 'Thành viên', build: () => checkoutBody, standalone: true },
   { key: 'signup', file: 'SignupLanding', title: 'Tạo hội của bạn (đăng ký)', group: 'Chủ hội', build: () => signupBody, standalone: true },
@@ -2622,8 +2622,8 @@ const SCREENS = [
   { key: 's-overview', file: 'SettingsOverview', title: 'Cài đặt · Tổng quan', group: 'Chủ hội', build: () => shell({ active: 'settings', main: overviewMain }) },
   { key: 's-general', file: 'SettingsGeneral', title: 'Cài đặt · Chung', group: 'Chủ hội', build: () => shell({ active: 'settings', main: generalMain }), h: 1100 },
   { key: 'settings', file: 'Pricing', title: 'Cài đặt · Giá và gói', group: 'Chủ hội', build: () => shell({ active: 'settings', main: pricingMain }) },
-  { key: 's-affiliate', file: 'SettingsAffiliate', title: 'Cài đặt · Cộng sự', group: 'Chủ hội', build: () => shell({ active: 'settings', main: affiliateSettingsMain }) },
-  { key: 's-affiliate-payouts', file: 'SettingsAffiliatePayouts', title: 'Cài đặt · Cộng sự · Yêu cầu rút', group: 'Chủ hội', build: () => shell({ active: 'settings', main: affiliatePayoutsMain }), h: 1250 },
+  { key: 's-affiliate', file: 'SettingsAffiliate', title: 'Cài đặt · Affiliate', group: 'Chủ hội', build: () => shell({ active: 'settings', main: affiliateSettingsMain }) },
+  { key: 's-affiliate-payouts', file: 'SettingsAffiliatePayouts', title: 'Cài đặt · Affiliate · Yêu cầu rút', group: 'Chủ hội', build: () => shell({ active: 'settings', main: affiliatePayoutsMain }), h: 1250 },
   { key: 's-plugins', file: 'SettingsPlugins', title: 'Cài đặt · Tiện ích', group: 'Chủ hội', build: () => shell({ active: 'settings', main: pluginsMain }), h: 1100 },
   { key: 's-feed', file: 'SettingsFeed', title: 'Cài đặt · Bảng tin', group: 'Chủ hội', build: () => shell({ active: 'settings', main: feedSettingsMain }), h: 1100 },
   { key: 's-payout', file: 'SettingsPayout', title: 'Cài đặt · Thanh toán', group: 'Chủ hội', build: () => shell({ active: 'settings', main: payoutMain }), h: 1150 },
@@ -2631,7 +2631,7 @@ const SCREENS = [
   { key: 'sa-overview', file: 'AdminOverview', title: 'Hệ thống · Tổng quan', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-overview', main: saOverviewMain }) },
   { key: 'sa-communities', file: 'AdminCommunities', title: 'Hệ thống · Hội', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-communities', main: saCommunitiesMain }) },
   { key: 'sa-payments', file: 'AdminPayments', title: 'Hệ thống · Thanh toán và đối soát', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-payments', main: saPaymentsMain }), h: 1050 },
-  { key: 'sa-affiliate', file: 'AdminAffiliate', title: 'Hệ thống · Cộng sự nền tảng', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-affiliate', main: saAffiliateMain }), h: 1100 },
+  { key: 'sa-affiliate', file: 'AdminAffiliate', title: 'Hệ thống · Affiliate nền tảng', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-affiliate', main: saAffiliateMain }), h: 1100 },
   { key: 'sa-plans', file: 'AdminPlans', title: 'Hệ thống · Gói nền tảng', group: 'Quản trị hệ thống', build: () => saShell({ active: 'sa-plans', main: saPlansMain }) },
   { key: 'mobile', file: 'Mobile', title: 'Bảng tin trên điện thoại', group: 'Thành viên', build: () => mobileBody, standalone: true, phone: true },
   { key: 'about', file: 'CommunityAbout', title: 'Trang giới thiệu hội (đích của link hội)', group: 'Công khai', build: () => aboutBody, standalone: true, h: 1400 },

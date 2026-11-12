@@ -1,4 +1,4 @@
-// Bàn điều khiển của chủ hội: dựng danh sách "Cần xử lý" từ số liệu thật (yêu cầu rút của cộng sự,
+// Bàn điều khiển của chủ hội: dựng danh sách "Cần xử lý" từ số liệu thật (yêu cầu rút của affiliate,
 // người chờ duyệt vào hội, bài chờ duyệt, gói của hội sắp hết hạn hoặc đã chạm trần thành viên). Hàm thuần để test được, không gọi API ở đây.
 import { money } from './format';
 
@@ -48,7 +48,7 @@ export function buildOwnerTodos(input: OwnerTodoInput): OwnerTodo[] {
     out.push({ key: 'orders', title: `${input.payout.pendingCount} đơn chờ bạn xác nhận đã nhận tiền`, hint: `Tổng ${money(input.payout.pendingMinor)}, người mua đang chờ được mở quyền`, to: `${base}/tien`, label: 'Xác nhận', urgent: true });
   }
   if (input.affiliatePayouts && input.affiliatePayouts.count > 0) {
-    out.push({ key: 'payouts', title: `${input.affiliatePayouts.count} yêu cầu rút của cộng sự`, hint: `Cần chuyển ${money(input.affiliatePayouts.amountMinor)}`, to: `${base}/cong-su`, label: 'Xử lý', urgent: true });
+    out.push({ key: 'payouts', title: `${input.affiliatePayouts.count} yêu cầu rút của affiliate`, hint: `Cần chuyển ${money(input.affiliatePayouts.amountMinor)}`, to: `${base}/cong-su`, label: 'Xử lý', urgent: true });
   }
   if (input.pendingMembers && input.pendingMembers > 0) {
     out.push({ key: 'members', title: `${input.pendingMembers} người chờ duyệt vào hội`, hint: 'Xem câu trả lời rồi duyệt hoặc từ chối', to: `${base}/thanh-vien?trang-thai=pending`, label: 'Duyệt', urgent: false });

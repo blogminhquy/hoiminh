@@ -1,4 +1,4 @@
-// Hàng đợi rút tiền cộng sự (queueRow/reviewPanel/historyRow trong build.mjs): chủ hội hoặc super admin xem xét, chuyển khoản tay rồi ghi mã tham chiếu.
+// Hàng đợi rút tiền affiliate (queueRow/reviewPanel/historyRow trong build.mjs): chủ hội hoặc super admin xem xét, chuyển khoản tay rồi ghi mã tham chiếu.
 import { Avatar, Button, StatusTag, T, money } from '@hoiminh/ui';
 import { useMutation } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
@@ -31,7 +31,7 @@ export function LedgerNotice({ who }: { who: string }) {
     <div className="flex gap-3 items-start px-4 py-3.5 rounded-xl text-[13px] leading-normal" style={{ background: T.goldSoft, color: T.goldDark }}>
       <span className="flex-shrink-0" style={{ color: T.goldText }}><ShieldCheck size={20} /></span>
       <div>
-        <strong>Hội Mình không tự chuyển tiền cho cộng sự.</strong> {who} chuyển khoản bằng app ngân hàng của mình rồi ghi mã tham chiếu vào đây. Số dư cộng sự là sổ cái bất biến (ghi có, khóa, trả lại, ghi nợ, điều chỉnh), không sửa tay được.
+        <strong>Hội Mình không tự chuyển tiền cho affiliate.</strong> {who} chuyển khoản bằng app ngân hàng của mình rồi ghi mã tham chiếu vào đây. Số dư affiliate là sổ cái bất biến (ghi có, khóa, trả lại, ghi nợ, điều chỉnh), không sửa tay được.
       </div>
     </div>
   );
@@ -66,7 +66,7 @@ function HistoryRow({ w }: { w: PayoutRequest }) {
       <span className="font-semibold">{money(w.amountMinor)}</span>
       <span className="muted">{fmtDayMonth(w.requestedAt)}</span>
       <StatusTag status={w.status} />
-      <span className="muted truncate">{w.status === 'paid' ? (w.transferReference ?? '—') : w.status === 'cancelled' ? 'Cộng sự tự hủy' : (w.rejectionReason ?? '—')}</span>
+      <span className="muted truncate">{w.status === 'paid' ? (w.transferReference ?? '—') : w.status === 'cancelled' ? 'Affiliate tự hủy' : (w.rejectionReason ?? '—')}</span>
     </div>
   );
 }
@@ -107,7 +107,7 @@ export function PayoutQueue({ queue, history, onChanged }: { queue: PayoutReques
         <div className="table-scroll">
           <div style={{ minWidth: 760 }}>
             <div className="grid gap-3 px-5 py-3" style={{ gridTemplateColumns: QUEUE_COLS }}>
-              <span className="th">Cộng sự</span><span className="th">Số tiền</span><span className="th">Tài khoản nhận</span><span className="th">Gửi lúc</span><span className="th">Trạng thái</span><span />
+              <span className="th">Affiliate</span><span className="th">Số tiền</span><span className="th">Tài khoản nhận</span><span className="th">Gửi lúc</span><span className="th">Trạng thái</span><span />
             </div>
             {queue.length === 0 && <div className="muted text-[13px] px-5 py-6 text-center" style={{ borderTop: `1px solid ${T.line}` }}>Không có yêu cầu rút nào đang chờ</div>}
             {queue.map((w) => (
@@ -137,7 +137,7 @@ export function PayoutQueue({ queue, history, onChanged }: { queue: PayoutReques
         <div className="table-scroll">
           <div style={{ minWidth: 640 }}>
             <div className="grid gap-3 px-5 pb-2" style={{ gridTemplateColumns: HISTORY_COLS }}>
-              <span className="th">Cộng sự</span><span className="th">Số tiền</span><span className="th">Ngày</span><span className="th">Trạng thái</span><span className="th">Mã tham chiếu / lý do</span>
+              <span className="th">Affiliate</span><span className="th">Số tiền</span><span className="th">Ngày</span><span className="th">Trạng thái</span><span className="th">Mã tham chiếu / lý do</span>
             </div>
             {history.length === 0 && <div className="muted text-[13px] px-5 py-6 text-center" style={{ borderTop: `1px solid ${T.line}` }}>Chưa xử lý yêu cầu nào</div>}
             {history.map((w) => <HistoryRow key={w.id} w={w} />)}

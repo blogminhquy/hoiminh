@@ -94,7 +94,7 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const discount = applyCoupon(r.amountMinor, coupon);
   const total = r.amountMinor - discount;
 
-  // Cộng sự: ưu tiên ref truyền vào, sau đó attribution còn hạn (last click wins), không tự giới thiệu.
+  // Affiliate: ưu tiên ref truyền vào, sau đó attribution còn hạn (last click wins), không tự giới thiệu.
   let affiliateId: string | null = null;
   let referredBy: string | null = null;
   if (r.communityId) {

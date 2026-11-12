@@ -28,7 +28,7 @@ function PlanStep({ plans, planKey, cycle, onPlan, onCycle }: { plans: PlanDef[]
       <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="Gói cho hội này">
         {paid.map((p) => {
           const on = p.key === planKey;
-          const extra = p.features.length ? (p.key === 'unlimited' ? ', có mọi thứ của Chuyên nghiệp' : ', có tự động hóa, tên miền riêng, cộng sự, API') : '';
+          const extra = p.features.length ? (p.key === 'unlimited' ? ', có mọi thứ của Chuyên nghiệp' : ', có tự động hóa, tên miền riêng, affiliate, API') : '';
           return (
             <button key={p.key} type="button" role="radio" aria-checked={on} onClick={() => onPlan(p.key)} className="flex items-center gap-3 text-left rounded-[14px] px-4 py-3.5" style={{ border: `1.5px solid ${on ? T.teal : T.line2}`, background: on ? T.tealSoft : T.surface, minHeight: 64 }}>
               <span className="w-5 h-5 rounded-full flex-shrink-0 inline-flex items-center justify-center" style={{ border: `2px solid ${on ? T.teal : T.line2}` }}>{on && <span className="w-2.5 h-2.5 rounded-full" style={{ background: T.teal }} />}</span>
