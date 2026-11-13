@@ -16,7 +16,7 @@ test('máy tính: thanh bên, viết bài, không tràn ngang, đăng xuất', a
   // Mục có thể kèm số đếm ("Sự kiện 2", "Khóa học 4%") nên so theo phần đầu của tên.
   for (const label of ['Hôm nay', 'Bảng tin', 'Sự kiện', 'Thành viên', 'Khóa học', 'Cửa hàng']) await expect(side.getByRole('link', { name: new RegExp(`^${label}`) })).toBeVisible();
   // Logo Hội Mình ở góc trên trái thanh bên; tên hội đứng ở đầu trang, bấm vào để chuyển hội.
-  await expect(side.getByRole('link', { name: /^Hội Mình/ })).toHaveAttribute('href', '/kham-pha');
+  await expect(side.getByRole('link', { name: /^Hội Mình/ })).toHaveAttribute('href', '/');
   const switcher = page.locator('header.app-header').getByRole('button', { name: /chuyển hội$/ });
   await expect(switcher).toContainText('Kinh Doanh Online');
   await switcher.click();

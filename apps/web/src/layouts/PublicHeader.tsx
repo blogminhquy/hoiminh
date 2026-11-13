@@ -1,4 +1,4 @@
-// Header trang công khai (Khám phá, Giới thiệu hội): logo, Khám phá, Dành cho chủ hội, Đăng nhập / Tạo hội.
+// Header trang công khai (trang chủ Khám phá, Giới thiệu hội): logo, Khám phá (đều về trang chủ "/"), Dành cho chủ hội, Đăng nhập / Tạo hội.
 import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
@@ -8,9 +8,9 @@ export function PublicHeader({ cta }: { cta?: 'join' | 'create' }) {
   const { user } = useAuth();
   return (
     <header className="flex items-center gap-3 md:gap-6 px-4 md:px-16" style={{ height: 72, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-      <Link to="/kham-pha" aria-label="Hội Mình" className="flex-shrink-0"><Logo size={28} markOnlyOnMobile /></Link>
+      <Link to="/" aria-label="Hội Mình" className="flex-shrink-0"><Logo size={28} markOnlyOnMobile /></Link>
       <nav className="hidden md:flex gap-6 font-medium" style={{ color: T.ink2 }}>
-        <NavLink to="/kham-pha" style={({ isActive }) => ({ color: isActive ? T.ink : T.ink2 })}>Khám phá</NavLink>
+        <NavLink to="/" end style={({ isActive }) => ({ color: isActive ? T.ink : T.ink2 })}>Khám phá</NavLink>
         <Link to="/tao-hoi/goi">Bảng giá</Link>
         <Link to="/tao-hoi">Dành cho chủ hội</Link>
         {!user && <Link to="/dang-nhap">Đăng nhập</Link>}

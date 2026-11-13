@@ -96,7 +96,7 @@ function Sidebar({ shell, onInvite }: { shell: Shell; onInvite: () => void }) {
     <aside className="app-sidebar flex flex-col flex-shrink-0 sticky top-0 h-screen" data-collapsed={collapsed ? 'true' : undefined} style={{ background: T.side, color: T.sideText, padding: '16px 12px' }}>
       {/* Cao 48px cộng lề trên 16px: đường kẻ dưới logo thẳng hàng với đáy header 64px. */}
       <div className="side-head flex items-center justify-between pl-2 flex-shrink-0" style={{ height: 48, borderBottom: '1px solid rgba(255,253,249,0.08)' }}>
-        <Link to="/kham-pha" className="side-logo" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+        <Link to="/" className="side-logo" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
         <SidebarToggle collapsed={collapsed} onToggle={toggle} />
       </div>
       <SidebarNav shell={shell} onInvite={onInvite} pinInvite collapsed={collapsed} />
@@ -136,7 +136,7 @@ function MobileDrawer({ shell, onInvite, onClose }: { shell: Shell; onInvite: ()
       {/* Chọn một mục (mọi link trong menu) là đóng menu, kể cả khi mục đó là trang đang mở. */}
       <aside role="dialog" aria-modal="true" aria-label="Menu hội" className="app-drawer flex flex-col" style={{ background: T.side, color: T.sideText }} onClick={(e) => { e.stopPropagation(); if ((e.target as HTMLElement).closest('a')) onClose(); }}>
         <div className="flex items-center justify-between flex-shrink-0 pl-2" style={{ height: 48 }}>
-          <Link to="/kham-pha" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
+          <Link to="/" aria-label="Hội Mình, khám phá hội"><Logo size={26} light /></Link>
           <button type="button" aria-label="Đóng menu" onClick={onClose} className="w-11 h-11 rounded-[10px] flex items-center justify-center" style={{ color: T.sideText }}><X size={22} /></button>
         </div>
         <div className="relative flex-shrink-0 mt-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }}>
@@ -273,7 +273,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   if (!slug) {
     // Trang trong hội thì phải có hội. Còn Tài khoản, Tin nhắn, Thông báo, hồ sơ người khác là của
     // riêng người dùng — người chưa vào hội nào (vừa đăng ký, hoặc quản trị hệ thống) vẫn phải mở được.
-    if (requireMember) return <Navigate to="/kham-pha" replace />;
+    if (requireMember) return <Navigate to="/" replace />;
     return (
       <div className="flex flex-col min-h-screen" style={{ background: T.bg }}>
         <PublicHeader />

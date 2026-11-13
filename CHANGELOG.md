@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.33.1 - 2026-11-13
+
+Trang Khám phá nay chính là trang chủ: mở `hoiminh.com` là thấy ngay danh sách hội, không còn nhảy sang địa chỉ `/kham-pha` riêng. Theo yêu cầu của chủ dự án.
+
+### Thay đổi
+
+- **Trang chủ `/` hiện thẳng trang Khám phá.** Trước đây khách mở trang chủ bị chuyển sang `/kham-pha`. Logo, mục "Khám phá" ở đầu trang, "Khám phá hội khác" trong bảng chuyển hội và các nút "Khám phá" khác đều trỏ về trang chủ. Lọc danh mục và tìm kiếm chạy ngay trên trang chủ (`/?danh-muc=...`, `/?q=...`).
+- **Địa chỉ cũ `/kham-pha` tự chuyển về trang chủ**, giữ nguyên bộ lọc, nên link đã lưu hoặc đã chia sẻ vẫn mở được.
+- Người đã đăng nhập vừa mở app (gõ địa chỉ, bấm link ngoài, bấm biểu tượng ở màn hình chính) vẫn vào thẳng chỗ của mình như cũ: trang Hôm nay của hội, Khu học tập hoặc Hội của tôi. Bấm logo hay "Khám phá" trong app thì xem Khám phá ở trang chủ.
+
+### Kỹ thuật
+
+- `apps/web/src/pages/public/Home.tsx` quyết định: lượt tải đầu của tab (`location.key === 'default'`, không kèm bộ lọc) và đã đăng nhập thì chuyển về chỗ của người dùng, còn lại vẽ `Discovery`. Xem quyết định 71 trong `DECISIONS.md`.
+- `kham-pha` vẫn nằm trong danh sách slug cấm đặt cho hội, vì địa chỉ này còn dùng để chuyển hướng.
+- Test trình duyệt mới: `e2e/tests/25-trang-chu-kham-pha.spec.ts`.
+
 ## 1.33.0 - 2026-11-12
 
 Chủ hội bán gói thành viên theo nhiều kỳ hạn (1 tháng, 3 tháng, 6 tháng, 12 tháng hoặc số tháng tự nhập) và chạy được khuyến mãi giảm giá, ngay ở Cài đặt, Bán hàng, Giá và gói. Trước đây mỗi gói chỉ có hai ô: giá tháng và giá năm.

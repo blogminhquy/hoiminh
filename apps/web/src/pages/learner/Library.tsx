@@ -36,7 +36,7 @@ function Empty({ communities }: { communities: MyCommunity[] }) {
       ) : (
         <>
           <p className="muted text-[14px] m-0" style={{ maxWidth: 420 }}>Khóa học và tài liệu bạn mua sẽ hiện ở đây, kể cả khi bạn không tham gia hội nào. Xem thử các hội đang mở để tìm nội dung phù hợp.</p>
-          <Link to="/kham-pha" className="btn btn-primary">Khám phá hội</Link>
+          <Link to="/" className="btn btn-primary">Khám phá hội</Link>
         </>
       )}
     </div>

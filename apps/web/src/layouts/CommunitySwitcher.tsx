@@ -32,7 +32,7 @@ export function CommunitySwitcher({ current, onClose }: { current: string; onClo
       <div className="h-px my-1" style={{ background: 'rgba(255,255,255,0.12)' }} />
       <Link role="menuitem" to="/admin" onClick={onClose} className="community-switcher-row"><LayoutGrid size={18} /> Tất cả hội và gói Hội Mình</Link>
       {owns && <Link role="menuitem" to="/admin/tao-hoi" onClick={onClose} className="community-switcher-row"><Plus size={18} /> Tạo hội mới</Link>}
-      <Link role="menuitem" to="/kham-pha" onClick={onClose} className="community-switcher-row"><Compass size={18} /> Khám phá hội khác</Link>
+      <Link role="menuitem" to="/" onClick={onClose} className="community-switcher-row"><Compass size={18} /> Khám phá hội khác</Link>
     </div>
   );
 }
