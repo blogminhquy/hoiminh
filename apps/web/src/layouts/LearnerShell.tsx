@@ -65,7 +65,7 @@ export function LearnerShell() {
 
 /**
  * Khung cho các trang Tài khoản / Tin nhắn / Thông báo: dùng khung hội nếu người dùng có hội,
- * còn người mua lẻ (0 hội) thì dùng khung Khu học tập, nếu không họ sẽ bị AppShell đá về /kham-pha.
+ * còn người mua lẻ (0 hội) thì dùng khung Khu học tập, nếu không họ sẽ bị AppShell đá về trang chủ.
  */
 export function AccountShell() {
   const { communities, loading } = useAuth();

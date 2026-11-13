@@ -1,6 +1,6 @@
-// Bảng route: công khai, chủ hội (/admin), hội (/:slug/..., gồm Tiền, Affiliate và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
+// Bảng route: công khai (trang chủ "/" là Khám phá), chủ hội (/admin), hội (/:slug/..., gồm Tiền, Affiliate và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
 import { lazy, Suspense, type ComponentType } from 'react';
-import { createBrowserRouter, Navigate, Outlet, useParams, type RouteObject } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useLocation, useParams, type RouteObject } from 'react-router-dom';
 import { InstallGate } from '@/components/InstallGate';
 import { FeatureGate } from '@/components/PlanGate';
 import { LoadingBlock } from '@/components/QueryState';
@@ -26,9 +26,15 @@ function SlugRedirect({ to }: { to: string }) {
   return <Navigate to={`/${slug}/${to}`} replace />;
 }
 
+/** Khám phá nay là trang chủ: địa chỉ cũ /kham-pha (link đã lưu, đã chia sẻ) chuyển về "/", giữ nguyên bộ lọc. */
+function DiscoveryRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/', search }} replace />;
+}
+
 const publicRoutes: RouteObject[] = [
   { path: '/', element: page(() => import('@/pages/public/Home')) },
-  { path: '/kham-pha', element: page(() => import('@/pages/public/Discovery')) },
+  { path: '/kham-pha', element: <DiscoveryRedirect /> },
   { path: '/dang-nhap', element: page(() => import('@/pages/public/Login')) },
   { path: '/dang-ky', element: page(() => import('@/pages/public/Register')) },
   { path: '/quen-mat-khau', element: page(() => import('@/pages/public/ForgotPassword')) },

@@ -20,7 +20,7 @@ export function CheckoutFrame({ backTo, children }: { backTo: string; children: 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>
       <header className="flex items-center gap-4 px-4 md:px-16" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
-        <Link to="/kham-pha"><Logo size={26} /></Link>
+        <Link to="/"><Logo size={26} /></Link>
         <span className="flex-grow" />
         <span className="muted text-[13px] inline-flex items-center gap-1.5"><ShieldCheck size={16} />Thanh toán được bảo vệ · hủy bất cứ lúc nào</span>
       </header>

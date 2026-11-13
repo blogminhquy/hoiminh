@@ -12,14 +12,14 @@ import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider } from './AuthP
 
 /**
  * Đích sau đăng nhập: ?next → trang Hôm nay của hội nên mở (hội lần trước đang dùng, không có thì hội mình làm chủ:
- * chủ hội thấy Bàn điều khiển, thành viên thấy việc hôm nay) → khu quản trị nếu là quản trị hệ thống → Khám phá.
+ * chủ hội thấy Bàn điều khiển, thành viên thấy việc hôm nay) → khu quản trị nếu là quản trị hệ thống → trang chủ (Khám phá).
  */
 export function landingFor(next: string | null, communities: MyCommunity[], isSuperAdmin = false): string {
   if (next && next.startsWith('/')) return next;
   const slug = preferredCommunitySlug(communities);
   if (slug) return `/${slug}/hom-nay`;
   if (isSuperAdmin) return '/he-thong';
-  return '/kham-pha';
+  return '/';
 }
 
 /** Sau khi đã có phiên (Google, đặt lại mật khẩu): hỏi danh sách hội rồi chọn đích. Chưa có hội nào thì vào "Hội của tôi" để tạo. */

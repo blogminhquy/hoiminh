@@ -9,7 +9,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex" style={{ background: T.bg }}>
       <aside className="hidden lg:flex flex-col flex-shrink-0" style={{ width: 560, background: T.side, color: T.invertInk, padding: '40px 56px' }}>
-        <Link to="/kham-pha"><Logo size={28} light /></Link>
+        <Link to="/"><Logo size={28} light /></Link>
         <div className="flex-grow flex flex-col justify-center gap-7">
           <h1 className="serif m-0 text-[40px] leading-[1.15] font-extrabold">Hội của mình,<br />do mình dựng.</h1>
           <div className="flex flex-col gap-3.5 text-[15px]" style={{ color: T.sideText }}>

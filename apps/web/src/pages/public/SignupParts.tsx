@@ -8,9 +8,9 @@ export function SignupHeader() {
   const { user } = useAuth();
   return (
     <header className="flex items-center gap-2 px-4 md:px-16" style={{ height: 64 }}>
-      <Link to="/kham-pha"><Logo size={28} light /></Link>
+      <Link to="/"><Logo size={28} light /></Link>
       <span className="flex-grow" />
-      <Link to="/kham-pha" className="text-[14px] font-medium" style={{ color: T.sideText }}>Khám phá</Link>
+      <Link to="/" className="text-[14px] font-medium" style={{ color: T.sideText }}>Khám phá</Link>
       {user ? (
         <Link to="/admin" className="text-[14px] font-medium ml-6" style={{ color: T.sideText }}>Hội của tôi</Link>
       ) : (

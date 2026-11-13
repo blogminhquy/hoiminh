@@ -26,9 +26,9 @@ function OrderView({ orderId }: { orderId: string }) {
   }, [o?.status, o?.nextUrl]);
   // Đơn trả thẳng chủ hội mà chủ hội tự bấm xác nhận: không có gì tự đối chiếu, người mua chờ chủ hội.
   const ownerManual = o?.instruction?.kind === 'bank_qr' && o.instruction.payee === 'owner' && o.instruction.confirmMode !== 'auto';
-  const back = o?.nextUrl ?? '/kham-pha';
-  if (q.isLoading) return <CheckoutFrame backTo="/kham-pha"><LoadingBlock /></CheckoutFrame>;
-  if (q.isError || !o) return <CheckoutFrame backTo="/kham-pha"><ErrorBox message={errorMessage(q.error)} onRetry={() => void q.refetch()} /></CheckoutFrame>;
+  const back = o?.nextUrl ?? '/';
+  if (q.isLoading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
+  if (q.isError || !o) return <CheckoutFrame backTo="/"><ErrorBox message={errorMessage(q.error)} onRetry={() => void q.refetch()} /></CheckoutFrame>;
   const p = PROVIDERS.find((x) => x.key === o.provider) ?? PROVIDERS[0]!;
   return (
     <CheckoutFrame backTo={back}>
@@ -78,9 +78,9 @@ export default function Page() {
   const location = useLocation();
   const shell = useShellQuery(orderId ? null : slug);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
-  if (loading) return <CheckoutFrame backTo="/kham-pha"><LoadingBlock /></CheckoutFrame>;
+  if (loading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
   if (orderId) return <OrderView orderId={orderId} />;
-  if (shell.isLoading) return <CheckoutFrame backTo="/kham-pha"><LoadingBlock /></CheckoutFrame>;
-  if (shell.isError || !shell.data) return <CheckoutFrame backTo="/kham-pha"><ErrorBox message={errorMessage(shell.error)} /></CheckoutFrame>;
+  if (shell.isLoading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
+  if (shell.isError || !shell.data) return <CheckoutFrame backTo="/"><ErrorBox message={errorMessage(shell.error)} /></CheckoutFrame>;
   return <CheckoutConfigure shell={shell.data} tierKey={sp.get('tier')} productId={sp.get('product')} initialCycle={sp.get('cycle')} initialMonths={sp.get('months')} ref={sp.get('ref')} />;
 }

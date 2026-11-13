@@ -62,7 +62,7 @@ export function JoinedCard({ items }: { items: WorkspaceHome['joined'] }) {
   };
   return (
     <div className="card flex flex-col gap-3 flex-[1.4_1_0]" style={{ padding: '20px 24px' }}>
-      <div className="flex items-center"><span className="font-semibold">Hội bạn tham gia</span><span className="flex-grow" /><Link to="/kham-pha" className="text-[13px] font-semibold" style={{ color: T.teal }}>Khám phá thêm</Link></div>
+      <div className="flex items-center"><span className="font-semibold">Hội bạn tham gia</span><span className="flex-grow" /><Link to="/" className="text-[13px] font-semibold" style={{ color: T.teal }}>Khám phá thêm</Link></div>
       {items.length === 0 && <div className="muted text-[13px]">Bạn chưa tham gia hội nào khác.</div>}
       {items.map((j) => (
         <Link key={j.id} to={`/${j.slug}/hom-nay`} className="flex items-center gap-3 py-2.5" style={{ borderTop: `1px solid ${T.line}`, color: T.ink }}>

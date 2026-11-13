@@ -46,7 +46,7 @@ export default function Page() {
             <div className="text-[13px] rounded-[10px] px-3.5 py-2.5 w-full" style={{ background: T.accentSoft, color: T.accentText }}>{error}</div>
             <div className="flex gap-2">
               <Link to="/dang-nhap"><Button variant="primary">Về đăng nhập</Button></Link>
-              <Link to="/kham-pha"><Button>Khám phá</Button></Link>
+              <Link to="/"><Button>Khám phá</Button></Link>
             </div>
           </>
         ) : (

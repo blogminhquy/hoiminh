@@ -81,7 +81,7 @@ Tất cả trang nằm trong `apps/web/src/pages`. "e2e" = luồng Playwright tr
 | 47 | Đã gửi link (forgot-sent) | `/quen-mat-khau/da-gui` | public/ForgotSent.tsx | — |
 | 48 | Đặt mật khẩu mới (reset-password) | `/dat-lai-mat-khau` | public/ResetPassword.tsx | core L1 |
 | 49 | Xác minh email (verify-email) | `/xac-minh-email` | public/VerifyEmail.tsx | e2e 01 |
-| 50 | Khám phá (discovery) | `/kham-pha` | public/Discovery.tsx | — |
+| 50 | Khám phá (discovery), cũng là trang chủ | `/` (địa chỉ cũ `/kham-pha` chuyển về đây) | public/Home.tsx, public/Discovery.tsx | e2e 25 |
 
 Ngoài 50 màn: Hệ thống · Người dùng `/he-thong/nguoi-dung` (admin/AdminUsers.tsx), Nhật ký và webhook `/he-thong/nhat-ky` (admin/AdminLogs.tsx), Google callback `/auth/callback`.
 
