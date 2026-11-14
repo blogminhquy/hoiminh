@@ -4,16 +4,19 @@ import { Check, Clock, Copy, ShieldCheck, Users } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '@hoiminh/ui';
+import type { PaymentProvider } from '@hoiminh/contracts';
 
-export type Provider = 'sepay' | 'momo' | 'vnpay' | 'paypal';
+export type Provider = PaymentProvider;
 export const PROVIDERS: Array<{ key: Provider; name: string; desc: string; logo: string; bg: string }> = [
   { key: 'sepay', name: 'Chuyển khoản QR', desc: 'Quét bằng app ngân hàng, kích hoạt tự động dưới 1 phút', logo: 'QR', bg: T.ink },
-  { key: 'momo', name: 'MoMo', desc: 'Xác nhận ngay trong ví, có thể bật tự gia hạn', logo: 'MoMo', bg: '#A50064' },
+  { key: 'momo', name: 'MoMo', desc: 'Xác nhận ngay trong ví MoMo', logo: 'MoMo', bg: '#A50064' },
   { key: 'vnpay', name: 'VNPAY', desc: 'Thẻ nội địa hoặc QR ngân hàng', logo: 'VNPAY', bg: '#0A5EB0' },
   { key: 'paypal', name: 'PayPal', desc: 'Thanh toán bằng USD cho khách quốc tế', logo: 'PayPal', bg: '#003087' },
+  { key: 'stripe', name: 'Thẻ Visa, Mastercard', desc: 'Thẻ quốc tế, thanh toán an toàn qua Stripe', logo: 'Thẻ', bg: '#635BFF' },
 ];
+export const providerMeta = (key: string | null | undefined) => PROVIDERS.find((x) => x.key === key) ?? PROVIDERS[0]!;
 export interface BankQr { kind: 'bank_qr'; qrImageUrl: string; bankName: string; bankCode: string; accountNumber: string; accountHolder: string; amountMinor: number; transferContent: string; /** 'owner' = tiền về thẳng tài khoản chủ hội. */ payee?: 'owner'; confirmMode?: 'manual' | 'auto' }
-export interface Redirect { kind: 'redirect'; url: string; deeplink?: string }
+export interface Redirect { kind: 'redirect'; url: string; deeplink?: string; /** 'owner' = trả qua cổng của chính chủ hội. */ payee?: 'owner' }
 export type Instruction = BankQr | Redirect;
 
 export function CheckoutFrame({ backTo, children }: { backTo: string; children: ReactNode }) {

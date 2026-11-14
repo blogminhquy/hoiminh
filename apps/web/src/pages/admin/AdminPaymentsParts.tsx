@@ -5,7 +5,13 @@ import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { fmtDateTime, fmtTime, timeAgo } from '@/lib/format';
 
-export interface Provider { provider: 'sepay' | 'momo' | 'vnpay' | 'paypal'; enabled: boolean; mode: 'sandbox' | 'production'; health: string; lastHealthAt: string | null; consecutiveFailures: number; webhooksThisMonth: number; webhookFailuresThisMonth: number; lastWebhookAt: string | null; hasCredentials: boolean }
+export interface Provider {
+  provider: 'sepay' | 'momo' | 'vnpay' | 'paypal' | 'stripe'; enabled: boolean; mode: 'sandbox' | 'production'; health: string; lastHealthAt: string | null; consecutiveFailures: number; webhooksThisMonth: number; webhookFailuresThisMonth: number; lastWebhookAt: string | null; hasCredentials: boolean;
+  /** Cổng có hiện cho chủ hội mua gói không: 'ready' là hiện; còn lại là lý do không hiện. */
+  availability?: 'ready' | 'disabled' | 'no_credentials' | 'flag_off';
+  /** Cổng được chọn sẵn khi chủ hội mua gói. */
+  isDefault?: boolean;
+}
 export interface ReconItem { id: string; provider: string; bankContent: string | null; bankAccount: string | null; referenceCode: string | null; amountMinor: number; expectedMinor: number | null; status: string; note: string | null; transactionAt: string; matchedAt: string | null }
 export interface Payment { id: string; provider: string; amountMinor: number; status: string; paymentMethod: string | null; reference: string; paidAt: string | null; createdAt: string; order: { status: string; title: string; targetType: string }; customer: { name: string; email: string }; community: { name: string; slug: string } | null }
 
@@ -14,7 +20,11 @@ const META: Record<Provider['provider'], { name: string; bg: string; fields: str
   momo: { name: 'MoMo', bg: '#A50064', fields: ['partnerCode', 'accessKey', 'secretKey'] },
   vnpay: { name: 'VNPAY', bg: '#0A5EB0', fields: ['tmnCode', 'hashSecret'] },
   paypal: { name: 'PayPal', bg: '#003087', fields: ['clientId', 'clientSecret', 'webhookId'] },
+  stripe: { name: 'Stripe', bg: '#635BFF', fields: ['secretKey', 'webhookSecret'] },
 };
+
+/** Vì sao cổng không hiện cho chủ hội mua gói. */
+const HIDDEN_REASON: Record<string, string> = { disabled: 'Đang tắt, không hiện cho người mua', no_credentials: 'Chưa có khóa thật, không hiện cho người mua', flag_off: 'Cờ PayPal đang tắt, không hiện cho người mua' };
 
 function CredentialModal({ p, onClose }: { p: Provider; onClose: () => void }) {
   const qc = useQueryClient();
@@ -38,14 +48,16 @@ export function ProviderRow({ p }: { p: Provider }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const toggle = useMutation({ mutationFn: (enabled: boolean) => api.patch(`/v1/admin/providers/${p.provider}`, { enabled }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'providers'] }) });
+  const makeDefault = useMutation({ mutationFn: () => api.patch(`/v1/admin/providers/${p.provider}`, { isDefault: true }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['admin', 'providers'] }) });
   const meta = META[p.provider];
   const healthOk = p.consecutiveFailures === 0 && p.webhookFailuresThisMonth === 0;
   const health = !p.enabled ? 'Chưa bật' : healthOk ? `OK${p.lastWebhookAt ? ` · ${timeAgo(p.lastWebhookAt, true)}` : ''}` : `Lỗi · ${p.webhookFailuresThisMonth || p.consecutiveFailures} lần`;
   return (
     <div className="flex items-center gap-3.5 py-3.5 flex-wrap" style={{ borderTop: `1px solid ${T.line}` }}>
       <span className="w-11 h-[30px] rounded-md inline-flex items-center justify-center text-[9px] font-extrabold serif" style={{ background: meta.bg, color: T.invertInk }}>{meta.name.slice(0, 5)}</span>
-      <div className="flex-grow min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-semibold">{meta.name}</span><span className="tag" style={{ background: p.mode === 'production' ? T.tealSoft : T.goldSoft, color: p.mode === 'production' ? T.tealText : T.goldText }}>{p.mode === 'production' ? 'Production' : 'Sandbox'}</span>{!p.hasCredentials && <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Chưa có credential</span>}</div><div className="muted text-[12px]">Webhook nhận {p.webhooksThisMonth} sự kiện tháng này · lỗi {p.webhookFailuresThisMonth}</div></div>
+      <div className="flex-grow min-w-0"><div className="flex items-center gap-2 flex-wrap"><span className="font-semibold">{meta.name}</span><span className="tag" style={{ background: p.mode === 'production' ? T.tealSoft : T.goldSoft, color: p.mode === 'production' ? T.tealText : T.goldText }}>{p.mode === 'production' ? 'Production' : 'Sandbox'}</span>{!p.hasCredentials && <span className="tag" style={{ background: T.bg, color: T.ink3 }}>Chưa có credential</span>}{p.isDefault && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>Mặc định</span>}</div><div className="muted text-[12px]">Webhook nhận {p.webhooksThisMonth} sự kiện tháng này · lỗi {p.webhookFailuresThisMonth}</div>{p.availability && p.availability !== 'ready' && <div className="text-[12px] font-semibold" style={{ color: T.goldText }}>{HIDDEN_REASON[p.availability]}</div>}</div>
       <span className="text-[12px] font-semibold whitespace-nowrap" style={{ color: !p.enabled ? T.ink3 : healthOk ? T.teal : T.accentText }}>{health}</span>
+      {p.availability === 'ready' && !p.isDefault && <Button size="sm" loading={makeDefault.isPending} onClick={() => makeDefault.mutate()}>Đặt mặc định</Button>}
       <Button size="sm" onClick={() => setOpen(true)}>Cấu hình</Button>
       <Toggle on={p.enabled} disabled={toggle.isPending} onChange={(v) => toggle.mutate(v)} />
       {open && <CredentialModal p={p} onClose={() => setOpen(false)} />}

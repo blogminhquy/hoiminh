@@ -8,7 +8,17 @@ import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import type { Shell } from '@/lib/community';
 import { modeChoices, promoEndLabel, type TermChoice } from '@/lib/membership';
-import { CheckoutFrame, PROVIDERS, ProviderOption, Totals, type Provider } from './CheckoutParts';
+import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
+import { CheckoutFrame, ProviderOption, Totals, providerMeta, type Provider } from './CheckoutParts';
+
+/** Lời giới thiệu từng cách ở bước thanh toán của hội: nói rõ tiền về thẳng chủ hội. */
+function buyerDesc(k: Provider, community: string, bankMode: 'manual' | 'auto' | null): string {
+  if (k === 'sepay') return bankMode === 'auto' ? `Quét bằng app ngân hàng, tiền chuyển thẳng tới chủ hội ${community}, mở quyền ngay khi tiền về` : `Quét bằng app ngân hàng, tiền chuyển thẳng tới chủ hội ${community}`;
+  if (k === 'momo') return 'Xác nhận ngay trong ví MoMo, tiền về thẳng chủ hội';
+  if (k === 'vnpay') return 'Thẻ ATM nội địa, thẻ quốc tế hoặc QR ngân hàng';
+  if (k === 'paypal') return 'Trả bằng USD qua PayPal, hợp với khách ở nước ngoài';
+  return 'Thẻ quốc tế, thanh toán an toàn qua Stripe';
+}
 
 interface ProductLite { id: string; name: string; priceMinor: number; compareAtMinor: number | null; kind: string; slug: string }
 interface ProductList { items: ProductLite[] }
@@ -36,9 +46,12 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
   const choices = modeChoices(premium, c.pricingMode);
   const [months, setMonths] = useState<number | null>(() => initialChoice(choices, initialCycle, initialMonths));
   const choice = choices.find((x) => x.months === months) ?? choices[0] ?? null;
-  // Đơn của hội chỉ trả bằng chuyển khoản tới tài khoản của chủ hội (tiền không qua Hội Mình).
-  const provider: Provider = 'sepay';
-  const ready = c.paymentsReady;
+  // Đơn của hội: tiền về thẳng chủ hội, bằng chuyển khoản QR hoặc qua cổng riêng của chủ hội. Người mua chỉ thấy cách
+  // chủ hội đã cài và đang bật; cách chủ hội đặt làm mặc định được chọn sẵn.
+  const methods = c.paymentMethods ?? [];
+  const [picked, setPicked] = useState<Provider | null>(null);
+  const provider: Provider | null = picked && methods.includes(picked) ? picked : initialMethod(methods, c.defaultPaymentMethod);
+  const ready = c.paymentsReady && provider !== null;
   const [coupon, setCoupon] = useState('');
   const [applied, setApplied] = useState<string | null>(null);
   const products = useQuery({ queryKey: ['products', c.id], queryFn: () => api.get<ProductList>(`/v1/communities/${c.id}/products`), enabled: Boolean(productId) });
@@ -47,7 +60,7 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
   const m = useMutation({
     mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', {
       target: product ? { type: 'product', productId: product.id } : { type: 'tier', communityId: c.id, tierKey: tierKey ?? 'premium', ...(choice?.months ? { cycle: choice.months === 12 ? 'yearly' : 'monthly', months: choice.months } : { cycle: 'one_time' }) },
-      provider, couponCode: applied ?? undefined, ref: ref ?? undefined, returnUrl: `${window.location.origin}/thanh-toan/`,
+      provider: provider ?? undefined, couponCode: applied ?? undefined, ref: ref ?? undefined,
     }),
     onSuccess: (r) => navigate(`/thanh-toan/${r.orderId}`),
   });
@@ -100,16 +113,20 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
         </div>
         <div className="w-full md:w-[520px] flex flex-col gap-3 md:pt-9">
           <span className="font-semibold">Cách thanh toán</span>
-          <ProviderOption p={{ ...PROVIDERS[0]!, desc: `Quét bằng app ngân hàng, tiền chuyển thẳng tới chủ hội ${c.name}` }} on />
+          {ready && (
+            <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="Cách thanh toán">
+              {methods.map((k) => <ProviderOption key={k} p={{ ...providerMeta(k), desc: buyerDesc(k, c.name, c.bankConfirmMode) }} on={provider === k} onClick={() => setPicked(k)} />)}
+            </div>
+          )}
           {m.isError && <div className="text-[14px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
           {ready ? (
-            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="mt-1.5">Lấy mã QR chuyển khoản</Button>
+            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="mt-1.5">{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán ${money(amount)} bằng ${BUYER_METHOD_NAME[provider!]}`}</Button>
           ) : (
             <>
               <Button size="lg" disabled className="mt-1.5" icon={<Lock size={18} />}>Hội chưa mở thanh toán</Button>
               <div className="text-[14px] text-center" style={{ color: T.goldText }}>{shell.viewer.permissions.includes('billing.manage')
-                ? <>Bạn chưa cài tài khoản nhận tiền. <Link to={`/${c.slug}/cai-dat/nhan-tien`} className="font-semibold underline">Cài nhận tiền</Link> để mở nút mua.</>
-                : 'Chủ hội chưa cài tài khoản nhận tiền nên chưa mua được. Bạn quay lại sau nhé.'}</div>
+                ? <>Bạn chưa cài cách nhận tiền nào. <Link to={`/${c.slug}/cai-dat/nhan-tien`} className="font-semibold underline">Cài nhận tiền</Link> để mở nút mua.</>
+                : 'Chủ hội chưa cài cách nhận tiền nên chưa mua được. Bạn quay lại sau nhé.'}</div>
             </>
           )}
           <div className="muted text-[13px] text-center">Hội Mình không thu phí giao dịch và không giữ tiền của bạn</div>

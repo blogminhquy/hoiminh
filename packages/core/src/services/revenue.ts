@@ -95,7 +95,10 @@ export async function payoutSettings(ctx: Ctx, communityId: string) {
   const owner = await ctx.db.query.users.findFirst({ where: eq(users.id, ownerId) });
   return {
     ready: setup.ready,
-    account: setup.account ? { bankName: setup.account.bankName, accountNumber: setup.account.accountNumber, accountHolder: setup.account.accountHolder, confirmMode: setup.account.confirmMode } : null,
+    /** Chỉ khi chuyển khoản QR đang bật: người mua chuyển thẳng tới tài khoản này. */
+    account: setup.account?.enabled ? { bankName: setup.account.bankName, accountNumber: setup.account.accountNumber, accountHolder: setup.account.accountHolder, confirmMode: setup.account.confirmMode } : null,
+    /** Các cách người mua đang thấy. */
+    methods: setup.methods,
     received30Minor: setup.received30Minor,
     pendingCount: setup.pending.length,
     pendingMinor: setup.pending.reduce((n, p) => n + p.amountMinor, 0),

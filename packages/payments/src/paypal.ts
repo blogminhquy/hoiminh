@@ -23,8 +23,9 @@ export class PaypalAdapter implements PaymentAdapter {
   private get base(): string {
     return this.cfg.mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
   }
+  /** Client ID bắt đầu bằng `paypal-sandbox` là bộ khóa thử của Hội Mình (máy dev và test): đi qua trang mô phỏng. */
   private get hasCredentials(): boolean {
-    return Boolean(this.cfg.clientId && this.cfg.clientSecret);
+    return Boolean(this.cfg.clientId && this.cfg.clientSecret && !this.cfg.clientId.startsWith('paypal-sandbox'));
   }
 
   /** Quy đổi VND → USD (cent) theo tỷ giá cấu hình, làm tròn lên cent. */

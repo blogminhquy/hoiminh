@@ -1,15 +1,16 @@
 // Payment Event Processor: nhận webhook đã verify, idempotent theo provider_event_id, khớp đơn, phát payment.succeeded, đối soát, hoàn tiền.
 import { BUSINESS } from '@hoiminh/config';
-import { formatMoney } from '@hoiminh/contracts';
+import { formatMoney, type PaymentProvider } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import type { IncomingWebhook, NormalizedEvent, PaymentAdapter } from '@hoiminh/payments';
 import { normalizeReference } from '@hoiminh/payments';
 import { and, eq, inArray, lt, sql } from 'drizzle-orm';
-import { communities, communityMembers, courseProgress, invoices, orders, paymentEvents, payments, products, reconciliationItems, refunds, users, webhookEvents } from '@hoiminh/db';
+import { communities, communityMembers, communityPaymentGateways, courseProgress, invoices, orders, paymentEvents, payments, products, reconciliationItems, refunds, users, webhookEvents } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { AppError, invalid, invalidState, notFound } from '../errors';
 import { isOwnerPayee } from '../lib/payee';
+import { ownerGatewayAdapter } from '../lib/owner-gateway';
 import { paymentsFor } from '../lib/payment-accounts';
 import { requireCommunityPermission, requireSuperAdmin, requireUser } from '../permissions';
 import { audit } from './audit';
@@ -23,7 +24,7 @@ export interface WebhookOutcome {
 }
 
 /** Nhận webhook từ một cổng: verify chữ ký → lưu sự kiện (UNIQUE) → xử lý → phản hồi theo cổng. */
-export async function handleWebhook(ctx: Ctx, provider: 'sepay' | 'momo' | 'vnpay' | 'paypal', req: IncomingWebhook): Promise<WebhookOutcome> {
+export async function handleWebhook(ctx: Ctx, provider: PaymentProvider, req: IncomingWebhook): Promise<WebhookOutcome> {
   const adapter = (await paymentsFor(ctx)).get(provider);
   const verified = await adapter.verifyWebhook(req);
   const event = adapter.parseWebhook(req);
@@ -210,7 +211,7 @@ export async function applyRefund(ctx: Ctx, paymentId: string, amountMinor: numb
   } else {
     const settlement = settlementOf(payment);
     const providerAmount = settlement.currency === payment.currency ? amountMinor : Math.round((settlement.amountMinor * amountMinor) / payment.amountMinor);
-    const adapter = (await paymentsFor(ctx)).get(payment.provider as 'sepay');
+    const adapter = isOwnerPayee(payment) ? await ownerRefundAdapter(ctx, payment) : (await paymentsFor(ctx)).get(payment.provider as 'sepay');
     r = await adapter.refund({ providerPaymentId: payment.providerPaymentId, reference: payment.reference, amountMinor: providerAmount, reason }).catch(() => ({ ok: false, providerRefundId: null, manual: false }));
     if (!r.ok) {
       await ctx.db.update(payments).set({ refundedMinor: sql`${payments.refundedMinor} - ${amountMinor}`, updatedAt: ctx.now() }).where(eq(payments.id, paymentId));
@@ -230,6 +231,17 @@ export async function applyRefund(ctx: Ctx, paymentId: string, amountMinor: numb
   if (user) await ctx.email.send(templates.paymentRefunded(user.email, user.name, String((order?.metadata as { title?: string })?.title ?? 'đơn hàng'), formatMoney(amountMinor, payment.currency as 'VND')));
   await audit(ctx, { action: 'payment.refund', resourceType: 'payment', resourceId: paymentId, communityId: payment.communityId, metadata: { amountMinor, reason, manual: r.manual, fromProvider: Boolean(opts.fromProvider) } });
   return { refundId: refund!.id, manual: r.manual, alreadyRefunded: false };
+}
+
+/**
+ * Đơn của hội trả thẳng chủ hội: hoàn qua cổng của chính chủ hội (MoMo, PayPal, Stripe có API hoàn tiền), không bao
+ * giờ qua cổng của Hội Mình. Chuyển khoản, VNPAY, hoặc cổng đã gỡ thì hoàn thủ công: chủ hội tự chuyển lại tiền.
+ */
+async function ownerRefundAdapter(ctx: Ctx, payment: typeof payments.$inferSelect): Promise<Pick<PaymentAdapter, 'refund'>> {
+  const manual = { refund: async () => ({ ok: true, providerRefundId: null, manual: true }) };
+  if (payment.provider === 'sepay' || !payment.communityId) return manual;
+  const g = await ctx.db.query.communityPaymentGateways.findFirst({ where: and(eq(communityPaymentGateways.communityId, payment.communityId), eq(communityPaymentGateways.provider, payment.provider as 'momo')) });
+  return g ? ownerGatewayAdapter(ctx, g) : manual;
 }
 
 /** Hết hạn đơn chờ quá 30 phút (cron). */

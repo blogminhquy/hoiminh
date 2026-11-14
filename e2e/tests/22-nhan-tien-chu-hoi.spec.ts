@@ -1,6 +1,6 @@
-// Luồng 22: chủ hội cài nhận tiền. Hội chưa cài thì nút mua bị khóa → chủ hội nhập tài khoản ngân hàng của mình →
-// người mua thấy mã QR tới đúng tài khoản đó, bấm "Tôi đã chuyển khoản" → chủ hội bấm "Đã nhận tiền" → người mua được
-// mở quyền ngay. Tiền không đi qua Hội Mình. Cuối cùng chủ hội chuyển sang tự xác nhận, thấy
+// Luồng 22: chủ hội cài nhận tiền. Hội chưa cài thì nút mua bị khóa → chủ hội nhập tài khoản ngân hàng của mình ở hàng
+// "Chuyển khoản QR" → người mua thấy mã QR tới đúng tài khoản đó, bấm "Tôi đã chuyển khoản" → chủ hội bấm "Đã nhận tiền"
+// → người mua được mở quyền ngay. Tiền không đi qua Hội Mình. Cuối cùng chủ hội bật hàng "QR tự động qua SePay", thấy
 // hướng dẫn nối SePay kèm địa chỉ báo có, và dòng trạng thái tự báo "Đã nối" khi SePay gửi thử.
 import { expect, test } from '@playwright/test';
 import { USERS, login } from '../helpers';
@@ -12,7 +12,7 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await login(buyer, USERS.member);
   await buyer.goto('/ngoai-ngu-vy/thanh-toan?tier=premium&cycle=monthly');
   await expect(buyer.getByRole('button', { name: 'Hội chưa mở thanh toán' })).toBeDisabled();
-  await expect(buyer.getByText(/Chủ hội chưa cài tài khoản nhận tiền/)).toBeVisible();
+  await expect(buyer.getByText(/Chủ hội chưa cài cách nhận tiền/)).toBeVisible();
 
   // Chủ hội cài tài khoản nhận tiền.
   await login(page, USERS.freeOwner);
@@ -24,9 +24,10 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await expect(save).toBeDisabled();
   await page.getByPlaceholder('Số tài khoản').fill('19039998887776');
   await page.getByPlaceholder('Viết đúng như trên tài khoản ngân hàng').fill('nguyen thao vy');
-  await expect(page.getByRole('radio', { name: /Tôi tự bấm đã nhận tiền/ })).toHaveAttribute('aria-checked', 'true');
   await save.click();
   await expect(page.getByText('Hội đã mở thanh toán')).toBeVisible();
+  await expect(page.getByText('Người mua đang thấy: Chuyển khoản QR.')).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Bật Chuyển khoản QR' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText(/Chưa có đơn nào đang chờ/)).toBeVisible();
 
   // Người mua: nút mua đã mở, mã QR chuyển tới đúng tài khoản của chủ hội.
@@ -56,10 +57,11 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await expect(money.getByText('149.000đ').first()).toBeVisible();
   await expect(page.getByText('Có thể rút')).toHaveCount(0);
 
-  // Chuyển sang tự xác nhận: hiện địa chỉ báo có riêng của hội.
+  // Bật QR tự động qua SePay: hàng chuyển khoản thường tự tắt (dùng chung tài khoản), hiện địa chỉ báo có riêng của hội.
   await page.goto('/ngoai-ngu-vy/cai-dat/nhan-tien');
-  await page.getByRole('radio', { name: /Tự xác nhận/ }).click();
-  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await page.getByRole('switch', { name: 'Bật QR tự động qua SePay' }).click();
+  await expect(page.getByRole('switch', { name: 'Bật QR tự động qua SePay' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('switch', { name: 'Bật Chuyển khoản QR' })).toHaveAttribute('aria-checked', 'false');
   const sepay = page.getByRole('region', { name: 'Nối SePay để đơn tự xác nhận' });
   await expect(sepay.getByText(/Chọn sự kiện/)).toBeVisible();
   const address = sepay.getByText(/\/webhooks\/bank\/[a-f0-9]{40}/);

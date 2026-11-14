@@ -3,18 +3,18 @@
 // (/admin/goi?hoi=<slug>&goi=<khóa gói>&ky=<chu kỳ>): số ngày mua, số ngày tặng từ gói cũ, ngày hết hạn, rồi
 // khung chọn cách trả → POST /v1/checkout → /thanh-toan/:orderId. Không có dùng thử.
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { isPlanKey, planCycleSchema, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
+import { isPlanKey, planCycleSchema, type PaymentProvider, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
 import { Button, Modal, OptionCard, T, Tag } from '@hoiminh/ui';
 import { Check, ChevronLeft, Lock, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
+import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
 import { CYCLES, capView, compareRows, cycleLabel, num, planBadge, tierCards, upgradeSummary, type HoiPlan, type TierCard } from '@/lib/platform-plan';
 import { WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 
-type Provider = 'sepay' | 'momo' | 'vnpay' | 'paypal';
-const PROVIDERS: Array<[Provider, string]> = [['sepay', 'Chuyển khoản QR'], ['momo', 'MoMo'], ['vnpay', 'VNPAY'], ['paypal', 'PayPal']];
+type Provider = PaymentProvider;
 
 export interface PlanStatus {
   community: { id: string; name: string; slug: string; memberCount: number; status: string; isFreeSlot: boolean };
@@ -22,6 +22,8 @@ export interface PlanStatus {
   cycle: PlanCycle | null;
   plans: PlanDef[];
   canBuy: boolean;
+  /** Cách trả tiền gói: chỉ cổng quản trị đã cài và đang bật, cổng mặc định chọn sẵn. */
+  payment?: { methods: Provider[]; defaultMethod: Provider | null };
 }
 export const planStatusQuery = (communityId: string) => ({ queryKey: ['community-plan', communityId], queryFn: () => api.get<PlanStatus>(`/v1/communities/${communityId}/plan`) });
 
@@ -154,16 +156,19 @@ function Choose({ s, cycle, setCycle, linkTo }: { s: PlanStatus; cycle: PlanCycl
 
 function PayModal({ open, onClose, s, target, cycle, price, note }: { open: boolean; onClose: () => void; s: PlanStatus; target: PlanDef; cycle: PlanCycle; price: string; note: string }) {
   const navigate = useNavigate();
-  const [provider, setProvider] = useState<Provider>('sepay');
+  // Chỉ hiện cổng quản trị đã cài và đang bật; cổng mặc định được chọn sẵn.
+  const methods = s.payment?.methods ?? [];
+  const [picked, setPicked] = useState<Provider | null>(null);
+  const provider = picked && methods.includes(picked) ? picked : initialMethod(methods, s.payment?.defaultMethod);
   const m = useMutation({
-    mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', { target: { type: 'platform', communityId: s.community.id, planKey: target.key, cycle }, provider }),
+    mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', { target: { type: 'platform', communityId: s.community.id, planKey: target.key, cycle }, provider: provider ?? undefined }),
     onSuccess: (r) => navigate(`/thanh-toan/${r.orderId}`),
   });
   return (
     <Modal open={open} onClose={onClose} title="Thanh toán gói Hội Mình" width={480} footer={(
       <div className="flex flex-col gap-2.5 px-5 py-4" style={{ borderTop: `1px solid ${T.line}` }}>
         {m.isError && <div className="text-[14px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
-        <Button variant="primary" size="lg" block loading={m.isPending} onClick={() => m.mutate()}>Thanh toán {price}</Button>
+        <Button variant="primary" size="lg" block loading={m.isPending} disabled={!provider} onClick={() => m.mutate()}>Thanh toán {price}</Button>
         <div className="muted text-[13px] text-center">{note}</div>
       </div>
     )}>
@@ -178,7 +183,9 @@ function PayModal({ open, onClose, s, target, cycle, price, note }: { open: bool
         </div>
         <div className="flex flex-col gap-2">
           <span className="text-[14px] font-semibold">Cách thanh toán</span>
-          <div className="grid-2">{PROVIDERS.map(([k, l]) => <OptionCard key={k} on={provider === k} onClick={() => setProvider(k)} title={l} />)}</div>
+          {methods.length
+            ? <div className="grid-2" role="radiogroup" aria-label="Cách thanh toán">{methods.map((k) => <OptionCard key={k} on={provider === k} onClick={() => setPicked(k)} title={BUYER_METHOD_NAME[k]} />)}</div>
+            : <div className="text-[14px] rounded-[12px] px-4 py-3" style={{ background: T.goldSoft, color: T.goldText }}>Hội Mình đang bảo trì cổng thanh toán, bạn quay lại sau ít phút nhé.</div>}
         </div>
       </div>
     </Modal>

@@ -4,6 +4,7 @@ import type { PaymentProvider } from '@hoiminh/contracts';
 import { MomoAdapter } from './momo';
 import { PaypalAdapter } from './paypal';
 import { SepayAdapter } from './sepay';
+import { StripeAdapter } from './stripe';
 import type { PaymentAdapter } from './types';
 import { VnpayAdapter } from './vnpay';
 
@@ -12,6 +13,11 @@ export { SepayAdapter } from './sepay';
 export { MomoAdapter } from './momo';
 export { VnpayAdapter, vnpQueryString } from './vnpay';
 export { PaypalAdapter } from './paypal';
+export { StripeAdapter, STRIPE_SIMULATOR_KEY_PREFIX, STRIPE_TOLERANCE_SECONDS, stripeForm } from './stripe';
+export type { MomoConfig } from './momo';
+export type { VnpayConfig } from './vnpay';
+export type { PaypalConfig } from './paypal';
+export type { StripeConfig } from './stripe';
 
 export type PaymentRouter = {
   get(provider: PaymentProvider): PaymentAdapter;
@@ -41,6 +47,7 @@ export function createPaymentRouter(env: Env, simulatorUrl: string): PaymentRout
     momo: new MomoAdapter({ mode: env.MOMO_MODE, partnerCode: env.MOMO_PARTNER_CODE, accessKey: env.MOMO_ACCESS_KEY, secretKey: env.MOMO_SECRET_KEY, endpoint: env.MOMO_ENDPOINT, simulatorUrl, appEnv: env.APP_ENV }),
     vnpay: new VnpayAdapter({ mode: env.VNPAY_MODE, tmnCode: env.VNPAY_TMN_CODE, hashSecret: env.VNPAY_HASH_SECRET, endpoint: env.VNPAY_ENDPOINT, simulatorUrl, appEnv: env.APP_ENV }),
     paypal: new PaypalAdapter({ mode: env.PAYPAL_MODE, clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET, webhookId: env.PAYPAL_WEBHOOK_ID, usdRate: env.PAYPAL_USD_RATE, simulatorUrl, appEnv: env.APP_ENV }),
+    stripe: new StripeAdapter({ mode: env.STRIPE_MODE, secretKey: env.STRIPE_SECRET_KEY, webhookSecret: env.STRIPE_WEBHOOK_SECRET, simulatorUrl, appEnv: env.APP_ENV }),
   };
   if (!isLocalEnv(env.APP_ENV)) for (const p of providersWithDefaultSecrets(env)) adapters[p] = locked(adapters[p]);
   return { get: (p) => adapters[p], all: () => Object.values(adapters) };

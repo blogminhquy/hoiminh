@@ -1,6 +1,7 @@
 // Quản trị hệ thống: tổng quan, hội, người dùng, cổng thanh toán, đối soát (ghép thủ công), nhật ký và webhook.
 import { decryptJson, encryptJson, isLocalEnv, providersWithDefaultSecrets } from '@hoiminh/config';
-import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { PAYMENT_PROVIDERS, type PaymentProvider } from '@hoiminh/contracts';
+import { and, desc, eq, ilike, isNull, ne, or, sql } from 'drizzle-orm';
 import { auditLogs, communities, emailLogs, orders, payments, providerAccounts, reconciliationItems, users, webhookEvents, workspaces } from '@hoiminh/db';
 import { emailProviderLabel, sendImmediately, templates } from '@hoiminh/email';
 import { actorUserId, type Ctx } from '../context';
@@ -12,6 +13,7 @@ import { requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
 import { confirmPayment } from './payments';
 import { planOfCommunity, planTable } from './plans';
+import { platformAvailability, platformPaymentMethods } from './platform-methods';
 
 export interface ConfigWarning {
   key: string;
@@ -148,25 +150,32 @@ export async function userAction(ctx: Ctx, userId: string, action: 'suspend' | '
 export async function listProviders(ctx: Ctx) {
   requireSuperAdmin(ctx);
   const rows = await ctx.db.query.providerAccounts.findMany({ where: eq(providerAccounts.scopeType, 'platform') });
-  const all = ['sepay', 'momo', 'vnpay', 'paypal'] as const;
   const router = await paymentsFor(ctx);
+  // Cổng nào đang hiện cho chủ hội mua gói, cổng nào không và vì sao; cổng mặc định là cổng được chọn sẵn.
+  const { states } = await platformAvailability(ctx, null);
+  const { defaultMethod } = await platformPaymentMethods(ctx, null);
   const out = [];
-  for (const p of all) {
+  for (const p of PAYMENT_PROVIDERS) {
     const row = rows.find((r) => r.provider === p);
     const stats = await raw(ctx.db, sql`select count(*)::int as total, count(*) filter (where processing_status = 'failed')::int as failed, max(created_at) as last from webhook_events where provider = ${p} and created_at > date_trunc('month', now())`);
     const s = stats[0] as { total: number; failed: number; last: string | null };
     const adapter = router.get(p);
-    out.push({ provider: p, enabled: row?.enabled ?? true, mode: row?.mode ?? adapter.mode, health: row?.lastHealthStatus ?? 'unknown', lastHealthAt: row?.lastHealthAt ?? null, consecutiveFailures: Number(row?.consecutiveFailures ?? 0), webhooksThisMonth: Number(s.total), webhookFailuresThisMonth: Number(s.failed), lastWebhookAt: s.last, hasCredentials: Boolean(row?.credentialsEncrypted), configuration: row?.configuration ?? {} });
+    out.push({ provider: p, enabled: row?.enabled ?? true, mode: row?.mode ?? adapter.mode, health: row?.lastHealthStatus ?? 'unknown', lastHealthAt: row?.lastHealthAt ?? null, consecutiveFailures: Number(row?.consecutiveFailures ?? 0), webhooksThisMonth: Number(s.total), webhookFailuresThisMonth: Number(s.failed), lastWebhookAt: s.last, hasCredentials: Boolean(row?.credentialsEncrypted), configuration: row?.configuration ?? {}, availability: states[p], isDefault: defaultMethod === p });
   }
   return out;
 }
 
-export async function updateProvider(ctx: Ctx, provider: 'sepay' | 'momo' | 'vnpay' | 'paypal', input: { enabled?: boolean; mode?: 'sandbox' | 'production'; credentials?: Record<string, string> }) {
+export async function updateProvider(ctx: Ctx, provider: PaymentProvider, input: { enabled?: boolean; mode?: 'sandbox' | 'production'; credentials?: Record<string, string>; isDefault?: true }) {
   requireSuperAdmin(ctx);
   const existing = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, provider), eq(providerAccounts.scopeType, 'platform')) });
-  const values = { provider, scopeType: 'platform' as const, enabled: input.enabled ?? existing?.enabled ?? true, mode: input.mode ?? existing?.mode ?? 'sandbox', credentialsEncrypted: input.credentials ? await encryptJson(await mergeCredentials(ctx, existing?.credentialsEncrypted ?? null, input.credentials), ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION) : (existing?.credentialsEncrypted ?? null), updatedAt: ctx.now() };
+  const values = { provider, scopeType: 'platform' as const, enabled: input.enabled ?? existing?.enabled ?? true, mode: input.mode ?? existing?.mode ?? 'sandbox', credentialsEncrypted: input.credentials ? await encryptJson(await mergeCredentials(ctx, existing?.credentialsEncrypted ?? null, input.credentials), ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION) : (existing?.credentialsEncrypted ?? null), configuration: { ...(existing?.configuration ?? {}), ...(input.isDefault ? { isDefault: true } : {}) }, updatedAt: ctx.now() };
   const [row] = existing ? await ctx.db.update(providerAccounts).set(values).where(eq(providerAccounts.id, existing.id)).returning() : await ctx.db.insert(providerAccounts).values(values).returning();
-  await audit(ctx, { action: 'provider.update', resourceType: 'provider_account', resourceId: provider, metadata: { enabled: values.enabled, mode: values.mode, credentialsChanged: Boolean(input.credentials) } });
+  if (input.isDefault) {
+    // Chỉ một cổng mặc định: bỏ dấu ở các cổng còn lại.
+    const others = await ctx.db.query.providerAccounts.findMany({ where: and(eq(providerAccounts.scopeType, 'platform'), ne(providerAccounts.provider, provider)) });
+    for (const o of others) if ((o.configuration as { isDefault?: unknown }).isDefault) await ctx.db.update(providerAccounts).set({ configuration: { ...o.configuration, isDefault: false }, updatedAt: ctx.now() }).where(eq(providerAccounts.id, o.id));
+  }
+  await audit(ctx, { action: 'provider.update', resourceType: 'provider_account', resourceId: provider, metadata: { enabled: values.enabled, mode: values.mode, credentialsChanged: Boolean(input.credentials), ...(input.isDefault ? { isDefault: true } : {}) } });
   return { provider: row!.provider, enabled: row!.enabled, mode: row!.mode };
 }
 

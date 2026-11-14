@@ -33,7 +33,7 @@ export default function Page() {
         <>
           <div className="flex gap-4 flex-col md:flex-row">
             <div className="card flex-[1.2_1_0] flex flex-col" style={{ padding: '18px 20px' }}>
-              <div className="pb-1.5"><span className="font-semibold">Cổng thanh toán</span><div className="muted text-[13px]">Bật tắt toàn hệ thống, cấu hình khóa và webhook. Bí mật không hiện lại sau khi lưu.</div></div>
+              <div className="pb-1.5"><span className="font-semibold">Cổng thanh toán</span><div className="muted text-[13px]">Dùng cho đơn mua gói Hội Mình. Chủ hội chỉ thấy cổng đang bật và đã có khóa thật; cổng mặc định được chọn sẵn. Bí mật không hiện lại sau khi lưu.</div></div>
               <QueryState q={providers} rows={4}>{(list) => <>{list.map((p) => <ProviderRow key={p.provider} p={p} />)}</>}</QueryState>
             </div>
             <div className="flex-1 flex flex-col gap-3">

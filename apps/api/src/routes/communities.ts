@@ -1,6 +1,6 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, payoutAccountInputSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
-import { affiliate, communities, members, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -60,6 +60,10 @@ communityRoutes.get('/:id/revenue', requireAuth, async (c) => c.json(await reven
 communityRoutes.get('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.payoutSetup(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.savePayoutAccount(c.get('ctx'), c.req.param('id'), await parse(payoutAccountInputSchema, await body(c)))));
 communityRoutes.post('/:id/payout-account/rotate-webhook', requireAuth, async (c) => c.json(await ownerPayout.rotatePayoutWebhook(c.get('ctx'), c.req.param('id'))));
+/** Cổng riêng của chủ hội (MoMo, VNPAY, PayPal, Stripe): lưu khóa, bật tắt, gỡ; chọn cách mặc định cho người mua. */
+communityRoutes.put('/:id/payment-gateways/:provider', requireAuth, rateLimit('write', { scope: 'payment-gateway' }), async (c) => c.json(await ownerGateways.saveGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')), await parse(ownerGatewayInputSchema, await body(c)))));
+communityRoutes.delete('/:id/payment-gateways/:provider', requireAuth, async (c) => c.json(await ownerGateways.removeGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')))));
+communityRoutes.patch('/:id/payment-methods', requireAuth, async (c) => c.json(await ownerGateways.updatePaymentMethods(c.get('ctx'), c.req.param('id'), await parse(paymentMethodsUpdateSchema, await body(c)))));
 communityRoutes.post('/:id/orders/:orderId/confirm-received', requireAuth, rateLimit('write', { scope: 'confirm-received' }), async (c) => c.json(await ownerPayout.confirmOwnerOrder(c.get('ctx'), c.req.param('id'), c.req.param('orderId'))));
 communityRoutes.get('/:id/payout', requireAuth, async (c) => c.json(await revenue.payoutSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/providers', requireAuth, async (c) => {

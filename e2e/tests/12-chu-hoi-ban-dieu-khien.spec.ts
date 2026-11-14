@@ -33,7 +33,7 @@ test.describe('điện thoại', () => {
     const money = page.getByRole('region', { name: 'Nhận tiền' });
     await expect(money.getByText('Đã thu 30 ngày')).toBeVisible();
     await expect(money.getByText(/chuyển khoản thẳng tới Vietcombank 0071000999888/)).toBeVisible();
-    await expect(money.getByRole('link', { name: 'Tài khoản nhận tiền' })).toHaveAttribute('href', '/minhquy/cai-dat/nhan-tien');
+    await expect(money.getByRole('link', { name: 'Cách nhận tiền' })).toHaveAttribute('href', '/minhquy/cai-dat/nhan-tien');
     await expect(page.getByRole('heading', { name: 'Doanh thu' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Quản lý', exact: true })).toHaveAttribute('aria-current', 'page');
     await expectNoSideScroll(page, 390);

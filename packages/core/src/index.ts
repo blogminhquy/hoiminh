@@ -44,6 +44,8 @@ export * as notifications from './services/notifications';
 export * as safety from './services/safety';
 export * as platformBilling from './services/platform-billing';
 export * as ownerPayout from './services/owner-payout';
+export * as ownerGateways from './services/owner-gateways';
+export * as platformMethods from './services/platform-methods';
 export * as push from './services/push';
 export * as loginLinks from './services/login-links';
 export * as admin from './services/admin';

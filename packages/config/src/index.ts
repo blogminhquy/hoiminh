@@ -75,6 +75,11 @@ export const envSchema = z.object({
   PAYPAL_WEBHOOK_ID: z.string().default(''),
   PAYPAL_USD_RATE: z.coerce.number().default(25000),
 
+  // Stripe (thẻ quốc tế) của Hội Mình: để trống là cổng không hiện cho người mua gói.
+  STRIPE_MODE: mode,
+  STRIPE_SECRET_KEY: z.string().default(''),
+  STRIPE_WEBHOOK_SECRET: z.string().default(''),
+
   DEV_FAKE_EMAIL: bool.default(true),
 
   // Phát hành web thủ công: token Cloudflare chỉ cần quyền "Workers Scripts: Edit".

@@ -1,7 +1,7 @@
 // Webhook nhận từ cổng thanh toán (không cần đăng nhập, verify chữ ký trong service) + trang mô phỏng cho sandbox không credential.
 import { hmacHex, isLocalEnv, type Env } from '@hoiminh/config';
-import { ownerPayout, paymentsService, AppError } from '@hoiminh/core';
-import { MomoAdapter, vnpQueryString } from '@hoiminh/payments';
+import { ownerGateways, ownerPayout, paymentsService, AppError } from '@hoiminh/core';
+import { MomoAdapter, StripeAdapter, vnpQueryString } from '@hoiminh/payments';
 import { query, router, type Ctx$ } from '../lib/hono';
 import { rateLimit } from '../middleware/rate-limit';
 
@@ -14,7 +14,7 @@ async function incoming(c: Ctx$) {
   return { headers, rawBody: c.req.method === 'GET' ? '' : await c.req.text(), query: query(c) };
 }
 
-for (const provider of ['sepay', 'momo', 'paypal'] as const) {
+for (const provider of ['sepay', 'momo', 'paypal', 'stripe'] as const) {
   webhookRoutes.post(`/${provider}`, async (c) => {
     const r = await paymentsService.handleWebhook(c.get('ctx'), provider, await incoming(c));
     return r.body === null ? c.body(null, r.status as 204) : c.json(r.body as Record<string, unknown>, r.status as 200);
@@ -25,6 +25,14 @@ webhookRoutes.post('/bank/:token', async (c) => {
   const r = await ownerPayout.handleOwnerBankWebhook(c.get('ctx'), c.req.param('token'), await incoming(c));
   return c.json(r.body as Record<string, unknown>, r.status as 200);
 });
+// Cổng riêng của chủ hội (MoMo, VNPAY, PayPal, Stripe) gọi về địa chỉ riêng của từng cổng; chữ ký kiểm bằng khóa của
+// chủ hội. VNPAY gọi IPN bằng GET nên nhận cả hai.
+const ownerGateway = async (c: Ctx$) => {
+  const r = await ownerGateways.handleOwnerGatewayWebhook(c.get('ctx'), c.req.param('token') ?? '', await incoming(c));
+  return r.body === null ? c.body(null, r.status as 204) : c.json(r.body as Record<string, unknown>, r.status as 200);
+};
+webhookRoutes.post('/hoi/:token', ownerGateway);
+webhookRoutes.get('/hoi/:token', ownerGateway);
 // VNPAY gọi IPN bằng GET với query string; return URL của trình duyệt không được tin (chỉ để hiển thị).
 webhookRoutes.get('/vnpay', async (c) => {
   const r = await paymentsService.handleWebhook(c.get('ctx'), 'vnpay', await incoming(c));
@@ -55,14 +63,30 @@ function requireLocal(env: Env): void {
   if (!isLocalEnv(env.APP_ENV)) throw new AppError('not_found', 'Không có trang này');
 }
 
+/** Trang mô phỏng: hai nút thành công và thất bại, gửi về `action`. */
+function simulatorPage(env: Env, q: Record<string, string>, action: string): string {
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mô phỏng ${esc(q.provider)}</title><style>body{font-family:'Open Sans',system-ui,sans-serif;background:#F7F3EC;color:#1F1B17;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px;box-sizing:border-box}.card{background:#FFFDF9;border:1px solid #E8E1D6;border-radius:16px;padding:32px;max-width:420px;width:100%;box-sizing:border-box}h1{font-family:Montserrat,sans-serif;font-size:22px;margin:0 0 8px}p{color:#5C554D;font-size:16px}button{display:block;width:100%;margin-top:12px;height:48px;border:0;border-radius:10px;font-weight:600;font-size:16px;cursor:pointer}.ok{background:#D4593A;color:#fff}.no{background:#F7F3EC;color:#1F1B17}</style></head><body><div class="card"><h1>Sandbox ${esc(String(q.provider ?? '').toUpperCase())}</h1><p>Đây là trang mô phỏng vì chưa cấu hình credential thật. Số tiền: <strong>${esc(Number(q.amount).toLocaleString('vi-VN'))}</strong> · Đơn: <strong>${esc(q.orderId)}</strong></p><form method="post" action="${esc(action)}"><input type="hidden" name="provider" value="${esc(q.provider)}"><input type="hidden" name="orderId" value="${esc(q.orderId)}"><input type="hidden" name="amount" value="${esc(q.amount)}"><input type="hidden" name="requestId" value="${esc(q.requestId)}"><input type="hidden" name="return" value="${esc(safeReturn(env, q.return))}"><button class="ok" name="result" value="success">Thanh toán thành công</button><button class="no" name="result" value="fail">Thanh toán thất bại</button></form></div></body></html>`;
+}
+
 /** Trang mô phỏng thanh toán cho sandbox không có credential (chỉ ở dev và test). */
 export const simulatorRoutes = router();
 simulatorRoutes.get('/', (c) => {
   const env = c.get('ctx').env;
   requireLocal(env);
-  const q = query(c);
-  const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Mô phỏng ${esc(q.provider)}</title><style>body{font-family:'Open Sans',system-ui,sans-serif;background:#F7F3EC;color:#1F1B17;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#FFFDF9;border:1px solid #E8E1D6;border-radius:16px;padding:32px;max-width:420px;width:100%}h1{font-family:Montserrat,sans-serif;font-size:22px;margin:0 0 8px}p{color:#5C554D}button{display:block;width:100%;margin-top:12px;height:44px;border:0;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer}.ok{background:#D4593A;color:#fff}.no{background:#F7F3EC;color:#1F1B17}</style></head><body><div class="card"><h1>Sandbox ${esc(String(q.provider ?? '').toUpperCase())}</h1><p>Đây là trang mô phỏng vì chưa cấu hình credential thật. Số tiền: <strong>${esc(Number(q.amount).toLocaleString('vi-VN'))}</strong> · Đơn: <strong>${esc(q.orderId)}</strong></p><form method="post" action="/pay/simulator/confirm"><input type="hidden" name="provider" value="${esc(q.provider)}"><input type="hidden" name="orderId" value="${esc(q.orderId)}"><input type="hidden" name="amount" value="${esc(q.amount)}"><input type="hidden" name="requestId" value="${esc(q.requestId)}"><input type="hidden" name="return" value="${esc(safeReturn(env, q.return))}"><button class="ok" name="result" value="success">Thanh toán thành công</button><button class="no" name="result" value="fail">Thanh toán thất bại</button></form></div></body></html>`;
-  return c.html(html);
+  return c.html(simulatorPage(env, query(c), '/pay/simulator/confirm'));
+});
+// Cổng riêng của chủ hội dùng bộ khóa thử: trang mô phỏng ký sự kiện bằng khóa của chủ hội và gửi về đúng địa chỉ của cổng đó.
+simulatorRoutes.get('/hoi/:token', (c) => {
+  const env = c.get('ctx').env;
+  requireLocal(env);
+  return c.html(simulatorPage(env, query(c), `/pay/simulator/hoi/${encodeURIComponent(c.req.param('token'))}/confirm`));
+});
+simulatorRoutes.post('/hoi/:token/confirm', async (c) => {
+  const ctx = c.get('ctx');
+  requireLocal(ctx.env);
+  const form = await c.req.parseBody();
+  await ownerGateways.simulateOwnerGateway(ctx, c.req.param('token'), { orderRef: String(form.orderId), amount: Number(form.amount), requestId: String(form.requestId || form.orderId), success: form.result === 'success' });
+  return c.redirect(safeReturn(ctx.env, form.return));
 });
 simulatorRoutes.post('/confirm', async (c) => {
   const ctx = c.get('ctx');
@@ -85,6 +109,11 @@ simulatorRoutes.post('/confirm', async (c) => {
   } else if (provider === 'paypal') {
     const body = { id: `WH-SIM-${Date.now()}`, event_type: success ? 'PAYMENT.CAPTURE.COMPLETED' : 'PAYMENT.CAPTURE.DENIED', create_time: new Date().toISOString(), resource: { id: `CAP-${Date.now()}`, custom_id: orderId, amount: { value: (amount / 100).toFixed(2), currency_code: 'USD' } } };
     await paymentsService.handleWebhook(ctx, 'paypal', { headers: { 'x-hoiminh-simulator': 'paypal' }, rawBody: JSON.stringify(body), query: {} });
+  } else if (provider === 'stripe') {
+    const t = Math.floor(Date.now() / 1000);
+    const body = { id: `evt_sim_${Date.now()}`, type: success ? 'checkout.session.completed' : 'checkout.session.expired', created: t, data: { object: { id: `cs_sim_${Date.now()}`, client_reference_id: orderId, amount_total: amount, currency: 'vnd', payment_status: success ? 'paid' : 'unpaid', payment_intent: `pi_sim_${Date.now()}` } } };
+    const rawBody = JSON.stringify(body);
+    await paymentsService.handleWebhook(ctx, 'stripe', { headers: { 'stripe-signature': `t=${t},v1=${await hmacHex(env.STRIPE_WEBHOOK_SECRET, StripeAdapter.signedPayload(t, rawBody))}` }, rawBody, query: {} });
   }
   return c.redirect(ret);
 });

@@ -83,6 +83,11 @@ export const communities = pgTable(
     customDomain: text('custom_domain'),
     customDomainVerifiedAt: ts('custom_domain_verified_at'),
     enabledProviders: jsonb('enabled_providers').$type<string[]>().notNull().default(['sepay', 'momo', 'vnpay']),
+    /**
+     * Cách thanh toán chọn sẵn cho người mua ở bước thanh toán của hội: 'sepay' (chuyển khoản QR), 'momo', 'vnpay',
+     * 'paypal', 'stripe'. null hoặc cách đó chưa cài thì chọn sẵn cách đầu tiên đang bật.
+     */
+    defaultPaymentMethod: text('default_payment_method'),
     /** Tab hiển thị với thành viên (mục 191). */
     tabs: jsonb('tabs').$type<Record<string, boolean>>().notNull().default({ feed: true, courses: true, events: true, members: true, affiliate: true, store: true, about: true, resources: false }),
     requireSpace: boolean('require_space').notNull().default(true),

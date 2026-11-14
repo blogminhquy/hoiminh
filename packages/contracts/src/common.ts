@@ -43,8 +43,9 @@ export type ErrorCode = (typeof ERROR_CODES)[number];
 export const billingCycleSchema = z.enum(['monthly', 'yearly', 'one_time']);
 export type BillingCycle = z.infer<typeof billingCycleSchema>;
 
-/** Cổng thanh toán được hỗ trợ. */
-export const paymentProviderSchema = z.enum(['sepay', 'momo', 'vnpay', 'paypal']);
+/** Cổng thanh toán được hỗ trợ. `sepay` là chuyển khoản ngân hàng bằng mã QR (tự xác nhận qua SePay hoặc bấm tay). */
+export const PAYMENT_PROVIDERS = ['sepay', 'momo', 'vnpay', 'paypal', 'stripe'] as const;
+export const paymentProviderSchema = z.enum(PAYMENT_PROVIDERS);
 export type PaymentProvider = z.infer<typeof paymentProviderSchema>;
 
 /** Trạng thái thanh toán chuẩn hóa nội bộ (mục 34D). */

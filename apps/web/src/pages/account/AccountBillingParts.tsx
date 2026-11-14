@@ -8,7 +8,7 @@ export interface BillingHistoryRow {
   orderId: string; at: string; title: string; method: string; provider: string; amountMinor: number; status: string; invoiceNumber: string | null; targetType: string; refundable: boolean;
 }
 
-export const PROVIDER_LABEL: Record<string, string> = { sepay: 'Chuyển khoản QR', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal' };
+export const PROVIDER_LABEL: Record<string, string> = { sepay: 'Chuyển khoản QR', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal', stripe: 'Thẻ (Stripe)' };
 export function providerLabel(provider: string | null | undefined, method?: string): string {
   return PROVIDER_LABEL[provider ?? ''] ?? method ?? provider ?? '—';
 }
