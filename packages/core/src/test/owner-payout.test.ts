@@ -72,8 +72,8 @@ describe('chủ hội tự bấm "Đã nhận tiền"', () => {
     expect(qr).toContain('img.vietqr.io/image/970407-19039998887776-');
     expect(qr).toContain(`amount=${s.amountMinor}`);
     expect(qr).toContain(encodeURIComponent(s.reference));
-    // Cổng của Hội Mình không dùng cho đơn của hội.
-    await expect(checkout.createCheckout(buyer, { target: { type: 'tier', communityId: VY, tierKey: 'premium', cycle: 'monthly' }, provider: 'vnpay' })).rejects.toThrow(/chuyển khoản ngân hàng/);
+    // Cổng của Hội Mình không dùng cho đơn của hội: hội chưa cài VNPAY của riêng mình thì không chọn được.
+    await expect(checkout.createCheckout(buyer, { target: { type: 'tier', communityId: VY, tierKey: 'premium', cycle: 'monthly' }, provider: 'vnpay' })).rejects.toThrow(/chưa nhận thanh toán qua VNPAY/);
   });
 
   it('người mua bấm "Tôi đã chuyển khoản" thì chủ hội được báo, đơn lên đầu danh sách chờ', async () => {

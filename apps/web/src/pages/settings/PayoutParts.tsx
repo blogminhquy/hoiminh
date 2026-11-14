@@ -6,11 +6,25 @@ import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
+import type { GatewayState } from '@/lib/payment-methods';
+import type { PaymentProvider } from '@hoiminh/contracts';
 
 export type ConfirmMode = 'manual' | 'auto';
-export interface PayoutAccount { bankCode: string; bankName: string; accountNumber: string; accountHolder: string; confirmMode: ConfirmMode; webhookUrl: string; lastWebhookAt: string | null; updatedAt: string }
+export interface PayoutAccount { bankCode: string; bankName: string; accountNumber: string; accountHolder: string; confirmMode: ConfirmMode; /** Người mua có thấy cách chuyển khoản QR không. */ enabled: boolean; webhookUrl: string; lastWebhookAt: string | null; updatedAt: string }
 export interface PendingOrder { orderId: string; title: string; amountMinor: number; reference: string; buyerName: string; buyerEmail: string; createdAt: string; buyerSaysPaid: boolean }
-export interface PayoutSetup { ready: boolean; account: PayoutAccount | null; banks: Array<{ code: string; name: string }>; received30Minor: number; pending: PendingOrder[] }
+export interface PayoutSetup {
+  /** Có ít nhất một cách nhận tiền đang bật: nút mua trong hội đã mở. */
+  ready: boolean;
+  account: PayoutAccount | null;
+  /** Cổng riêng của chủ hội: MoMo, VNPAY, PayPal, Stripe. */
+  gateways: GatewayState[];
+  /** Các cách người mua đang thấy, và cách được chọn sẵn. */
+  methods: PaymentProvider[];
+  defaultMethod: PaymentProvider | null;
+  banks: Array<{ code: string; name: string }>;
+  received30Minor: number;
+  pending: PendingOrder[];
+}
 
 export const payoutSetupKey = (communityId: string) => ['payout-account', communityId] as const;
 export const payoutSetupQuery = (communityId: string) => ({ queryKey: payoutSetupKey(communityId), queryFn: () => api.get<PayoutSetup>(`/v1/communities/${communityId}/payout-account`) });

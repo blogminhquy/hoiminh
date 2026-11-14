@@ -7,7 +7,7 @@ import { raw } from '../lib/db';
 import { resolveCommunityAccess } from '../permissions';
 import { getCommunityBySlug } from './communities';
 import { FLAG, flagsFor } from './feature-flags';
-import { paymentsReady } from './owner-payout';
+import { ownerPaymentMethods } from './owner-gateways';
 import { planOfCommunity, planTable } from './plans';
 
 /** Khung hội theo slug: thông tin hội, vai trò người xem, tab hiển thị, số liệu, % khóa học, sự kiện sắp tới, gói Premium. */
@@ -38,7 +38,7 @@ export async function communityShell(ctx: Ctx, slug: string) {
   if (!plan.features.includes('affiliate')) tabs.affiliate = false;
   const manages = access.permissions.has('settings.manage');
   return {
-    community: { id: c.id, workspaceId: c.workspaceId, name: c.name, slug: c.slug, shortDescription: c.shortDescription, logoMark: c.logoMark, logoColor: c.logoColor, logoUrl: c.logoUrl, coverColor: c.coverColor, coverUrl: c.coverUrl, coverTagline: c.coverTagline, tabs, status: c.status, pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), customDomain: c.customDomain, memberCount: c.memberCount, requireSpace: c.requireSpace, enabledProviders: c.enabledProviders },
+    community: { id: c.id, workspaceId: c.workspaceId, name: c.name, slug: c.slug, shortDescription: c.shortDescription, logoMark: c.logoMark, logoColor: c.logoColor, logoUrl: c.logoUrl, coverColor: c.coverColor, coverUrl: c.coverUrl, coverTagline: c.coverTagline, tabs, status: c.status, pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, ...(await buyerMethods(ctx, c.id)), customDomain: c.customDomain, memberCount: c.memberCount, requireSpace: c.requireSpace, enabledProviders: c.enabledProviders },
     flags,
     plan: manages ? { key: plan.key, name: plan.name, memberCap: plan.memberCap, features: plan.features, endsAt: plan.endsAt, needsPlan: plan.needsPlan, full: plan.full, isFreeSlot: plan.isFreeSlot } : null,
     viewer: { role: access.role, memberId: access.memberId, memberStatus: access.memberStatus, tier: tierKey, permissions: [...access.permissions], isMember: access.memberStatus === 'active' || access.memberStatus === 'cancelling' || access.role === 'owner' || access.role === 'admin' },
@@ -62,4 +62,13 @@ export async function myCommunities(ctx: Ctx) {
     .where(and(eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling']), isNull(communities.deletedAt)))
     .orderBy(desc(sql`coalesce(${userCommunityPrefs.pinned}, false)`), asc(sql`coalesce(${userCommunityPrefs.sortOrder}, 0)`), asc(communities.name));
   return rows.filter((r) => !r.pref?.hidden).map((r) => ({ ...r.c, role: r.m.role, memberStatus: r.m.status, pinned: r.pref?.pinned ?? false }));
+}
+
+/**
+ * Cách thanh toán người mua thấy ở bước thanh toán của hội: chỉ cách chủ hội đã cài và đang bật, cách mặc định chọn sẵn.
+ * `paymentsReady` = có ít nhất một cách; chưa có thì các nút mua bị khóa.
+ */
+async function buyerMethods(ctx: Ctx, communityId: string) {
+  const m = await ownerPaymentMethods(ctx, communityId);
+  return { paymentsReady: m.methods.length > 0, paymentMethods: m.methods, defaultPaymentMethod: m.defaultMethod, bankConfirmMode: m.bank?.enabled ? m.bank.confirmMode : null };
 }

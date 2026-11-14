@@ -40,6 +40,8 @@ export interface NormalizedEvent {
   amountMinor: number;
   currency: 'VND' | 'USD';
   transactionAt: Date;
+  /** `amountMinor` là tổng đã hoàn của cả giao dịch (Stripe `charge.refunded`), không phải số của riêng lần hoàn này. */
+  cumulative?: boolean;
   /** Nội dung gốc từ ngân hàng (SePay) để đối soát. */
   bankContent?: string;
   bankAccount?: string;

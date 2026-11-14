@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## 1.34.0 - 2026-11-14
+
+Chủ hội cài được đủ sáu cách nhận tiền ở Cài đặt, Bán hàng, Nhận tiền: chuyển khoản QR (tự bấm xác nhận), QR tự động qua SePay, MoMo, VNPAY, PayPal và thẻ Visa, Mastercard qua Stripe. Người mua chỉ thấy cách chủ hội đã cài và đang bật, cách chủ hội đặt làm mặc định được chọn sẵn. Khung mua gói Hội Mình cũng chỉ còn hiện cổng quản trị đã cài. Theo yêu cầu của chủ dự án.
+
+### Thêm
+
+- **Màn Nhận tiền mới: sáu hàng, mỗi hàng một cách.** Mỗi hàng ghi rõ trạng thái (Chưa cài, Còn một bước, Đang bật, Đang tắt), có công tắc bật tắt, nút "Đặt làm mặc định" và nút "Cài đặt" mở khung cài ngay dưới hàng. Khung cài có hướng dẫn từng bước đúng tên mục trong trang quản lý của cổng đó.
+- **MoMo, VNPAY, PayPal, Stripe của chính chủ hội.** Chủ hội dán khóa lấy từ trang quản lý của cổng (MoMo: Partner Code, Access Key, Secret Key; VNPAY: mã website và chuỗi bí mật; PayPal: Client ID, Secret, Webhook ID; Stripe: Secret key và Signing secret). Người mua trả qua cổng của chủ hội, tiền về thẳng tài khoản cổng của chủ hội, không qua Hội Mình. Cổng báo kết quả về địa chỉ riêng của từng cổng, đơn tự chuyển sang đã trả và người mua được mở quyền ngay.
+- **PayPal và Stripe cài hai bước.** Hai cổng này chỉ cấp mã webhook sau khi đã dán địa chỉ webhook của hội vào trang của cổng, nên chủ hội lưu khóa API trước, Hội Mình hiện địa chỉ webhook, rồi chủ hội dán mã webhook. Cổng ở trạng thái "Còn một bước" thì người mua chưa thấy.
+- **Thẻ quốc tế qua Stripe.** Trang thanh toán thẻ của Stripe, thu bằng VND. Khóa `sk_live_` là chạy thật, `sk_test_` là thử nghiệm.
+- **Cách mặc định.** Bước thanh toán của hội chọn sẵn cách chủ hội đặt làm mặc định; cách đó bị tắt thì chọn sẵn cách đầu tiên còn bật. Khung "Người mua sẽ thấy" bên cạnh xem trước đúng các ô người mua thấy.
+- **Bước thanh toán của hội.** Người mua thấy từng cách đang bật, đổi cách được ngay; nút đổi theo cách đã chọn ("Lấy mã QR chuyển khoản" hoặc "Thanh toán 149.000đ bằng MoMo"). Trang đơn có nút "Mở trang MoMo để thanh toán" (thẻ là "Mở trang thanh toán thẻ"); trả xong, cổng quay người mua về đúng trang đơn.
+- **Hoàn tiền đơn trả qua cổng của chủ hội** đi qua đúng cổng đó (MoMo, PayPal, Stripe có hoàn tự động), không bao giờ qua cổng của Hội Mình. Chủ hội hoàn ngay trong trang của cổng thì quyền của người mua cũng được thu hồi.
+- **Quản trị hệ thống, Thanh toán:** thêm dòng Stripe, nút "Đặt mặc định" cho cổng được chọn sẵn khi chủ hội mua gói, và dòng chữ cho biết vì sao một cổng không hiện cho người mua (đang tắt, chưa có khóa thật, cờ PayPal đang tắt).
+
+### Thay đổi
+
+- **Khung "Thanh toán gói Hội Mình" chỉ hiện cổng dùng được.** Trước đây luôn hiện đủ Chuyển khoản QR, MoMo, VNPAY, PayPal, kể cả cổng chưa có khóa thật hay đang tắt, bấm vào mới báo lỗi. Nay chỉ hiện cổng quản trị đang bật và đã có khóa thật, cổng mặc định được chọn sẵn.
+- Hai cách chuyển khoản dùng chung một tài khoản ngân hàng nên mỗi lúc bật một cách: bật QR tự động qua SePay thì chuyển khoản tự bấm xác nhận tự tắt, và ngược lại. Người mua thấy một ô "Chuyển khoản QR".
+- Tắt chuyển khoản QR mà vẫn giữ tài khoản đã nhập, bật lại không phải gõ lại. Hội cũ giữ nguyên là bật.
+- "Đơn chờ bạn xác nhận" chỉ còn đơn chuyển khoản; đơn qua cổng tự xác nhận khi cổng báo về.
+- Trang Tiền, Giá và gói, ô lệnh nhanh: ghi các cách người mua đang thấy thay cho chỉ "chuyển khoản"; nút "Tài khoản nhận tiền" thành "Cách nhận tiền".
+
+### Kỹ thuật
+
+- **Có migration `0015_owner_gateways`** (chạy lại được nhiều lần): bảng `community_payment_gateways` (mỗi hội một dòng cho mỗi cổng, khóa mã hóa bằng `ENCRYPTION_KEY`, mã bí mật của địa chỉ webhook, policy RLS theo workspace), cột `community_payout_accounts.enabled`, cột `communities.default_payment_method`. Phải áp lên database thật trước khi merge.
+- Cổng thanh toán mới `stripe` (`packages/payments/src/stripe.ts`): tạo phiên Checkout bằng REST, kiểm chữ ký `Stripe-Signature` (HMAC-SHA256, từ chối chữ ký quá 5 phút), hoàn tiền qua `/v1/refunds`. Không dùng thư viện của Stripe để chạy được trên Cloudflare Workers.
+- `packages/core/src/services/owner-gateways.ts`: lưu, gỡ cổng; `ownerPaymentMethods` (cách người mua thấy và cách chọn sẵn); nhận webhook ở `/webhooks/hoi/<mã>` (GET và POST vì VNPAY gọi IPN bằng GET); trang mô phỏng cho máy dev và test.
+- `packages/core/src/services/platform-methods.ts`: cổng nào của Hội Mình dùng được cho đơn gói và vì sao không.
+- API mới: `PUT`/`DELETE /v1/communities/:id/payment-gateways/:provider`, `PATCH /v1/communities/:id/payment-methods`, `POST /webhooks/stripe`, `GET|POST /webhooks/hoi/:token`. `PUT /v1/communities/:id/payout-account` nhận thêm `enabled`. `GET /v1/communities/:id/payout-account` trả thêm `gateways`, `methods`, `defaultMethod`. Khung hội trả thêm `paymentMethods`, `defaultPaymentMethod`, `bankConfirmMode`. `GET /v1/communities/:id/plan` trả thêm `payment`. `PATCH /v1/admin/providers/:provider` nhận `isDefault` và từ chối tên cổng lạ.
+- `POST /v1/checkout`: `provider` không bắt buộc nữa, thiếu thì dùng cách mặc định. Cách không có trong danh sách thì trả `payment_error` kèm `reason: 'method_unavailable'` và danh sách cách dùng được.
+- Biến môi trường mới (không bắt buộc): `STRIPE_MODE`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` cho Stripe của Hội Mình. Để trống thì Stripe không hiện ở khung mua gói.
+- Bộ khóa thử (`momo-sandbox...`, `vnpay-sandbox...`, `paypal-sandbox...`, `sk_test_hoiminh...`) đi qua trang mô phỏng `/pay/simulator/hoi/<mã>` ở máy dev và test; ở nơi khác máy chủ từ chối lưu các khóa này.
+- Xem quyết định 72 trong `DECISIONS.md`.
+- Test: payments `adapters.test.ts` thêm 5 ca Stripe; core `owner-gateways.test.ts` (18); web `payment-methods.test.ts` (4); e2e luồng 26 mới, luồng 6, 12, 22 cập nhật.
+
 ## 1.33.1 - 2026-11-13
 
 Trang Khám phá nay chính là trang chủ: mở `hoiminh.com` là thấy ngay danh sách hội, không còn nhảy sang địa chỉ `/kham-pha` riêng. Theo yêu cầu của chủ dự án.

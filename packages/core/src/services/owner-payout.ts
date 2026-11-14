@@ -3,7 +3,7 @@
 // nhận theo một trong hai cách: dịch vụ báo có của chủ hội gọi về (tự xác nhận), hoặc chủ hội bấm "Đã nhận tiền".
 // Tiền mua gói Hội Mình không đi qua đây: vẫn về tài khoản của Hội Mình như trước.
 import { randomToken } from '@hoiminh/config';
-import { VIETNAM_BANKS, formatMoney, type PaymentInstruction, type PayoutAccountInput } from '@hoiminh/contracts';
+import { OWNER_GATEWAYS, VIETNAM_BANKS, formatMoney, type PaymentInstruction, type PayoutAccountInput } from '@hoiminh/contracts';
 import type { IncomingWebhook } from '@hoiminh/payments';
 import { normalizeReference } from '@hoiminh/payments';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
@@ -17,6 +17,7 @@ import { requireCommunityPermission } from '../permissions';
 import { audit } from './audit';
 import { elevated } from './automation-engine';
 import { notify } from './notifications';
+import { gatewayView, ownerPaymentMethods } from './owner-gateways';
 import { confirmPayment } from './payments';
 
 type Account = typeof communityPayoutAccounts.$inferSelect;
@@ -35,9 +36,9 @@ export async function payoutAccountForCheckout(ctx: Ctx, communityId: string): P
   return elevated(ctx, async () => (await ctx.db.query.communityPayoutAccounts.findFirst({ where: eq(communityPayoutAccounts.communityId, communityId) })) ?? null);
 }
 
-/** Hội đã mở thanh toán chưa (đã cài tài khoản nhận tiền). Giao diện dùng để khóa nút mua. */
+/** Hội đã mở thanh toán chưa: có ít nhất một cách nhận tiền đã cài và đang bật. Giao diện dùng để khóa nút mua. */
 export async function paymentsReady(ctx: Ctx, communityId: string): Promise<boolean> {
-  return (await payoutAccountForCheckout(ctx, communityId)) !== null;
+  return (await ownerPaymentMethods(ctx, communityId)).methods.length > 0;
 }
 
 /** Hướng dẫn chuyển khoản tới tài khoản của chủ hội: mã VietQR có sẵn số tiền và nội dung chứa mã đơn. */
@@ -54,6 +55,8 @@ function view(ctx: Ctx, a: Account) {
     accountNumber: a.accountNumber,
     accountHolder: a.accountHolder,
     confirmMode: a.confirmMode,
+    /** Người mua có thấy cách chuyển khoản QR không. */
+    enabled: a.enabled,
     /** Địa chỉ để dán vào dịch vụ báo có của chủ hội. Chỉ người có quyền tiền của hội mới thấy. */
     webhookUrl: webhookUrl(ctx, a.webhookToken),
     lastWebhookAt: a.lastWebhookAt,
@@ -68,22 +71,31 @@ async function pendingRows(ctx: Ctx, communityId: string) {
     .from(payments)
     .innerJoin(orders, eq(orders.id, payments.orderId))
     .innerJoin(users, eq(users.id, orders.customerUserId))
-    .where(and(eq(orders.communityId, communityId), inArray(orders.status, ['pending', 'expired']), inArray(payments.status, ['pending', 'processing', 'expired']), gte(orders.createdAt, since), sql`${payments.instruction}->>'payee' = 'owner'`))
+    // Chỉ đơn chuyển khoản: đơn qua cổng (MoMo, VNPAY, PayPal, Stripe) tự xác nhận khi cổng báo về, người mua bỏ dở
+    // ở trang của cổng thì không có gì để chủ hội kiểm tra.
+    .where(and(eq(orders.communityId, communityId), inArray(orders.status, ['pending', 'expired']), inArray(payments.status, ['pending', 'processing', 'expired']), eq(payments.provider, 'sepay'), gte(orders.createdAt, since), sql`${payments.instruction}->>'payee' = 'owner'`))
     .orderBy(desc(orders.createdAt))
     .limit(100);
   // Người mua đã bấm "Tôi đã chuyển khoản" lên đầu: đó là các đơn chủ hội cần kiểm tra tài khoản trước.
   return rows.sort((a, b) => Number(b.p.status === 'processing') - Number(a.p.status === 'processing'));
 }
 
-/** Cài đặt, Nhận tiền: tài khoản đã cài (nếu có), các đơn đang chờ chủ hội xác nhận, tiền đã thu 30 ngày. */
+/**
+ * Cài đặt, Nhận tiền: tài khoản ngân hàng đã cài (nếu có), các cổng riêng của chủ hội, các cách người mua đang thấy và
+ * cách chọn sẵn, các đơn chuyển khoản đang chờ chủ hội xác nhận, tiền đã thu 30 ngày.
+ */
 export async function payoutSetup(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'billing.manage');
   const account = await ctx.db.query.communityPayoutAccounts.findFirst({ where: eq(communityPayoutAccounts.communityId, communityId) });
+  const methods = await ownerPaymentMethods(ctx, communityId);
   const pending = account ? await pendingRows(ctx, communityId) : [];
   const [sum] = await raw<{ received: string }>(ctx.db, sql`select coalesce(sum(total_minor),0)::bigint as received from orders where community_id = ${communityId} and status = 'paid' and paid_at >= now() - interval '30 days'`);
   return {
-    ready: Boolean(account),
+    ready: methods.methods.length > 0,
     account: account ? view(ctx, account) : null,
+    gateways: OWNER_GATEWAYS.map((p) => gatewayView(ctx, p, methods.gateways.find((g) => g.provider === p))),
+    methods: methods.methods,
+    defaultMethod: methods.defaultMethod,
     banks: VIETNAM_BANKS.map((b) => ({ code: b.code, name: b.name })),
     received30Minor: Number(sum?.received ?? 0),
     pending: pending.map((r) => ({
@@ -104,7 +116,7 @@ export async function payoutSetup(ctx: Ctx, communityId: string) {
 export async function savePayoutAccount(ctx: Ctx, communityId: string, input: PayoutAccountInput) {
   const access = await requireCommunityPermission(ctx, communityId, 'billing.manage');
   const existing = await ctx.db.query.communityPayoutAccounts.findFirst({ where: eq(communityPayoutAccounts.communityId, communityId) });
-  const values = { bankCode: input.bankCode, accountNumber: input.accountNumber, accountHolder: input.accountHolder, confirmMode: input.confirmMode, updatedAt: ctx.now() };
+  const values = { bankCode: input.bankCode, accountNumber: input.accountNumber, accountHolder: input.accountHolder, confirmMode: input.confirmMode, ...(input.enabled === undefined ? {} : { enabled: input.enabled }), updatedAt: ctx.now() };
   const [row] = existing
     ? await ctx.db.update(communityPayoutAccounts).set(values).where(eq(communityPayoutAccounts.id, existing.id)).returning()
     : await ctx.db.insert(communityPayoutAccounts).values({ communityId, workspaceId: access.workspaceId, webhookToken: randomToken(20), ...values }).returning();

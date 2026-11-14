@@ -11,10 +11,12 @@ import { UserAvatar, type UserLite } from '@/components/UserLink';
 import { api, errorMessage } from '@/lib/api';
 import { useCan, useShell } from '@/lib/community';
 import { fmtDate } from '@/lib/format';
+import { BUYER_METHOD_NAME } from '@/lib/payment-methods';
+import type { PaymentProvider } from '@hoiminh/contracts';
 import { PendingOrders, payoutSetupQuery } from '@/pages/settings/PayoutParts';
 import { AdminRefundModal, type RefundTarget } from './RevenueParts';
 
-interface Payout { ready: boolean; account: { bankName: string; accountNumber: string; accountHolder: string; confirmMode: 'manual' | 'auto' } | null; received30Minor: number; pendingCount: number; pendingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number; ownerName: string }
+interface Payout { ready: boolean; account: { bankName: string; accountNumber: string; accountHolder: string; confirmMode: 'manual' | 'auto' } | null; /** Các cách người mua đang thấy. */ methods?: PaymentProvider[]; received30Minor: number; pendingCount: number; pendingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number; ownerName: string }
 interface Tx { orderId: string; at: string; customer: UserLite; title: string; method: string; provider: string; amountMinor: number; commissionMinor: number; reversedCommissionMinor: number; status: string }
 interface Revenue { stats: { grossMinor: number; txCount: number; netMinor: number; refundedMinor: number; refundCount: number; owedToAffiliatesMinor: number; referredCount: number }; items: Tx[] }
 const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý'], [365, 'Năm']];
@@ -42,12 +44,12 @@ function Balance() {
               <div><div className={label}>Đã thu 30 ngày</div><div className="serif text-[30px] font-extrabold leading-tight">{money(d.received30Minor)}</div></div>
               <div><div className={label}>Đơn chờ xác nhận</div><div className="serif text-[22px] font-extrabold">{d.pendingCount}{d.pendingCount > 0 ? ` · ${money(d.pendingMinor)}` : ''}</div></div>
               <span className="flex-grow" />
-              <Link to={settings} className="btn btn-gold w-full sm:w-auto"><Wallet size={18} />{d.ready ? 'Tài khoản nhận tiền' : 'Cài nhận tiền'}</Link>
+              <Link to={settings} className="btn btn-gold w-full sm:w-auto"><Wallet size={18} />{d.ready ? 'Cách nhận tiền' : 'Cài nhận tiền'}</Link>
             </div>
             <div className="muted text-[14px] flex flex-col gap-1">
-              {d.ready && d.account
-                ? <span className="flex items-start gap-1.5"><ShieldCheck size={16} className="flex-shrink-0 mt-0.5" />Người mua chuyển khoản thẳng tới {d.account.bankName} {d.account.accountNumber} ({d.account.accountHolder}). Hội Mình không giữ tiền và không thu phí trên doanh thu.</span>
-                : <span className="flex items-start gap-1.5" style={{ color: T.gold }}><Lock size={16} className="flex-shrink-0 mt-0.5" />Hội chưa cài nhận tiền nên các nút mua đang khóa. Nhập tài khoản ngân hàng của bạn để mở thanh toán.</span>}
+              {d.ready
+                ? <span className="flex items-start gap-1.5"><ShieldCheck size={16} className="flex-shrink-0 mt-0.5" />{d.account ? `Người mua chuyển khoản thẳng tới ${d.account.bankName} ${d.account.accountNumber} (${d.account.accountHolder}). ` : ''}{(d.methods ?? []).some((m) => m !== 'sepay') ? `Người mua trả qua: ${(d.methods ?? []).map((m) => BUYER_METHOD_NAME[m]).join(', ')}, tiền về thẳng tài khoản của bạn. ` : ''}Hội Mình không giữ tiền và không thu phí trên doanh thu.</span>
+                : <span className="flex items-start gap-1.5" style={{ color: T.gold }}><Lock size={16} className="flex-shrink-0 mt-0.5" />Hội chưa cài nhận tiền nên các nút mua đang khóa. Cài chuyển khoản QR hoặc một cổng thanh toán để mở.</span>}
               {d.ready && d.account && <span className="flex items-start gap-1.5"><Clock size={16} className="flex-shrink-0 mt-0.5" />{d.account.confirmMode === 'auto' ? 'Đơn tự xác nhận khi dịch vụ báo có của bạn gọi về.' : 'Bạn kiểm tra tài khoản rồi bấm "Đã nhận tiền" cho từng đơn.'}</span>}
             </div>
           </section>

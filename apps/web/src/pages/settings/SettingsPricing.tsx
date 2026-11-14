@@ -9,6 +9,7 @@ import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
 import { DEFAULT_TIERS, ModePicker, PromoCard, TierCard, type Mode, type Tier } from './SettingsPricingParts';
+import { buyerSummary } from '@/lib/payment-methods';
 
 interface Pricing { pricingMode: Mode; doorsOpen: boolean; enabledProviders: string[]; tiers: Tier[]; paidMembersCount: number; /** Khuyến mãi đã lưu (null là đang tắt). */ promo: PricingPromo | null }
 
@@ -51,10 +52,10 @@ export default function Page() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <QrCode size={18} className="flex-shrink-0" />
           <div className="flex flex-col flex-grow min-w-0" style={{ flexBasis: 240 }}>
-            <span className="font-semibold">Cách thanh toán: chuyển khoản tới tài khoản của bạn</span>
-            <span className="muted text-[14px]">{shell.community.paymentsReady ? 'Người mua quét mã QR, tiền về thẳng tài khoản bạn đã cài.' : 'Hội chưa cài nhận tiền nên các nút mua đang khóa.'}</span>
+            <span className="font-semibold">Cách thanh toán: tiền về thẳng tài khoản của bạn</span>
+            <span className="muted text-[14px]">{shell.community.paymentsReady ? `Người mua đang thấy: ${buyerSummary({ methods: shell.community.paymentMethods ?? [], defaultMethod: shell.community.defaultPaymentMethod ?? null })}.` : 'Hội chưa cài nhận tiền nên các nút mua đang khóa.'}</span>
           </div>
-          <Link to={`/${shell.community.slug}/cai-dat/nhan-tien`} className={`btn btn-sm ${shell.community.paymentsReady ? 'btn-ghost' : 'btn-primary'}`}>{shell.community.paymentsReady ? 'Tài khoản nhận tiền' : 'Cài nhận tiền'}</Link>
+          <Link to={`/${shell.community.slug}/cai-dat/nhan-tien`} className={`btn btn-sm ${shell.community.paymentsReady ? 'btn-ghost' : 'btn-primary'}`}>{shell.community.paymentsReady ? 'Cách nhận tiền' : 'Cài nhận tiền'}</Link>
         </div>
         {f.paidMembersCount > 0 && (
           <div className="flex items-center gap-2.5 text-[13px] pt-3 flex-wrap" style={{ color: T.ink2, borderTop: `1px solid ${T.line}` }}><Users size={16} />{f.paidMembersCount} thành viên trả phí từ trước sẽ được xếp vào gói <Select aria-label="Gói cho thành viên trả phí từ trước" value={migrate} onChange={(e) => setMigrate(e.target.value as typeof migrate)} style={{ width: 'fit-content', minWidth: 150 }}>{f.tiers.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</Select></div>

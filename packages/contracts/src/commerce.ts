@@ -60,7 +60,8 @@ export type CheckoutTarget = z.infer<typeof checkoutTargetSchema>;
 export const createCheckoutSchema = z.object({
   target: checkoutTargetSchema,
   couponCode: z.string().max(32).optional(),
-  provider: paymentProviderSchema.default('sepay'),
+  /** Không gửi thì dùng cách chủ hội (hoặc quản trị, với gói Hội Mình) đặt làm mặc định. */
+  provider: paymentProviderSchema.optional(),
   ref: z.string().max(32).optional(),
   returnUrl: z.string().url().optional(),
 });
@@ -82,7 +83,8 @@ export const paymentInstructionSchema = z.discriminatedUnion('kind', [
     /** Với đơn trả thẳng chủ hội: 'auto' = tự xác nhận khi tiền về, 'manual' = chủ hội bấm "Đã nhận tiền". */
     confirmMode: z.enum(['manual', 'auto']).optional(),
   }),
-  z.object({ kind: z.literal('redirect'), url: z.string(), deeplink: z.string().optional() }),
+  // `payee: 'owner'`: người mua trả qua cổng (MoMo, VNPAY, PayPal, Stripe) của chính chủ hội, tiền không qua Hội Mình.
+  z.object({ kind: z.literal('redirect'), url: z.string(), deeplink: z.string().optional(), payee: z.literal('owner').optional() }),
 ]);
 export type PaymentInstruction = z.infer<typeof paymentInstructionSchema>;
 
@@ -123,5 +125,70 @@ export const payoutAccountInputSchema = z.object({
   accountNumber: z.string().trim().regex(/^\d{6,20}$/, 'Số tài khoản gồm 6 tới 20 chữ số'),
   accountHolder: z.string().trim().min(3, 'Tên chủ tài khoản cần ít nhất 3 ký tự').max(80).transform((v) => v.toUpperCase()),
   confirmMode: payoutConfirmModeSchema.default('manual'),
+  /** Bật hoặc tắt cách chuyển khoản QR cùng lúc lưu. Không gửi là giữ nguyên (lưu lần đầu là bật). */
+  enabled: z.boolean().optional(),
 });
 export type PayoutAccountInput = z.infer<typeof payoutAccountInputSchema>;
+
+/**
+ * Cổng thanh toán riêng của chủ hội, ngoài chuyển khoản QR: người mua trả qua cổng của chính chủ hội, tiền về tài khoản
+ * cổng của chủ hội, không qua Hội Mình. Chủ hội nhập khóa của mình ở Cài đặt, Nhận tiền.
+ */
+export const OWNER_GATEWAYS = ['momo', 'vnpay', 'paypal', 'stripe'] as const;
+export const ownerGatewaySchema = z.enum(OWNER_GATEWAYS);
+export type OwnerGateway = z.infer<typeof ownerGatewaySchema>;
+
+export interface OwnerGatewayField {
+  key: string;
+  label: string;
+  /** Ô bí mật: lưu mã hóa, không bao giờ hiện lại, chỉ hiện 4 ký tự cuối. */
+  secret: boolean;
+  placeholder: string;
+  /**
+   * Ô của bước webhook: chỉ có sau khi dán địa chỉ webhook của hội vào trang của cổng, mà địa chỉ đó chỉ có sau lần lưu
+   * đầu. Nên lưu lần đầu không cần ô này; cổng chỉ hiện cho người mua khi đã điền đủ.
+   */
+  webhookStep?: true;
+}
+
+/** Các ô khóa chủ hội nhập cho từng cổng, đúng tên gọi trong trang quản lý của cổng đó. */
+export const OWNER_GATEWAY_FIELDS: Record<OwnerGateway, OwnerGatewayField[]> = {
+  momo: [
+    { key: 'partnerCode', label: 'Partner Code', secret: false, placeholder: 'MOMOXXXX' },
+    { key: 'accessKey', label: 'Access Key', secret: true, placeholder: 'Access Key trong trang M4B' },
+    { key: 'secretKey', label: 'Secret Key', secret: true, placeholder: 'Secret Key trong trang M4B' },
+  ],
+  vnpay: [
+    { key: 'tmnCode', label: 'Mã website (vnp_TmnCode)', secret: false, placeholder: '8 ký tự VNPAY cấp' },
+    { key: 'hashSecret', label: 'Chuỗi bí mật (vnp_HashSecret)', secret: true, placeholder: 'Chuỗi bí mật VNPAY gửi qua email' },
+  ],
+  paypal: [
+    { key: 'clientId', label: 'Client ID', secret: false, placeholder: 'Client ID của ứng dụng PayPal' },
+    { key: 'clientSecret', label: 'Secret', secret: true, placeholder: 'Secret của ứng dụng PayPal' },
+    { key: 'webhookId', label: 'Webhook ID', secret: false, placeholder: 'Mã webhook sau khi thêm địa chỉ của hội', webhookStep: true },
+  ],
+  stripe: [
+    { key: 'secretKey', label: 'Secret key', secret: true, placeholder: 'sk_live_...' },
+    { key: 'webhookSecret', label: 'Signing secret của webhook', secret: true, placeholder: 'whsec_...', webhookStep: true },
+  ],
+};
+
+/** Chủ hội lưu một cổng: ô khóa để trống là giữ nguyên khóa đã lưu. */
+export const ownerGatewayInputSchema = z.object({
+  mode: z.enum(['sandbox', 'production']).optional(),
+  enabled: z.boolean().optional(),
+  credentials: z.record(z.string().trim().max(500)).optional(),
+});
+export type OwnerGatewayInput = z.infer<typeof ownerGatewayInputSchema>;
+
+/** Bật tắt chuyển khoản QR và chọn cách thanh toán mặc định cho người mua. */
+export const paymentMethodsUpdateSchema = z.object({
+  defaultMethod: paymentProviderSchema.nullable().optional(),
+  bankEnabled: z.boolean().optional(),
+});
+export type PaymentMethodsUpdate = z.infer<typeof paymentMethodsUpdateSchema>;
+
+/** Cổng đã điền đủ mọi ô (kể cả bước webhook) chưa, xét theo phần tóm tắt không bí mật đã lưu. */
+export function gatewayComplete(provider: OwnerGateway, summary: Record<string, string>): boolean {
+  return OWNER_GATEWAY_FIELDS[provider].every((f) => Boolean(summary[f.key]));
+}

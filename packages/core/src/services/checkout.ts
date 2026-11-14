@@ -1,8 +1,9 @@
 // Checkout: tier hội (tháng/năm/một lần), sản phẩm cửa hàng, gói nền tảng. Gọi PaymentService qua adapter, không chạm cổng trực tiếp.
-import type { CheckoutSession, CreateCheckoutInput } from '@hoiminh/contracts';
+import type { CheckoutSession, CreateCheckoutInput, PaymentInstruction, PaymentProvider } from '@hoiminh/contracts';
+import type { CheckoutInput, CheckoutResult } from '@hoiminh/payments';
 import { PLAN_CYCLE, applyPromo, cycleOfMonths, effectivePlanKey, formatMoney, monthsOfCycle, planQuote, termLabel, termPrice, termUnit, tierTerms } from '@hoiminh/contracts';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, providerAccounts, users, type OrderStatus } from '@hoiminh/db';
+import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, users, type OrderStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { AppError, conflict, invalid, invalidState, notFound } from '../errors';
@@ -11,8 +12,11 @@ import { requireUser, requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { ownsProduct } from './entitlements';
 import { FLAG, requireFlag } from './feature-flags';
+import { gatewayWebhookUrl, ownerGatewayAdapter, type GatewayRow } from '../lib/owner-gateway';
 import { paymentsFor } from '../lib/payment-accounts';
-import { notifyOwnerOfTransfer, ownerBankInstruction, paymentsNotReadyError, payoutAccountForCheckout } from './owner-payout';
+import { METHOD_NAME, ownerPaymentMethods } from './owner-gateways';
+import { notifyOwnerOfTransfer, ownerBankInstruction, paymentsNotReadyError } from './owner-payout';
+import { platformPaymentMethods } from './platform-methods';
 import { communityPlan, planTable } from './plans';
 
 interface Resolved {
@@ -79,18 +83,23 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
   const r = await resolveTarget(ctx, userId, input);
-  // Đơn của hội (gói thành viên, sản phẩm): tiền về thẳng tài khoản của chủ hội bằng chuyển khoản. Hội chưa cài tài
-  // khoản nhận tiền thì chưa bán được. Các cổng của Hội Mình (MoMo, VNPAY, PayPal, tài khoản SePay của Hội Mình) chỉ
-  // dùng cho đơn gói Hội Mình, vì tiền qua các cổng đó về tài khoản của Hội Mình.
-  const ownerAccount = r.targetType !== 'platform' && r.communityId ? await payoutAccountForCheckout(ctx, r.communityId) : null;
+  // Đơn của hội (gói thành viên, sản phẩm): tiền về thẳng chủ hội, bằng chuyển khoản QR tới tài khoản ngân hàng của chủ
+  // hội hoặc qua cổng riêng của chủ hội (MoMo, VNPAY, PayPal, Stripe). Người mua chỉ chọn được cách chủ hội đã cài và
+  // đang bật. Các cổng của Hội Mình chỉ dùng cho đơn gói Hội Mình, vì tiền qua các cổng đó về tài khoản của Hội Mình.
+  const owner = r.targetType !== 'platform' && r.communityId ? await ownerPaymentMethods(ctx, r.communityId) : null;
+  let provider: PaymentProvider;
   if (r.targetType !== 'platform') {
-    if (!ownerAccount) throw paymentsNotReadyError();
-    if (input.provider !== 'sepay') throw new AppError('payment_error', 'Hội này nhận tiền bằng chuyển khoản ngân hàng');
+    if (!owner?.methods.length || !owner.defaultMethod) throw paymentsNotReadyError();
+    provider = input.provider ?? owner.defaultMethod;
+    if (!owner.methods.includes(provider)) throw new AppError('payment_error', `Hội này chưa nhận thanh toán qua ${METHOD_NAME[provider]}. Bạn chọn cách khác nhé: ${owner.methods.map((m) => METHOD_NAME[m]).join(', ')}.`, undefined, { reason: 'method_unavailable', methods: owner.methods });
   } else {
-    const providerAccount = await ctx.db.query.providerAccounts.findFirst({ where: and(eq(providerAccounts.provider, input.provider), eq(providerAccounts.scopeType, 'platform')) });
-    if (providerAccount && !providerAccount.enabled) throw new AppError('payment_error', 'Cổng thanh toán này đang tạm tắt, chọn cách khác');
-    if (input.provider === 'paypal') await requireFlag(ctx, FLAG.paypal, 'PayPal chưa mở trên nền tảng này', { workspaceId: r.workspaceId });
+    // Gói Hội Mình: chỉ cổng quản trị đang bật và đã có khóa thật (máy dev thì đi qua trang mô phỏng).
+    const platform = await platformPaymentMethods(ctx, r.workspaceId);
+    provider = input.provider ?? platform.defaultMethod ?? 'sepay';
+    if (!platform.methods.includes(provider)) throw new AppError('payment_error', `${METHOD_NAME[provider]} đang tạm tắt, bạn chọn cách khác nhé`, undefined, { reason: 'method_unavailable', methods: platform.methods });
   }
+  const ownerAccount = owner && provider === 'sepay' ? owner.bank : null;
+  const ownerGateway = owner && provider !== 'sepay' ? owner.gateways.find((g) => g.provider === provider) ?? null : null;
 
   let coupon: typeof coupons.$inferSelect | null = null;
   if (input.couponCode) {
@@ -130,18 +139,36 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   // Đơn chủ hội tự bấm xác nhận thì giữ 24 giờ, vì chủ hội không ngồi chờ từng đơn; các đơn khác giữ 30 phút.
   const holdMinutes = ownerAccount?.confirmMode === 'manual' ? 24 * 60 : 30;
   const order = await ctx.db.transaction(async (tx) => {
-    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider: input.provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + holdMinutes * 60_000) }).returning();
+    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + holdMinutes * 60_000) }).returning();
     await tx.insert(orderItems).values({ orderId: o!.id, resourceType: r.targetType, resourceId: r.targetId, name: r.itemName, unitMinor: r.amountMinor, totalMinor: total });
     return o!;
   });
-  // Đơn của hội: không gọi cổng nào, chỉ dựng mã QR chuyển khoản tới tài khoản của chủ hội.
+  const returnUrl = input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`;
+  const gatewayInput = { reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl };
+  // Đơn của hội trả bằng chuyển khoản: không gọi cổng nào, chỉ dựng mã QR chuyển khoản tới tài khoản của chủ hội.
+  // Đơn của hội trả qua cổng: gọi cổng bằng khóa của chủ hội, cổng báo về địa chỉ riêng của cổng đó.
   const checkout = ownerAccount
-    ? { providerPaymentId: null, instruction: ownerBankInstruction(ownerAccount, total, reference), settlement: undefined, raw: { payee: 'owner', bankCode: ownerAccount.bankCode } as Record<string, unknown> }
-    : await (await paymentsFor(ctx)).get(input.provider).createCheckout({ reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl: input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`, ipnUrl: `${ctx.env.API_URL}/webhooks/${input.provider}` });
-  const [payment] = await ctx.db.insert(payments).values({ workspaceId: r.workspaceId, communityId: r.communityId, orderId: order.id, customerUserId: userId, provider: input.provider, providerPaymentId: checkout.providerPaymentId, amountMinor: total, currency: r.currency, status: 'pending', paymentMethod: input.provider === 'sepay' ? 'bank_transfer' : input.provider, reference, instruction: { ...(checkout.instruction as unknown as Record<string, unknown>), ...(checkout.settlement ? { settlement: checkout.settlement } : {}) } }).returning();
-  await ctx.db.insert(paymentAttempts).values({ paymentId: payment!.id, provider: input.provider, status: 'created', request: { reference, amountMinor: total }, response: checkout.raw });
-  await audit(ctx, { action: 'checkout.create', resourceType: 'order', resourceId: order.id, communityId: r.communityId, workspaceId: r.workspaceId, metadata: { provider: input.provider, amountMinor: total } });
-  return { orderId: order.id, paymentId: payment!.id, reference, provider: input.provider, status: 'pending', amountMinor: total, discountMinor: discount, currency: r.currency, instruction: checkout.instruction, summary: { title: r.title, subtitle: r.subtitle, lines: [{ label: r.itemName, amountMinor: r.amountMinor }, { label: 'Giảm giá', amountMinor: -discount }] }, referredBy };
+    ? { providerPaymentId: null, instruction: ownerBankInstruction(ownerAccount, total, reference) as PaymentInstruction, settlement: undefined, raw: { payee: 'owner', bankCode: ownerAccount.bankCode } as Record<string, unknown> }
+    : ownerGateway
+      ? await ownerGatewayCheckout(ctx, ownerGateway, gatewayInput)
+      : await (await paymentsFor(ctx)).get(provider).createCheckout({ ...gatewayInput, ipnUrl: `${ctx.env.API_URL}/webhooks/${provider}` });
+  const [payment] = await ctx.db.insert(payments).values({ workspaceId: r.workspaceId, communityId: r.communityId, orderId: order.id, customerUserId: userId, provider, providerPaymentId: checkout.providerPaymentId, amountMinor: total, currency: r.currency, status: 'pending', paymentMethod: provider === 'sepay' ? 'bank_transfer' : provider, reference, instruction: { ...(checkout.instruction as unknown as Record<string, unknown>), ...(checkout.settlement ? { settlement: checkout.settlement } : {}) } }).returning();
+  await ctx.db.insert(paymentAttempts).values({ paymentId: payment!.id, provider, status: 'created', request: { reference, amountMinor: total }, response: checkout.raw });
+  await audit(ctx, { action: 'checkout.create', resourceType: 'order', resourceId: order.id, communityId: r.communityId, workspaceId: r.workspaceId, metadata: { provider, amountMinor: total, ...(owner ? { payee: 'owner' } : {}) } });
+  return { orderId: order.id, paymentId: payment!.id, reference, provider, status: 'pending', amountMinor: total, discountMinor: discount, currency: r.currency, instruction: checkout.instruction, summary: { title: r.title, subtitle: r.subtitle, lines: [{ label: r.itemName, amountMinor: r.amountMinor }, { label: 'Giảm giá', amountMinor: -discount }] }, referredBy };
+}
+
+/** Tạo phiên thanh toán qua cổng riêng của chủ hội. Cổng từ chối (khóa sai, tài khoản cổng bị khóa) thì báo rõ cho người mua. */
+async function ownerGatewayCheckout(ctx: Ctx, g: GatewayRow, input: Omit<CheckoutInput, 'ipnUrl'>): Promise<{ providerPaymentId: string | null; instruction: PaymentInstruction; settlement?: CheckoutResult['settlement']; raw: Record<string, unknown> }> {
+  const adapter = await ownerGatewayAdapter(ctx, g);
+  try {
+    const res = await adapter.createCheckout({ ...input, ipnUrl: gatewayWebhookUrl(ctx, g.webhookToken) });
+    // Đánh dấu tiền về chủ hội: webhook của cổng Hội Mình và việc ghép tay ở đối soát không xác nhận được đơn này.
+    return { providerPaymentId: res.providerPaymentId, instruction: { ...res.instruction, payee: 'owner' }, settlement: res.settlement, raw: { ...res.raw, payee: 'owner', gatewayId: g.id } };
+  } catch (err) {
+    ctx.log.warn('owner_gateway.checkout_failed', { provider: g.provider, gatewayId: g.id, err: String(err) });
+    throw new AppError('payment_error', `Chưa mở được ${METHOD_NAME[g.provider]} của hội lúc này. Bạn chọn cách thanh toán khác, hoặc báo chủ hội kiểm tra cổng.`, undefined, { reason: 'gateway_failed', provider: g.provider });
+  }
 }
 
 /**

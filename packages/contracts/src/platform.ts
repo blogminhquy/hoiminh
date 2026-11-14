@@ -77,6 +77,8 @@ export const adminProviderUpdateSchema = z.object({
   enabled: z.boolean().optional(),
   mode: z.enum(['sandbox', 'production']).optional(),
   credentials: z.record(z.string()).optional(),
+  /** Đặt cổng này làm cách chọn sẵn khi chủ hội mua gói Hội Mình. */
+  isDefault: z.literal(true).optional(),
 });
 export const adminMatchReconciliationSchema = z.object({ paymentReference: z.string().min(4) });
 export const adminCommunityActionSchema = z.object({

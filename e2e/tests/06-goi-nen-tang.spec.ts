@@ -29,6 +29,8 @@ test('hội Miễn phí mua gói, rồi nâng gói được tặng ngày còn l�
   await page.getByRole('button', { name: 'Thanh toán 297.000đ' }).click();
   const pay = page.getByRole('dialog');
   await expect(pay.getByText('Gói Khởi đầu, 3 tháng')).toBeVisible();
+  // Chỉ hiện cổng quản trị đang bật và đã cài: PayPal đang tắt, Stripe chưa có khóa nên không hiện.
+  await expect(pay.getByRole('radiogroup', { name: 'Cách thanh toán' }).getByRole('button')).toHaveText(['Chuyển khoản QR', 'MoMo', 'VNPAY']);
   await pay.getByRole('button', { name: 'MoMo' }).click();
   await pay.getByRole('button', { name: 'Chuyển khoản QR' }).click();
   await pay.getByRole('button', { name: /^Thanh toán \d/ }).click();

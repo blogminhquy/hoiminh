@@ -141,8 +141,9 @@ describe('Luồng 3: mua lẻ trong Cửa hàng bằng chuyển khoản tới ch
   it('mua khóa AI Agent, ngân hàng của chủ hội báo có, rồi hoàn tiền khi xem < 20%', async () => {
     const duy = await app.as('duy');
     const productId = await app.ids('product:aiagent');
-    // Cổng của Hội Mình (MoMo, VNPAY, PayPal) không dùng cho đơn của hội: tiền qua đó về tài khoản Hội Mình.
-    await expect(checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'momo' })).rejects.toThrow(/chuyển khoản ngân hàng/);
+    // Cổng của Hội Mình (MoMo, VNPAY, PayPal) không dùng cho đơn của hội: tiền qua đó về tài khoản Hội Mình. Hội chỉ
+    // cài chuyển khoản thì người mua chỉ chọn được chuyển khoản.
+    await expect(checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'momo' })).rejects.toThrow(/chưa nhận thanh toán qua MoMo.*Chuyển khoản QR/);
     const session = await checkout.createCheckout(duy, { target: { type: 'product', productId }, provider: 'sepay' });
     expect(session.instruction).toMatchObject({ kind: 'bank_qr', payee: 'owner' });
     const r = await ownerBankPaid(app, session.reference, session.amountMinor);

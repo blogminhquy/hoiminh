@@ -13,8 +13,9 @@ const FIELDS: Record<PaymentProvider, Record<string, keyof Env>> = {
   momo: { partnerCode: 'MOMO_PARTNER_CODE', accessKey: 'MOMO_ACCESS_KEY', secretKey: 'MOMO_SECRET_KEY' },
   vnpay: { tmnCode: 'VNPAY_TMN_CODE', hashSecret: 'VNPAY_HASH_SECRET' },
   paypal: { clientId: 'PAYPAL_CLIENT_ID', clientSecret: 'PAYPAL_CLIENT_SECRET', webhookId: 'PAYPAL_WEBHOOK_ID' },
+  stripe: { secretKey: 'STRIPE_SECRET_KEY', webhookSecret: 'STRIPE_WEBHOOK_SECRET' },
 };
-const MODE: Record<PaymentProvider, keyof Env> = { sepay: 'SEPAY_MODE', momo: 'MOMO_MODE', vnpay: 'VNPAY_MODE', paypal: 'PAYPAL_MODE' };
+const MODE: Record<PaymentProvider, keyof Env> = { sepay: 'SEPAY_MODE', momo: 'MOMO_MODE', vnpay: 'VNPAY_MODE', paypal: 'PAYPAL_MODE', stripe: 'STRIPE_MODE' };
 
 /** Gộp credential đã lưu vào biến môi trường. Chỉ cổng có credential mới lấy luôn chế độ sandbox/production đã chọn. */
 export async function envWithProviderAccounts(ctx: Ctx): Promise<Env> {

@@ -50,7 +50,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     settings && { id: 'set-spaces', group: 'Cài đặt', label: 'Chuyên mục và duyệt bài', to: `${b}/cai-dat/bang-tin`, keywords: 'bang tin quyen dang' },
     settings && { id: 'set-tabs', group: 'Cài đặt', label: 'Bật tắt các tab của hội', hint: 'Sự kiện, Cửa hàng, Xếp hạng…', to: `${b}/cai-dat/bang-tin`, keywords: 'an hien' },
     (settings || can('billing.manage')) && { id: 'set-pricing', group: 'Cài đặt', label: 'Giá và gói thành viên', to: `${b}/cai-dat/gia`, keywords: 'premium vip mien phi thu phi ban hang' },
-    (settings || can('billing.manage')) && { id: 'set-providers', group: 'Cài đặt', label: 'Cách khách thanh toán', hint: 'Chuyển khoản QR, MoMo, VNPAY, PayPal', to: `${b}/cai-dat/gia`, keywords: 'cong thanh toan sepay' },
+    can('billing.manage') && { id: 'set-providers', group: 'Cài đặt', label: 'Cách khách thanh toán', hint: 'Chuyển khoản QR, SePay, MoMo, VNPAY, PayPal, thẻ Stripe', to: `${b}/cai-dat/nhan-tien`, keywords: 'cong thanh toan sepay momo vnpay paypal stripe the visa mastercard mac dinh' },
     settings && { id: 'set-affiliate', group: 'Cài đặt', label: 'Mức hoa hồng affiliate', to: `${b}/cai-dat/cong-su`, keywords: 'affiliate phan tram' },
     settings && { id: 'set-welcome', group: 'Cài đặt', label: 'Tin nhắn chào tự động', to: `${b}/cai-dat/tien-ich`, keywords: 'tien ich tu dong' },
     settings && { id: 'set-sources', group: 'Cài đặt', label: 'Nhận đơn từ landing', hint: 'Địa chỉ nhận cho form Webcake, kèm thẻ', to: `${b}/cai-dat/nguon-dong-bo`, keywords: 'nguon dong bo webhook webcake the tag' },

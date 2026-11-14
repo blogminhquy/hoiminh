@@ -45,11 +45,38 @@ export const communityPayoutAccounts = pgTable(
     accountHolder: text('account_holder').notNull(),
     /** 'manual' = chủ hội bấm "Đã nhận tiền" từng đơn; 'auto' = dịch vụ báo có của chủ hội gọi về `/webhooks/bank/<token>`. */
     confirmMode: text('confirm_mode').$type<'manual' | 'auto'>().notNull().default('manual'),
+    /** Người mua có thấy cách chuyển khoản QR không. Tắt thì giữ nguyên tài khoản đã nhập, bật lại không phải gõ lại. */
+    enabled: boolean('enabled').notNull().default(true),
     webhookToken: text('webhook_token').notNull(),
     lastWebhookAt: ts('last_webhook_at'),
     ...timestamps(),
   },
   (t) => [uniqueIndex('community_payout_accounts_community_uq').on(t.communityId), uniqueIndex('community_payout_accounts_token_uq').on(t.webhookToken)],
+);
+
+/**
+ * Cổng thanh toán riêng của chủ hội (MoMo, VNPAY, PayPal, Stripe): người mua trả qua cổng của chính chủ hội, tiền về
+ * tài khoản cổng của chủ hội, không qua Hội Mình. Mỗi hội một dòng cho mỗi cổng. Khóa bí mật mã hóa bằng ENCRYPTION_KEY
+ * và không bao giờ trả ra lại; `summary` chỉ giữ phần không bí mật để hiện lại cho chủ hội (mã đối tác, 4 ký tự cuối).
+ * `webhookToken` nằm trong địa chỉ `/webhooks/hoi/<token>` mà cổng gọi về, xác định đúng hội và đúng cổng.
+ */
+export const communityPaymentGateways = pgTable(
+  'community_payment_gateways',
+  {
+    id: id(),
+    communityId: uuid('community_id').notNull().references(() => communities.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    provider: text('provider').$type<'momo' | 'vnpay' | 'paypal' | 'stripe'>().notNull(),
+    mode: text('mode').$type<'sandbox' | 'production'>().notNull().default('production'),
+    /** Người mua có thấy cổng này không. Tắt thì giữ khóa đã nhập. */
+    enabled: boolean('enabled').notNull().default(true),
+    credentialsEncrypted: text('credentials_encrypted').notNull(),
+    summary: jsonb('summary').$type<Record<string, string>>().notNull().default({}),
+    webhookToken: text('webhook_token').notNull(),
+    lastWebhookAt: ts('last_webhook_at'),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('community_payment_gateways_uq').on(t.communityId, t.provider), uniqueIndex('community_payment_gateways_token_uq').on(t.webhookToken)],
 );
 
 export const webhookEvents = pgTable(

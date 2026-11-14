@@ -1,5 +1,5 @@
 // /v1/admin: quản trị hệ thống (super admin).
-import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, savePlansSchema } from '@hoiminh/contracts';
+import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, paymentProviderSchema, savePlansSchema } from '@hoiminh/contracts';
 import { admin, affiliate, featureFlags, infra, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
@@ -33,7 +33,7 @@ adminRoutes.post('/users/:id/action', async (c) => {
   return c.json({ ok: true });
 });
 adminRoutes.get('/providers', async (c) => c.json(await admin.listProviders(c.get('ctx'))));
-adminRoutes.patch('/providers/:provider', async (c) => c.json(await admin.updateProvider(c.get('ctx'), c.req.param('provider') as 'sepay', await parse(adminProviderUpdateSchema, await body(c)))));
+adminRoutes.patch('/providers/:provider', async (c) => c.json(await admin.updateProvider(c.get('ctx'), await parse(paymentProviderSchema, c.req.param('provider')), await parse(adminProviderUpdateSchema, await body(c)))));
 adminRoutes.get('/reconciliation', async (c) => c.json(await admin.reconciliation(c.get('ctx'), { status: query(c).status as 'matched', limit: query(c).limit ? Number(query(c).limit) : undefined })));
 adminRoutes.post('/reconciliation/:id/match', async (c) => {
   const { paymentReference } = await parse(adminMatchReconciliationSchema, await body(c));

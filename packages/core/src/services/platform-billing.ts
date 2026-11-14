@@ -12,6 +12,7 @@ import { requireCommunityPermission, requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
 import { grant } from './entitlements';
 import { planOfCommunity, planTable } from './plans';
+import { platformPaymentMethods } from './platform-methods';
 
 /** Bảng gói công khai (trang giá, trang chọn gói): luôn đủ bốn gói theo thứ bậc. */
 export async function listPlans(ctx: Ctx): Promise<PlanDef[]> {
@@ -37,6 +38,8 @@ export async function communityPlanStatus(ctx: Ctx, communityId: string) {
     plans: table,
     /** Chỉ chủ workspace mua được gói; quản trị viên chỉ xem. */
     canBuy: isOwner,
+    /** Cách trả tiền gói: chỉ cổng quản trị đang bật và đã cài khóa thật, cổng mặc định chọn sẵn. */
+    payment: isOwner ? await platformPaymentMethods(ctx, c.workspaceId) : { methods: [], defaultMethod: null },
   };
 }
 

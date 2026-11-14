@@ -1,9 +1,10 @@
-// Test 4 adapter với payload mẫu theo đúng định dạng của từng cổng.
+// Test 5 adapter với payload mẫu theo đúng định dạng của từng cổng.
 import { hmacHex, loadEnv } from '@hoiminh/config';
 import { describe, expect, it } from 'vitest';
 import { MomoAdapter, type MomoIpnPayload } from './momo';
 import { PaypalAdapter } from './paypal';
 import { SepayAdapter } from './sepay';
+import { StripeAdapter } from './stripe';
 import { createPaymentRouter } from './index';
 import { extractReference, normalizeReference } from './types';
 import { VnpayAdapter, vnpQueryString } from './vnpay';
@@ -144,6 +145,76 @@ describe('PayPal hai bước', () => {
     const r = await pp.refund({ providerPaymentId: 'CAP-1', reference: 'HM 8K2QX', amountMinor: 250, reason: 'một phần' });
     expect(r.ok).toBe(true);
     expect(sent).toMatchObject({ amount: { value: '2.50', currency_code: 'USD' } });
+  });
+});
+
+describe('Stripe', () => {
+  const NOW = 1_794_600_000;
+  const cfg = { mode: 'sandbox' as const, secretKey: 'sk_test_51Abc', webhookSecret: 'whsec_test_secret', appEnv: 'test' };
+  const session = (over: Record<string, unknown> = {}) => ({ id: 'evt_1', type: 'checkout.session.completed', created: NOW, data: { object: { id: 'cs_test_1', client_reference_id: 'HM8K2QX', amount_total: 249000, currency: 'vnd', payment_status: 'paid', payment_intent: 'pi_1', metadata: { reference: 'HM8K2QX' }, ...over } } });
+  const signed = async (body: unknown, t = NOW, secret = cfg.webhookSecret) => {
+    const rawBody = JSON.stringify(body);
+    return { headers: { 'stripe-signature': `t=${t},v1=${await hmacHex(secret, StripeAdapter.signedPayload(t, rawBody))}` }, rawBody, query: {} };
+  };
+
+  it('tạo phiên Checkout bằng VND: số tiền đúng bằng số đồng, có mã đơn để khớp', async () => {
+    let sent = '';
+    let headers: Record<string, string> = {};
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      sent = String(init?.body);
+      headers = init?.headers as Record<string, string>;
+      return new Response(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' }), { status: 200 });
+    };
+    const stripe = new StripeAdapter(cfg, fetchImpl, () => NOW);
+    const r = await stripe.createCheckout({ reference: 'HM 8K2QX', orderId: 'o1', amountMinor: 249000, currency: 'VND', description: 'Premium', customerEmail: 'a@b.vn', returnUrl: 'http://x/thanh-toan/o1', ipnUrl: 'http://y' });
+    expect(r).toMatchObject({ provider: 'stripe', providerPaymentId: 'cs_test_1', instruction: { kind: 'redirect', url: 'https://checkout.stripe.com/c/pay/cs_test_1' } });
+    const form = new URLSearchParams(sent);
+    expect(form.get('line_items[0][price_data][currency]')).toBe('vnd');
+    expect(form.get('line_items[0][price_data][unit_amount]')).toBe('249000');
+    expect(form.get('client_reference_id')).toBe('HM8K2QX');
+    expect(form.get('payment_intent_data[metadata][reference]')).toBe('HM8K2QX');
+    expect(headers.Authorization).toBe('Bearer sk_test_51Abc');
+  });
+
+  it('webhook đúng chữ ký thì nhận; sai khóa, sửa nội dung, quá 5 phút thì từ chối', async () => {
+    const stripe = new StripeAdapter(cfg, fetch, () => NOW);
+    const req = await signed(session());
+    expect(await stripe.verifyWebhook(req)).toBe(true);
+    expect(await stripe.verifyWebhook(await signed(session(), NOW, 'whsec_khac'))).toBe(false);
+    expect(await stripe.verifyWebhook({ ...req, rawBody: req.rawBody.replace('249000', '1000') })).toBe(false);
+    expect(await stripe.verifyWebhook(await signed(session(), NOW - 301))).toBe(false);
+    expect(await stripe.verifyWebhook({ ...req, headers: {} })).toBe(false);
+  });
+
+  it('chuẩn hóa sự kiện: đã trả, chưa có tiền, thất bại, hoàn tiền (tổng đã hoàn)', () => {
+    const stripe = new StripeAdapter(cfg);
+    const parse = (b: unknown) => stripe.parseWebhook({ headers: {}, rawBody: JSON.stringify(b), query: {} });
+    expect(parse(session())).toMatchObject({ type: 'payment.succeeded', reference: 'HM8K2QX', amountMinor: 249000, currency: 'VND', providerPaymentId: 'pi_1', providerEventId: 'stripe-evt_1' });
+    expect(parse(session({ payment_status: 'unpaid' }))?.type).toBe('ignored');
+    expect(parse({ ...session(), type: 'checkout.session.async_payment_succeeded' })?.type).toBe('payment.succeeded');
+    expect(parse({ ...session(), type: 'checkout.session.expired' })?.type).toBe('payment.failed');
+    expect(parse(session({ currency: 'eur' }))?.type).toBe('ignored');
+    expect(parse({ id: 'evt_2', type: 'charge.refunded', created: NOW, data: { object: { payment_intent: 'pi_1', amount_refunded: 100000, currency: 'vnd', metadata: {} } } })).toMatchObject({ type: 'payment.refunded', providerPaymentId: 'pi_1', amountMinor: 100000, cumulative: true, reference: null });
+  });
+
+  it('khóa thử của Hội Mình ở máy dev đi qua trang mô phỏng, không gọi Stripe', async () => {
+    const stripe = new StripeAdapter({ ...cfg, secretKey: 'sk_test_hoiminh_e2e', simulatorUrl: 'http://api/pay/simulator' }, async () => { throw new Error('không được gọi Stripe'); });
+    const r = await stripe.createCheckout({ reference: 'HM 8K2QX', orderId: 'o1', amountMinor: 249000, currency: 'VND', description: 'Premium', customerEmail: 'a@b.vn', returnUrl: 'http://x', ipnUrl: 'http://y' });
+    expect(r.instruction).toMatchObject({ kind: 'redirect', url: expect.stringContaining('http://api/pay/simulator?provider=stripe&orderId=HM8K2QX&amount=249000') });
+    const staging = new StripeAdapter({ ...cfg, secretKey: 'sk_test_hoiminh_e2e', appEnv: 'staging', simulatorUrl: 'http://api/pay/simulator' });
+    await expect(staging.createCheckout({ reference: 'HM 1', orderId: 'o', amountMinor: 1, currency: 'VND', description: '', customerEmail: '', returnUrl: '', ipnUrl: '' })).rejects.toThrow(/khóa/);
+  });
+
+  it('hoàn tiền gọi API refunds với payment_intent và số tiền', async () => {
+    let sent = '';
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      sent = String(init?.body);
+      return new Response(JSON.stringify({ id: 're_1', status: 'succeeded' }), { status: 200 });
+    };
+    const stripe = new StripeAdapter(cfg, fetchImpl);
+    expect(await stripe.refund({ providerPaymentId: 'pi_1', reference: 'HM 8K2QX', amountMinor: 50000, reason: 'x' })).toEqual({ ok: true, providerRefundId: 're_1', manual: false });
+    expect(new URLSearchParams(sent).get('amount')).toBe('50000');
+    expect(await stripe.refund({ providerPaymentId: 'cs_test_1', reference: 'HM 8K2QX', amountMinor: 1, reason: 'x' })).toMatchObject({ manual: true });
   });
 });
 

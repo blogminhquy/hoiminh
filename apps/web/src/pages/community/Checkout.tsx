@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { useShellQuery } from '@/lib/community';
 import { fmtDateTime } from '@/lib/format';
 import { CheckoutConfigure } from './CheckoutConfigure';
-import { BankQrCard, CheckoutFrame, PROVIDERS, ProviderOption, Waiting, type Instruction } from './CheckoutParts';
+import { BankQrCard, CheckoutFrame, ProviderOption, Waiting, providerMeta, type Instruction } from './CheckoutParts';
 
 interface Order { orderId: string; status: 'pending' | 'paid' | 'refunded' | 'expired' | 'cancelled'; paidAt: string | null; reference: string; amountMinor: number; provider: string | null; paymentStatus: string | null; instruction: Instruction | null; title: string; nextUrl: string; expiresAt: string | null }
 
@@ -29,7 +29,7 @@ function OrderView({ orderId }: { orderId: string }) {
   const back = o?.nextUrl ?? '/';
   if (q.isLoading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
   if (q.isError || !o) return <CheckoutFrame backTo="/"><ErrorBox message={errorMessage(q.error)} onRetry={() => void q.refetch()} /></CheckoutFrame>;
-  const p = PROVIDERS.find((x) => x.key === o.provider) ?? PROVIDERS[0]!;
+  const p = providerMeta(o.provider);
   return (
     <CheckoutFrame backTo={back}>
       <div className="flex flex-col md:flex-row gap-8">
@@ -57,7 +57,7 @@ function OrderView({ orderId }: { orderId: string }) {
               <ProviderOption p={p} on />
               {o.instruction?.kind === 'bank_qr' && <BankQrCard i={o.instruction} />}
               {o.instruction?.kind === 'redirect' && (
-                <a href={o.instruction.url} className="btn btn-dark" style={{ height: 48, fontSize: 15 }}><ExternalLink size={16} /> Mở trang {p.name} để thanh toán</a>
+                <a href={o.instruction.url} className="btn btn-dark" style={{ height: 48, fontSize: 15 }}><ExternalLink size={16} /> {p.key === 'stripe' ? 'Mở trang thanh toán thẻ' : `Mở trang ${p.name} để thanh toán`}</a>
               )}
               {o.instruction?.kind === 'bank_qr' && (
                 <Button variant="primary" size="lg" className="mt-1.5" loading={processing.isPending} disabled={o.paymentStatus === 'processing'} onClick={() => processing.mutate()}>{o.paymentStatus === 'processing' ? (ownerManual ? 'Đã báo chủ hội, chờ xác nhận' : 'Đã ghi nhận, đang đối chiếu') : 'Tôi đã chuyển khoản'}</Button>
