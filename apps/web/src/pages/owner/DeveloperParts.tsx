@@ -90,8 +90,8 @@ export function ApiKeysCard({ workspaceId }: { workspaceId: string }) {
 
       {open && (
         <div className="px-5 pb-4 flex flex-col gap-3" style={{ borderTop: `1px solid ${T.line}`, paddingTop: 16 }}>
-          <Field label="Tên key" hint="Đặt theo nơi dùng để sau này biết cái nào của cái gì: Javis, Zapier, n8n…">
-            <Input value={name} maxLength={60} placeholder="Javis" onChange={(e) => setName(e.target.value)} />
+          <Field label="Tên key" hint="Đặt theo nơi dùng để sau này biết cái nào của cái gì: trợ lý AI, Zapier, n8n…">
+            <Input value={name} maxLength={60} placeholder="Trợ lý AI" onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label="Phạm vi" hint="Chỉ cấp đúng thứ cần. Key lộ ra ngoài thì chỉ làm được những việc trong phạm vi này. Không key nào đổi được tài khoản nhận tiền, mật khẩu hay tạo key khác.">
             <ScopePicker selected={scopes} onChange={setScopes} />
@@ -255,7 +255,7 @@ export function McpCard() {
         <span className="font-semibold">MCP · cho trợ lý AI điều khiển hội</span>
       </div>
       <div className="text-[14px] leading-[1.6]" style={{ color: T.ink2 }}>
-        Cắm Hội Mình vào Javis, Claude, Cursor hay bất kỳ trợ lý nào nói giao thức MCP. Trợ lý làm được gần như mọi việc quản lý hội: đăng bài và thông báo, duyệt và quản lý thành viên, tạo khóa học và bài học, sự kiện, sản phẩm cửa hàng, xem doanh thu, xác nhận đơn chuyển khoản, affiliate, thẻ và quy tắc tự động, tin nhắn. Không phải cài gì, chỉ cần một địa chỉ và một API key.
+        Cắm Hội Mình vào Claude, Cursor hay bất kỳ trợ lý AI nào nói giao thức MCP. Trợ lý làm được gần như mọi việc quản lý hội: đăng bài và thông báo, duyệt và quản lý thành viên, tạo khóa học và bài học, sự kiện, sản phẩm cửa hàng, xem doanh thu, xác nhận đơn chuyển khoản, affiliate, thẻ và quy tắc tự động, tin nhắn. Không phải cài gì, chỉ cần một địa chỉ và một API key.
       </div>
       <ol className="m-0 p-0 list-none flex flex-col gap-2 text-[14px] leading-[1.55]" style={{ color: T.ink2 }}>
         {steps.map((t, i) => (
