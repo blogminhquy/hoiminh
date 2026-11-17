@@ -238,7 +238,7 @@ export const TOOLS: Tool[] = [
 
   // ===== Webhook gửi đi =====
   { name: 'list_webhooks', title: 'Webhook gửi đi', scopes: ['webhooks:manage'], effect: 'read', input: z.object({}), description: 'Các webhook Hội Mình đang gọi ra ngoài khi có sự kiện, kèm các lần gửi gần đây.', run: async (api) => api('GET', `/v1/workspaces/${await workspaceId(api)}/webhooks`) },
-  { name: 'create_webhook', title: 'Thêm webhook', scopes: ['webhooks:manage'], effect: 'write', input: createWebhookSchema, description: 'Đăng ký một URL nhận sự kiện (thành viên mới, thanh toán, hoàn tiền, học xong bài...). Kết quả có `secret` để kiểm chữ ký, chỉ hiện một lần.', run: async (api, args) => api('POST', `/v1/workspaces/${await workspaceId(api)}/webhooks`, args) },
+  { name: 'create_webhook', title: 'Thêm webhook', scopes: ['webhooks:manage'], effect: 'write', input: createWebhookSchema, description: 'Đăng ký một URL nhận sự kiện: thành viên mới, thanh toán, hoàn tiền, học xong bài, bài đăng mới (post.created) và bình luận mới (comment.created, cả hai kèm nội dung và trường viaApiKey để bỏ qua nội dung do chính API key tạo). Kết quả có `secret` để kiểm chữ ký, chỉ hiện một lần.', run: async (api, args) => api('POST', `/v1/workspaces/${await workspaceId(api)}/webhooks`, args) },
   { name: 'delete_webhook', title: 'Xóa webhook', scopes: ['webhooks:manage'], effect: 'delete', input: z.object({ webhookId: id('Id webhook, lấy từ list_webhooks') }), description: 'Xóa một webhook gửi đi. Hỏi lại chủ hội trước khi gọi.', run: async (api, args) => api('DELETE', `/v1/workspaces/${await workspaceId(api)}/webhooks/${encodeURIComponent(String(args.webhookId))}`) },
 
   // ===== Tải tệp lên =====

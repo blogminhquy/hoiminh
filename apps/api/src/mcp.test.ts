@@ -363,6 +363,40 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect(saved).toBeTruthy();
   });
 
+  it('webhook bài đăng mới và bình luận mới: kèm nội dung, tác giả, đường dẫn; nội dung do key tạo có cờ viaApiKey', async () => {
+    const hook = await tool('create_webhook', { url: 'https://example.com/javis', events: ['post.created', 'comment.created'] });
+    const deliveries = async () => (await app.ctx.db.query.webhookDeliveries.findMany()).filter((d) => d.webhookId === hook.id).map((d) => ({ event: d.eventName, data: d.payload as Loose }));
+    const feed = await tool('list_posts', { communityId, limit: 1 });
+    const space = feed.spaces.find((s: Loose) => s.postPermission === 'everyone') ?? feed.spaces[0];
+
+    // Thành viên đăng bài và bình luận trên web.
+    const member = (await http('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) })).data.accessToken as string;
+    const post = (await http(`/v1/communities/${communityId}/posts`, { method: 'POST', auth: member, body: JSON.stringify({ spaceId: space.id, title: 'Hỏi về funnel', contentMd: 'Mọi người cho mình hỏi cách dựng funnel với ạ.' }) })).data;
+    expect(post.moderationStatus).toBe('approved');
+    const comment = (await http('/v1/comments', { method: 'POST', auth: member, body: JSON.stringify({ targetType: 'post', targetId: post.id, contentMd: 'Mình bổ sung: ngân sách 5 triệu.' }) })).data;
+    let got = await deliveries();
+    const postEvent = got.find((d) => d.event === 'post.created' && d.data.postId === post.id)!;
+    expect(postEvent.data).toMatchObject({ communityId, communitySlug: 'minhquy', title: 'Hỏi về funnel', contentMd: 'Mọi người cho mình hỏi cách dựng funnel với ạ.', author: { name: 'Công Trần' }, space: { id: space.id }, viaApiKey: false });
+    expect(postEvent.data.url).toMatch(new RegExp(`/minhquy/bai-viet/${post.id}$`));
+    const commentEvent = got.find((d) => d.event === 'comment.created' && d.data.commentId === comment.id)!;
+    expect(commentEvent.data).toMatchObject({ targetType: 'post', targetId: post.id, parentCommentId: null, contentMd: 'Mình bổ sung: ngân sách 5 triệu.', author: { name: 'Công Trần' }, post: { id: post.id, title: 'Hỏi về funnel' }, viaApiKey: false });
+
+    // Javis trả lời bằng API key: webhook vẫn phát, nhưng có cờ để Javis không tự trả lời chính mình.
+    const reply = await tool('create_comment', { targetType: 'post', targetId: post.id, parentCommentId: comment.id, contentMd: 'Chào bạn, 5 triệu thì bắt đầu bằng một landing và một chuỗi email.' });
+    got = await deliveries();
+    expect(got.find((d) => d.event === 'comment.created' && d.data.commentId === reply.id)!.data).toMatchObject({ parentCommentId: comment.id, viaApiKey: true });
+    const own = await tool('create_post', { communityId, title: 'Bài của chủ hội qua Javis', contentMd: 'Nội dung.' });
+    expect((await deliveries()).find((d) => d.event === 'post.created' && d.data.postId === own.id)!.data.viaApiKey).toBe(true);
+
+    // Webhook không đăng ký hai sự kiện này thì không nhận.
+    const other = await tool('create_webhook', { url: 'https://example.com/khac', events: ['member.joined'] });
+    await tool('create_comment', { targetType: 'post', targetId: post.id, contentMd: 'Thêm một bình luận.' });
+    expect((await app.ctx.db.query.webhookDeliveries.findMany()).filter((d) => d.webhookId === other.id)).toHaveLength(0);
+    expect((await tool('list_webhooks')).find((w: Loose) => w.id === hook.id).recent.length).toBeGreaterThanOrEqual(5);
+    await tool('delete_webhook', { webhookId: hook.id });
+    await tool('delete_webhook', { webhookId: other.id });
+  });
+
   it('mọi lệnh đều có khai báo MCP hợp lệ', () => {
     for (const t of TOOLS) expect(describeTool(t).inputSchema.type).toBe('object');
     expect(TOOLS.length).toBeGreaterThan(70);

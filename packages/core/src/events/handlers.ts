@@ -2,7 +2,7 @@
 import { formatMoney, isPlanKey, type PlanKey } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
-import { communities, communityMembers, courses, orders, posts, products, users, workspaces } from '@hoiminh/db';
+import { comments, communities, communityMembers, courses, orders, posts, products, spaces, users, workspaces } from '@hoiminh/db';
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
@@ -20,6 +20,14 @@ async function userOf(ctx: Ctx, id: string) {
 }
 async function communityOf(ctx: Ctx, id: string | null) {
   return id ? ctx.db.query.communities.findFirst({ where: eq(communities.id, id) }) : null;
+}
+
+/**
+ * Bài hoặc bình luận này do chính API key (trợ lý AI, tích hợp) vừa tạo dưới tên chủ hội. Bên nhận webhook dùng cờ này
+ * để bỏ qua nội dung của chính mình: trợ lý tự trả lời mọi bình luận mà không lọc thì sẽ trả lời chính nó mãi.
+ */
+function viaApiKey(ctx: Ctx, authorUserId: string): boolean {
+  return ctx.actor.type === 'api_key' && ctx.actor.userId === authorUserId;
 }
 
 /** Gắn toàn bộ handler vào bus. Gọi một lần khi khởi động. */
@@ -139,10 +147,17 @@ export function registerHandlers(app: AppContext): void {
     const c = ctx(ev);
     const community = await communityOf(c, p.communityId);
     if (!community) return;
-    await dispatch(c, community.workspaceId, 'post.created', { postId: p.postId, communityId: p.communityId, authorUserId: p.authorUserId, title: p.title });
-    const post = await c.db.query.posts.findFirst({ where: eq(posts.id, p.postId), columns: { contentMd: true } });
-    const handles = post ? [...post.contentMd.matchAll(/(^|\s)@([a-z0-9][a-z0-9-]{2,31})/g)].map((m) => m[2]!) : [];
+    const post = await c.db.query.posts.findFirst({ where: eq(posts.id, p.postId), columns: { contentMd: true, videoUrl: true, linkUrl: true, createdAt: true } });
     const author = await userOf(c, p.authorUserId);
+    const space = await c.db.query.spaces.findFirst({ where: eq(spaces.id, p.spaceId), columns: { id: true, name: true, slug: true } });
+    // Webhook mang đủ nội dung bài để bên nhận (trợ lý AI, n8n) xử lý ngay, không phải gọi lại API. Bốn trường đầu giữ nguyên từ bản cũ.
+    await dispatch(c, community.workspaceId, 'post.created', {
+      postId: p.postId, communityId: p.communityId, authorUserId: p.authorUserId, title: p.title,
+      communitySlug: community.slug, author: author ? { id: author.id, name: author.name, handle: author.handle } : null, space: space ?? null,
+      contentMd: post?.contentMd ?? '', videoUrl: post?.videoUrl ?? null, linkUrl: post?.linkUrl ?? null, broadcast: p.broadcast,
+      url: `${c.env.APP_URL}/${community.slug}/bai-viet/${p.postId}`, viaApiKey: viaApiKey(c, p.authorUserId),
+    });
+    const handles = post ? [...post.contentMd.matchAll(/(^|\s)@([a-z0-9][a-z0-9-]{2,31})/g)].map((m) => m[2]!) : [];
     for (const h of new Set(handles)) {
       const u = await c.db.query.users.findFirst({ where: eq(users.handle, h) });
       if (u && u.id !== p.authorUserId) await notify(c, { userId: u.id, communityId: p.communityId, kind: 'mention', category: 'mention', title: `${author?.name ?? 'Ai đó'} đã nhắc đến bạn trong “${p.title}”`, actorUserId: p.authorUserId, link: `/${community.slug}/bai-viet/${p.postId}`, actionLabel: 'Xem' });
@@ -166,6 +181,16 @@ export function registerHandlers(app: AppContext): void {
       const u = await c.db.query.users.findFirst({ where: eq(users.handle, h) });
       if (u && u.id !== p.authorUserId) await notify(c, { userId: u.id, communityId: p.communityId, kind: 'mention', category: 'mention', title: `${author.name} đã nhắc đến bạn trong một bình luận`, actorUserId: p.authorUserId, link, actionLabel: 'Xem' });
     }
+    // Webhook đặt sau cùng: gửi webhook có lỗi thì các thông báo ở trên vẫn đã được tạo.
+    const comment = await c.db.query.comments.findFirst({ where: eq(comments.id, p.commentId), columns: { contentMd: true, imageUrl: true, createdAt: true } });
+    await dispatch(c, community.workspaceId, 'comment.created', {
+      commentId: p.commentId, communityId: p.communityId, communitySlug: community.slug, authorUserId: p.authorUserId,
+      author: { id: author.id, name: author.name, handle: author.handle },
+      targetType: p.targetType, targetId: p.targetId, parentCommentId: p.parentCommentId,
+      post: post ? { id: post.id, title: post.title, authorUserId: post.authorUserId } : null,
+      contentMd: comment?.contentMd ?? '', imageUrl: comment?.imageUrl ?? null, mentionedHandles: p.mentionedHandles,
+      url: `${c.env.APP_URL}${link}`, viaApiKey: viaApiKey(c, p.authorUserId),
+    });
   });
 
   bus.on('event.registered', async (p, ev) => {

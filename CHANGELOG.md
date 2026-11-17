@@ -11,6 +11,8 @@ Cắm Hội Mình vào Javis (hoặc Claude, Cursor, bất kỳ trợ lý AI nà
 - **Trợ lý chỉ thấy lệnh mà key của nó gọi được.** Key chỉ xem thì danh sách lệnh chỉ có lệnh xem. Lệnh xóa, hoàn tiền, đổi giá, khóa thành viên, xác nhận tiền được đánh dấu để trợ lý hỏi lại chủ hội trước khi làm.
 - **Bảy phạm vi API key mới**: `posts:moderate`, `store:write`, `revenue:read`, `billing:manage`, `automation:manage`, `messages:read`, `webhooks:manage`. Trước đây không phạm vi nào mở được cửa hàng, giá gói, duyệt bài, nên API key không làm nổi các việc này.
 - **Màn Nhà phát triển**: chọn phạm vi bằng danh sách có giải thích tiếng Việt thay cho hàng mã, có nút "Toàn quyền (cho trợ lý AI)" và "Chỉ xem". Khung MCP hiện địa chỉ để chép, bốn bước nối, và mẫu cấu hình.
+- **Webhook gửi đi có thêm sự kiện bình luận mới (`comment.created`) và sự kiện bài đăng mới (`post.created`) nay kèm đủ nội dung.** Cả hai gửi nội dung Markdown, tác giả (tên, handle), đường dẫn mở bài trên web; bài đăng kèm chuyên mục, video, liên kết; bình luận kèm bài gốc và bình luận cha nếu là trả lời. Bên nhận (Javis, n8n) xử lý được ngay, không phải gọi lại API. Trường `viaApiKey` là `true` khi nội dung do chính API key tạo, để trợ lý tự trả lời bình luận không trả lời chính mình mãi. Trước đây `post.created` chỉ gửi id và tiêu đề, còn bình luận mới không gửi ra ngoài. Bài của thành viên mới còn chờ duyệt chỉ phát sự kiện sau khi được duyệt (như cũ).
+- Màn Nhà phát triển: chọn sự kiện webhook bằng danh sách có giải thích tiếng Việt thay cho hàng mã.
 - Hai đường dẫn mới cho API key: `GET /v1/communities/:id/orders/pending` (đơn chuyển khoản chờ xác nhận, không kèm tài khoản nhận tiền) và `GET /v1/communities/:id/orders/:orderId` (chủ hội tra một đơn của hội).
 
 ### Sửa
@@ -37,7 +39,7 @@ Cắm Hội Mình vào Javis (hoặc Claude, Cursor, bất kỳ trợ lý AI nà
 - `apps/api/src/mcp/tools.ts` (bộ lệnh, dữ liệu vào lấy thẳng từ schema của `@hoiminh/contracts` qua `zod-to-json-schema`), `apps/api/src/mcp/server.ts` (JSON-RPC: `initialize`, `ping`, `tools/list`, `tools/call`, lô yêu cầu, thông báo), `apps/api/src/routes/mcp.ts` (route, kiểm cờ `mcp`). `/mcp` thêm vào `run_worker_first` của `wrangler.toml` và `NO_DB_PATHS`.
 - `apps/mcp` (stdio) bỏ bản sao bộ lệnh, chỉ còn chuyển tiếp tới `/mcp`.
 - `/v1/me/integration` trả thêm `scopes` của key đang dùng.
-- Test: `apps/api/src/mcp.test.ts` (22 test) chạy thật các lệnh trên database mẫu, gồm cả luồng người mua tạo đơn, trợ lý xác nhận đã nhận tiền rồi hoàn tiền; kiểm từng đường dẫn nhạy cảm bị chặn với key toàn quyền; kiểm mỗi lệnh khớp một dòng trong bảng luật.
+- Test: `apps/api/src/mcp.test.ts` (23 test) chạy thật các lệnh trên database mẫu, gồm cả luồng người mua tạo đơn, trợ lý xác nhận đã nhận tiền rồi hoàn tiền; kiểm từng đường dẫn nhạy cảm bị chặn với key toàn quyền; kiểm mỗi lệnh khớp một dòng trong bảng luật.
 
 ## 1.34.0 - 2026-11-14
 

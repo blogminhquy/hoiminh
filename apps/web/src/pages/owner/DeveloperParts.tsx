@@ -1,6 +1,6 @@
 // Khối con màn Nhà phát triển: bảng API key, bảng webhook gửi đi, hướng dẫn MCP.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_SCOPES, API_SCOPE_LABELS, WEBHOOK_EVENTS, type ApiScope } from '@hoiminh/contracts';
+import { API_SCOPES, API_SCOPE_LABELS, WEBHOOK_EVENTS, WEBHOOK_EVENT_LABELS, type ApiScope } from '@hoiminh/contracts';
 import { Button, Field, Input, T, Tag } from '@hoiminh/ui';
 import { Bot, Check, Copy, KeyRound, Plus, Trash2, Webhook } from 'lucide-react';
 import { useState } from 'react';
@@ -24,17 +24,6 @@ function SecretOnce({ label, value, note }: { label: string; value: string; note
         <Button size="sm" icon={copied ? <Check size={14} /> : <Copy size={14} />} onClick={() => { void navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}>{copied ? 'Đã chép' : 'Chép'}</Button>
       </div>
       <span className="text-[12px]">{note}</span>
-    </div>
-  );
-}
-
-/** Chọn nhiều giá trị bằng chip. */
-function ChipPicker({ options, selected, onToggle }: { options: readonly string[]; selected: string[]; onToggle: (v: string) => void }) {
-  return (
-    <div className="flex gap-1.5 flex-wrap">
-      {options.map((o) => (
-        <button key={o} type="button" onClick={() => onToggle(o)} className={`chip${selected.includes(o) ? ' on' : ''}`} style={{ height: 28, fontSize: 12 }}>{o}</button>
-      ))}
     </div>
   );
 }
@@ -184,7 +173,17 @@ export function WebhooksCard({ workspaceId }: { workspaceId: string }) {
           </Field>
           <Field label="Ghi chú"><Input value={f.description} maxLength={120} placeholder="Đồng bộ đơn hàng sang CRM" onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
           <Field label="Sự kiện">
-            <ChipPicker options={WEBHOOK_EVENTS} selected={events} onToggle={(s) => setEvents((v) => (v.includes(s) ? v.filter((x) => x !== s) : [...v, s]))} />
+            <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+              {WEBHOOK_EVENTS.map((e) => (
+                <label key={e} className="flex items-start gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" className="mt-[3px]" checked={events.includes(e)} onChange={() => setEvents((v) => (v.includes(e) ? v.filter((x) => x !== e) : [...v, e]))} />
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-[14px] leading-[1.4]">{WEBHOOK_EVENT_LABELS[e]}</span>
+                    <code className="text-[12px]" style={{ fontFamily: 'Consolas, monospace', color: T.ink3 }}>{e}</code>
+                  </span>
+                </label>
+              ))}
+            </div>
           </Field>
           {create.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(create.error)}</span>}
           <div><Button variant="primary" size="sm" loading={create.isPending} disabled={!validUrl || events.length === 0} onClick={() => create.mutate()}>Thêm webhook</Button></div>

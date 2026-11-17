@@ -39,10 +39,25 @@ export const createApiKeySchema = z.object({
 
 export const WEBHOOK_EVENTS = [
   'member.joined', 'member.tier_changed', 'payment.succeeded', 'payment.refunded', 'subscription.cancelled',
-  'lesson.completed', 'course.completed', 'post.created', 'event.registered', 'affiliate.commission_available',
+  'lesson.completed', 'course.completed', 'post.created', 'comment.created', 'event.registered', 'affiliate.commission_available',
   'affiliate.withdrawal_paid',
 ] as const;
 export const webhookEventSchema = z.enum(WEBHOOK_EVENTS);
+/** Mỗi sự kiện xảy ra khi nào, viết cho chủ hội đọc lúc chọn sự kiện ở màn Nhà phát triển. */
+export const WEBHOOK_EVENT_LABELS: Record<(typeof WEBHOOK_EVENTS)[number], string> = {
+  'member.joined': 'Có thành viên mới vào hội',
+  'member.tier_changed': 'Thành viên đổi gói',
+  'payment.succeeded': 'Có đơn thanh toán thành công',
+  'payment.refunded': 'Một đơn được hoàn tiền',
+  'subscription.cancelled': 'Thành viên hủy gia hạn gói',
+  'lesson.completed': 'Thành viên học xong một bài',
+  'course.completed': 'Thành viên học xong một khóa',
+  'post.created': 'Có bài đăng mới trên bảng tin (kèm nội dung bài)',
+  'comment.created': 'Có bình luận mới (kèm nội dung bình luận)',
+  'event.registered': 'Có người đăng ký sự kiện',
+  'affiliate.commission_available': 'Hoa hồng affiliate đến hạn rút',
+  'affiliate.withdrawal_paid': 'Một yêu cầu rút hoa hồng đã được trả',
+};
 export type WebhookEventName = z.infer<typeof webhookEventSchema>;
 export const createWebhookSchema = z.object({
   url: z.string().url(),
