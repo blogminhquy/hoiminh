@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.35.1 - 2026-11-17
+
+### Thay đổi
+
+- **Màn Nhà phát triển không còn nhắc tên Javis.** Javis là trợ lý riêng của chủ dự án, chủ hội khác đăng ký Hội Mình không có. Gợi ý tên key và lời giới thiệu MCP nay viết chung là "trợ lý AI" (Claude, Cursor hay trợ lý nào nói giao thức MCP). Chỉ đổi chữ, không đổi tính năng, không có migration.
+
 ## 1.35.0 - 2026-11-17
 
 Cắm Hội Mình vào Javis (hoặc Claude, Cursor, bất kỳ trợ lý AI nào nói MCP) bằng một địa chỉ và một API key, để trợ lý điều khiển gần như toàn bộ việc quản lý hội. Rà soát lại lớp API key và MCP đã có, vá ba chỗ hỏng và hai lỗ hổng phân quyền. Theo yêu cầu của chủ dự án.
