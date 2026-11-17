@@ -25,7 +25,7 @@ LOG_LEVEL = "info"
 [assets]
 directory = "../web/dist"
 not_found_handling = "single-page-application"
-run_worker_first = ["/v1/*", "/webhooks/*", "/pay/*", "/r/*", "/files/*", "/health"]
+run_worker_first = ["/v1/*", "/mcp", "/webhooks/*", "/pay/*", "/r/*", "/files/*", "/health"]
 
 # Tên miền riêng: Cloudflare tự tạo bản ghi DNS khi deploy.
 # api.hoiminh.com giữ lại vì cổng thanh toán gửi webhook về đó và API key của chủ hội đang dùng nó.

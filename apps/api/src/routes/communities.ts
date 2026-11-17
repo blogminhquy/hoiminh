@@ -64,6 +64,10 @@ communityRoutes.post('/:id/payout-account/rotate-webhook', requireAuth, async (c
 communityRoutes.put('/:id/payment-gateways/:provider', requireAuth, rateLimit('write', { scope: 'payment-gateway' }), async (c) => c.json(await ownerGateways.saveGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')), await parse(ownerGatewayInputSchema, await body(c)))));
 communityRoutes.delete('/:id/payment-gateways/:provider', requireAuth, async (c) => c.json(await ownerGateways.removeGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')))));
 communityRoutes.patch('/:id/payment-methods', requireAuth, async (c) => c.json(await ownerGateways.updatePaymentMethods(c.get('ctx'), c.req.param('id'), await parse(paymentMethodsUpdateSchema, await body(c)))));
+/** Đơn chuyển khoản chờ chủ hội xác nhận (không kèm tài khoản nhận tiền): cho API key và MCP. */
+communityRoutes.get('/:id/orders/pending', requireAuth, async (c) => c.json(await ownerPayout.pendingOwnerOrders(c.get('ctx'), c.req.param('id'))));
+/** Một đơn của hội cho chủ hội tra cứu (đường `/v1/orders/:id` chỉ dành cho chính người mua). */
+communityRoutes.get('/:id/orders/:orderId', requireAuth, async (c) => c.json(await revenue.communityOrder(c.get('ctx'), c.req.param('id'), c.req.param('orderId'))));
 communityRoutes.post('/:id/orders/:orderId/confirm-received', requireAuth, rateLimit('write', { scope: 'confirm-received' }), async (c) => c.json(await ownerPayout.confirmOwnerOrder(c.get('ctx'), c.req.param('id'), c.req.param('orderId'))));
 communityRoutes.get('/:id/payout', requireAuth, async (c) => c.json(await revenue.payoutSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/providers', requireAuth, async (c) => {

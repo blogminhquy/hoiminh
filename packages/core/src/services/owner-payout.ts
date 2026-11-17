@@ -112,6 +112,16 @@ export async function payoutSetup(ctx: Ctx, communityId: string) {
   };
 }
 
+/**
+ * Đơn chuyển khoản đang chờ chủ hội xác nhận, tách riêng khỏi `payoutSetup` để API key và MCP đọc được
+ * mà không kèm số tài khoản và địa chỉ webhook báo có (hai thứ đó chỉ hiện trên web).
+ */
+export async function pendingOwnerOrders(ctx: Ctx, communityId: string) {
+  await requireCommunityPermission(ctx, communityId, 'billing.manage');
+  const pending = await pendingRows(ctx, communityId);
+  return { items: pending.map((r) => ({ orderId: r.o.id, title: String((r.o.metadata as { title?: unknown }).title ?? 'Đơn hàng'), amountMinor: r.o.totalMinor, reference: r.o.reference, buyerName: r.buyer.name, buyerEmail: r.buyer.email, createdAt: r.o.createdAt, buyerSaysPaid: r.p.status === 'processing' })) };
+}
+
 /** Chủ hội lưu tài khoản nhận tiền. Lưu lần đầu là mở thanh toán cho hội. */
 export async function savePayoutAccount(ctx: Ctx, communityId: string, input: PayoutAccountInput) {
   const access = await requireCommunityPermission(ctx, communityId, 'billing.manage');

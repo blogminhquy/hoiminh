@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## 1.35.0 - 2026-11-17
+
+Cắm Hội Mình vào Javis (hoặc Claude, Cursor, bất kỳ trợ lý AI nào nói MCP) bằng một địa chỉ và một API key, để trợ lý điều khiển gần như toàn bộ việc quản lý hội. Rà soát lại lớp API key và MCP đã có, vá ba chỗ hỏng và hai lỗ hổng phân quyền. Theo yêu cầu của chủ dự án.
+
+### Thêm
+
+- **MCP từ xa ở `https://api.hoiminh.com/mcp`** (cũng chạy ở `https://hoiminh.com/mcp`). Trợ lý chỉ cần địa chỉ này và API key ở header `Authorization: Bearer hm_live_...`, không phải cài gì trên máy. Đã thử nối bằng thư viện MCP chính thức.
+- **98 lệnh thay cho 10 lệnh cũ**, phủ các việc của chủ hội: xem và sửa thông tin hội, chuyên mục, tiện ích, câu hỏi tham gia; thành viên (lọc, hồ sơ, mời, duyệt, đổi vai trò và gói, khóa, cấp khóa học); bảng tin (đăng bài, thông báo, sửa, ghim, xóa, duyệt bài, bình luận); khóa học (khóa, chương, bài học, sắp xếp, xuất bản); sự kiện và bản ghi; sản phẩm cửa hàng; doanh thu, giá và gói thành viên, đơn chuyển khoản chờ xác nhận, hoàn tiền; affiliate và yêu cầu rút hoa hồng; thẻ, liên hệ, nguồn đồng bộ và quy tắc tự động; tin nhắn và thông báo; webhook gửi đi; tải ảnh và tệp lên.
+- **Trợ lý chỉ thấy lệnh mà key của nó gọi được.** Key chỉ xem thì danh sách lệnh chỉ có lệnh xem. Lệnh xóa, hoàn tiền, đổi giá, khóa thành viên, xác nhận tiền được đánh dấu để trợ lý hỏi lại chủ hội trước khi làm.
+- **Bảy phạm vi API key mới**: `posts:moderate`, `store:write`, `revenue:read`, `billing:manage`, `automation:manage`, `messages:read`, `webhooks:manage`. Trước đây không phạm vi nào mở được cửa hàng, giá gói, duyệt bài, nên API key không làm nổi các việc này.
+- **Màn Nhà phát triển**: chọn phạm vi bằng danh sách có giải thích tiếng Việt thay cho hàng mã, có nút "Toàn quyền (cho trợ lý AI)" và "Chỉ xem". Khung MCP hiện địa chỉ để chép, bốn bước nối, và mẫu cấu hình.
+- Hai đường dẫn mới cho API key: `GET /v1/communities/:id/orders/pending` (đơn chuyển khoản chờ xác nhận, không kèm tài khoản nhận tiền) và `GET /v1/communities/:id/orders/:orderId` (chủ hội tra một đơn của hội).
+
+### Sửa
+
+- **Lệnh `list_communities` luôn trả danh sách rỗng khi gọi bằng API key**, nên trợ lý không có id hội nào để gọi các lệnh khác: MCP cũ nhìn như chạy mà không làm được gì. Nay trả mọi hội của workspace.
+- **Hướng dẫn MCP trên web chỉ sai**: `npx -y @hoiminh/mcp` không chạy được vì gói chưa từng được phát hành. Nay hướng dẫn nối bằng địa chỉ.
+- **Chủ hội không tra được đơn của khách bằng API key**: `/v1/orders/:id` chỉ trả đơn của chính người mua.
+- **Key có `posts:write` mà thiếu `communities:read` không đăng được bài** vì không đọc được danh sách chuyên mục.
+
+### Bảo mật
+
+- **API key mặc định bị chặn.** Key chỉ vào được đường dẫn có trong bảng `apps/api/src/middleware/api-key-access.ts` và đúng phạm vi. Trước bản này một key chỉ có `communities:read` vẫn gọi được toàn bộ `/v1/me/*` dưới tên chủ hội (đọc và gửi tin nhắn, sửa hồ sơ, bật tắt 2FA, yêu cầu rút tiền affiliate) vì các đường đó chỉ kiểm "ai đang gọi", không kiểm phạm vi.
+- **Key không còn tự tạo được key khác.** Trước đây key bất kỳ gọi `POST /v1/workspaces/:id/api-keys` là tạo được key đủ mọi phạm vi. Nay quản lý API key chỉ làm được khi đăng nhập trên web, chặn ở cả bảng đường dẫn lẫn service.
+- Không key nào (kể cả key toàn quyền) đổi được tài khoản nhận tiền, khóa cổng thanh toán, mật khẩu, 2FA, lưu trữ hội, hay vào quản trị hệ thống. Lượt bị chặn vẫn ghi vào nhật ký dùng key.
+
+### Lưu ý khi nâng cấp
+
+- **Key đã tạo trước bản này vẫn chạy với các đường dẫn quản lý hội như cũ**, nhưng không còn gọi được `/v1/me` (hồ sơ, hóa đơn, 2FA), `/v1/checkout` và các đường dẫn khác không có trong bảng. Tích hợp nào đang dựa vào các đường đó sẽ nhận 403 kèm câu giải thích.
+- Bộ lệnh MCP đổi tên ba lệnh: `add_member` thành `invite_members`, `change_member_tier` thành `update_member`, `get_member_progress` thành `get_member`.
+- Không có migration database.
+
+### Kỹ thuật
+
+- `apps/api/src/mcp/tools.ts` (bộ lệnh, dữ liệu vào lấy thẳng từ schema của `@hoiminh/contracts` qua `zod-to-json-schema`), `apps/api/src/mcp/server.ts` (JSON-RPC: `initialize`, `ping`, `tools/list`, `tools/call`, lô yêu cầu, thông báo), `apps/api/src/routes/mcp.ts` (route, kiểm cờ `mcp`). `/mcp` thêm vào `run_worker_first` của `wrangler.toml` và `NO_DB_PATHS`.
+- `apps/mcp` (stdio) bỏ bản sao bộ lệnh, chỉ còn chuyển tiếp tới `/mcp`.
+- `/v1/me/integration` trả thêm `scopes` của key đang dùng.
+- Test: `apps/api/src/mcp.test.ts` (22 test) chạy thật các lệnh trên database mẫu, gồm cả luồng người mua tạo đơn, trợ lý xác nhận đã nhận tiền rồi hoàn tiền; kiểm từng đường dẫn nhạy cảm bị chặn với key toàn quyền; kiểm mỗi lệnh khớp một dòng trong bảng luật.
+
 ## 1.34.0 - 2026-11-14
 
 Chủ hội cài được đủ sáu cách nhận tiền ở Cài đặt, Bán hàng, Nhận tiền: chuyển khoản QR (tự bấm xác nhận), QR tự động qua SePay, MoMo, VNPAY, PayPal và thẻ Visa, Mastercard qua Stripe. Người mua chỉ thấy cách chủ hội đã cài và đang bật, cách chủ hội đặt làm mặc định được chọn sẵn. Khung mua gói Hội Mình cũng chỉ còn hiện cổng quản trị đã cài. Theo yêu cầu của chủ dự án.

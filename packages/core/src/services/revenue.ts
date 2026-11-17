@@ -3,7 +3,8 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { communities, communityMembers, onboardingProgress, orders, payments, posts, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
-import { requireCommunityPermission } from '../permissions';
+import { forbidden, notFound } from '../errors';
+import { requireCommunityPermission, resolveCommunityAccess } from '../permissions';
 import { paymentsReady, payoutSetup } from './owner-payout';
 
 function since(days: number, now: Date): Date {
@@ -28,6 +29,25 @@ export async function revenue(ctx: Ctx, communityId: string, q: { days?: number;
   return {
     stats: { grossMinor: Number(s.gross), txCount: Number(s.tx_count), netMinor: Number(s.net), refundedMinor: Number(s.refunded), refundCount: Number(s.refund_count), owedToAffiliatesMinor: Number(s.owed), referredCount: Number(s.referred_count) },
     items: rows.map((r) => ({ orderId: r.o.id, at: r.o.paidAt ?? r.o.createdAt, customer: r.u, title: (r.o.metadata as { title?: string }).title ?? r.o.targetType, method: r.p?.paymentMethod ?? '', provider: r.p?.provider ?? '', amountMinor: r.o.totalMinor, commissionMinor: Number(r.commission), reversedCommissionMinor: Number(r.reversed), status: r.o.status })),
+  };
+}
+
+/**
+ * Một đơn của hội, cho người quản lý tiền của hội xem (API key và MCP). `checkout.orderStatus` chỉ trả đơn của chính
+ * người mua, nên chủ hội không tra được đơn của khách bằng đường đó.
+ */
+export async function communityOrder(ctx: Ctx, communityId: string, orderId: string) {
+  const access = await resolveCommunityAccess(ctx, communityId);
+  if (!access.permissions.has('revenue.read') && !access.permissions.has('billing.manage')) throw forbidden();
+  const [row] = await ctx.db.select({ o: orders, buyer: { id: users.id, name: users.name, email: users.email, handle: users.handle } }).from(orders).innerJoin(users, eq(users.id, orders.customerUserId)).where(and(eq(orders.id, orderId), eq(orders.communityId, communityId)));
+  if (!row) throw notFound('Đơn không tồn tại');
+  const p = await ctx.db.query.payments.findFirst({ where: eq(payments.orderId, orderId), orderBy: desc(payments.createdAt) });
+  const o = row.o;
+  const expired = o.status === 'pending' && o.expiresAt !== null && o.expiresAt.getTime() < ctx.now().getTime();
+  return {
+    orderId: o.id, reference: o.reference, title: (o.metadata as { title?: string }).title ?? o.targetType, targetType: o.targetType, status: expired ? 'expired' : o.status,
+    amountMinor: o.totalMinor, currency: o.currency, createdAt: o.createdAt, paidAt: o.paidAt, buyer: row.buyer,
+    payment: p ? { provider: p.provider, method: p.paymentMethod, status: p.status, refundedMinor: p.refundedMinor } : null,
   };
 }
 

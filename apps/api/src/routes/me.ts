@@ -23,7 +23,8 @@ meRoutes.get('/', async (c) => {
 meRoutes.get('/integration', async (c) => {
   const ctx = c.get('ctx');
   const workspaceId = ctx.actor.type === 'api_key' ? ctx.actor.workspaceId : null;
-  return c.json({ workspaceId, mcpEnabled: await featureFlags.isEnabled(ctx, featureFlags.FLAG.mcp, { workspaceId }) });
+  // `scopes`: key đang dùng làm được những việc gì, để trợ lý biết trước thay vì thử rồi bị từ chối.
+  return c.json({ workspaceId, scopes: ctx.actor.type === 'api_key' ? ctx.actor.scopes : null, mcpEnabled: await featureFlags.isEnabled(ctx, featureFlags.FLAG.mcp, { workspaceId }) });
 });
 meRoutes.patch('/', async (c) => {
   const input = await parse(updateProfileSchema, await body(c));

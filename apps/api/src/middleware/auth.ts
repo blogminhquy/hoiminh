@@ -3,14 +3,16 @@ import { apiKeys as apiKeySvc, auth as authSvc, forbidden, unauthorized, withSys
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
 import { ACCESS_COOKIE, readCookie, sameOriginWrite } from '../lib/session-cookie';
+import { apiKeyAccess } from './api-key-access';
 
 /** Đường dẫn máy-với-máy: chạy dưới quyền hệ thống thay vì theo actor. */
 const SYSTEM_PATHS = ['/webhooks', '/pay/simulator', '/r', '/files', '/health'];
 /**
  * Đường dẫn chỉ gọi dịch vụ ngoài và không đụng database: vẫn xác thực như thường nhưng không mở transaction,
  * để không giữ một kết nối database trong lúc chờ bên ngoài trả lời. Handler ở đây không được truy vấn database.
+ * `/mcp` nằm ở đây vì mỗi lệnh của nó gọi lại chính API này (mỗi lượt gọi tự mở transaction của mình).
  */
-const NO_DB_PATHS = ['/v1/video/meta'];
+const NO_DB_PATHS = ['/v1/video/meta', '/mcp'];
 
 /** Gắn ctx vào mỗi request; xác thực nếu có Authorization hoặc cookie phiên. */
 export function authMiddleware(app: App): MiddlewareHandler<Env> {
@@ -33,6 +35,12 @@ export function authMiddleware(app: App): MiddlewareHandler<Env> {
       const actor = await apiKeySvc.authenticateApiKey(base, token);
       if (!actor) throw unauthorized('API key không hợp lệ hoặc đã thu hồi');
       ctx = { ...base, actor };
+      // Key chỉ vào được đường dẫn có trong bảng và đúng phạm vi (mặc định chặn). Lượt bị chặn vẫn ghi nhật ký để chủ hội thấy.
+      const access = actor.type === 'api_key' ? apiKeyAccess(c.req.method, path, actor.scopes) : { ok: true as const };
+      if (!access.ok) {
+        if (actor.type === 'api_key') await apiKeySvc.logApiKeyUse(base, actor.apiKeyId, c.req.method, path, 403).catch(() => null);
+        throw forbidden(access.message);
+      }
     } else if (token) {
       const session = await authSvc.authenticate(base, app.auth, token);
       if (session) {

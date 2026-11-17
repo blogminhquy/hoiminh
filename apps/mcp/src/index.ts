@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// MCP server của Hội Mình: gọi REST API bằng API key (HOIMINH_API_KEY), không chạm database.
+// MCP của Hội Mình cho ứng dụng chỉ nhận máy chủ chạy trên máy (stdio): một cầu nối mỏng tới MCP từ xa ở <API>/mcp.
+// Ứng dụng nào nhận được URL (Javis, Claude, Cursor...) thì cắm thẳng https://api.hoiminh.com/mcp, không cần file này.
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { createClient } from './client';
-import { TOOLS, runTool } from './tools';
+import { createRemote } from './remote';
 
 const apiUrl = process.env.HOIMINH_API_URL ?? 'http://localhost:8787';
 const apiKey = process.env.HOIMINH_API_KEY ?? '';
@@ -12,32 +12,28 @@ if (!apiKey) {
   console.error('Thiếu HOIMINH_API_KEY (tạo ở Hội của tôi → Nhà phát triển → API key).');
   process.exit(1);
 }
-const client = createClient(apiUrl, apiKey);
+const remote = createRemote(apiUrl, apiKey);
 
-// Cờ `mcp` do super admin giữ: tắt thì server không phục vụ tool nào, thay vì báo lỗi rải rác ở từng lệnh.
+// Bắt tay một lần lúc khởi động: key sai, key bị thu hồi hoặc MCP đang tắt thì báo ngay, không để lỗi rải ở từng lệnh.
+let info: { serverInfo?: { version?: string }; instructions?: string };
 try {
-  const integration = await client.get<{ mcpEnabled: boolean }>('/v1/me/integration');
-  if (!integration.mcpEnabled) {
-    console.error('MCP đang tắt trên nền tảng này. Bật ở Hệ thống → Gói nền tảng → Tính năng → "MCP cho AI".');
-    process.exit(1);
-  }
+  info = await remote.request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'hoiminh-mcp-stdio', version: '2.0.0' } });
 } catch (err) {
-  console.error(`Không kiểm tra được trạng thái MCP: ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`Không nối được MCP của Hội Mình ở ${apiUrl}: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 }
 
-const server = new Server({ name: 'hoiminh', version: '1.0.0' }, { capabilities: { tools: {} } });
+const server = new Server({ name: 'hoiminh', version: info.serverInfo?.version ?? '2.0.0' }, { capabilities: { tools: {} }, instructions: info.instructions });
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })) }));
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
+type ToolResult = { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
+server.setRequestHandler(ListToolsRequestSchema, async () => remote.request<{ tools: never[] }>('tools/list'));
+server.setRequestHandler(CallToolRequestSchema, async (req): Promise<ToolResult> => {
   try {
-    const result = await runTool(client, req.params.name, req.params.arguments ?? {});
-    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    return await remote.request<ToolResult>('tools/call', { name: req.params.name, arguments: req.params.arguments ?? {} });
   } catch (err) {
     return { isError: true, content: [{ type: 'text', text: err instanceof Error ? err.message : String(err) }] };
   }
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error(`MCP Hội Mình sẵn sàng · ${apiUrl}`);
+await server.connect(new StdioServerTransport());
+console.error(`MCP Hội Mình sẵn sàng · ${apiUrl}/mcp`);
