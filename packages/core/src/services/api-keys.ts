@@ -3,13 +3,22 @@ import { randomToken, sha256Hex } from '@hoiminh/config';
 import { and, desc, eq, isNull, or, gt } from 'drizzle-orm';
 import { apiKeyLogs, apiKeys, workspaces } from '@hoiminh/db';
 import type { Actor, Ctx } from '../context';
-import { notFound } from '../errors';
+import { forbidden, notFound } from '../errors';
 import { requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { requireWorkspaceFeature, workspaceHasFeature } from './plans';
 
+/**
+ * Quản lý API key là việc của người: một key (kể cả key đủ mọi phạm vi) không được tự tạo key mới, xem hay thu hồi key khác.
+ * `requireWorkspaceRole` cho mọi key của đúng workspace đi qua, nên thiếu dòng này thì key chỉ đọc tự tạo được key toàn quyền.
+ */
+function humanOnly(ctx: Ctx): void {
+  if (ctx.actor.type === 'api_key') throw forbidden('API key không quản lý được API key. Việc này làm trên web, ở Hội của tôi, Nhà phát triển.');
+}
+
 /** Tạo key: trả về raw đúng một lần. Định dạng hm_live_<prefix>_<secret>. */
 export async function createApiKey(ctx: Ctx, workspaceId: string, input: { name: string; scopes: string[]; expiresAt?: string | null }) {
+  humanOnly(ctx);
   await requireWorkspaceRole(ctx, workspaceId, ['owner']);
   await requireWorkspaceFeature(ctx, workspaceId, 'api');
   const prefix = randomToken(4);
@@ -21,12 +30,14 @@ export async function createApiKey(ctx: Ctx, workspaceId: string, input: { name:
 }
 
 export async function listApiKeys(ctx: Ctx, workspaceId: string) {
+  humanOnly(ctx);
   await requireWorkspaceRole(ctx, workspaceId, ['owner', 'admin']);
   const rows = await ctx.db.query.apiKeys.findMany({ where: eq(apiKeys.workspaceId, workspaceId), orderBy: desc(apiKeys.createdAt) });
   return rows.map((r) => ({ id: r.id, name: r.name, prefix: r.keyPrefix, scopes: r.scopes, status: r.status, expiresAt: r.expiresAt, lastUsedAt: r.lastUsedAt, createdAt: r.createdAt }));
 }
 
 export async function revokeApiKey(ctx: Ctx, workspaceId: string, id: string) {
+  humanOnly(ctx);
   await requireWorkspaceRole(ctx, workspaceId, ['owner']);
   const [row] = await ctx.db.update(apiKeys).set({ status: 'revoked', revokedAt: ctx.now() }).where(and(eq(apiKeys.id, id), eq(apiKeys.workspaceId, workspaceId))).returning();
   if (!row) throw notFound();

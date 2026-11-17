@@ -51,7 +51,7 @@ Thanh toán ở local: SePay tạo QR VietQR thật nhưng không có tiền v�
 ```
 apps/api        Hono REST /v1, webhook thanh toán, /r/:code, /files, /pay/simulator, cron; chạy Node (dev) hoặc Cloudflare Worker
 apps/web        React 18 + Vite + Tailwind, 50 màn hình, route /:slug/*, /admin, /he-thong, /tai-khoan
-apps/mcp        MCP server (stdio) gọi REST bằng API key hm_live_/hm_test_
+apps/mcp        Cầu nối stdio tới MCP từ xa (POST /mcp của API), cho ứng dụng chỉ nhận máy chủ MCP chạy trên máy
 packages/core   Service layer dùng chung (web, REST, webhook, MCP): auth, hội, thành viên, bài viết, khóa học, sự kiện, cửa hàng, checkout, entitlement, affiliate, rút tiền, tin nhắn, thông báo, gói nền tảng, admin, thẻ và quy tắc tự động
 packages/db     Schema Drizzle, migration SQL (+ RLS), seed
 packages/payments  Adapter SePay, MoMo, VNPAY, PayPal (verify chữ ký, chuẩn hóa sự kiện, hoàn tiền)
@@ -215,5 +215,7 @@ Super admin có thể bật/tắt từng cổng và nhập credential trong `/he
 ## API, webhook gửi đi, MCP
 
 - REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` (web dùng cookie httpOnly `hm_at` thay cho header, gửi `X-HM-Auth: cookie` khi đăng nhập) hoặc API key `hm_live_…`/`hm_test_…` (tạo ở **Hội của tôi · Nhà phát triển**, `/admin/nha-phat-trien`). Lỗi trả `{ code, message }`.
-- Webhook gửi đi: đăng ký URL + sự kiện ở **Hội của tôi · Nhà phát triển**; Hội Mình ký HMAC-SHA256 ở header `X-HoiMinh-Signature`, thử lại theo backoff, lịch sử 10 lần gửi gần nhất hiện ngay trong màn đó.
-- MCP: `pnpm --filter @hoiminh/mcp start` với `HOIMINH_API_URL` và `HOIMINH_API_KEY`; 10 tool (danh sách hội, thành viên, đăng bài, tạo khóa học, sự kiện, doanh thu…).
+- Webhook gửi đi: đăng ký URL + sự kiện ở **Hội của tôi · Nhà phát triển**; Hội Mình ký HMAC-SHA256 ở header `X-HoiMinh-Signature`, thử lại theo backoff, lịch sử 10 lần gửi gần nhất hiện ngay trong màn đó. 12 sự kiện (`WEBHOOK_EVENTS`), trong đó `post.created` và `comment.created` kèm nội dung, tác giả, đường dẫn và cờ `viaApiKey` (nội dung do chính API key tạo, để trợ lý không tự trả lời mình).
+- MCP từ xa: `POST https://api.hoiminh.com/mcp` (cũng chạy ở `https://hoiminh.com/mcp`), giao thức MCP Streamable HTTP dạng JSON, không giữ phiên. Xác thực bằng API key ở header `Authorization: Bearer hm_live_…`. Trợ lý AI (Javis, Claude, Cursor…) chỉ cần địa chỉ này và một key, không phải cài gì. Bộ lệnh nằm ở `apps/api/src/mcp/tools.ts` (98 lệnh: hội, thành viên, bảng tin, khóa học, sự kiện, cửa hàng, doanh thu và đơn hàng, affiliate, thẻ và quy tắc tự động, tin nhắn, webhook, tải tệp); mỗi lệnh gọi lại chính REST `/v1` bằng key của người gọi nên quyền và nhật ký giống hệt REST. `tools/list` chỉ trả những lệnh mà phạm vi của key gọi được. Cờ `mcp` (Hệ thống, Gói nền tảng, Tính năng) tắt thì địa chỉ trả 403.
+- MCP stdio: `pnpm --filter @hoiminh/mcp start` với `HOIMINH_API_URL` và `HOIMINH_API_KEY`, là cầu nối mỏng tới MCP từ xa ở trên cho ứng dụng chỉ nhận máy chủ chạy trên máy.
+- Phạm vi API key (19 phạm vi, `API_SCOPES` trong `packages/contracts/src/platform.ts`): `communities:read|write`, `members:read|write`, `posts:write|moderate`, `courses:read|write`, `events:write`, `store:write`, `revenue:read`, `billing:manage`, `affiliates:read|manage`, `automation:manage`, `messages:read|write`, `webhooks:manage`, `entitlements:write`. API key mặc định bị chặn: chỉ vào được đường dẫn có trong bảng `apps/api/src/middleware/api-key-access.ts` và đúng phạm vi. Không key nào quản lý được API key, mật khẩu và 2FA, tài khoản nhận tiền và khóa cổng thanh toán, lưu trữ hội, hay `/v1/admin`; các việc đó chỉ làm trên web.

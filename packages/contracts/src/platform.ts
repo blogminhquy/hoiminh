@@ -3,10 +3,34 @@ import { z } from 'zod';
 import { emailSchema, handleSchema, idSchema } from './common';
 
 export const API_SCOPES = [
-  'communities:read', 'communities:write', 'members:read', 'members:write', 'posts:write', 'courses:read',
-  'courses:write', 'events:write', 'affiliates:read', 'affiliates:manage', 'messages:write', 'entitlements:write',
+  'communities:read', 'communities:write', 'members:read', 'members:write', 'posts:write', 'posts:moderate', 'courses:read',
+  'courses:write', 'events:write', 'store:write', 'revenue:read', 'billing:manage', 'affiliates:read', 'affiliates:manage',
+  'automation:manage', 'messages:read', 'messages:write', 'webhooks:manage', 'entitlements:write',
 ] as const;
 export const apiScopeSchema = z.enum(API_SCOPES);
+export type ApiScope = (typeof API_SCOPES)[number];
+/** Mỗi phạm vi mở những việc gì, viết cho chủ hội đọc ở màn Nhà phát triển và cho trợ lý AI đọc khi bị từ chối. */
+export const API_SCOPE_LABELS: Record<ApiScope, string> = {
+  'communities:read': 'Xem hội, bảng tin, sự kiện, cửa hàng',
+  'communities:write': 'Tạo hội, sửa thông tin, tiện ích, chuyên mục, câu hỏi tham gia, xem tổng quan',
+  'members:read': 'Xem danh sách và hồ sơ thành viên',
+  'members:write': 'Mời, duyệt, đổi vai trò, đổi gói, khóa, mời ra khỏi hội',
+  'posts:write': 'Đăng bài, gửi thông báo, bình luận',
+  'posts:moderate': 'Duyệt, sửa, ghim, xóa bài và bình luận',
+  'courses:read': 'Xem khóa học và bài học',
+  'courses:write': 'Tạo, sửa, xóa khóa học, chương, bài học',
+  'events:write': 'Tạo, sửa sự kiện, thêm bản ghi, xem người đăng ký',
+  'store:write': 'Tạo, sửa, xóa sản phẩm trong cửa hàng',
+  'revenue:read': 'Xem doanh thu và đơn hàng',
+  'billing:manage': 'Đổi giá và gói thành viên, xác nhận đơn chuyển khoản, hoàn tiền',
+  'affiliates:read': 'Xem doanh thu (tên cũ, giữ cho key đã tạo)',
+  'affiliates:manage': 'Cài chương trình affiliate, duyệt và đánh dấu đã trả hoa hồng',
+  'automation:manage': 'Thẻ, liên hệ, nguồn đồng bộ, quy tắc tự động',
+  'messages:read': 'Đọc tin nhắn và thông báo của chủ hội',
+  'messages:write': 'Gửi tin nhắn dưới tên chủ hội',
+  'webhooks:manage': 'Thêm, xóa webhook gửi đi',
+  'entitlements:write': 'Cấp khóa học, đổi gói cho thành viên',
+};
 export const createApiKeySchema = z.object({
   name: z.string().trim().min(2).max(60),
   scopes: z.array(apiScopeSchema).min(1),
@@ -15,10 +39,25 @@ export const createApiKeySchema = z.object({
 
 export const WEBHOOK_EVENTS = [
   'member.joined', 'member.tier_changed', 'payment.succeeded', 'payment.refunded', 'subscription.cancelled',
-  'lesson.completed', 'course.completed', 'post.created', 'event.registered', 'affiliate.commission_available',
+  'lesson.completed', 'course.completed', 'post.created', 'comment.created', 'event.registered', 'affiliate.commission_available',
   'affiliate.withdrawal_paid',
 ] as const;
 export const webhookEventSchema = z.enum(WEBHOOK_EVENTS);
+/** Mỗi sự kiện xảy ra khi nào, viết cho chủ hội đọc lúc chọn sự kiện ở màn Nhà phát triển. */
+export const WEBHOOK_EVENT_LABELS: Record<(typeof WEBHOOK_EVENTS)[number], string> = {
+  'member.joined': 'Có thành viên mới vào hội',
+  'member.tier_changed': 'Thành viên đổi gói',
+  'payment.succeeded': 'Có đơn thanh toán thành công',
+  'payment.refunded': 'Một đơn được hoàn tiền',
+  'subscription.cancelled': 'Thành viên hủy gia hạn gói',
+  'lesson.completed': 'Thành viên học xong một bài',
+  'course.completed': 'Thành viên học xong một khóa',
+  'post.created': 'Có bài đăng mới trên bảng tin (kèm nội dung bài)',
+  'comment.created': 'Có bình luận mới (kèm nội dung bình luận)',
+  'event.registered': 'Có người đăng ký sự kiện',
+  'affiliate.commission_available': 'Hoa hồng affiliate đến hạn rút',
+  'affiliate.withdrawal_paid': 'Một yêu cầu rút hoa hồng đã được trả',
+};
 export type WebhookEventName = z.infer<typeof webhookEventSchema>;
 export const createWebhookSchema = z.object({
   url: z.string().url(),

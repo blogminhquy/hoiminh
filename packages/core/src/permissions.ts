@@ -25,6 +25,10 @@ const SCOPE_PERMISSIONS: Record<string, Permission[]> = {
   'members:write': ['member.manage'], 'posts:write': ['post.create', 'post.broadcast'], 'courses:read': ['course.read'], 'courses:write': ['course.manage'],
   'events:write': ['event.manage'], 'affiliates:read': ['revenue.read'], 'affiliates:manage': ['affiliates.manage'], 'messages:write': ['message.send'],
   'entitlements:write': ['member.manage'],
+  // Thêm ở 1.35.0. Trước đó không phạm vi nào mở được cửa hàng, giá gói, duyệt bài, nên API key không làm nổi các việc này.
+  'posts:moderate': ['post.moderate'], 'store:write': ['store.manage'], 'revenue:read': ['revenue.read'], 'billing:manage': ['billing.manage'],
+  // Thẻ và quy tắc tự động kiểm `settings.manage` ở service; đường dẫn nào key này vào được do bảng ở apps/api/src/middleware/api-key-access.ts quyết định.
+  'automation:manage': ['settings.manage'],
 };
 
 export function permissionsForRole(role: CommunityRole): Permission[] {

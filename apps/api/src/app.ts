@@ -1,4 +1,4 @@
-// Lắp ráp Hono app: middleware, route /v1, webhook, /r, /files, /pay/simulator, /health.
+// Lắp ráp Hono app: middleware, route /v1, /mcp, webhook, /r, /files, /pay/simulator, /health.
 import { admin, type App } from '@hoiminh/core';
 import { APP_VERSION } from '@hoiminh/config';
 import { sql } from 'drizzle-orm';
@@ -17,6 +17,7 @@ import { communityRoutes } from './routes/communities';
 import { contentRoutes } from './routes/content';
 import { eventRoutes } from './routes/events';
 import { learningRoutes } from './routes/learning';
+import { mountMcp } from './routes/mcp';
 import { meRoutes } from './routes/me';
 import { realtimeRoutes } from './routes/realtime';
 import { memberRoutes } from './routes/members';
@@ -37,6 +38,7 @@ export function createHonoApp(app: App): Hono<Env> {
   h.use('/v1/*', publicCache(60));
   // Giới hạn chung, trước authMiddleware: request bị chặn không mở transaction database.
   h.use('/v1/*', rateLimit('api', { scope: 'api' }));
+  h.use('/mcp', rateLimit('api', { scope: 'mcp' }));
   h.use('*', authMiddleware(app));
   h.use('*', requestLog(app.ctx.log));
 
@@ -67,6 +69,8 @@ export function createHonoApp(app: App): Hono<Env> {
   h.route('/v1', payerRoutes);
   h.route('/v1', platformRoutes);
   h.route('/v1/admin', adminRoutes);
+  // MCP từ xa cho trợ lý AI: một URL và một API key, mỗi lệnh gọi lại REST /v1 ở trên.
+  mountMcp(h);
   // Trước webhookRoutes: địa chỉ nhận của chủ hội có hạn mức riêng, không dùng chung bộ đếm với cổng thanh toán.
   h.route('/webhooks', inboundRoutes);
   h.route('/webhooks', webhookRoutes);

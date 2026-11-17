@@ -1,11 +1,11 @@
 // Khối con màn Nhà phát triển: bảng API key, bảng webhook gửi đi, hướng dẫn MCP.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_SCOPES, WEBHOOK_EVENTS } from '@hoiminh/contracts';
+import { API_SCOPES, API_SCOPE_LABELS, WEBHOOK_EVENTS, WEBHOOK_EVENT_LABELS, type ApiScope } from '@hoiminh/contracts';
 import { Button, Field, Input, T, Tag } from '@hoiminh/ui';
-import { Check, Copy, KeyRound, Plus, Trash2, Webhook } from 'lucide-react';
+import { Bot, Check, Copy, KeyRound, Plus, Trash2, Webhook } from 'lucide-react';
 import { useState } from 'react';
 import { QueryState } from '@/components/QueryState';
-import { api, errorMessage } from '@/lib/api';
+import { api, apiOrigin, errorMessage } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
 
 interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; status: string; expiresAt: string | null; lastUsedAt: string | null; createdAt: string }
@@ -28,13 +28,29 @@ function SecretOnce({ label, value, note }: { label: string; value: string; note
   );
 }
 
-/** Chọn nhiều giá trị bằng chip. */
-function ChipPicker({ options, selected, onToggle }: { options: readonly string[]; selected: string[]; onToggle: (v: string) => void }) {
+/** Phạm vi chỉ xem, không sửa được gì: cho báo cáo, bảng theo dõi. */
+const READ_SCOPES: ApiScope[] = ['communities:read', 'members:read', 'courses:read', 'revenue:read', 'messages:read'];
+
+/** Chọn phạm vi cho key: hai nút chọn nhanh, rồi từng phạm vi kèm câu giải thích nó mở những việc gì. */
+function ScopePicker({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+  const all = selected.length === API_SCOPES.length;
   return (
-    <div className="flex gap-1.5 flex-wrap">
-      {options.map((o) => (
-        <button key={o} type="button" onClick={() => onToggle(o)} className={`chip${selected.includes(o) ? ' on' : ''}`} style={{ height: 28, fontSize: 12 }}>{o}</button>
-      ))}
+    <div className="flex flex-col gap-2.5">
+      <div className="flex gap-1.5 flex-wrap">
+        <button type="button" className={`chip${all ? ' on' : ''}`} style={{ height: 32, fontSize: 13 }} onClick={() => onChange(all ? [] : [...API_SCOPES])}>Toàn quyền (cho trợ lý AI)</button>
+        <button type="button" className="chip" style={{ height: 32, fontSize: 13 }} onClick={() => onChange([...READ_SCOPES])}>Chỉ xem</button>
+      </div>
+      <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        {API_SCOPES.map((s) => (
+          <label key={s} className="flex items-start gap-2.5 py-1.5 cursor-pointer">
+            <input type="checkbox" className="mt-[3px]" checked={selected.includes(s)} onChange={() => onChange(selected.includes(s) ? selected.filter((x) => x !== s) : [...selected, s])} />
+            <span className="flex flex-col min-w-0">
+              <span className="text-[14px] leading-[1.4]">{API_SCOPE_LABELS[s]}</span>
+              <code className="text-[12px]" style={{ fontFamily: 'Consolas, monospace', color: T.ink3 }}>{s}</code>
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -68,17 +84,17 @@ export function ApiKeysCard({ workspaceId }: { workspaceId: string }) {
 
       {created && (
         <div className="px-5 pb-4">
-          <SecretOnce label={`Key "${created.name}" đã tạo`} value={created.raw} note="Chỉ hiện một lần. Chép và cất ngay — đóng trang là không xem lại được, phải tạo key mới." />
+          <SecretOnce label={`Key "${created.name}" đã tạo`} value={created.raw} note="Chỉ hiện một lần. Chép và cất ngay: đóng trang là không xem lại được, phải tạo key mới." />
         </div>
       )}
 
       {open && (
         <div className="px-5 pb-4 flex flex-col gap-3" style={{ borderTop: `1px solid ${T.line}`, paddingTop: 16 }}>
-          <Field label="Tên key" hint="Đặt theo nơi dùng để sau này biết cái nào của cái gì: Zapier, n8n, trợ lý nội bộ…">
-            <Input value={name} maxLength={60} placeholder="Trợ lý nội bộ" onChange={(e) => setName(e.target.value)} />
+          <Field label="Tên key" hint="Đặt theo nơi dùng để sau này biết cái nào của cái gì: Javis, Zapier, n8n…">
+            <Input value={name} maxLength={60} placeholder="Javis" onChange={(e) => setName(e.target.value)} />
           </Field>
-          <Field label="Phạm vi" hint="Chỉ cấp đúng thứ cần. Key lộ ra ngoài thì chỉ làm được những việc trong phạm vi này.">
-            <ChipPicker options={API_SCOPES} selected={scopes} onToggle={(s) => setScopes((v) => (v.includes(s) ? v.filter((x) => x !== s) : [...v, s]))} />
+          <Field label="Phạm vi" hint="Chỉ cấp đúng thứ cần. Key lộ ra ngoài thì chỉ làm được những việc trong phạm vi này. Không key nào đổi được tài khoản nhận tiền, mật khẩu hay tạo key khác.">
+            <ScopePicker selected={scopes} onChange={setScopes} />
           </Field>
           {create.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(create.error)}</span>}
           <div><Button variant="primary" size="sm" loading={create.isPending} disabled={name.trim().length < 2 || scopes.length === 0} onClick={() => create.mutate()}>Tạo key</Button></div>
@@ -157,7 +173,17 @@ export function WebhooksCard({ workspaceId }: { workspaceId: string }) {
           </Field>
           <Field label="Ghi chú"><Input value={f.description} maxLength={120} placeholder="Đồng bộ đơn hàng sang CRM" onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
           <Field label="Sự kiện">
-            <ChipPicker options={WEBHOOK_EVENTS} selected={events} onToggle={(s) => setEvents((v) => (v.includes(s) ? v.filter((x) => x !== s) : [...v, s]))} />
+            <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+              {WEBHOOK_EVENTS.map((e) => (
+                <label key={e} className="flex items-start gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" className="mt-[3px]" checked={events.includes(e)} onChange={() => setEvents((v) => (v.includes(e) ? v.filter((x) => x !== e) : [...v, e]))} />
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-[14px] leading-[1.4]">{WEBHOOK_EVENT_LABELS[e]}</span>
+                    <code className="text-[12px]" style={{ fontFamily: 'Consolas, monospace', color: T.ink3 }}>{e}</code>
+                  </span>
+                </label>
+              ))}
+            </div>
           </Field>
           {create.isError && <span className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(create.error)}</span>}
           <div><Button variant="primary" size="sm" loading={create.isPending} disabled={!validUrl || events.length === 0} onClick={() => create.mutate()}>Thêm webhook</Button></div>
@@ -200,28 +226,60 @@ export function WebhooksCard({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-export function McpCard() {
+/** Một dòng chép được: nhãn, giá trị dạng mã, nút chép. */
+function CopyLine({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
   return (
-    <div className="card px-5 py-4 flex flex-col gap-3">
+    <div className="flex flex-col gap-1">
+      <span className="muted text-[13px]">{label}</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <code className="px-2.5 py-1.5 rounded-md text-[13px] break-all" style={{ background: T.bg, fontFamily: 'Consolas, monospace', color: T.ink }}>{value}</code>
+        <Button size="sm" icon={copied ? <Check size={14} /> : <Copy size={14} />} onClick={() => { void navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}>{copied ? 'Đã chép' : 'Chép'}</Button>
+      </div>
+    </div>
+  );
+}
+
+export function McpCard() {
+  const url = `${apiOrigin()}/mcp`;
+  const steps = [
+    'Tạo một API key ở trên, bấm "Toàn quyền (cho trợ lý AI)" nếu muốn trợ lý làm được mọi việc quản lý hội.',
+    'Mở phần thêm máy chủ MCP (hoặc kết nối, connector) trong trợ lý, dán địa chỉ MCP bên dưới.',
+    'Ở mục xác thực, chọn Bearer token (hoặc header Authorization) rồi dán API key.',
+    'Thử bằng câu: "Liệt kê các hội của tôi trên Hội Mình".',
+  ];
+  return (
+    <div className="card px-5 py-4 flex flex-col gap-3.5">
       <div className="flex items-center gap-2">
-        <span className="font-semibold">MCP · cho trợ lý AI thao tác hộ</span>
+        <Bot size={18} style={{ color: T.ink2 }} />
+        <span className="font-semibold">MCP · cho trợ lý AI điều khiển hội</span>
       </div>
-      <div className="text-[13px] leading-[1.6]" style={{ color: T.ink2 }}>
-        Máy chủ MCP của Hội Mình cho Claude, Cursor hay bất kỳ ứng dụng nào nói giao thức MCP gọi thẳng vào hội của bạn: liệt kê hội, xem thành viên, đăng bài, tạo khóa học, tạo sự kiện, xem doanh thu. Tạo một API key ở trên rồi khai báo:
+      <div className="text-[14px] leading-[1.6]" style={{ color: T.ink2 }}>
+        Cắm Hội Mình vào Javis, Claude, Cursor hay bất kỳ trợ lý nào nói giao thức MCP. Trợ lý làm được gần như mọi việc quản lý hội: đăng bài và thông báo, duyệt và quản lý thành viên, tạo khóa học và bài học, sự kiện, sản phẩm cửa hàng, xem doanh thu, xác nhận đơn chuyển khoản, affiliate, thẻ và quy tắc tự động, tin nhắn. Không phải cài gì, chỉ cần một địa chỉ và một API key.
       </div>
-      <pre className="px-4 py-3 rounded-xl text-[12px] overflow-x-auto" style={{ background: T.side, color: T.sideText, fontFamily: 'Consolas, monospace' }}>{`{
+      <ol className="m-0 p-0 list-none flex flex-col gap-2 text-[14px] leading-[1.55]" style={{ color: T.ink2 }}>
+        {steps.map((t, i) => (
+          <li key={t} className="flex gap-2.5">
+            <span className="shrink-0 grid place-items-center rounded-full text-[12px] font-semibold" style={{ width: 22, height: 22, background: T.bg, color: T.ink }}>{i + 1}</span>
+            <span>{t}</span>
+          </li>
+        ))}
+      </ol>
+      <CopyLine label="Địa chỉ MCP" value={url} />
+      <CopyLine label="Header xác thực" value="Authorization: Bearer hm_live_..." />
+      <div className="flex flex-col gap-1">
+        <span className="muted text-[13px]">Ứng dụng khai báo bằng tệp cấu hình (Cursor, Claude Code…)</span>
+        <pre className="m-0 px-4 py-3 rounded-xl text-[13px] overflow-x-auto" style={{ background: T.side, color: T.sideText, fontFamily: 'Consolas, monospace' }}>{`{
   "mcpServers": {
     "hoiminh": {
-      "command": "npx",
-      "args": ["-y", "@hoiminh/mcp"],
-      "env": {
-        "HOIMINH_API_URL": "https://api.hoiminh.com",
-        "HOIMINH_API_KEY": "hm_live_..."
-      }
+      "type": "http",
+      "url": "${url}",
+      "headers": { "Authorization": "Bearer hm_live_..." }
     }
   }
 }`}</pre>
-      <span className="muted text-[12px]">Trợ lý chỉ làm được những việc nằm trong phạm vi của key. Thu hồi key là cắt quyền ngay lập tức.</span>
+      </div>
+      <span className="muted text-[13px] leading-[1.55]">Trợ lý chỉ thấy và chỉ làm được những việc nằm trong phạm vi của key; thu hồi key là cắt quyền ngay. Tài khoản nhận tiền, khóa cổng thanh toán, mật khẩu, API key và lưu trữ hội không mở cho trợ lý, bạn làm các việc đó trên web.</span>
     </div>
   );
 }

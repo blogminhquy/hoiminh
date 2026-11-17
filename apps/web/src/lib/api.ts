@@ -14,6 +14,10 @@ export class ApiError extends Error {
 
 // Production: web và API cùng một Worker, gọi cùng tên miền (không cần CORS). Dev: API chạy riêng ở cổng 8787.
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || (import.meta.env.PROD ? '' : 'http://localhost:8787');
+/** Địa chỉ gốc của API để hiện cho người dùng chép (trang Nhà phát triển): production là chính tên miền đang mở. */
+export function apiOrigin(): string {
+  return API_URL || (typeof window === 'undefined' ? '' : window.location.origin);
+}
 // Phiên đăng nhập nằm trong cookie httpOnly do API đặt: JavaScript không đọc được token, nên mã độc
 // lọt vào trang cũng không lấy cắp được phiên. Header này báo API trả cookie thay vì token trong JSON.
 const AUTH_MODE = { 'X-HM-Auth': 'cookie' } as const;

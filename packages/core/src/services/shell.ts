@@ -52,6 +52,12 @@ export async function communityShell(ctx: Ctx, slug: string) {
 
 /** Các hội tôi tham gia hoặc làm chủ (switcher), theo thứ tự ghim/sắp xếp của người dùng. */
 export async function myCommunities(ctx: Ctx) {
+  // API key gắn với một workspace: "hội của tôi" là mọi hội của workspace đó. Trước đây nhánh này trả mảng rỗng,
+  // nên tool `list_communities` của MCP không bao giờ thấy hội nào và trợ lý không có id để gọi các lệnh khác.
+  if (ctx.actor.type === 'api_key') {
+    const rows = await ctx.db.query.communities.findMany({ where: and(eq(communities.workspaceId, ctx.actor.workspaceId), isNull(communities.deletedAt)), orderBy: asc(communities.name), columns: { id: true, name: true, slug: true, logoMark: true, logoColor: true, logoUrl: true, memberCount: true, status: true, workspaceId: true, pricingMode: true, shortDescription: true } });
+    return rows.map((c) => ({ ...c, role: 'owner' as const, memberStatus: 'active' as const, pinned: false }));
+  }
   if (ctx.actor.type !== 'user') return [];
   const userId = ctx.actor.userId;
   const rows = await ctx.db
