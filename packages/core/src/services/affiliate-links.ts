@@ -1,8 +1,10 @@
 // Link giới thiệu của một affiliate (Tài khoản → Affiliate): chương trình nền tảng (tự tạo khi chưa có), các chương
-// trình của tôi kể cả hội chưa bật, và những trang lấy link được trong một chương trình (trang hội, từng sản phẩm).
-import { BUSINESS } from '@hoiminh/config';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityMembers, courses, products, workspaceMembers, type ProductKind } from '@hoiminh/db';
+// trình của tôi kể cả hội chưa bật, những trang lấy link được trong một chương trình (trang hội, từng sản phẩm), và
+// đếm lượt bấm của các link đó.
+import { BUSINESS, sha256Hex } from '@hoiminh/config';
+import { refCodes } from '@hoiminh/contracts';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { affiliateAccounts, affiliateClicks, affiliateLinks, affiliatePrograms, communities, communityMembers, courses, products, workspaceMembers, type ProductKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { permissionsForRole, requireUser, type CommunityRole } from '../permissions';
 
@@ -80,4 +82,37 @@ export async function linkTargets(ctx: Ctx, program: Program, code: string): Pro
     page('community', 'community', 'Trang giới thiệu hội', `/${community.slug}`),
     ...rows.map((p): LinkTarget => ({ key: p.id, kind: 'product', label: p.name, url: `${ctx.env.APP_URL}/${community.slug}/cua-hang/${p.slug}${ref}`, productKind: p.kind, priceMinor: p.priceMinor, commission: p.affiliateEnabled !== false })),
   ];
+}
+
+/** Cùng một người xem mở lại cùng một mã trong khoảng này (tải lại trang, mở lại link) thì không đếm thêm. */
+export const CLICK_REPEAT_MINUTES = 30;
+
+/**
+ * Đếm một lượt bấm cho link dạng `?ref=<mã>`: trang hội, trang sản phẩm, trang mở hội, tức mọi link trang Affiliate
+ * đưa ra. Trước đây chỉ link `/r/<mã>` mới ghi lượt bấm (trackClick), nên ô "Lượt bấm" của affiliate gần như luôn là 0.
+ * Hàm này CHỈ ĐẾM, không ghi người giới thiệu: người giới thiệu vẫn tính theo các mã người xem mang theo lúc đăng ký
+ * hoặc lúc vào hội (attachAttribution, resolveReferrer), nên luật tính hoa hồng không đổi.
+ * Không đếm khi: mã không tồn tại, tài khoản affiliate hoặc chương trình đang tắt; chính affiliate tự mở link của
+ * mình; cùng một người xem (cùng mã khách, hoặc cùng địa chỉ mạng và trình duyệt) đã được đếm trong 30 phút gần đây.
+ * Trả về true khi lượt bấm được đếm.
+ */
+export async function recordLandingClick(ctx: Ctx, ref: string, meta: { visitorId: string; ip?: string; userAgent?: string; landingUrl?: string; referrer?: string }): Promise<boolean> {
+  const code = refCodes(ref)[0];
+  if (!code) return false;
+  const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.status, 'active')) });
+  if (!acc) return false;
+  if (ctx.actor.type === 'user' && ctx.actor.userId === acc.userId) return false;
+  const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, acc.programId), columns: { status: true } });
+  if (program?.status !== 'active') return false;
+  const ipHash = meta.ip ? await sha256Hex(meta.ip) : null;
+  const userAgentHash = meta.userAgent ? await sha256Hex(meta.userAgent) : null;
+  const now = ctx.now();
+  const sameViewer = ipHash && userAgentHash ? or(eq(affiliateClicks.visitorId, meta.visitorId), and(eq(affiliateClicks.ipHash, ipHash), eq(affiliateClicks.userAgentHash, userAgentHash))) : eq(affiliateClicks.visitorId, meta.visitorId);
+  const recent = await ctx.db.query.affiliateClicks.findFirst({ where: and(eq(affiliateClicks.affiliateAccountId, acc.id), gt(affiliateClicks.clickedAt, new Date(now.getTime() - CLICK_REPEAT_MINUTES * 60_000)), sameViewer), columns: { id: true } });
+  if (recent) return false;
+  const link = await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, acc.id), columns: { id: true } });
+  await ctx.db.insert(affiliateClicks).values({ affiliateAccountId: acc.id, linkId: link?.id ?? null, visitorId: meta.visitorId, ipHash, userAgentHash, landingUrl: meta.landingUrl?.slice(0, 500) ?? null, referrer: meta.referrer?.slice(0, 500) ?? null, clickedAt: now });
+  await ctx.db.update(affiliateAccounts).set({ clickCount: sql`${affiliateAccounts.clickCount} + 1` }).where(eq(affiliateAccounts.id, acc.id));
+  await ctx.events.emit('affiliate.clicked', { affiliateAccountId: acc.id, visitorId: meta.visitorId });
+  return true;
 }
