@@ -1,6 +1,6 @@
 // Khóa học: thư viện, chi tiết, tạo/sửa/đăng, module và bài học, nhúng video, tài liệu.
 import { sha256Hex } from '@hoiminh/config';
-import { parseVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
+import { parseLessonVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { comments, communities, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -109,12 +109,15 @@ export async function getLesson(ctx: Ctx, lessonId: string) {
     await ctx.db.insert(courseProgress).values({ courseId: l.courseId, userId, totalLessons: course.lessonCount, lastLessonId: lessonId, lastAccessedAt: ctx.now() }).onConflictDoUpdate({ target: [courseProgress.courseId, courseProgress.userId], set: { lastLessonId: lessonId, lastAccessedAt: ctx.now() } });
   }
   const resources = locked ? [] : await Promise.all(course.resources.filter((r) => r.lessonId === lessonId).map(async (r) => ({ ...r, url: r.url.startsWith('seed://') || r.url.startsWith('http') ? r.url : await ctx.media.getSignedUrl(r.url, 3600) })));
-  const embed = l.videoUrl ? parseVideoUrl(l.videoUrl) : null;
+  const embed = l.videoUrl ? parseLessonVideoUrl(l.videoUrl) : null;
+  // Tệp Google Drive: người học chỉ nhận địa chỉ khung xem trước, không nhận link chia sẻ gốc hay id tệp ở dạng trường riêng.
+  // Người quản lý khóa vẫn nhận đủ để sửa bài. (Địa chỉ khung vẫn chứa id tệp vì trình duyệt phải tải thẳng từ Google.)
+  const hideSource = embed?.provider === 'gdrive' && !course.canManage;
   // Nhỏ giọt chỉ có tác dụng khi khóa bật dripEnabled; trước đây dripDays của bài tự khóa dù công tắc khóa đang tắt.
   const drip = course.dripEnabled && course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
   const dripLocked = Boolean(drip && drip > ctx.now() && !course.canManage);
   const sequentialLocked = entry?.sequentialLocked ?? false;
-  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
+  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : hideSource ? { ...l, videoUrl: null, videoExternalId: null } : l, embed: locked ? null : hideSource && embed ? { ...embed, externalId: '', originalUrl: '' } : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
 }
 
 /** Đánh dấu hoàn thành bài, cập nhật course_progress, phát lesson.completed / course.completed. */
@@ -206,8 +209,8 @@ export async function upsertLesson(ctx: Ctx, courseId: string, input: { id?: str
   await requireCommunityPermission(ctx, c.communityId, 'course.manage');
   let video: { provider: string | null; id: string | null; url: string | null } = { provider: null, id: null, url: null };
   if (input.videoUrl) {
-    const e = parseVideoUrl(input.videoUrl);
-    if (!e) throw invalid('Link video không nhận diện được. Hỗ trợ YouTube, TikTok, Facebook, Loom, Vimeo, Bunny.');
+    const e = parseLessonVideoUrl(input.videoUrl);
+    if (!e) throw invalid('Link video không nhận diện được. Hỗ trợ YouTube, Google Drive (link tệp), TikTok, Facebook, Loom, Vimeo, Bunny.');
     video = { provider: e.provider, id: e.externalId, url: input.videoUrl };
   }
   let row: typeof lessons.$inferSelect;
@@ -249,6 +252,71 @@ export async function reorder(ctx: Ctx, courseId: string, modules: Array<{ id: s
       for (const [i, lid] of m.lessonIds.entries()) await tx.update(lessons).set({ moduleId: m.id, sortOrder: i }).where(and(eq(lessons.id, lid), eq(lessons.courseId, courseId)));
     }
   });
+}
+
+/**
+ * Thứ tự thẻ khóa học trong thư viện của hội (menu ba chấm trên thẻ: Chuyển lên trước, Chuyển ra sau).
+ * Nhận danh sách id theo thứ tự mới; khóa của hội không có trong danh sách giữ thứ tự cũ và xếp sau.
+ * Không đổi updated_at, để dòng "cập nhật ..." trên thẻ vẫn nói về nội dung khóa.
+ */
+export async function reorderCourses(ctx: Ctx, communityId: string, courseIds: string[]) {
+  await requireCommunityPermission(ctx, communityId, 'course.manage');
+  const rows = await ctx.db.query.courses.findMany({ where: and(eq(courses.communityId, communityId), isNull(courses.deletedAt)), columns: { id: true }, orderBy: [asc(courses.sortOrder), desc(courses.createdAt)] });
+  const known = new Set(rows.map((r) => r.id));
+  const wanted = [...new Set(courseIds)];
+  if (wanted.some((id) => !known.has(id))) throw invalid('Có khóa học không thuộc hội này');
+  const picked = new Set(wanted);
+  const order = [...wanted, ...rows.map((r) => r.id).filter((id) => !picked.has(id))];
+  await ctx.db.transaction(async (tx) => {
+    for (const [i, id] of order.entries()) await tx.update(courses).set({ sortOrder: i }).where(eq(courses.id, id));
+  });
+  await audit(ctx, { action: 'course.reorder', resourceType: 'community', resourceId: communityId, communityId });
+}
+
+/**
+ * Nhân bản khóa học: bản sao là nháp, tên thêm "(bản sao)", đủ thông tin, cài đặt, chương, bài và tài liệu đính kèm.
+ * Không chép tiến độ học viên, bình luận hay sản phẩm cửa hàng (sản phẩm được tạo khi đăng bản sao).
+ * Ảnh bìa và tệp tài liệu dùng chung với khóa gốc; việc dọn tệp chỉ xóa khi không còn khóa nào trỏ tới.
+ */
+export async function duplicateCourse(ctx: Ctx, courseId: string) {
+  requireUser(ctx);
+  const src = await ctx.db.query.courses.findFirst({ where: and(eq(courses.id, courseId), isNull(courses.deletedAt)) });
+  if (!src || !src.communityId) throw notFound('Khóa học không tồn tại');
+  const communityId = src.communityId;
+  await requireCommunityPermission(ctx, communityId, 'course.manage');
+  await assertCommunityHasPlan(ctx, communityId);
+  const [moduleRows, lessonRows] = await Promise.all([
+    ctx.db.query.courseModules.findMany({ where: eq(courseModules.courseId, courseId), orderBy: asc(courseModules.sortOrder) }),
+    ctx.db.query.lessons.findMany({ where: eq(lessons.courseId, courseId), orderBy: asc(lessons.sortOrder) }),
+  ]);
+  const resourceRows = lessonRows.length ? await ctx.db.query.lessonResources.findMany({ where: inArray(lessonResources.lessonId, lessonRows.map((l) => l.id)) }) : [];
+  const siblings = await ctx.db.query.courses.findMany({ where: and(eq(courses.communityId, communityId), isNull(courses.deletedAt)), columns: { id: true }, orderBy: [asc(courses.sortOrder), desc(courses.createdAt)] });
+  const suffix = ' (bản sao)';
+  const title = `${src.title.slice(0, 80 - suffix.length).trimEnd()}${suffix}`;
+  const moduleIds = new Map(moduleRows.map((m) => [m.id, crypto.randomUUID()]));
+  const lessonIds = new Map(lessonRows.map((l) => [l.id, crypto.randomUUID()]));
+  const copy = await ctx.db.transaction(async (tx) => {
+    const [row] = await tx.insert(courses).values({
+      workspaceId: src.workspaceId, communityId, ownerUserId: src.ownerUserId, title, slug: `${toSlug(title)}-${Date.now().toString(36).slice(-4)}`,
+      shortDescription: src.shortDescription, descriptionMd: src.descriptionMd, coverUrl: src.coverUrl, coverColor: src.coverColor, introVideoUrl: src.introVideoUrl,
+      status: 'draft', accessMode: src.accessMode, priceMinor: src.priceMinor, compareAtMinor: src.compareAtMinor, previewFirstModule: src.previewFirstModule,
+      affiliateEnabled: src.affiliateEnabled, dripEnabled: src.dripEnabled, certificateEnabled: src.certificateEnabled, sequential: src.sequential, hiddenFromStore: src.hiddenFromStore,
+      lessonCount: lessonRows.length, totalDurationSeconds: lessonRows.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0),
+    }).returning();
+    const newId = row!.id;
+    if (moduleRows.length) await tx.insert(courseModules).values(moduleRows.map((m) => ({ id: moduleIds.get(m.id)!, courseId: newId, title: m.title, sortOrder: m.sortOrder })));
+    // Chèn theo lô 100 bài để khóa vài trăm bài không vượt giới hạn tham số của một câu lệnh.
+    for (let i = 0; i < lessonRows.length; i += 100) {
+      await tx.insert(lessons).values(lessonRows.slice(i, i + 100).map((l) => ({ id: lessonIds.get(l.id)!, courseId: newId, moduleId: moduleIds.get(l.moduleId)!, title: l.title, kind: l.kind, videoProvider: l.videoProvider, videoExternalId: l.videoExternalId, videoUrl: l.videoUrl, contentMd: l.contentMd, isPreview: l.isPreview, dripDays: l.dripDays, requireComplete: l.requireComplete, durationSeconds: l.durationSeconds, sortOrder: l.sortOrder, status: l.status })));
+    }
+    if (resourceRows.length) await tx.insert(lessonResources).values(resourceRows.map((r) => ({ lessonId: lessonIds.get(r.lessonId)!, fileId: r.fileId, name: r.name, url: r.url, sizeBytes: r.sizeBytes, sortOrder: r.sortOrder })));
+    // Bản sao đứng ngay sau khóa gốc trong thư viện.
+    const order = siblings.flatMap((s) => (s.id === courseId ? [s.id, newId] : [s.id]));
+    for (const [i, id] of order.entries()) await tx.update(courses).set({ sortOrder: i }).where(eq(courses.id, id));
+    return { ...row!, sortOrder: order.indexOf(newId) };
+  });
+  await audit(ctx, { action: 'course.duplicate', resourceType: 'course', resourceId: copy.id, communityId, metadata: { sourceCourseId: courseId } });
+  return copy;
 }
 
 /** Đếm lại số bài, thời lượng và total_lessons cho mọi học viên (mục 196). */
