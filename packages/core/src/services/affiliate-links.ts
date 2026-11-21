@@ -97,7 +97,12 @@ export const CLICK_REPEAT_MINUTES = 30;
  * Trả về true khi lượt bấm được đếm.
  */
 export async function recordLandingClick(ctx: Ctx, ref: string, meta: { visitorId: string; ip?: string; userAgent?: string; landingUrl?: string; referrer?: string }): Promise<boolean> {
-  const code = refCodes(ref)[0];
+  const first = refCodes(ref)[0];
+  if (!first) return false;
+  // Mã chung đi kèm phạm vi (trang mà link được mở) được đổi thành mã riêng của đúng chương trình. Nạp muộn để tránh
+  // vòng import: referral-codes.ts dùng platformProgram của tệp này.
+  const { canonicalRefs } = await import('./referral-codes');
+  const [code] = await canonicalRefs(ctx, first);
   if (!code) return false;
   const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.status, 'active')) });
   if (!acc) return false;

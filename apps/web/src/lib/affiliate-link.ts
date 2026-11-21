@@ -97,3 +97,8 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Thứ người dùng gõ vào ô mã giới thiệu: viết thường, bỏ dấu tiếng Việt, bỏ mọi ký tự không phải chữ và số, cắt còn 20 ký tự. */
+export function cleanCodeInput(raw: string): string {
+  return raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '').slice(0, 20);
+}
