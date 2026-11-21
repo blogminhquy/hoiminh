@@ -10,6 +10,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { notify } from './notifications';
 import { communityHasFeature, requirePlanFeature } from './plans';
+import { linkTargets } from './affiliate-links';
 
 /** Số dư ví từ sổ cái: credit + release + adjustment − hold − debit. */
 export async function walletBalance(ctx: Ctx, affiliateAccountId: string): Promise<{ available: number; credited: number; held: number; debited: number }> {
@@ -321,7 +322,7 @@ export async function myWallet(ctx: Ctx, programId: string) {
   const profile = await raw(ctx.db, sql`select masked_account, bank_code from affiliate_payout_profiles where affiliate_account_id = ${acc.id}`);
   const pr = profile[0] as { masked_account: string; bank_code: string } | undefined;
   return {
-    programId, programName: program.name, scope: program.scopeType, communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: acc.affiliateCode, link: link?.destinationUrl ?? '',
+    programId, programName: program.name, scope: program.scopeType, enabled: program.status === 'active', commissionDurationMonths: program.commissionDurationMonths, targets: await linkTargets(ctx, program, acc.affiliateCode), communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: acc.affiliateCode, link: link?.destinationUrl ?? '',
     commissionRateBps: acc.commissionRateBps ?? program.commissionRateBps, holdDays: program.holdDays, minWithdrawalMinor: program.minWithdrawalMinor,
     pendingMinor: Number(s.pending), availableMinor: Math.max(0, bal.available), requestedMinor: Number(s.requested), paidMinor: Number(s.paid), clicks: acc.clickCount, signups: acc.signupCount, paid: acc.paidCount,
     maskedAccount: pr?.masked_account ?? null, bankCode: pr?.bank_code ?? null,
@@ -329,13 +330,8 @@ export async function myWallet(ctx: Ctx, programId: string) {
   };
 }
 
-/** Các chương trình mà tôi có thể làm affiliate (nền tảng + hội đang tham gia có bật). */
-export async function myPrograms(ctx: Ctx) {
-  const userId = requireUser(ctx);
-  const platform = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
-  const rows = await ctx.db.select({ p: affiliatePrograms, c: { id: communities.id, name: communities.name, slug: communities.slug, logoMark: communities.logoMark, logoColor: communities.logoColor, logoUrl: communities.logoUrl } }).from(communityMembers).innerJoin(affiliatePrograms, eq(affiliatePrograms.communityId, communityMembers.communityId)).innerJoin(communities, eq(communities.id, communityMembers.communityId)).where(and(eq(communityMembers.userId, userId), inArray(communityMembers.status, ['active', 'cancelling']), eq(affiliatePrograms.status, 'active')));
-  return [...(platform ? [{ id: platform.id, name: 'Nền tảng Hội Mình', scope: 'platform' as const, community: null, rateBps: platform.commissionRateBps }] : []), ...rows.map((r) => ({ id: r.p.id, name: r.c.name, scope: 'community' as const, community: r.c, rateBps: r.p.commissionRateBps }))];
-}
+// Danh sách chương trình của tôi và chương trình nền tảng nằm ở affiliate-links.ts.
+export { myPrograms, platformProgram } from './affiliate-links';
 
 /** Xếp hạng affiliate từ snapshot (mục 200) + dòng "bạn" + cột phải. */
 export async function leaderboard(ctx: Ctx, communityId: string, period: 'month' | 'quarter' | 'all') {

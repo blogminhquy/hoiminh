@@ -1,4 +1,4 @@
-// Luồng 4: affiliate xem ví + link, gửi yêu cầu rút; chủ hội xem xét (mở số tài khoản, QR), ghi mã tham chiếu, đánh dấu đã trả; bảng xếp hạng.
+// Luồng 4: affiliate xem ví, lấy link của hội, của sản phẩm và của nền tảng, gửi yêu cầu rút; chủ hội xem xét (mở số tài khoản, QR), ghi mã tham chiếu, đánh dấu đã trả; bảng xếp hạng.
 import { expect, test } from '@playwright/test';
 import { USERS, login } from '../helpers';
 
@@ -7,6 +7,17 @@ test('affiliate rút tiền và chủ hội chi trả thủ công', async ({ pag
   await page.goto('/tai-khoan/cong-su');
   await expect(page.getByRole('heading', { name: 'Affiliate' })).toBeVisible();
   await expect(page.getByText(/ref=hv8k2/).first()).toBeVisible();
+
+  // Lấy link theo ba bước: chọn chương trình (nền tảng hoặc hội), chọn trang (trang hội hoặc sản phẩm), sao chép.
+  const link = page.getByTestId('affiliate-link');
+  await expect(link).toHaveText(/\/minhquy\?ref=hv8k2$/);
+  await page.getByRole('radio', { name: /Funnel Money Model 2026/ }).click();
+  await expect(link).toHaveText(/\/minhquy\/cua-hang\/funnel-money-model-2026\?ref=hv8k2$/);
+  await page.getByRole('radio', { name: /Nền tảng Hội Mình/ }).click();
+  await expect(link).toHaveText(/\/tao-hoi\?ref=[a-z0-9]+$/);
+  await expect(page.getByText(/Nhận 40% hoa hồng mỗi lần người bạn mời trả tiền gói Hội Mình/)).toBeVisible();
+  await page.getByRole('radio', { name: /Kinh Doanh Online Cùng AI/ }).click();
+  await expect(link).toHaveText(/\/minhquy\?ref=hv8k2$/);
   await expect(page.getByText('Có thể rút').first()).toBeVisible();
 
   const amount = page.locator('input[inputmode="numeric"]').first();
