@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Chip, ErrorBox, Field, Input, Modal, Select, T, Tag, Textarea } from '@hoiminh/ui';
 import { Check, CheckSquare, Download, ExternalLink, FileText, Link as LinkIcon, Paperclip, Play, Plus, Video, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { DrivePlayer } from '@/components/DrivePlayer';
 import { MdEditor, ToggleRow } from '@/components/EditorBits';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
@@ -11,7 +12,7 @@ import { api, errorMessage } from '@/lib/api';
 export type LessonKind = 'video' | 'text' | 'task' | 'file';
 export const KIND_ICON: Record<LessonKind, ReactNode> = { video: <Video size={14} />, text: <FileText size={14} />, task: <CheckSquare size={14} />, file: <Paperclip size={14} /> };
 const KINDS: Array<[LessonKind, string]> = [['video', 'Video'], ['text', 'Bài viết'], ['task', 'Bài tập'], ['file', 'Tài liệu']];
-const PROVIDER_LABEL: Record<string, string> = { youtube: 'YouTube', tiktok: 'TikTok', facebook: 'Facebook', loom: 'Loom', vimeo: 'Vimeo', bunny: 'Bunny' };
+const PROVIDER_LABEL: Record<string, string> = { youtube: 'YouTube', gdrive: 'Google Drive', tiktok: 'TikTok', facebook: 'Facebook', loom: 'Loom', vimeo: 'Vimeo', bunny: 'Bunny' };
 
 interface VideoMetaRes { embed: { provider: string; externalId: string } | null; meta: { title: string; description: string; durationSeconds: number | null } | null }
 /** Nhận diện link và lấy tên, mô tả, thời lượng từ YouTube. `meta` null khi không phải YouTube hoặc YouTube không trả lời. */
@@ -45,7 +46,7 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
     const url = d.videoUrl.trim();
     if (!url) { setEmbed(undefined); return; }
     if (url === (l.videoUrl ?? '')) { setEmbed(data.embed); return; }
-    const t = setTimeout(() => { void api.post<{ embed: { provider: string; embedUrl: string } | null }>('/v1/video/parse', { url }).then((r) => setEmbed(r.embed)).catch(() => setEmbed(null)); }, 500);
+    const t = setTimeout(() => { void api.post<{ embed: { provider: string; embedUrl: string } | null }>('/v1/video/parse', { url, lesson: true }).then((r) => setEmbed(r.embed)).catch(() => setEmbed(null)); }, 500);
     return () => clearTimeout(t);
   }, [d.videoUrl, l.videoUrl, data.embed]);
 
@@ -97,11 +98,19 @@ function LessonEditor({ courseId, communityId, data, moduleIndex, lessonIndex, p
             {/* Khung video nằm trên, ô dán link nằm dưới: một cột, không chia đôi khung soạn. */}
             <div className="flex flex-col gap-3">
               <div className="rounded-[12px] flex items-center justify-center overflow-hidden" style={{ width: '100%', maxWidth: 720, aspectRatio: '16 / 9', background: T.player, color: T.invertInk }}>
-                {embed ? <iframe title="Xem trước video" src={embed.embedUrl} className="w-full h-full" allow="autoplay; fullscreen" /> : <Play size={32} />}
+                {embed?.provider === 'gdrive' ? <DrivePlayer src={embed.embedUrl} title="Xem trước video" /> : embed ? <iframe title="Xem trước video" src={embed.embedUrl} className="w-full h-full" allow="autoplay; fullscreen" /> : <Play size={32} />}
               </div>
               <div className="flex flex-col gap-2 min-w-0">
-                <Input left={<LinkIcon size={16} style={{ color: T.ink3 }} />} value={d.videoUrl} onChange={(e) => patch({ videoUrl: e.target.value })} placeholder="youtube.com/watch?v=…" right={d.videoUrl.trim() ? (embed ? <Tag tone="teal"><Check size={11} />{PROVIDER_LABEL[embed.provider] ?? embed.provider}</Tag> : embed === null ? <Tag tone="danger">Không nhận diện</Tag> : null) : null} />
-                <div className="muted text-[12px]">Dán link YouTube, TikTok, Facebook, Loom, Vimeo hoặc Bunny. Video ẩn trên YouTube vẫn phát được. Đặt "Không liệt kê" để người ngoài không tìm thấy.</div>
+                <Input left={<LinkIcon size={16} style={{ color: T.ink3 }} />} value={d.videoUrl} onChange={(e) => patch({ videoUrl: e.target.value })} placeholder="youtube.com/watch?v=… hoặc drive.google.com/file/d/…" right={d.videoUrl.trim() ? (embed ? <Tag tone="teal"><Check size={11} />{PROVIDER_LABEL[embed.provider] ?? embed.provider}</Tag> : embed === null ? <Tag tone="danger">Không nhận diện</Tag> : null) : null} />
+                <div className="muted text-[12px]">Dán link YouTube, Google Drive, TikTok, Facebook, Loom, Vimeo hoặc Bunny. Video ẩn trên YouTube vẫn phát được. Đặt "Không liệt kê" để người ngoài không tìm thấy.</div>
+                {embed?.provider === 'gdrive' && (
+                  <div className="rounded-[10px] px-3 py-2.5 text-[14px] leading-[1.55]" style={{ background: T.goldSoft, color: T.goldText }}>
+                    <b>Hai việc cần làm trên Google Drive để tệp phát được và không tải về được:</b>
+                    <br />1. Bấm Chia sẻ, đổi quyền truy cập chung thành "Bất kỳ ai có đường liên kết", vai trò "Người xem".
+                    <br />2. Trong khung Chia sẻ, bấm biểu tượng bánh răng, bỏ dấu ở "Người xem và người nhận xét có thể thấy tùy chọn tải xuống, in và sao chép".
+                    <br />Trang bài học đã chặn nút mở sang Google Drive và không gửi link gốc cho học viên.
+                  </div>
+                )}
                 {embed?.provider === 'youtube' && (
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <Button size="sm" icon={<Download size={14} />} loading={fill.isPending} onClick={() => fill.mutate()}>Lấy tên và mô tả từ YouTube</Button>
@@ -153,7 +162,8 @@ export function BulkImportModal({ open, onClose, courseId, moduleId }: { open: b
         try {
           const r = await fetchVideoMeta(url);
           if (!r.embed) { unknown.push(url); continue; }
-          const fallback = `Bài ${i + 1} · ${PROVIDER_LABEL[r.embed.provider] ?? r.embed.provider} ${r.embed.externalId}`.slice(0, 160);
+          // Tên tạm của bài Google Drive không kèm id tệp, vì tên bài hiện cho học viên.
+          const fallback = (r.embed.provider === 'gdrive' ? `Bài ${i + 1} · Google Drive` : `Bài ${i + 1} · ${PROVIDER_LABEL[r.embed.provider] ?? r.embed.provider} ${r.embed.externalId}`).slice(0, 160);
           await api.post(`/v1/courses/${courseId}/lessons`, { moduleId, title: r.meta?.title ?? fallback, kind: 'video', videoUrl: url, contentMd: r.meta?.description ?? '', durationSeconds: r.meta?.durationSeconds ?? null });
           made++;
         } catch (e) {
@@ -172,7 +182,7 @@ export function BulkImportModal({ open, onClose, courseId, moduleId }: { open: b
   return (
     <Modal open onClose={close} title="Nhập nhanh từ danh sách link" width={520}>
       <div className="p-5 flex flex-col gap-3">
-        <span className="muted text-[13px]">Dán nhiều link YouTube (mỗi dòng một link). Mỗi link thành một bài video trong module đang mở. Tên bài, mô tả và thời lượng lấy luôn từ YouTube, bạn sửa lại sau nếu muốn.</span>
+        <span className="muted text-[13px]">Dán nhiều link YouTube hoặc Google Drive (mỗi dòng một link). Mỗi link thành một bài video trong module đang mở. Với YouTube, tên bài, mô tả và thời lượng lấy luôn từ YouTube; với Google Drive bạn đặt tên bài sau.</span>
         <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} disabled={m.isPending} placeholder={'https://youtube.com/watch?v=…\nhttps://youtu.be/…'} />
         {!moduleId && <span className="text-[13px]" style={{ color: T.accentText }}>Hãy tạo và mở một module trước.</span>}
         {progress && <span className="text-[13px] font-semibold" style={{ color: T.teal }}>Đang nhập bài {progress.at}/{progress.total}…</span>}

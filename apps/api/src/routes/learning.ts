@@ -43,9 +43,10 @@ learningRoutes.put('/courses/:id/reorder', requireAuth, async (c) => {
 learningRoutes.get('/lessons/:id', async (c) => c.json(await courses.getLesson(c.get('ctx'), c.req.param('id'))));
 learningRoutes.post('/lessons/:id/complete', requireAuth, async (c) => c.json(await courses.completeLesson(c.get('ctx'), c.req.param('id'))));
 learningRoutes.post('/video/parse', async (c) => {
-  const { url } = await parse(z.object({ url: z.string() }), await body(c));
-  const { parseVideoUrl } = await import('@hoiminh/contracts');
-  return c.json({ embed: parseVideoUrl(url) });
+  // `lesson: true` là ô link video của bài học, nơi duy nhất nhận thêm tệp Google Drive.
+  const { url, lesson } = await parse(z.object({ url: z.string(), lesson: z.boolean().optional() }), await body(c));
+  const { parseLessonVideoUrl, parseVideoUrl } = await import('@hoiminh/contracts');
+  return c.json({ embed: lesson ? parseLessonVideoUrl(url) : parseVideoUrl(url) });
 });
 // Nhận diện link và lấy tên, mô tả, thời lượng từ YouTube để điền sẵn bài học. Cần đăng nhập vì máy chủ phải gọi ra ngoài.
 // Đường dẫn này nằm trong NO_DB_PATHS (middleware/auth.ts): không mở transaction database trong lúc chờ YouTube.

@@ -487,6 +487,12 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-menu [role='menuitem'] { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); white-space: nowrap; }
 .chat-menu [role='menuitem']:hover { background: var(--bg); }
 
+/* Khung phát tệp Google Drive trong bài học (DrivePlayer). Lớp chắn trong suốt đè lên góc trên bên phải,
+   đúng chỗ nút "Mở trong cửa sổ mới" của Drive, để người học không bấm sang Drive được. */
+.drive-player { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: var(--player); }
+.drive-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.drive-player-guard { position: absolute; top: 0; right: 0; z-index: 1; width: 80px; height: 72px; }
+
 /* Menu ba chấm trên thẻ khóa học (chỉ người quản lý khóa thấy). Máy tính: bảng thả dưới nút, tràn ra ngoài thẻ được.
    Điện thoại: bảng trượt từ đáy, nằm trên thanh dưới (30), hàng cao 48px cho dễ bấm. */
 .course-more { position: absolute; top: 10px; right: 10px; z-index: 2; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: rgba(15, 31, 29, 0.74); color: #FFFFFF; }

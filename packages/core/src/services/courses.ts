@@ -1,6 +1,6 @@
 // Khóa học: thư viện, chi tiết, tạo/sửa/đăng, module và bài học, nhúng video, tài liệu.
 import { sha256Hex } from '@hoiminh/config';
-import { parseVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
+import { parseLessonVideoUrl, toSlug, type CreateCourseInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { comments, communities, courseModules, courseProgress, courses, files, lessonProgress, lessonResources, lessons, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -107,12 +107,15 @@ export async function getLesson(ctx: Ctx, lessonId: string) {
     await ctx.db.insert(courseProgress).values({ courseId: l.courseId, userId, totalLessons: course.lessonCount, lastLessonId: lessonId, lastAccessedAt: ctx.now() }).onConflictDoUpdate({ target: [courseProgress.courseId, courseProgress.userId], set: { lastLessonId: lessonId, lastAccessedAt: ctx.now() } });
   }
   const resources = locked ? [] : await Promise.all(course.resources.filter((r) => r.lessonId === lessonId).map(async (r) => ({ ...r, url: r.url.startsWith('seed://') || r.url.startsWith('http') ? r.url : await ctx.media.getSignedUrl(r.url, 3600) })));
-  const embed = l.videoUrl ? parseVideoUrl(l.videoUrl) : null;
+  const embed = l.videoUrl ? parseLessonVideoUrl(l.videoUrl) : null;
+  // Tệp Google Drive: người học chỉ nhận địa chỉ khung xem trước, không nhận link chia sẻ gốc hay id tệp ở dạng trường riêng.
+  // Người quản lý khóa vẫn nhận đủ để sửa bài. (Địa chỉ khung vẫn chứa id tệp vì trình duyệt phải tải thẳng từ Google.)
+  const hideSource = embed?.provider === 'gdrive' && !course.canManage;
   // Nhỏ giọt chỉ có tác dụng khi khóa bật dripEnabled; trước đây dripDays của bài tự khóa dù công tắc khóa đang tắt.
   const drip = course.dripEnabled && course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
   const dripLocked = Boolean(drip && drip > ctx.now() && !course.canManage);
   const sequentialLocked = entry?.sequentialLocked ?? false;
-  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : l, embed: locked ? null : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
+  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : hideSource ? { ...l, videoUrl: null, videoExternalId: null } : l, embed: locked ? null : hideSource && embed ? { ...embed, externalId: '', originalUrl: '' } : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
 }
 
 /** Đánh dấu hoàn thành bài, cập nhật course_progress, phát lesson.completed / course.completed. */
@@ -204,8 +207,8 @@ export async function upsertLesson(ctx: Ctx, courseId: string, input: { id?: str
   await requireCommunityPermission(ctx, c.communityId, 'course.manage');
   let video: { provider: string | null; id: string | null; url: string | null } = { provider: null, id: null, url: null };
   if (input.videoUrl) {
-    const e = parseVideoUrl(input.videoUrl);
-    if (!e) throw invalid('Link video không nhận diện được. Hỗ trợ YouTube, TikTok, Facebook, Loom, Vimeo, Bunny.');
+    const e = parseLessonVideoUrl(input.videoUrl);
+    if (!e) throw invalid('Link video không nhận diện được. Hỗ trợ YouTube, Google Drive (link tệp), TikTok, Facebook, Loom, Vimeo, Bunny.');
     video = { provider: e.provider, id: e.externalId, url: input.videoUrl };
   }
   let row: typeof lessons.$inferSelect;

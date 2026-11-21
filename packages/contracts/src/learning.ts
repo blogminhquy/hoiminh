@@ -105,6 +105,34 @@ export function parseVideoUrl(raw: string): VideoEmbed | null {
   return null;
 }
 
+/**
+ * Link tệp Google Drive (video, PDF...) đang chia sẻ "Bất kỳ ai có đường liên kết" → khung xem trước `/preview`.
+ * Nhận các dạng `drive.google.com/file/d/<id>/view`, `/open?id=<id>`, `/uc?id=<id>` và `docs.google.com/file/d/<id>`;
+ * link thư mục không nhận. Tệp cũ cần `resourcekey` thì giữ lại tham số đó.
+ * Tách khỏi `parseVideoUrl` vì chỉ bài học nhận Drive: trang bài học nhúng khung này ở chế độ chặn mở sang Drive (DrivePlayer),
+ * còn bài viết, sự kiện, trang giới thiệu nhúng khung thường nên không nhận.
+ */
+export function parseDriveUrl(raw: string): VideoEmbed | null {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, '');
+  if (host !== 'drive.google.com' && host !== 'docs.google.com') return null;
+  const id = url.pathname.match(/\/file\/d\/([^/]+)/)?.[1] ?? (/\/(?:open|uc)$/.test(url.pathname) ? url.searchParams.get('id') : null);
+  if (!id || !/^[A-Za-z0-9_-]{10,}$/.test(id)) return null;
+  const key = url.searchParams.get('resourcekey');
+  const query = key && /^[A-Za-z0-9_-]{1,64}$/.test(key) ? `?resourcekey=${key}` : '';
+  return { provider: 'gdrive', externalId: id, embedUrl: `https://drive.google.com/file/d/${id}/preview${query}`, originalUrl: raw };
+}
+
+/** Link video của bài học: mọi nền tảng của `parseVideoUrl`, thêm tệp Google Drive. */
+export function parseLessonVideoUrl(raw: string): VideoEmbed | null {
+  return parseVideoUrl(raw) ?? parseDriveUrl(raw);
+}
+
 function yt(id: string, raw: string): VideoEmbed | null {
   if (!/^[A-Za-z0-9_-]{6,}$/.test(id)) return null;
   return { provider: 'youtube', externalId: id, embedUrl: `https://www.youtube-nocookie.com/embed/${id}`, originalUrl: raw };
