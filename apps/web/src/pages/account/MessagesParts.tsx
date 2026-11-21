@@ -13,7 +13,8 @@ export interface Conversation { id: string; other: Person; community: { id: stri
 export interface ReplyRef { id: string; senderUserId: string; body: string; hasImage: boolean; fileName: string | null; recalled: boolean }
 export interface MessageFile { name: string; sizeBytes: number }
 export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; automated: boolean; deliveredAt: string | null; readAt: string | null; createdAt: string; recalled: boolean; reactions: Record<string, string>; replyTo: ReplyRef | null; file: MessageFile | null; pending?: boolean }
-export interface Panel { memberId: string; role: string; status: string; tier: { key: string; name: string; monthlyMinor: number | null } | null; joinedAt: string; learning: { title: string; percent: number } | null; referrer: string | null }
+/** `status`, giá gói, `learning`, `referrer` chỉ có khi người xem quản lý thành viên của hội; người khác nhận null. */
+export interface Panel { memberId: string; role: string; status: string | null; tier: { key: string; name: string; monthlyMinor: number | null } | null; joinedAt: string; learning: { title: string; percent: number } | null; referrer: string | null }
 
 /** Thu hồi được trong 24 giờ (khớp RECALL_WINDOW_MS ở máy chủ; máy chủ vẫn là nơi quyết định). */
 const RECALL_WINDOW_MS = 24 * 60 * 60_000;
