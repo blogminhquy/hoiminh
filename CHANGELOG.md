@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.37.0 - 2026-11-21
+## 1.36.2 - 2026-11-21
 
 Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Bài học nhận thêm link Google Drive, phát ngay trong trang và chặn mở sang Drive. Theo yêu cầu của chủ dự án.
 
@@ -32,6 +32,7 @@ Quản lý khóa học ngay tại thư viện Khóa học, không phải mở t�
 
 - **Không giấu được link Drive với người rành kỹ thuật.** Trình duyệt của học viên tải tệp thẳng từ Google, nên địa chỉ khung phát (có id tệp) vẫn đọc được trong công cụ nhà phát triển của trình duyệt. Phần chặn ở trên ngăn người dùng thông thường. Lớp chặn tải thật sự là cài đặt "Người xem có thể tải xuống" trên Drive: tắt mục đó thì có link cũng không tải được bằng nút của Drive.
 - Phần chặn chưa thử được với Google Drive thật trên máy phát triển (máy đó không ra được Google). Cần mở một bài Drive trên bản chạy thật để xác nhận video phát bình thường và nút mở sang Drive không còn bấm được.
+
 ## 1.36.1 - 2026-11-21
 
 ### Thêm
