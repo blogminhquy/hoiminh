@@ -1,7 +1,7 @@
 // Cửa hàng trong hội: sản phẩm course/bundle/digital, trang bán chuẩn theo trường cố định, tải tệp số bằng signed URL.
 import { toSlug, type CreateProductInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
-import { bundleItems, courseModules, courses, files, lessons, productPages, products, users } from '@hoiminh/db';
+import { affiliateUserCodes, bundleItems, courseModules, courses, files, lessons, productPages, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, invalid, notFound } from '../errors';
@@ -64,7 +64,9 @@ export async function getProduct(ctx: Ctx, productId: string) {
     return mods.map((m, i) => ({ ...m, lessons: ls.filter((l) => l.moduleId === m.id).map((l) => ({ id: l.id, title: l.title, durationSeconds: l.durationSeconds, isPreview: l.isPreview || (course.previewFirstModule && i === 0), kind: l.kind })) }));
   })() : [];
   const affiliate = userId ? await raw(ctx.db, sql`select a.affiliate_code from affiliate_accounts a join affiliate_programs pr on pr.id = a.program_id where a.user_id = ${userId} and pr.community_id = ${p.communityId} and a.status = 'active' and pr.status = 'active' limit 1`) : null;
-  const code = (affiliate?.[0] as { affiliate_code: string } | undefined)?.affiliate_code ?? null;
+  const accountCode = (affiliate?.[0] as { affiliate_code: string } | undefined)?.affiliate_code ?? null;
+  // Link hiện cho người xem dùng mã chung của họ nếu đã đặt (một mã cho mọi chương trình).
+  const code = accountCode && userId ? ((await ctx.db.query.affiliateUserCodes.findFirst({ where: eq(affiliateUserCodes.userId, userId), columns: { code: true } }))?.code ?? accountCode) : accountCode;
   const community = await raw(ctx.db, sql`select slug, name from communities where id = ${p.communityId}`);
   const slug = (community[0] as { slug: string; name: string }).slug;
   const tierKey = access.tierId ? ((await raw(ctx.db, sql`select key from community_tiers where id = ${access.tierId}`))[0] as { key: string } | undefined)?.key ?? null : null;

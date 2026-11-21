@@ -39,6 +39,7 @@ export * as paymentsService from './services/payments';
 export * as subscriptions from './services/subscriptions';
 export * as entitlements from './services/entitlements';
 export * as affiliate from './services/affiliate';
+export * as referralCodes from './services/referral-codes';
 export * as withdrawals from './services/withdrawals';
 export * as messaging from './services/messaging';
 export * as notifications from './services/notifications';

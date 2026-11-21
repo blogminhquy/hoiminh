@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, affiliate (ví, rút tiền), thông báo, tin nhắn.
-import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, push, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
+import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, setReferralCodeSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
+import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, push, referralCodes, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -83,6 +83,9 @@ meRoutes.post('/orders/:id/refund', async (c) => {
 });
 
 // Affiliate của tôi
+// Mã giới thiệu chung: một mã cho mọi chương trình, mỗi người chỉ đặt được một lần.
+meRoutes.get('/referral-code', async (c) => c.json(await referralCodes.myReferralCode(c.get('ctx'))));
+meRoutes.put('/referral-code', rateLimit('write', { scope: 'referral-code' }), async (c) => c.json(await referralCodes.setMyReferralCode(c.get('ctx'), await parse(setReferralCodeSchema, await body(c)))));
 meRoutes.get('/affiliate/programs', async (c) => c.json(await affiliate.myPrograms(c.get('ctx'))));
 meRoutes.get('/affiliate/:programId', async (c) => {
   const ctx = c.get('ctx');

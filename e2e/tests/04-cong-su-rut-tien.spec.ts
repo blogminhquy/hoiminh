@@ -5,7 +5,7 @@ import { USERS, login } from '../helpers';
 test('affiliate rút tiền và chủ hội chi trả thủ công', async ({ page }) => {
   await login(page, USERS.affiliate);
   await page.goto('/tai-khoan/cong-su');
-  await expect(page.getByRole('heading', { name: 'Affiliate' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Affiliate của tôi' })).toBeVisible();
   await expect(page.getByText(/ref=hv8k2/).first()).toBeVisible();
 
   // Lấy link theo ba bước: chọn chương trình (nền tảng hoặc hội), chọn trang (trang hội hoặc sản phẩm), sao chép.
