@@ -3,13 +3,17 @@
 import { Search } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { CommandPalette, type PaletteItem } from '@/components/CommandPalette';
+import { affiliateNavRate } from '@/lib/affiliate-nav';
 import { ownerCommands } from '@/lib/commands';
 import type { Shell } from '@/lib/community';
 
 export function OwnerCommandPalette({ shell, open, onClose }: { shell: Shell; open: boolean; onClose: () => void }) {
   const { slug, tabs } = shell.community;
   const { role, permissions } = shell.viewer;
-  const commands = useMemo(() => ownerCommands({ slug, role, permissions, tabs }), [slug, role, permissions, tabs]);
+  // `affiliatePage`: trang Affiliate của hội (link của tôi và xếp hạng) đang mở với người xem, cùng điều kiện với mục
+  // "Affiliate" trên thanh bên. Gửi kèm trong `tabs` vì ô lệnh chỉ nhận các công tắc bật tắt của hội.
+  const affiliatePage = affiliateNavRate(shell) !== null;
+  const commands = useMemo(() => ownerCommands({ slug, role, permissions, tabs: { ...tabs, affiliatePage } }), [slug, role, permissions, tabs, affiliatePage]);
   const canMembers = permissions.includes('member.manage');
   const hasFeed = tabs.feed !== false;
   const extra = useCallback((q: string): PaletteItem[] => {

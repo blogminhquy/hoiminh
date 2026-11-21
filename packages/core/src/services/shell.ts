@@ -1,7 +1,7 @@
 // Dữ liệu khung ứng dụng: thanh bên hội (tab, số liệu, tiến độ), switcher các hội của tôi, khối sự kiện sắp tới.
 import { promoActive, tierTerms } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
-import { communities, communityMembers, communityTiers, courseProgress, courses, events, userCommunityPrefs } from '@hoiminh/db';
+import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, courseProgress, courses, events, userCommunityPrefs } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { resolveCommunityAccess } from '../permissions';
@@ -10,13 +10,13 @@ import { FLAG, flagsFor } from './feature-flags';
 import { ownerPaymentMethods } from './owner-gateways';
 import { planOfCommunity, planTable } from './plans';
 
-/** Khung hội theo slug: thông tin hội, vai trò người xem, tab hiển thị, số liệu, % khóa học, sự kiện sắp tới, gói Premium. */
+/** Khung hội theo slug: thông tin hội, vai trò người xem, tab hiển thị, số liệu, % khóa học, sự kiện sắp tới, gói Premium, affiliate của hội với người xem. */
 export async function communityShell(ctx: Ctx, slug: string) {
   const c = await getCommunityBySlug(ctx, slug);
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   // Các phần dưới đây không phụ thuộc nhau nên gửi đi cùng lúc: database nhận một loạt câu lệnh và trả về một lần,
   // thay vì khung hội phải chờ từng câu một. Ba con số của thanh bên (đang online, quản trị, sự kiện 7 ngày tới) gộp vào một câu lệnh.
-  const [access, stats, premium, upcoming, progressRows, flags, plans] = await Promise.all([
+  const [access, stats, premium, upcoming, progressRows, flags, plans, program, myAffiliate] = await Promise.all([
     resolveCommunityAccess(ctx, c.id),
     raw<{ online: number; admins: number; events: number }>(ctx.db, sql`select
       (select count(*)::int from community_members where community_id = ${c.id} and status = 'active' and last_active_at > now() - interval '15 minutes') as online,
@@ -28,22 +28,36 @@ export async function communityShell(ctx: Ctx, slug: string) {
     // Cờ tính năng của platform đè lên lựa chọn của chủ hội: super admin tắt cờ thì tab biến mất ở mọi hội.
     flagsFor(ctx, { workspaceId: c.workspaceId }),
     planTable(ctx),
+    // Chương trình affiliate của hội, và tài khoản affiliate của người xem trong chương trình đó nếu đã có (chỉ đọc, không mở tài khoản).
+    ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, c.id), columns: { id: true, status: true, commissionRateBps: true, commissionDurationMonths: true, leaderboardVisibility: true } }),
+    userId ? ctx.db.select({ rateBps: affiliateAccounts.commissionRateBps }).from(affiliateAccounts).innerJoin(affiliatePrograms, eq(affiliatePrograms.id, affiliateAccounts.programId)).where(and(eq(affiliateAccounts.userId, userId), eq(affiliatePrograms.communityId, c.id))).limit(1) : [],
   ]);
   const coursePercent = progressRows.length ? Math.round(progressRows.reduce((n, r) => n + r.percent, 0) / progressRows.length) : null;
   const tierKey = access.tierId ? (await ctx.db.query.communityTiers.findFirst({ where: eq(communityTiers.id, access.tierId), columns: { key: true, name: true } })) : null;
   const tabs = { ...c.tabs };
   if (!flags[FLAG.store]) tabs.store = false;
+  // `tabs.affiliate` là bảng xếp hạng affiliate (tab "Xếp hạng" trong trang Affiliate của hội), không phải cả mục Affiliate.
   if (!flags[FLAG.affiliateLeaderboard]) tabs.affiliate = false;
-  // Gói của hội: tab Affiliate chỉ hiện khi gói có affiliate; người quản lý nhận thêm số liệu gói để giao diện khóa nút và mời nâng gói.
+  // Gói của hội: bảng xếp hạng chỉ hiện khi gói có affiliate; người quản lý nhận thêm số liệu gói để giao diện khóa nút và mời nâng gói.
   const plan = planOfCommunity(c, plans, ctx.now());
   if (!plan.features.includes('affiliate')) tabs.affiliate = false;
   const manages = access.permissions.has('settings.manage');
+  const isMember = access.memberStatus === 'active' || access.memberStatus === 'cancelling' || access.role === 'owner' || access.role === 'admin';
+  // Affiliate của hội với người xem, cho mục "Affiliate" trên thanh bên và trang Affiliate của thành viên. Chỉ thành viên
+  // mới nhận; khách và hội chưa có chương trình là null. `enabled`: chương trình đang bật và gói của hội có affiliate
+  // (thiếu một trong hai thì đơn không sinh hoa hồng). Mục này không phụ thuộc cờ bảng xếp hạng: cờ đó chỉ ẩn bảng xếp
+  // hạng (tabs.affiliate), không ẩn link giới thiệu. `rateBps`: mức riêng của tài khoản affiliate người xem nếu có,
+  // không thì mức chung của chương trình.
+  const affiliate = isMember && program
+    ? { programId: program.id, enabled: program.status === 'active' && plan.features.includes('affiliate'), rateBps: myAffiliate[0]?.rateBps ?? program.commissionRateBps, durationMonths: program.commissionDurationMonths, hasAccount: myAffiliate.length > 0, leaderboardVisibility: program.leaderboardVisibility }
+    : null;
   return {
     community: { id: c.id, workspaceId: c.workspaceId, name: c.name, slug: c.slug, shortDescription: c.shortDescription, logoMark: c.logoMark, logoColor: c.logoColor, logoUrl: c.logoUrl, coverColor: c.coverColor, coverUrl: c.coverUrl, coverTagline: c.coverTagline, tabs, status: c.status, visibility: c.visibility, pricingMode: c.pricingMode, doorsOpen: c.doorsOpen, ...(await buyerMethods(ctx, c.id)), customDomain: c.customDomain, memberCount: c.memberCount, requireSpace: c.requireSpace, enabledProviders: c.enabledProviders },
     flags,
     plan: manages ? { key: plan.key, name: plan.name, memberCap: plan.memberCap, features: plan.features, endsAt: plan.endsAt, needsPlan: plan.needsPlan, full: plan.full, isFreeSlot: plan.isFreeSlot } : null,
     // `canView`: người xem vào được bên trong hội (thành viên, hoặc bất kỳ ai khi hội mở). Web dựa vào đó để mở khung hội ở chế độ chỉ xem.
-    viewer: { role: access.role, memberId: access.memberId, memberStatus: access.memberStatus, tier: tierKey, permissions: [...access.permissions], canView: access.canView, isMember: access.memberStatus === 'active' || access.memberStatus === 'cancelling' || access.role === 'owner' || access.role === 'admin' },
+    viewer: { role: access.role, memberId: access.memberId, memberStatus: access.memberStatus, tier: tierKey, permissions: [...access.permissions], canView: access.canView, isMember },
+    affiliate,
     stats: { members: c.memberCount, online: stats[0]?.online ?? 0, admins: stats[0]?.admins ?? 0, upcomingEvents: stats[0]?.events ?? 0 },
     coursePercent,
     upcomingEvents: upcoming,

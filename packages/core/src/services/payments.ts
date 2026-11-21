@@ -1,6 +1,6 @@
 // Payment Event Processor: nhận webhook đã verify, idempotent theo provider_event_id, khớp đơn, phát payment.succeeded, đối soát, hoàn tiền.
 import { BUSINESS } from '@hoiminh/config';
-import { formatMoney, type PaymentProvider } from '@hoiminh/contracts';
+import { formatMoney, refundRouteNote, type PaymentProvider, type RefundRoute } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import type { IncomingWebhook, NormalizedEvent, PaymentAdapter } from '@hoiminh/payments';
 import { normalizeReference } from '@hoiminh/payments';
@@ -150,7 +150,7 @@ export async function confirmPayment(ctx: Ctx, paymentId: string, info: { provid
   return true;
 }
 
-/** Thành viên yêu cầu hoàn tiền khóa học mua lẻ: trong 7 ngày, xem chưa quá 20%. */
+/** Thành viên yêu cầu hoàn tiền sản phẩm mua lẻ: trong 7 ngày kể từ lúc thanh toán; là khóa học thì xem chưa quá 20%. Lời hiện cho người mua lấy từ SELF_REFUND ở @hoiminh/contracts. */
 export async function requestRefund(ctx: Ctx, orderId: string, reason: string) {
   const userId = requireUser(ctx);
   const order = await ctx.db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.customerUserId, userId)) });
@@ -225,10 +225,13 @@ export async function applyRefund(ctx: Ctx, paymentId: string, amountMinor: numb
   if (full) await revokeBySource(ctx, 'purchase', payment.orderId);
   if (full) await revokeBySource(ctx, 'community_bundle', payment.orderId);
   if (payment.communityId) await ctx.db.update(communityMembers).set({ lifetimeValueCents: sql`greatest(${communityMembers.lifetimeValueCents} - ${amountMinor}, 0)` }).where(and(eq(communityMembers.communityId, payment.communityId), eq(communityMembers.userId, payment.customerUserId)));
-  await ctx.events.emit('payment.refunded', { paymentId, orderId: payment.orderId, userId: payment.customerUserId, communityId: payment.communityId, amountMinor, refundId: refund!.id });
+  // Cổng tự hoàn (MoMo, PayPal, Stripe, hoặc đã hoàn sẵn ở trang của cổng) thì tiền về phương thức đã trả. Chuyển khoản và
+  // VNPAY không có lệnh hoàn tự động: người đã nhận tiền (chủ hội, hoặc Hội Mình với đơn gói) phải tự chuyển lại.
+  const route: RefundRoute = !r.manual ? 'gateway' : isOwnerPayee(payment) ? 'seller_transfer' : 'platform_transfer';
+  await ctx.events.emit('payment.refunded', { paymentId, orderId: payment.orderId, userId: payment.customerUserId, communityId: payment.communityId, amountMinor, refundId: refund!.id, route });
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, payment.customerUserId) });
   const order = await ctx.db.query.orders.findFirst({ where: eq(orders.id, payment.orderId) });
-  if (user) await ctx.email.send(templates.paymentRefunded(user.email, user.name, String((order?.metadata as { title?: string })?.title ?? 'đơn hàng'), formatMoney(amountMinor, payment.currency as 'VND')));
+  if (user) await ctx.email.send(templates.paymentRefunded(user.email, user.name, String((order?.metadata as { title?: string })?.title ?? 'đơn hàng'), formatMoney(amountMinor, payment.currency as 'VND'), refundRouteNote(route)));
   await audit(ctx, { action: 'payment.refund', resourceType: 'payment', resourceId: paymentId, communityId: payment.communityId, metadata: { amountMinor, reason, manual: r.manual, fromProvider: Boolean(opts.fromProvider) } });
   return { refundId: refund!.id, manual: r.manual, alreadyRefunded: false };
 }

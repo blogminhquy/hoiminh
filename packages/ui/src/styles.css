@@ -174,6 +174,122 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .table-scroll { overflow-x: auto; }
 /* Hàng chip lọc: máy tính xuống dòng; điện thoại một hàng vuốt ngang để nội dung bên dưới lên cao hơn. */
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Bảng lọc khoảng ngày (DateRangePicker ở apps/web): nút mở, cột mốc bấm nhanh, hai ô ngày, lịch tháng, nút Đóng và Áp dụng.
+   Máy tính: bảng nổi cạnh nút mở, mốc ở cột trái. Điện thoại: tấm trượt lên từ đáy, mốc xếp hai cột phía trên, một tháng lịch.
+   Chữ từ 14px trở lên, dòng mốc và ô ngày cao từ 40px để bấm bằng ngón tay. */
+.drp-trigger { height: 40px; padding: 0 12px; gap: 8px; font-size: 15px; max-width: 100%; min-width: 0; }
+.drp-trigger-icon, .drp-trigger-chevron { flex-shrink: 0; color: var(--ink3); transition: transform 0.15s; }
+.drp-trigger-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.drp-trigger:focus-visible, .drp-trigger[aria-expanded='true'] { outline: 0; border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }
+.drp-trigger[aria-expanded='true'] .drp-trigger-chevron { transform: rotate(180deg); }
+.drp-backdrop { display: none; }
+.drp-pop { position: fixed; z-index: 1000; display: flex; flex-direction: column; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); background: var(--surface); color: var(--ink); border: 1px solid var(--line2); border-radius: 14px; box-shadow: 0 12px 32px rgba(8, 24, 23, 0.24); font-size: 15px; line-height: 1.4; outline: 0; overflow: hidden; }
+.drp-title { display: none; }
+.drp-body { display: flex; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.drp-presets { display: flex; flex-direction: column; gap: 2px; width: 196px; flex-shrink: 0; padding: 10px 8px; border-right: 1px solid var(--line); }
+.drp-preset { display: flex; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 8px; font-size: 15px; font-weight: 500; text-align: left; color: var(--ink); white-space: nowrap; }
+.drp-preset[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary-text); font-weight: 600; }
+.drp-preset:focus-visible, .drp-day:focus-visible, .drp-nav button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.drp-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px 16px; }
+.drp-inputs { display: flex; align-items: center; gap: 10px; }
+.drp-input { flex: 1 1 0; min-width: 0; width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--line2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; outline: 0; }
+.drp-input:focus { border-color: var(--ink3); box-shadow: 0 0 0 3px var(--focus-ring); }
+.drp-input::placeholder { color: var(--ink3); }
+.drp-arrow { flex-shrink: 0; color: var(--ink3); }
+.drp-months { display: flex; gap: 24px; }
+.drp-month { display: flex; flex-direction: column; gap: 4px; width: 280px; }
+.drp-month-head { display: flex; align-items: center; height: 40px; }
+.drp-nav { display: inline-flex; width: 80px; flex-shrink: 0; }
+.drp-nav:last-child { justify-content: flex-end; }
+.drp-nav button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; color: var(--ink2); }
+.drp-nav button:disabled { opacity: 0.35; cursor: default; }
+.drp-month-title { flex-grow: 1; text-align: center; font-size: 15px; font-weight: 700; }
+.drp-weekdays, .drp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.drp-weekdays span { display: flex; align-items: center; justify-content: center; height: 32px; font-size: 14px; font-weight: 600; color: var(--ink3); }
+.drp-grid { row-gap: 2px; }
+.drp-empty { height: 40px; }
+.drp-day { display: flex; align-items: center; justify-content: center; height: 40px; border-radius: 8px; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.drp-day:disabled { color: var(--ink3); opacity: 0.45; cursor: default; }
+@media (hover: hover) {
+  .drp-preset:hover, .drp-nav button:hover:not(:disabled), .drp-day:hover:not(:disabled) { background: var(--bg); }
+  .drp-preset[aria-pressed='true']:hover { background: var(--primary-soft); }
+}
+/* Khoảng đang chọn: dải nền liền nhau, hai đầu mút tô đậm, hôm nay có viền. */
+.drp-day[data-in]:not(:disabled) { background: var(--primary-soft); color: var(--primary-text); border-radius: 0; }
+.drp-grid > .drp-day[data-in]:nth-child(7n + 1) { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.drp-grid > .drp-day[data-in]:nth-child(7n) { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.drp-day[data-edge]:not(:disabled) { background: var(--primary); color: var(--on-primary); font-weight: 700; }
+.drp-day[data-edge='start'] { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.drp-day[data-edge='end'] { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.drp-day[data-edge='both']:not(:disabled) { border-radius: 8px; }
+.drp-day[data-today] { box-shadow: inset 0 0 0 1.5px var(--primary); }
+.drp-day[data-today][data-edge] { box-shadow: inset 0 0 0 1.5px var(--primary), inset 0 0 0 3px var(--surface); }
+.drp-hint { min-height: 20px; font-size: 14px; color: var(--ink3); }
+.drp-hint[data-error] { color: var(--accent-text); font-weight: 600; }
+.drp-foot { display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--surface); }
+.drp-foot .btn { min-width: 104px; }
+@media (max-width: 767px) {
+  .drp-trigger { height: 44px; font-size: 16px; }
+  .drp-backdrop { display: block; position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); }
+  .drp-pop { left: 0; right: 0; bottom: 0; z-index: 1001; width: 100%; max-width: none; max-height: 92vh; max-height: 92dvh; border: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 28px rgba(8, 24, 23, 0.24); font-size: 16px; }
+  .drp-title { display: block; flex-shrink: 0; padding: 14px 16px 12px; font-size: 17px; font-weight: 700; border-bottom: 1px solid var(--line); }
+  .drp-body { flex-direction: column; overflow-x: hidden; }
+  .drp-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: auto; padding: 12px 16px 2px; border-right: 0; }
+  .drp-preset { justify-content: center; min-height: 44px; padding: 0 8px; border: 1px solid var(--line2); border-radius: 10px; font-size: 15px; text-align: center; }
+  .drp-preset[aria-pressed='true'] { border-color: var(--primary); }
+  .drp-preset:last-child { grid-column: 1 / -1; }
+  .drp-main { padding: 12px 16px 14px; }
+  .drp-input { height: 46px; font-size: 16px; }
+  .drp-months { gap: 0; }
+  .drp-month { width: 100%; }
+  .drp-month-head { height: 44px; }
+  .drp-month-title { font-size: 16px; }
+  .drp-nav { width: 88px; }
+  .drp-nav button { width: 44px; height: 44px; }
+  .drp-day, .drp-empty { height: 44px; }
+  .drp-day { font-size: 16px; }
+  .drp-hint { font-size: 15px; }
+  .drp-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .drp-foot .btn { flex: 1 1 0; min-width: 0; }
+}
+/* Trang Quản lý đơn hàng. Hai tab chiếm trọn bề ngang trên điện thoại. Danh sách đơn: máy tính là bảng 7 cột,
+   điện thoại mỗi đơn một thẻ (không cuộn ngang), chữ từ 14px, nút bấm cao từ 44px. */
+.order-tabs { align-self: flex-start; }
+.order-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.order-filters > .select-trigger { width: auto; min-width: 200px; flex: 0 1 auto; }
+.order-filters > .order-search { flex: 1 1 240px; width: auto; min-width: 0; }
+.order-list { overflow-x: auto; }
+.order-head, .order-row { display: grid; grid-template-columns: 92px minmax(0, 1.1fr) minmax(0, 1.6fr) 100px minmax(0, 1.3fr) 124px 116px; gap: 12px; align-items: center; min-width: 900px; padding: 12px 20px; }
+.order-row { border-top: 1px solid var(--line); font-size: 14px; line-height: 1.4; }
+.order-row > div { min-width: 0; overflow-wrap: anywhere; }
+.oc-when, .oc-what, .oc-aff, .oc-status { display: flex; flex-direction: column; gap: 1px; }
+.oc-status { align-items: flex-start; gap: 3px; }
+.oc-note { font-size: 14px; font-weight: 600; }
+.oc-buyer { display: flex; align-items: center; gap: 8px; }
+.oc-label { display: none; }
+.oc-act { display: flex; justify-content: flex-end; }
+@media (max-width: 767px) {
+  .order-tabs { display: flex; align-self: stretch; }
+  .order-tabs > button { padding: 0 10px; }
+  .order-filters > .drp-trigger, .order-filters > .select-trigger, .order-filters > .order-search { flex: 1 1 100%; width: 100%; min-width: 0; justify-content: flex-start; }
+  .order-filters > .drp-trigger .drp-trigger-label { flex-grow: 1; text-align: left; }
+  .order-list { overflow-x: visible; }
+  .order-head { display: none; }
+  .order-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what amount" "buyer status" "when when" "aff aff" "act act"; gap: 8px 12px; align-items: start; min-width: 0; padding: 14px 16px; font-size: 15px; }
+  .order-head + .order-row { border-top: 0; }
+  .oc-what { grid-area: what; }
+  .oc-what > span:first-child { font-size: 16px; }
+  .oc-amount { grid-area: amount; font-size: 16px; text-align: right; white-space: nowrap; }
+  .oc-buyer { grid-area: buyer; }
+  .oc-status { grid-area: status; align-items: flex-end; text-align: right; }
+  .oc-when { grid-area: when; flex-direction: row; gap: 6px; color: var(--ink3); }
+  .oc-aff { grid-area: aff; }
+  .oc-label { display: inline; color: var(--ink3); }
+  .oc-act { grid-area: act; }
+  .oc-act:empty { display: none; }
+  .oc-act .btn { height: 44px; }
+  .oc-act .btn-primary { width: 100%; }
+}
 .skeleton { background: linear-gradient(90deg, var(--line) 25%, var(--shimmer) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(8,24,23,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; z-index: 40; overflow-y: auto; }
@@ -593,10 +709,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-replying .chat-quote { margin-bottom: 0; }
 
 /* Bảng thông tin hội thoại: hàng thao tác nhanh (nút tròn), các mục gập mở được, lưới ảnh, danh sách link. */
-.chat-quick { display: flex; justify-content: center; gap: 4px; width: 100%; margin-top: 14px; }
-.chat-quick > * { flex: 1 1 0; min-width: 0; max-width: 88px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 14px; line-height: 1.3; color: var(--ink2); text-align: center; }
-.chat-quick i { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--bg); color: var(--ink); }
-.chat-quick > *:hover i { background: var(--primary-soft); color: var(--primary-text); }
 .chat-sec { border-top: 6px solid var(--bg); }
 .chat-sec summary { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 16px; font-weight: 700; font-size: 15px; cursor: pointer; list-style: none; }
 .chat-sec summary::-webkit-details-marker { display: none; }
@@ -643,3 +755,81 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .chat-emoji { grid-template-columns: repeat(6, 44px); }
   .chat-emoji button { width: 44px; height: 44px; }
 }
+
+/* Thông báo: dòng thông báo dùng chung cho bảng nổi ở nút chuông và trang /thong-bao. Chưa đọc có chấm, chữ đậm, nền
+   nhuộm nhẹ và nút tròn "Đánh dấu đã đọc"; đã đọc thì chữ nhạt hơn. Vùng bấm của dòng và của nút đều từ 44px. */
+.notif-row { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
+.notif-row.unread { background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
+.notif-row-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 14px 12px 14px 8px; text-align: left; color: var(--ink2); cursor: pointer; }
+.notif-row-main:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.notif-row-main:focus-visible, .notif-row-read:focus-visible, .notif-link-btn:focus-visible, .notif-close:focus-visible, .notif-foot a:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.notif-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; background: transparent; }
+.notif-row.unread .notif-dot { background: var(--accent); }
+.notif-row:not(.unread) .notif-avatar { opacity: 0.72; }
+.notif-title { font-size: 15px; line-height: 1.45; color: var(--ink2); overflow-wrap: anywhere; }
+.notif-row.unread .notif-title { font-weight: 600; color: var(--ink); }
+.notif-body { font-weight: 400; color: var(--ink3); }
+.notif-row.unread .notif-body { color: var(--ink2); }
+.notif-meta { font-size: 14px; line-height: 1.4; color: var(--ink3); }
+/* Khối chữ và nhãn hành động. Đủ rộng thì nhãn nằm bên phải khối chữ, giữa theo chiều dọc; chật (điện thoại, bảng nổi)
+   thì xuống dưới dòng chữ, căn trái, để chữ không bị ép thành cột hẹp. Nhãn dùng .btn nên chữ tự nằm giữa cả hai chiều. */
+.notif-content { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.notif-action { flex-shrink: 0; }
+.notif-row-read { flex-shrink: 0; width: 48px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--primary-text); cursor: pointer; }
+.notif-row-read > span { width: 34px; height: 34px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--line2); }
+.notif-row-read:hover > span { background: var(--primary-soft); border-color: var(--primary); }
+.notif-section { padding: 12px 16px 8px; font-size: 14px; font-weight: 700; color: var(--ink3); }
+section + section > .notif-section { border-top: 1px solid var(--line); }
+/* Lối tắt xuống phần cài đặt ở trang Thông báo: chỉ hiện khi phần cài đặt nằm dưới danh sách (bố cục một cột). */
+.notif-settings-jump { display: none; }
+@media (max-width: 1180px) { .notif-settings-jump { display: inline-flex; } }
+
+/* Nút chuông và bảng thông báo nổi. Máy tính: bảng thả dưới nút chuông, cao tối đa 70% màn hình, danh sách cuộn bên trong.
+   Điện thoại: bảng trượt từ đáy lên, rộng hết màn hình, nằm trên thanh dưới (30) như các bảng trượt khác (60, 61). */
+.notif-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.notif-count { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: content-box; border-radius: 999px; border: 2px solid var(--surface); background: var(--accent); color: var(--surface); font-size: 13px; font-weight: 800; line-height: 20px; text-align: center; pointer-events: none; }
+.notif-backdrop { display: none; }
+.notif-panel { position: absolute; top: calc(100% + 10px); right: 0; z-index: 45; width: 420px; max-width: calc(100vw - 32px); max-height: min(70vh, 660px); display: flex; flex-direction: column; overflow: hidden; text-align: left; border-radius: 16px; background: var(--surface); border: 1px solid var(--line2); box-shadow: 0 16px 40px rgba(8, 24, 23, 0.24); animation: select-pop-in 0.12s ease-out; }
+.notif-panel:focus { outline: 0; }
+.notif-head { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 12px 16px; border-bottom: 1px solid var(--line); }
+.notif-heading { margin: 0; font-size: 18px; font-weight: 800; color: var(--ink); }
+.notif-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.notif-list > .notif-row:first-child { border-top: 0; }
+.notif-link-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--primary-text); white-space: nowrap; cursor: pointer; }
+.notif-link-btn:not(:disabled):hover { background: var(--primary-soft); }
+.notif-link-btn:disabled { color: var(--ink3); opacity: 0.7; cursor: default; }
+.notif-close { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; border-radius: 10px; color: var(--ink2); cursor: pointer; }
+.notif-panel .chip { height: 44px; }
+/* Trong bảng nổi mỗi dòng gọn lại để thấy được nhiều thông báo: nội dung tối đa ba dòng, dòng thời gian không xuống dòng. Trang /thong-bao hiện đủ. */
+.notif-panel .notif-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.notif-panel .notif-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Bố cục chật: nhãn hành động xuống dưới dòng chữ, nên dòng cao hơn. Ảnh đại diện và chấm đứng ở đầu dòng (chấm ngang tâm ảnh), không trôi xuống giữa. */
+.notif-panel .notif-row-main { align-items: flex-start; }
+.notif-panel .notif-dot { margin-top: 16px; }
+.notif-panel .notif-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+.notif-panel .notif-content > :first-child { width: 100%; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 20px 36px; text-align: center; }
+.notif-empty-ic { width: 48px; height: 48px; margin-bottom: 6px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary-text); }
+.notif-foot { flex-shrink: 0; border-top: 1px solid var(--line); }
+.notif-foot a { display: flex; align-items: center; justify-content: center; min-height: 48px; font-size: 15px; font-weight: 600; color: var(--primary-text); }
+.notif-foot a:hover { background: var(--bg); }
+@keyframes notif-sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 767px) {
+  .notif-title { font-size: 16px; }
+  .notif-meta, .notif-section, .notif-link-btn { font-size: 15px; }
+  .notif-row-main { align-items: flex-start; }
+  .notif-dot { margin-top: 16px; }
+  .notif-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .notif-content > :first-child { width: 100%; }
+  .notif-action { height: 44px; }
+  .notif-backdrop { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.5); cursor: default; }
+  .notif-panel { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 61; width: auto; max-width: none; max-height: 86vh; max-height: 86dvh; padding-bottom: env(safe-area-inset-bottom); border: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 28px rgba(8, 24, 23, 0.24); animation: notif-sheet-in 0.18s ease-out; }
+  /* Nút đóng ghim ở góc trên bên phải; hàng tiêu đề chừa chỗ cho nó. Màn hẹp thì "Đánh dấu tất cả đã đọc" bỏ biểu tượng cho vừa một hàng. */
+  .notif-head { position: relative; padding: 10px 8px 12px 16px; }
+  .notif-head-top { padding-right: 46px; }
+  .notif-head-top .notif-link-btn { font-size: 14px; padding: 0 6px; }
+  .notif-close { display: inline-flex; position: absolute; top: 10px; right: 6px; }
+  .notif-panel .chip { height: 44px !important; }
+}
+@media (max-width: 389px) { .notif-head-top .notif-link-btn svg { display: none; } }
+@media (prefers-reduced-motion: reduce) { .notif-panel { animation: none; } }

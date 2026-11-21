@@ -1,15 +1,14 @@
 // Khung chủ hội: header chỉ còn Hội của tôi và Tài khoản (Nhà phát triển đã về Cài đặt của từng hội, Khám phá nằm
 // trong bảng chuyển hội), nội dung 1120px giữa.
-import { Bell } from 'lucide-react';
 import { Logo, T } from '@hoiminh/ui';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { NotificationBell } from '@/components/NotificationBell';
 import { LoadingBlock } from '@/components/QueryState';
-import { useAuth, useBadges } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 
 export function WorkspaceShell() {
   const { user, loading } = useAuth();
-  const badges = useBadges();
   const location = useLocation();
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
@@ -28,10 +27,7 @@ export function WorkspaceShell() {
           {user?.isSuperAdmin && item('/he-thong', 'Hệ thống')}
         </nav>
         <span className="flex-grow" />
-        <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}>
-          <Bell size={20} />
-          {badges.data?.unreadNotifications ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}
-        </Link>
+        <NotificationBell />
         <AccountAvatarLink user={user} />
       </header>
       <div className="flex-grow flex justify-center px-4 py-6 md:px-16 md:py-10">

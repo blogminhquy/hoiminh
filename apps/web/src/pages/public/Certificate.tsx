@@ -1,50 +1,73 @@
-// Chứng nhận hoàn thành khóa học: trang công khai, ai có link cũng kiểm tra được; in được.
+// Chứng nhận hoàn thành khóa học: trang công khai, ai có link cũng kiểm tra được. Tấm chứng chỉ khổ A4 ngang
+// tải được thành ảnh, chia sẻ được, in được. Vừa học xong bài cuối thì trang mở ở chế độ chúc mừng (?chuc-mung=1).
 import { useQuery } from '@tanstack/react-query';
-import { CommunityMark, T } from '@hoiminh/ui';
-import { BadgeCheck, Printer } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { QueryState } from '@/components/QueryState';
+import { T } from '@hoiminh/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Confetti } from '@/components/Celebration';
+import { LoadingBlock, QueryState } from '@/components/QueryState';
 import { PublicHeader } from '@/layouts/PublicHeader';
-import { api } from '@/lib/api';
-import { fmtDuration, fmtLongDate } from '@/lib/format';
+import { ApiError, api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { wantsCelebration } from '@/lib/certificate';
+import { CelebrationHero, CertificateActions, CertificateSheet, VerifiedBanner, VerifyBox, toCertificateData, useCertificateArt, type CertificateDto } from './CertificateParts';
+import './certificate.css';
 
-interface Certificate {
-  code: string;
-  learner: { id: string; name: string; handle: string };
-  course: { id: string; title: string; lessonCount: number; totalDurationSeconds: number };
-  owner: string | null;
-  community: { name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null } | null;
-  completedAt: string;
-  verifyUrl: string;
+// Bản in: đúng một trang A4 ngang, không lề, để tấm chứng chỉ phủ kín trang.
+const PRINT_PAGE = '@media print { @page { size: A4 landscape; margin: 0; } }';
+/** Số lần tự thử lại khi vừa học xong mà chứng nhận chưa đọc được (máy chủ ghi tiến độ chậm hơn lượt chuyển trang). */
+const CELEBRATE_RETRIES = 5;
+
+function View({ c, celebrate }: { c: CertificateDto; celebrate: boolean }) {
+  const data = useMemo(() => toCertificateData(c), [c]);
+  const art = useCertificateArt(data);
+  return (
+    <>
+      {celebrate && <Confetti />}
+      {celebrate ? <CelebrationHero c={c} /> : <VerifiedBanner c={c} />}
+      <CertificateSheet art={art} />
+      <CertificateActions c={c} art={art} celebrate={celebrate} />
+      <VerifyBox c={c} />
+    </>
+  );
 }
 
 export default function Page() {
   const { courseId = '', userId = '' } = useParams();
-  const q = useQuery({ queryKey: ['certificate', courseId, userId], queryFn: () => api.get<Certificate>(`/v1/courses/${courseId}/certificate/${userId}`), retry: false });
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  // Đọc tham số chúc mừng đúng một lần lúc mở trang, rồi gỡ khỏi địa chỉ: tải lại trang hay chép link đi nơi khác
+  // thì không chạy lại hiệu ứng.
+  const [asked] = useState(() => wantsCelebration(location.search));
+  useEffect(() => {
+    if (wantsCelebration(location.search)) navigate({ pathname: location.pathname }, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+  // Lời chúc chỉ dành cho chính người học; người khác mở link có tham số vẫn chỉ thấy trang kiểm tra.
+  const celebrate = asked && !loading && user?.id === userId;
+
+  const q = useQuery({
+    queryKey: ['certificate', courseId, userId],
+    queryFn: () => api.get<CertificateDto>(`/v1/courses/${courseId}/certificate/${userId}`),
+    // Bình thường không thử lại (chưa hoàn thành, khóa tắt chứng nhận là câu trả lời thật). Riêng lúc vừa học xong
+    // thì chờ và thử lại vài lần thay vì báo "chưa hoàn thành".
+    retry: (count, err) => asked && count < CELEBRATE_RETRIES && err instanceof ApiError && err.status === 404,
+    retryDelay: (attempt) => Math.min(600 * (attempt + 1), 2500),
+  });
+
   return (
-    <div className="min-h-screen" style={{ background: T.bg }}>
-      <PublicHeader />
-      <main className="mx-auto px-4 py-8 flex flex-col gap-4" style={{ maxWidth: 760 }}>
-        <QueryState q={q} rows={4}>
-          {(c) => (
-            <>
-              <div className="card flex flex-col items-center text-center gap-4" style={{ padding: '40px 28px', borderWidth: 2, borderColor: T.gold }}>
-                {c.community && <div className="flex items-center gap-2.5"><CommunityMark mark={c.community.logoMark} color={c.community.logoColor} url={c.community.logoUrl} size={40} radius={10} /><span className="font-semibold">{c.community.name}</span></div>}
-                <div className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: T.goldText }}>Chứng nhận hoàn thành</div>
-                <div className="serif text-[32px] font-extrabold leading-tight" style={{ color: T.ink }}>{c.learner.name}</div>
-                <div className="text-[16px] leading-[1.6]" style={{ color: T.ink2 }}>đã hoàn thành toàn bộ <strong style={{ color: T.ink }}>{c.course.lessonCount} bài</strong>{c.course.totalDurationSeconds ? ` (${fmtDuration(c.course.totalDurationSeconds, true)})` : ''} của khóa học</div>
-                <div className="serif text-[24px] font-bold" style={{ color: T.ink }}>{c.course.title}</div>
-                <div className="text-[14px]" style={{ color: T.ink2 }}>ngày {fmtLongDate(c.completedAt)}{c.owner ? ` · giảng viên ${c.owner}` : ''}</div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold" style={{ background: T.tealSoft, color: T.tealText }}><BadgeCheck size={16} />Đã kiểm tra · mã {c.code}</div>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap text-[13px] print:hidden" style={{ color: T.ink2 }}>
-                <span className="flex-grow break-all">Link kiểm tra: {c.verifyUrl}</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.print()}><Printer size={14} />In / lưu PDF</button>
-                {c.community && <Link to={`/${c.community.slug}/khoa-hoc/${c.course.id}`} className="btn btn-dark btn-sm">Xem khóa học</Link>}
-              </div>
-            </>
-          )}
-        </QueryState>
+    <div className="cert-page min-h-screen" style={{ background: T.bg }}>
+      <style>{PRINT_PAGE}</style>
+      <div className="cert-noprint"><PublicHeader /></div>
+      <main className="cert-main mx-auto px-4 py-6 md:py-9 flex flex-col gap-5 md:gap-6" style={{ maxWidth: 1040 }}>
+        {asked && q.isLoading ? (
+          <div className="flex flex-col gap-4" data-testid="certificate-preparing">
+            <p className="m-0 text-center text-[17px] font-semibold" style={{ color: T.ink }}>Đang chuẩn bị chứng chỉ của bạn…</p>
+            <LoadingBlock rows={3} />
+          </div>
+        ) : (
+          <QueryState q={q} rows={4}>{(c) => <View c={c} celebrate={celebrate} />}</QueryState>
+        )}
       </main>
     </div>
   );

@@ -1,15 +1,19 @@
 // Lớp học (classroomMain / classroomFreeMain): breadcrumb + tiến độ, giáo trình 360px bên trái, player/nội dung, tài liệu, thảo luận.
 // Dưới 1024px: video lên đầu, giáo trình thu thành một dòng "Danh sách bài" bấm mới mở. Điện thoại: nút hoàn thành ghim ở đáy màn hình.
+// Bấm hoàn thành bài làm khóa đạt 100%: sang trang chứng nhận ở chế độ chúc mừng, hoặc mở bảng chúc mừng nếu khóa không cấp chứng nhận.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Prog, T } from '@hoiminh/ui';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock } from 'lucide-react';
+import { Award, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { CourseDoneModal } from '@/components/Celebration';
 import { CommentThread } from '@/components/CommentThread';
 import { DrivePlayer } from '@/components/DrivePlayer';
 import { QueryState } from '@/components/QueryState';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { afterComplete, certificatePath, type CompleteResult } from '@/lib/certificate';
 import { isPremium, useJoinGate, useOptionalShell } from '@/lib/community';
 import { useLearningLinks } from '@/layouts/LearnerShell';
 import { Markdown } from '@/lib/markdown';
@@ -19,7 +23,7 @@ import { LessonRow, ModuleHead, lessonState, moduleMeta, type LessonLite, type M
 interface LessonDto {
   lesson: { id: string; title: string; kind: 'video' | 'text' | 'task' | 'file'; contentMd: string; durationSeconds: number | null; videoUrl: string | null };
   embed: { provider: string; externalId: string; embedUrl: string } | null; locked: boolean; sequentialLocked: boolean; dripLocked: boolean; dripUnlocksAt: string | null; lockReason: string | null;
-  course: { id: string; title: string; lessonCount: number; communitySlug: string | null; modules: ModuleLite[]; progress: { completedLessons: number; totalLessons: number; percent: number } | null; accessMode: string; product: { id: string; priceMinor: number; slug: string } | null };
+  course: { id: string; title: string; lessonCount: number; communitySlug: string | null; modules: ModuleLite[]; progress: { completedLessons: number; totalLessons: number; percent: number } | null; accessMode: string; product: { id: string; priceMinor: number; slug: string } | null; certificateEnabled?: boolean };
   prev: LessonLite | null; next: LessonLite | null; resources: Array<{ id: string; name: string; url: string }>; done: boolean;
 }
 
@@ -76,15 +80,29 @@ export default function Page() {
   const links = useLearningLinks(slug);
   const [listOpen, setListOpen] = useState(false);
   const gate = useJoinGate();
+  const { user } = useAuth();
+  const [congrats, setCongrats] = useState(false);
   const complete = useMutation({
-    mutationFn: () => api.post<{ percent: number; nextLessonId: string | null }>(`/v1/lessons/${lessonId}/complete`, {}),
-    onSuccess: (r) => { void qc.invalidateQueries({ queryKey: ['lesson'] }); void qc.invalidateQueries({ queryKey: ['courses'] }); void qc.invalidateQueries({ queryKey: ['library'] }); if (r.nextLessonId) navigate(links.lesson(r.nextLessonId)); },
+    mutationFn: () => api.post<CompleteResult>(`/v1/lessons/${lessonId}/complete`, {}),
+    onSuccess: (r) => {
+      for (const key of ['lesson', 'course', 'courses', 'library']) void qc.invalidateQueries({ queryKey: [key] });
+      // q.data ở đây là bài học trước lúc bấm, nên tiến độ trong đó là tiến độ "trước" để nhận ra khóa vừa xong.
+      const course = q.data?.course;
+      const step = afterComplete(r, { percentBefore: course?.progress?.percent, courseId: course?.id ?? '', userId: user?.id, certificateEnabled: course?.certificateEnabled });
+      if (step.kind === 'certificate') navigate(step.to);
+      else if (step.kind === 'congrats') setCongrats(true);
+      else if (step.kind === 'next') navigate(links.lesson(step.lessonId));
+    },
   });
   return (
     <QueryState q={q} rows={5}>
       {(d) => {
         const p = d.course.progress;
         const free = Boolean(shell) && !isPremium(shell!) && shell!.viewer.role === 'member';
+        // Khóa đã xong 100% và có cấp chứng nhận: luôn có lối vào tấm chứng chỉ ngay trên trang học.
+        const certificateTo = user && d.course.certificateEnabled && (p?.percent ?? 0) >= 100 ? certificatePath(d.course.id, user.id) : null;
+        // Điện thoại, ở bài cuối đã học xong: thanh ghim đáy màn hình đã là nút "Xem chứng chỉ", nên nút ở đầu trang ẩn đi cho khỏi lặp.
+        const barHasCertificate = Boolean(certificateTo) && !d.locked && d.done && !d.next;
         return (
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-3 md:gap-4 flex-wrap">
@@ -94,6 +112,7 @@ export default function Page() {
               {free && <span className="tag hide-mobile" style={{ background: T.bg, color: T.ink2 }}>Bạn đang ở gói {shell!.viewer.tier?.name ?? 'Tiêu chuẩn'}</span>}
               <span className="flex-grow" />
               <div className="flex items-center gap-3 w-full md:w-[300px]"><span className="muted text-[13px] whitespace-nowrap">{p ? `${p.completedLessons}/${p.totalLessons} bài · ${p.percent}%` : `${d.course.lessonCount} bài`}</span><Prog value={p?.percent ?? 0} className="flex-grow" /></div>
+              {certificateTo && <Link to={certificateTo} className={`btn btn-gold w-full md:w-auto ${barHasCertificate ? 'hidden md:inline-flex' : ''}`}><Award size={18} />Xem chứng chỉ</Link>}
             </div>
             {/* Giáo trình chỉ đứng cạnh nội dung từ 1024px; hẹp hơn thì thu thành dòng "Danh sách bài" như điện thoại. */}
             <div className="flex gap-6 flex-col lg:flex-row">
@@ -140,6 +159,7 @@ export default function Page() {
                 <div className="md:hidden lesson-bar">
                   {d.done ? (
                     d.next ? <Link to={links.lesson(d.next.id)} className="btn btn-primary btn-lg w-full">Bài tiếp theo <ChevronRight size={18} /></Link>
+                      : certificateTo ? <Link to={certificateTo} className="btn btn-gold btn-lg w-full"><Award size={18} />Xem chứng chỉ của bạn</Link>
                       : <Link to={links.course(d.course.id)} className="btn btn-ghost btn-lg w-full"><Check size={18} />Đã hoàn thành, về khóa học</Link>
                   ) : (
                     <Button variant="primary" size="lg" block loading={complete.isPending} onClick={() => (gate.guest ? gate.askJoin() : complete.mutate())}><Check size={18} />{d.next ? 'Xong bài, sang bài tiếp' : 'Đánh dấu hoàn thành'}</Button>
@@ -147,6 +167,7 @@ export default function Page() {
                 </div>
               </>
             )}
+            <CourseDoneModal open={congrats} onClose={() => setCongrats(false)} courseTitle={d.course.title} lessonCount={d.course.lessonCount} durationSeconds={d.course.modules.flatMap((m) => m.lessons).reduce((s, l) => s + (l.durationSeconds ?? 0), 0)} backTo={links.course(d.course.id)} backLabel={links.learner ? 'Về Khu học tập' : 'Về trang khóa học'} />
           </div>
         );
       }}

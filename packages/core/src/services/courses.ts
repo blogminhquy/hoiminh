@@ -118,7 +118,7 @@ export async function getLesson(ctx: Ctx, lessonId: string) {
   const drip = course.dripEnabled && course.progress?.startedAt && l.dripDays > 0 ? new Date(course.progress.startedAt.getTime() + l.dripDays * 86_400_000) : null;
   const dripLocked = Boolean(drip && drip > ctx.now() && !course.canManage);
   const sequentialLocked = entry?.sequentialLocked ?? false;
-  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : hideSource ? { ...l, videoUrl: null, videoExternalId: null } : l, embed: locked ? null : hideSource && embed ? { ...embed, externalId: '', originalUrl: '' } : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
+  return { lesson: locked ? { ...l, contentMd: l.contentMd.slice(0, 200), videoUrl: null, videoExternalId: null } : hideSource ? { ...l, videoUrl: null, videoExternalId: null } : l, embed: locked ? null : hideSource && embed ? { ...embed, externalId: '', originalUrl: '' } : embed, locked, sequentialLocked, dripLocked, dripUnlocksAt: dripLocked ? drip : null, lockReason: sequentialLocked ? 'sequential' : course.access.reason, course: { id: course.id, title: course.title, lessonCount: course.lessonCount, communityId: course.communityId, communitySlug: course.communitySlug ?? null, modules: course.modules, progress: course.progress, previewFirstModule: course.previewFirstModule, accessMode: course.accessMode, product: course.product, coverColor: course.coverColor, certificateEnabled: course.certificateEnabled && course.status === 'published' }, prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null, resources, done: entry?.done ?? false };
 }
 
 /** Đánh dấu hoàn thành bài, cập nhật course_progress, phát lesson.completed / course.completed. */
@@ -137,10 +137,16 @@ export async function completeLesson(ctx: Ctx, lessonId: string) {
   const total = course.lessonCount || 1;
   const percent = Math.min(100, Math.round(((done ?? 0) / total) * 100));
   const nextLesson = await ctx.db.query.lessons.findFirst({ where: and(eq(lessons.courseId, l.courseId), sql`(${lessons.sortOrder} > ${l.sortOrder} and ${lessons.moduleId} = ${l.moduleId})`), orderBy: asc(lessons.sortOrder) });
-  await ctx.db.insert(courseProgress).values({ courseId: l.courseId, userId, completedLessons: done ?? 0, totalLessons: total, percent, lastLessonId: nextLesson?.id ?? lessonId, lastAccessedAt: ctx.now(), completedAt: percent === 100 ? ctx.now() : null }).onConflictDoUpdate({ target: [courseProgress.courseId, courseProgress.userId], set: { completedLessons: done ?? 0, totalLessons: total, percent, lastLessonId: nextLesson?.id ?? lessonId, lastAccessedAt: ctx.now(), completedAt: percent === 100 ? ctx.now() : null } });
+  // Tiến độ trước lượt này: để biết đây có đúng là lần khóa chuyển từ chưa xong sang xong (giao diện chỉ chúc mừng một lần),
+  // và để giữ nguyên ngày hoàn thành in trên chứng nhận khi người học bấm hoàn thành lại một bài của khóa đã xong.
+  const before = await ctx.db.query.courseProgress.findFirst({ where: and(eq(courseProgress.courseId, l.courseId), eq(courseProgress.userId, userId)), columns: { percent: true, completedAt: true } });
+  const alreadyCompletedAt = before && before.percent >= 100 ? before.completedAt : null;
+  const completedAt = percent === 100 ? alreadyCompletedAt ?? ctx.now() : null;
+  await ctx.db.insert(courseProgress).values({ courseId: l.courseId, userId, completedLessons: done ?? 0, totalLessons: total, percent, lastLessonId: nextLesson?.id ?? lessonId, lastAccessedAt: ctx.now(), completedAt }).onConflictDoUpdate({ target: [courseProgress.courseId, courseProgress.userId], set: { completedLessons: done ?? 0, totalLessons: total, percent, lastLessonId: nextLesson?.id ?? lessonId, lastAccessedAt: ctx.now(), completedAt } });
   await ctx.events.emit('lesson.completed', { userId, lessonId, courseId: l.courseId, communityId: course.communityId, percent });
   if (percent === 100) await ctx.events.emit('course.completed', { userId, courseId: l.courseId, communityId: course.communityId });
-  return { percent, completedLessons: done ?? 0, totalLessons: total, nextLessonId: nextLesson?.id ?? null };
+  // courseCompleted chỉ đúng ở lượt làm khóa đạt 100%; certificateEnabled cho giao diện biết nên dẫn tới chứng nhận hay chỉ chúc mừng.
+  return { percent, completedLessons: done ?? 0, totalLessons: total, nextLessonId: nextLesson?.id ?? null, courseCompleted: percent === 100 && !alreadyCompletedAt, certificateEnabled: course.certificateEnabled && course.status === 'published' };
 }
 
 /** Tạo khóa học nháp. */

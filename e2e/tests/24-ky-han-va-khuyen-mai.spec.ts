@@ -50,12 +50,13 @@ test('chủ hội thêm kỳ 3 tháng và giảm 20%; người mua chọn 3 thá
   await login(buyer, USERS.member2);
   await buyer.goto(`/${SLUG}/thanh-toan?tier=premium`);
   await expect(buyer.getByText('Đang giảm 20%')).toBeVisible();
-  const term3 = buyer.getByRole('button', { name: /3 tháng/ });
+  const term3 = buyer.getByRole('radiogroup', { name: 'Thời hạn' }).getByRole('radio', { name: /3 tháng/ });
   await expect(term3).toContainText('399.000đ');
   await expect(term3).toContainText('319.200đ');
   await expect(term3).toContainText('Rẻ hơn 11%');
-  await expect(buyer.getByRole('button', { name: /12 tháng/ })).toBeVisible();
+  await expect(buyer.getByRole('radio', { name: /12 tháng/ })).toBeVisible();
   await term3.click();
+  await expect(term3).toHaveAttribute('aria-checked', 'true');
   await expect(buyer.getByText('Khuyến mãi 20%')).toBeVisible();
   await buyer.getByRole('button', { name: 'Lấy mã QR chuyển khoản' }).click();
   await expect(buyer).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/);

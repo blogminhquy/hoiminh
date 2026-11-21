@@ -1,5 +1,5 @@
 // /v1/admin: quản trị hệ thống (super admin).
-import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, paymentProviderSchema, savePlansSchema } from '@hoiminh/contracts';
+import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, dateRangeQuerySchema, paymentProviderSchema, savePlansSchema } from '@hoiminh/contracts';
 import { admin, affiliate, featureFlags, infra, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
@@ -19,7 +19,7 @@ adminRoutes.post('/user-reports/:id/resolve', async (c) => {
   await safety.resolveUserReport(c.get('ctx'), c.req.param('id'));
   return c.json({ ok: true });
 });
-adminRoutes.get('/overview', async (c) => c.json(await admin.overview(c.get('ctx'), query(c).days ? Number(query(c).days) : 30)));
+adminRoutes.get('/overview', async (c) => c.json(await admin.overview(c.get('ctx'), await parse(dateRangeQuerySchema, query(c)))));
 adminRoutes.get('/communities', async (c) => c.json(await admin.listCommunities(c.get('ctx'), { status: query(c).status as 'active', q: query(c).q, limit: query(c).limit ? Number(query(c).limit) : undefined })));
 adminRoutes.post('/communities/:id/action', async (c) => {
   const input = await parse(adminCommunityActionSchema, await body(c));

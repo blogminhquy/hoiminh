@@ -345,6 +345,15 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
 
   it('tiền và affiliate: doanh thu, giá gói, đơn chờ xác nhận, hàng đợi rút', async () => {
     expect(await tool('get_revenue', { communityId, days: 30 })).toBeTruthy();
+    // Khoảng ngày (giờ Việt Nam, tính cả hai đầu); chỉ có `to` là từ trước đến nay.
+    expect((await tool('get_revenue', { communityId, from: '2026-10-08', to: '2026-11-20' })).range).toEqual({ from: '2026-10-08', to: '2026-11-20' });
+    const everyOrder = await tool('list_orders', { communityId, to: '2031-01-01', limit: 2 });
+    expect(everyOrder.range).toEqual({ from: null, to: '2031-01-01' });
+    expect(everyOrder.items).toHaveLength(2);
+    expect(everyOrder.total).toBeGreaterThan(2);
+    const paidWithAffiliate = await tool('list_orders', { communityId, to: '2031-01-01', status: 'paid', affiliate: 'with' });
+    expect(paidWithAffiliate.items.length).toBeGreaterThan(0);
+    expect(paidWithAffiliate.items.every((o: Loose) => o.status === 'paid' && o.hasAffiliate)).toBe(true);
     const pricing = await tool('get_pricing', { communityId });
     expect(pricing.tiers.length).toBeGreaterThan(0);
     expect(Array.isArray((await tool('list_pending_orders', { communityId })).items)).toBe(true);
