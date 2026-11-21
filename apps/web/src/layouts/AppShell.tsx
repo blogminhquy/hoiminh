@@ -16,11 +16,11 @@ import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { canManage, isGuest, JoinGateProvider, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
-import { guestCanOpen, guestHome } from '@/lib/guest';
+import { guestCanOpen, guestHome, isSalePage } from '@/lib/guest';
 import { movedSlugPath } from '@/lib/referral';
 import { useSidebarCollapsed } from '@/lib/sidebar';
 import { CommunitySwitcher } from './CommunitySwitcher';
-import { GuestBanner, JoinPrompt } from './GuestBits';
+import { GuestBanner, JoinPrompt, SaleGuestBanner } from './GuestBits';
 import { SidebarToggle } from './SidebarToggle';
 import { OwnerCommandPalette } from './OwnerCommand';
 import { PublicHeader } from './PublicHeader';
@@ -320,10 +320,29 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   // chưa đăng nhập về trang đăng nhập, đã đăng nhập mà chưa vào hội về trang giới thiệu.
   const guest = isGuest(data);
   const openGuest = guest && Boolean(params.slug) && data.community.visibility === 'public' && data.viewer.canView;
-  if (!user && !openGuest) return toLogin;
+  // Trang bán của sản phẩm mở cho mọi người, kể cả ở hội kín và khi chưa đăng nhập: link sản phẩm (của affiliate, của
+  // chủ hội đem đi quảng cáo) phải đưa người lạ tới đúng sản phẩm. Người ngoài của hội kín thấy trang bán trong khung
+  // trang công khai, không có thanh bên của hội.
+  const saleGuest = guest && !openGuest && Boolean(params.slug) && isSalePage(location.pathname, data.community.slug);
+  if (!user && !openGuest && !saleGuest) return toLogin;
   if (requireMember && guest && params.slug) {
-    if (!openGuest) return <Navigate to={`/${slug}`} replace />;
-    if (!guestCanOpen(location.pathname, data.community.slug)) return <Navigate to={guestHome(data.community.slug, data.community.tabs)} replace />;
+    if (!openGuest && !saleGuest) return <Navigate to={`/${slug}`} replace />;
+    if (openGuest && !guestCanOpen(location.pathname, data.community.slug)) return <Navigate to={guestHome(data.community.slug, data.community.tabs)} replace />;
+  }
+  if (saleGuest) {
+    return (
+      <ShellProvider value={data}>
+        <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>
+          <PublicHeader cta="join" />
+          <div className="flex justify-center px-4 md:px-16 pt-6 pb-12">
+            <div className="w-full" style={{ maxWidth: 1120 }}>
+              <SaleGuestBanner shell={data} />
+              <Outlet />
+            </div>
+          </div>
+        </div>
+      </ShellProvider>
+    );
   }
   return (
     <ShellProvider value={data}>

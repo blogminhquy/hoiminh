@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guestCanOpen, guestHome } from './guest';
+import { guestCanOpen, guestHome, isSalePage } from './guest';
 
 describe('guestCanOpen', () => {
   it('khách mở được các trang chỉ đọc của hội mở', () => {
@@ -26,5 +26,19 @@ describe('guestHome', () => {
     expect(guestHome('hoi-a', { feed: false, courses: false })).toBe('/hoi-a/su-kien');
     expect(guestHome('hoi-a', { feed: false, courses: false, events: false })).toBe('/hoi-a/thanh-vien');
     expect(guestHome('hoi-a', { feed: false, courses: false, events: false, members: false })).toBe('/hoi-a');
+  });
+});
+
+describe('isSalePage', () => {
+  it('trang bán của một sản phẩm là trang công khai', () => {
+    expect(isSalePage('/hoi-a/cua-hang/ebook', 'hoi-a')).toBe(true);
+    expect(isSalePage('/hoi-a/cua-hang/ebook/', 'hoi-a')).toBe(true);
+    expect(isSalePage('/hoi-a/cua-hang/3f2b6c1e-0000-4000-8000-000000000001', 'hoi-a')).toBe(true);
+  });
+  it('cửa hàng, trang tạo, trang sửa và trang khác thì không', () => {
+    for (const path of ['cua-hang', 'cua-hang/', 'cua-hang/moi', 'cua-hang/ebook/sua', 'khoa-hoc/abc', 'bang-tin', 'thanh-toan']) {
+      expect(isSalePage(`/hoi-a/${path}`, 'hoi-a'), path).toBe(false);
+    }
+    expect(isSalePage('/hoi-b/cua-hang/ebook', 'hoi-a')).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
-import { useShell } from '@/lib/community';
+import { isOutsider, useShell } from '@/lib/community';
 import { fmtDuration } from '@/lib/format';
 import { Benefits, Curriculum, Faq, PriceRail, type Product } from './ProductDetailParts';
 
@@ -35,17 +35,20 @@ function Cover({ p }: { p: Product }) {
 export default function Page() {
   const shell = useShell();
   const slug = shell.community.slug;
+  // Người ngoài của hội kín chỉ tới được trang này và trang giới thiệu: lối quay lại là trang giới thiệu, không phải cửa hàng.
+  const outsider = isOutsider(shell);
+  const back = outsider ? { to: `/${slug}`, label: shell.community.name } : { to: `/${slug}/cua-hang`, label: 'Cửa hàng' };
   const { productSlug = '' } = useParams();
   const { id, loading } = useProductId(shell.community.id, productSlug);
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api.get<Product>(`/v1/products/${id}`), enabled: Boolean(id) });
   if (loading) return <div className="p-6 muted text-[13px]">Đang tải…</div>;
-  if (!id) return <div className="card p-8 text-center"><div className="font-semibold">Không tìm thấy sản phẩm</div><Link to={`/${slug}/cua-hang`} className="btn btn-ghost btn-sm mt-3">Về cửa hàng</Link></div>;
+  if (!id) return <div className="card p-8 text-center"><div className="font-semibold">Không tìm thấy sản phẩm</div><Link to={back.to} className="btn btn-ghost btn-sm mt-3">{outsider ? 'Về trang giới thiệu hội' : 'Về cửa hàng'}</Link></div>;
   return (
     <QueryState q={q} rows={6}>
       {(p) => (
         <div className="two-col">
           <div className="main flex flex-col gap-5">
-            <div className="flex items-center gap-2 text-[13px]" style={{ color: T.ink3 }}><Link to={`/${slug}/cua-hang`} className="inline-flex items-center gap-1.5" style={{ color: T.ink3 }}><ChevronLeft size={16} />Cửa hàng</Link><span>/</span><span>{KIND_LABEL[p.kind]}</span></div>
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: T.ink3 }}><Link to={back.to} className="inline-flex items-center gap-1.5" style={{ color: T.ink3 }}><ChevronLeft size={16} />{back.label}</Link><span>/</span><span>{KIND_LABEL[p.kind]}</span></div>
             <Cover p={p} />
             <div className="flex flex-col gap-2.5">
               <div className="flex gap-2 items-center text-[13px] flex-wrap"><span className="tag" style={{ background: T.accentSoft, color: T.accentText }}>{KIND_LABEL[p.kind]}</span><span className="muted">{[p.course ? `${p.course.lessonCount} bài` : '', p.course ? fmtDuration(p.course.totalDurationSeconds, true) : '', p.course ? `cập nhật ${new Date(p.course.updatedAt).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}` : '', 'tiếng Việt'].filter(Boolean).join(' · ')}</span></div>
@@ -60,7 +63,7 @@ export default function Page() {
                 {p.bundleItems.map((b) => <Link key={b.id} to={`/${slug}/cua-hang/${b.slug}`} className="flex items-center gap-3 py-2" style={{ borderTop: `1px solid ${T.line}`, color: T.ink }}><div className="w-11 h-11 rounded-[10px] flex-shrink-0" style={{ background: b.coverColor }} /><span className="flex-grow font-semibold text-[14px]">{b.name}</span></Link>)}
               </div>
             )}
-            <Curriculum p={p} slug={slug} />
+            <Curriculum p={p} lessonBase={outsider ? '/hoc' : `/${slug}`} />
             {p.instructor && (
               <div className="card flex gap-[18px] items-center flex-col sm:flex-row" style={{ padding: '22px 24px' }}>
                 <Avatar name={p.instructor.name} src={p.instructor.avatarUrl} color={p.instructor.coverColor ?? T.ink} size={64} />
@@ -70,7 +73,7 @@ export default function Page() {
             )}
             <Faq items={p.page?.faq ?? []} />
           </div>
-          <PriceRail p={p} slug={slug} premium={shell.premium} pricingMode={shell.community.pricingMode} />
+          <PriceRail p={p} slug={slug} premium={shell.premium} pricingMode={shell.community.pricingMode} outsider={outsider} />
         </div>
       )}
     </QueryState>

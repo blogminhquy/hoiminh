@@ -56,6 +56,14 @@ export function isGuest(shell: Shell): boolean {
 }
 
 /**
+ * Người ngoài của một hội kín: chưa là thành viên và hội không mở cho khách xem. Họ chỉ tới được trang giới thiệu và
+ * trang bán của sản phẩm, nên ở trang bán các lối dẫn vào bên trong hội (cửa hàng, bài học thử) phải ẩn hoặc đổi hướng.
+ */
+export function isOutsider(shell: Shell): boolean {
+  return !shell.viewer.isMember && !shell.viewer.canView;
+}
+
+/**
  * Cổng "tham gia hội" cho khách xem hội mở. `guest`: người xem chưa là thành viên. `askJoin`: mở lời mời tham gia,
  * gọi ở mọi nút cần là thành viên (thả tim, bình luận, bình chọn, đăng ký sự kiện). Ngoài khung hội thì `guest` luôn là false.
  */
