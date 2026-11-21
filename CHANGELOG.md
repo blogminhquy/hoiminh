@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.48.1 - 2026-11-22
+
+Sửa lỗi video YouTube của bài học cứ phát ở 360p và chọn chất lượng không đổi gì, theo yêu cầu của chủ dự án ngày 21/11/2026. Không có migration.
+
+### Sửa
+
+- **Video YouTube của bài học không còn bị kẹt ở 360p, chọn chất lượng nào thì đổi đúng mức đó.** Trước đây YouTube tự chọn mức theo cỡ khung nhúng: trình phát cao khoảng 300px (laptop có cột giáo trình, điện thoại) nên chỉ được 240p hoặc 360p, nhìn mờ. Bấm Cài đặt, chọn 720p hay 1080p cũng không đổi gì, vì YouTube đã bỏ lệnh chọn chất lượng cho trình phát nhúng. Nay trang dựng khung YouTube đúng cỡ của mức muốn có rồi thu về vừa trình phát, nên YouTube phát đúng mức đó. Để "Tự động" thì video nét theo màn hình, thấp nhất 720p (mạng yếu YouTube vẫn tự hạ). Đổi chất lượng trong lúc phát thì video nạp lại ngay ở đúng chỗ đang xem, giữ tốc độ đang chọn; đổi lúc đang dừng thì áp dụng khi bấm phát. Mục Chất lượng không còn hiện các mức trên 4K.
+- Các nền tảng khác (Vimeo, Bunny, Loom, Facebook, TikTok, Google Drive) và video YouTube ở bài viết, trang giới thiệu, trang sản phẩm dùng trình phát gốc của nền tảng, nút chọn chất lượng là của chính nền tảng đó nên không dính lỗi này. Không đổi gì ở các khung đó.
+
+### Kiểm thử
+
+- `apps/web/src/lib/youtube.test.ts`: mức muốn phát tới, hệ số phóng khung, cách nhận ra YouTube tính theo điểm ảnh thật, danh sách mức bỏ mức trên 4K.
+- `e2e/helpers/youtube.ts`: YouTube giả nay chọn mức như YouTube thật (theo cỡ khung, bỏ qua lệnh chọn mức, khung nhỏ lại thì chỉ hạ mức khi nạp lại video). Chạy luồng 16 với trình phát cũ: để Tự động YouTube giả chỉ phát 240p, đúng như lỗi chủ dự án gặp.
+- `e2e/tests/16-bai-hoc-video-youtube.spec.ts`: thêm hai luồng. Trình phát nhỏ trên máy tính: Tự động ra 720p, chọn 1080p rồi 360p trong lúc phát thì YouTube đổi đúng mức, khung YouTube to nhỏ thế nào tên video và dải "Video khác" vẫn ngoài vùng nhìn. Màn hình mật độ điểm ảnh 2: YouTube tính theo điểm ảnh thật thì trang tự thu khung lại, chọn 720p, 1080p, 360p đều ra đúng mức. Cả 6 luồng của tệp chạy qua trên Chromium.
+- Chưa thử được với YouTube thật (máy chạy thử bị chặn mạng tới YouTube). Cần xem lại trên máy thật sau khi deploy: chọn 1080p rồi 360p, nhìn độ nét và nhãn mức đang phát trong mục Chất lượng.
+
 ## 1.48.0 - 2026-11-22
 
 Ba việc theo yêu cầu của chủ dự án ngày 21/11/2026: mọi bộ lọc thời gian dùng chung một bảng lọc khoảng ngày đầy đủ; mục "Tiền" của hội thành "Quản lý đơn hàng" có hai tab Thống kê và Tất cả đơn hàng; nhãn trên thanh bên ghi rõ mục nào của hội, mục nào của cá nhân. Không có migration.

@@ -18,7 +18,13 @@ export interface YTPlayer {
   setVolume(volume: number): void;
   setPlaybackRate(rate: number): void;
   getAvailablePlaybackRates(): number[];
-  /** Các lệnh về chất lượng: YouTube không cam kết giữ, nên gọi kiểu có thì dùng. */
+  getPlaybackRate?(): number;
+  /** Nạp lại video (bỏ phần đã tải) rồi phát từ `startSeconds`. */
+  loadVideoById(opts: { videoId: string; startSeconds?: number }): void;
+  /**
+   * Các lệnh về chất lượng: YouTube không cam kết giữ, nên gọi kiểu có thì dùng. Lệnh đặt mức (`setPlaybackQuality*`)
+   * đã thành lệnh rỗng với trình phát nhúng: trang đổi chất lượng bằng cỡ khung (xem `frameScale`).
+   */
   getAvailableQualityLevels?(): string[];
   getPlaybackQuality?(): string;
   setPlaybackQuality?(quality: string): void;
@@ -132,15 +138,73 @@ const QUALITY_LABELS: Record<string, string> = {
   tiny: '144p', small: '240p', medium: '360p', large: '480p', hd720: '720p', hd1080: '1080p', hd1440: '1440p', hd2160: '2160p (4K)', hd2880: '2880p (5K)', highres: 'Cao nhất',
 };
 
+/** Chiều cao khung hình (điểm ảnh) của từng mức. */
+const QUALITY_HEIGHTS: Record<string, number> = {
+  tiny: 144, small: 240, medium: 360, large: 480, hd720: 720, hd1080: 1080, hd1440: 1440, hd2160: 2160, hd2880: 2880, highres: 4320,
+};
+
+/** hd720 → 720. "Tự động" và mức lạ → 0. */
+export function qualityHeight(level: string): number {
+  return QUALITY_HEIGHTS[level] ?? 0;
+}
+
 /** Tên hiện cho một mức chất lượng của YouTube: hd720 → "720p". Mức lạ thì hiện nguyên mã. */
 export function qualityLabel(level: string): string {
   if (!level || level === QUALITY_AUTO || level === 'default' || level === 'unknown') return 'Tự động';
   return QUALITY_LABELS[level] ?? level;
 }
 
-/** Danh sách cho mục Chất lượng: "Tự động" đứng đầu, rồi các mức video có, từ cao xuống thấp như YouTube trả về. */
+/** "Tự động" cho YouTube phát tới ít nhất 720p, kể cả khi trình phát nhỏ (điện thoại, laptop có cột giáo trình). */
+export const AUTO_MIN_HEIGHT = 720;
+/** Mức cao nhất trang xin được: 4K. Cao hơn thì khung YouTube phải dựng quá lớn so với sức trình duyệt điện thoại. */
+export const MAX_QUALITY_HEIGHT = 2160;
+
+/**
+ * Danh sách cho mục Chất lượng: "Tự động" đứng đầu, rồi các mức video có, từ cao xuống thấp như YouTube trả về.
+ * Bỏ mức lạ và mức trên 4K: trang không xin được các mức đó (xem `frameScale`).
+ */
 export function qualityOptions(levels: readonly string[]): string[] {
-  return [QUALITY_AUTO, ...new Set(levels.filter((l) => l && l !== QUALITY_AUTO && l !== 'default' && l !== 'unknown'))];
+  return [QUALITY_AUTO, ...new Set(levels.filter((l) => qualityHeight(l) > 0 && qualityHeight(l) <= MAX_QUALITY_HEIGHT))];
+}
+
+/**
+ * Chiều cao khung hình (điểm ảnh thật của màn hình) muốn YouTube phát tới.
+ * "Tự động": đủ nét cho vùng video đang hiện (cạnh ngắn nhân mật độ điểm ảnh), thấp nhất 720p. Chọn tay: đúng mức đó.
+ * YouTube vẫn tự hạ mức khi mạng yếu; con số này chỉ là trần.
+ */
+export function qualityTarget(pref: string, shortSide: number, dpr = 1): number {
+  const auto = Math.max(AUTO_MIN_HEIGHT, Math.round(shortSide * Math.max(dpr, 1)));
+  const wanted = pref === QUALITY_AUTO ? auto : qualityHeight(pref) || auto;
+  return Math.min(wanted, MAX_QUALITY_HEIGHT);
+}
+
+/**
+ * Hệ số phóng khung YouTube. YouTube đã bỏ lệnh chọn chất lượng cho trình phát nhúng (`setPlaybackQuality` thành lệnh
+ * rỗng) và tự chọn mức theo cỡ khung: khung cao 340px thì phát 360p, dù người học bấm 1080p. Nên trang dựng khung YouTube
+ * gấp `scale` lần cỡ đang hiện rồi thu về vừa trình phát bằng `transform`: YouTube thấy khung đúng cỡ của mức muốn có,
+ * người học thấy khung vừa khít như cũ.
+ * - `target`: chiều cao muốn phát tới (`qualityTarget`); dư 2% để làm tròn cỡ khung không đẩy xuống mức dưới.
+ * - `shortSide`: cạnh ngắn (px CSS) của vùng video đang hiện.
+ * - `gain`: YouTube tự nhân cỡ khung thêm bao nhiêu lần (mật độ điểm ảnh), học qua `learnGain`; 1 khi chưa biết.
+ * - `allowShrink`: mức chọn tay được dựng khung nhỏ hơn cỡ đang hiện rồi phóng lên, để chọn 360p ở toàn màn hình vẫn là 360p.
+ *   "Tự động" không bao giờ thu khung nhỏ hơn cỡ đang hiện.
+ */
+export function frameScale(target: number, shortSide: number, gain = 1, allowShrink = false): number {
+  if (!(shortSide > 0) || !(target > 0)) return 1;
+  const k = (target * 1.02) / Math.max(gain, 1) / shortSide;
+  return Math.min(Math.max(k, allowShrink ? 0.1 : 1), 20);
+}
+
+/**
+ * YouTube phát mức cao hơn cả khung lớn nhất trang đưa nó gần đây: YouTube đã tính cỡ khung theo điểm ảnh thật (nhân
+ * mật độ điểm ảnh `dpr`). Trả về hệ số mới (bằng `dpr`) để trang thu khung lại, không tốn mạng hơn mức cần; không thì giữ nguyên.
+ * Chỉ kết luận khi chắc: mức vượt từ 720p trở lên, khung từ 360px, và video có mức vừa khung mà YouTube đã không chọn.
+ * `frameShort`: cạnh ngắn (px CSS) của vùng video trong khung YouTube, lấy cỡ lớn nhất còn ảnh hưởng tới phần đã tải.
+ */
+export function learnGain(gain: number, reported: string, frameShort: number, levels: readonly string[], dpr: number): number {
+  const h = qualityHeight(reported);
+  if (dpr <= gain || frameShort < 360 || h < AUTO_MIN_HEIGHT || h <= frameShort * 1.05) return gain;
+  return levels.some((l) => qualityHeight(l) > 0 && qualityHeight(l) <= frameShort) ? dpr : gain;
 }
 
 /**
