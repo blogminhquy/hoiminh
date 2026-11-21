@@ -1,6 +1,5 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
 import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
-import { dateRangeQuerySchema, ordersQuerySchema, revenueQuerySchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
@@ -9,6 +8,7 @@ import { body, csv, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
 import { readCookie } from '../lib/session-cookie';
 import { rateLimit } from '../middleware/rate-limit';
+import { dateRangeQuerySchema, ordersQuerySchema, revenueQuerySchema } from '@hoiminh/contracts';
 
 export const communityRoutes = router();
 
