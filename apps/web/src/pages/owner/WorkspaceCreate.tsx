@@ -112,7 +112,7 @@ export default function Page() {
           </Field>
         )}
         {step === 1 && (
-          <Field label="Đường dẫn" hint="Tên miền riêng trỏ được sau trong Cài đặt (có từ gói Chuyên nghiệp)">
+          <Field label="Đường dẫn" hint="Tên miền riêng trỏ được sau trong Cài đặt hội (có từ gói Chuyên nghiệp)">
             <SlugInput value={d.slug} onChange={(v) => patch({ slug: v, slugTouched: true })} check={check} />
           </Field>
         )}

@@ -3,9 +3,9 @@
 // Dữ liệu đầu vào lấy thẳng từ schema của `@hoiminh/contracts`, sửa hợp đồng API là lệnh MCP đổi theo.
 import {
   affiliateSettingsSchema, automationRuleSchema, contactCreateSchema, contactFilterSchema, createCommentSchema, createCommunitySchema, createCourseSchema,
-  createEventSchema, createPostSchema, createProductSchema, createWebhookSchema, eventRecordingSchema, eventsQuerySchema, feedQuerySchema, feedSettingsSchema,
+  createEventSchema, createPostSchema, createProductSchema, createWebhookSchema, daySchema, eventRecordingSchema, eventsQuerySchema, feedQuerySchema, feedSettingsSchema,
   inboundSourceSchema, inboundSourceUpdateSchema, inviteSchema, joinQuestionSchema, leaderboardQuerySchema, lessonInputSchema, markPaidSchema, memberFilterSchema,
-  moduleInputSchema, rejectWithdrawalSchema, reorderCoursesSchema, reorderSchema, storeQuerySchema, tagNameSchema, updateCommunityGeneralSchema, updateCourseSchema,
+  moduleInputSchema, orderAffiliateFilterSchema, orderViewStatusSchema, rejectWithdrawalSchema, reorderCoursesSchema, reorderSchema, storeQuerySchema, tagNameSchema, updateCommunityGeneralSchema, updateCourseSchema,
   updateEventSchema, updateLessonSchema, updateMemberSchema, updatePluginSchema, pluginKeySchema, updatePricingSchema, updateProductSchema, type ApiScope,
 } from '@hoiminh/contracts';
 import { z } from 'zod';
@@ -38,7 +38,13 @@ export interface Tool {
 
 const id = (what: string) => z.string().uuid().describe(what);
 const communityId = id('Id hội, lấy từ list_communities');
-const days = z.coerce.number().int().min(1).max(365).optional().describe('Số ngày gần nhất, mặc định 30');
+const days = z.coerce.number().int().min(1).max(365).optional().describe('Số ngày gần nhất tính cả hôm nay (1 là riêng hôm nay), mặc định 30. Bỏ qua khi đã gửi from hoặc to');
+/** Kỳ số liệu: khoảng ngày lịch giờ Việt Nam, tính cả hai đầu. */
+const period = {
+  days,
+  from: daySchema.optional().describe('Ngày đầu của kỳ, dạng YYYY-MM-DD theo giờ Việt Nam, tính cả ngày này. Gửi to mà bỏ from là lấy từ trước đến nay'),
+  to: daySchema.optional().describe('Ngày cuối của kỳ, dạng YYYY-MM-DD theo giờ Việt Nam, tính cả ngày này. Bỏ trống là hôm nay'),
+};
 
 interface RestDef {
   name: string;
@@ -113,7 +119,7 @@ export const TOOLS: Tool[] = [
 
   // ===== Hội =====
   rest({ name: 'get_community', title: 'Xem hội', scopes: ['communities:read'], method: 'GET', path: '/v1/communities/by-slug/{slug}/shell', params: { slug: z.string().describe('Slug của hội, lấy từ list_communities') }, description: 'Thông tin một hội: tên, mô tả, các tab đang bật, số thành viên, số người đang trực tuyến, sự kiện sắp tới, gói Premium đang bán.' }),
-  rest({ name: 'get_community_overview', title: 'Tổng quan hội', scopes: ['communities:write'], method: 'GET', path: `${C}/overview`, params: { communityId, days }, description: 'Số liệu tổng quan của hội trong N ngày: thành viên mới, doanh thu, tỉ lệ chuyển đổi, hoạt động.' }),
+  rest({ name: 'get_community_overview', title: 'Tổng quan hội', scopes: ['communities:write'], method: 'GET', path: `${C}/overview`, params: { communityId, ...period }, description: 'Số liệu tổng quan của hội trong một kỳ (from và to, hoặc days): thành viên mới, doanh thu, tỉ lệ chuyển đổi, hoạt động. Tăng giảm so với kỳ liền trước cùng số ngày; lấy từ trước đến nay thì không có so sánh.' }),
   rest({ name: 'get_community_plan', title: 'Gói Hội Mình của hội', scopes: ['communities:write'], method: 'GET', path: `${C}/plan`, params: { communityId }, description: 'Gói nền tảng hội đang dùng, số thành viên so với trần của gói, bảng gói để nâng cấp.' }),
   rest({ name: 'create_community', title: 'Tạo hội', scopes: ['communities:write'], method: 'POST', path: '/v1/communities', data: createCommunitySchema, description: 'Tạo hội mới trong workspace. Giá tính bằng đồng (149000 là 149.000đ). slug chỉ gồm chữ thường, số và gạch ngang.' }),
   rest({ name: 'update_community', title: 'Sửa thông tin hội', scopes: ['communities:write'], method: 'PATCH', path: `${C}/general`, params: { communityId }, data: updateCommunityGeneralSchema, description: 'Sửa tên, slug, mô tả, danh mục, nội quy, video giới thiệu, liên kết, có hiện ở trang Khám phá hay không. Chỉ gửi trường cần đổi.' }),
@@ -124,9 +130,10 @@ export const TOOLS: Tool[] = [
   rest({ name: 'set_join_questions', title: 'Đặt câu hỏi tham gia', scopes: ['communities:write'], method: 'PUT', path: `${C}/join-questions`, params: { communityId }, data: z.object({ questions: z.array(joinQuestionSchema).max(3).describe('Tối đa 3 câu. Gửi mảng rỗng để bỏ hết câu hỏi') }), description: 'Thay toàn bộ câu hỏi người mới phải trả lời khi xin vào hội.' }),
 
   // ===== Tiền =====
-  rest({ name: 'get_revenue', title: 'Doanh thu', scopes: ['revenue:read', 'affiliates:read'], method: 'GET', path: `${C}/revenue`, params: { communityId, days }, description: 'Doanh thu của hội trong N ngày: tổng thu, theo nguồn (gói thành viên, khóa học, sản phẩm), các đơn gần đây. Tiền tính bằng đồng.' }),
+  rest({ name: 'get_revenue', title: 'Doanh thu', scopes: ['revenue:read', 'affiliates:read'], method: 'GET', path: `${C}/revenue`, params: { communityId, ...period }, description: 'Doanh thu của hội trong một kỳ (from và to, hoặc days): tổng thu, theo nguồn (gói thành viên, khóa học, sản phẩm), các đơn gần đây. Tiền tính bằng đồng.' }),
   rest({ name: 'get_pricing', title: 'Xem giá và gói thành viên', scopes: ['communities:write'], method: 'GET', path: `${C}/pricing`, params: { communityId }, description: 'Kiểu thu phí của hội, các gói thành viên (standard, premium, vip), kỳ hạn, giá, khuyến mãi đang chạy.' }),
   rest({ name: 'update_pricing', title: 'Đổi giá và gói thành viên', scopes: ['billing:manage'], effect: 'delete', method: 'PUT', path: `${C}/pricing`, params: { communityId }, data: updatePricingSchema, description: 'Đổi kiểu thu phí, giá, kỳ hạn, khuyến mãi của các gói thành viên. Ảnh hưởng ngay tới giá người mua thấy: đọc get_pricing trước, gửi lại đủ các gói muốn giữ, và hỏi lại chủ hội trước khi gọi.' }),
+  rest({ name: 'list_orders', title: 'Danh sách đơn hàng', scopes: ['revenue:read'], method: 'GET', path: `${C}/orders`, params: { communityId, ...period, status: orderViewStatusSchema.optional().describe('Lọc theo trạng thái: awaiting_payment (chờ thanh toán), awaiting_confirmation (chờ chủ hội xác nhận đã nhận tiền), paid, expired, refunded'), affiliate: orderAffiliateFilterSchema.optional().describe('with: chỉ đơn có người giới thiệu. without: chỉ đơn không có'), q: z.string().max(100).optional().describe('Tìm theo tên người mua, tên sản phẩm hoặc mã đơn'), limit: z.coerce.number().int().min(1).max(200).optional().describe('Số đơn mỗi trang, mặc định 30'), cursor: z.string().optional().describe('nextCursor của trang trước, để lấy trang kế') }, description: 'Mọi đơn của hội, mới đặt nhất trước, lọc theo khoảng ngày đặt (from và to, hoặc days), trạng thái, affiliate và ô tìm. Trả kèm tổng số đơn, tổng tiền của kết quả đang lọc, người giới thiệu và hoa hồng của từng đơn. Tiền tính bằng đồng.' }),
   rest({ name: 'list_pending_orders', title: 'Đơn chờ xác nhận', scopes: ['billing:manage'], method: 'GET', path: `${C}/orders/pending`, params: { communityId }, description: 'Các đơn chuyển khoản đang chờ chủ hội xác nhận đã nhận tiền. `buyerSaysPaid` là người mua đã bấm "Tôi đã chuyển khoản".' }),
   rest({ name: 'confirm_order_received', title: 'Xác nhận đã nhận tiền', scopes: ['billing:manage'], effect: 'delete', method: 'POST', path: `${C}/orders/{orderId}/confirm-received`, params: { communityId, orderId: id('Id đơn, lấy từ list_pending_orders') }, description: 'Xác nhận chủ hội đã nhận được tiền chuyển khoản của một đơn: đơn thành đã trả và người mua được mở quyền ngay. Chỉ gọi khi chủ hội đã tự kiểm tra tài khoản ngân hàng.' }),
   rest({ name: 'get_order', title: 'Xem đơn hàng', scopes: ['revenue:read', 'billing:manage'], method: 'GET', path: `${C}/orders/{orderId}`, params: { communityId, orderId: id('Id đơn hàng, lấy từ get_revenue hoặc list_pending_orders') }, description: 'Một đơn hàng của hội: người mua, số tiền, cách thanh toán, trạng thái (pending, paid, refunded, expired).' }),

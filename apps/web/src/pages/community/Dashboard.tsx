@@ -1,17 +1,20 @@
 // Bàn điều khiển của chủ hội và quản trị: thay trang Hôm nay của thành viên. Một màn trả lời ba câu:
 // có gì cần xử lý, hội đang chạy thế nào, tiền đang ở đâu. Mọi con số lấy từ API sẵn có (tổng quan, nhận tiền,
 // danh sách thành viên, bảng tin, gói Hội Mình), phần nào người xem không có quyền thì không gọi và không hiện.
+import { vnDay } from '@hoiminh/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Bars, Chip, DateBlock, Prog, StatCard, T, money } from '@hoiminh/ui';
+import { Avatar, Bars, DateBlock, Prog, StatCard, T, money } from '@hoiminh/ui';
 import { BadgeCheck, Check, ChevronRight, FileClock, Handshake, Settings, Sparkles, UserPlus, Users, Wallet } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { DateRangePicker } from '@/components/DateRangePicker';
 import type { FeedPost } from '@/components/post/PostCard';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCan, useShell } from '@/lib/community';
-import { fmtDate, fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
+import { choiceRange, dailySeries, rangeLabelShort, rangeQuery, type RangeChoice } from '@/lib/date-range';
+import { fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
 import { buildOwnerTodos, type OwnerPlan, type OwnerTodo } from '@/lib/owner-todo';
 
 interface Overview {
@@ -21,7 +24,6 @@ interface Overview {
 }
 interface Payout { ready: boolean; received30Minor: number; pendingCount: number; pendingMinor: number; affiliatePendingMinor: number; affiliatePendingCount: number }
 
-const RANGES: Array<[number, string]> = [[7, '7 ngày'], [30, '30 ngày'], [90, 'Quý']];
 const delta = (p: number | null) => (p === null ? 'kỳ trước chưa có dữ liệu' : `${p >= 0 ? '+' : ''}${p}% so với kỳ trước`);
 const describe = (a: Overview['activity'][number]) => (a.kind === 'payment' ? <><strong>{a.actor}</strong> thanh toán {a.what ?? ''}</> : a.kind === 'post' ? <><strong>{a.actor}</strong> đăng bài {a.what ? `“${a.what}”` : ''}</> : <><strong>{a.actor}</strong> tham gia hội</>);
 const TODO_ICON: Record<OwnerTodo['key'], ReactNode> = { plan: <Sparkles size={20} />, payout: <Wallet size={20} />, orders: <Wallet size={20} />, payouts: <Handshake size={20} />, members: <UserPlus size={20} />, posts: <FileClock size={20} /> };
@@ -41,7 +43,7 @@ function TodoRow({ todo }: { todo: OwnerTodo }) {
 
 function Tile({ to, icon, label }: { to: string; icon: ReactNode; label: string }) {
   return (
-    <Link to={to} className="card owner-tile"><span className="ic">{icon}</span><span className="flex-grow">{label}</span><ChevronRight size={18} style={{ color: T.ink3 }} /></Link>
+    <Link to={to} className="card owner-tile"><span className="ic">{icon}</span><span className="flex-grow">{label}</span><ChevronRight size={18} className="flex-shrink-0" style={{ color: T.ink3 }} /></Link>
   );
 }
 
@@ -51,11 +53,14 @@ export default function Dashboard() {
   const { user } = useAuth();
   const cid = shell.community.id;
   const base = `/${shell.community.slug}`;
-  const [days, setDays] = useState(30);
+  const [choice, setChoice] = useState<RangeChoice>({ preset: 'last30' });
+  // Khoảng ngày theo giờ Việt Nam, tính cả hai đầu. "Từ trước đến nay" không có ngày đầu nên không có kỳ trước để so.
+  const range = choiceRange(choice, vnDay(new Date()));
+  const compared = range.from !== null;
 
   const canOverview = can('settings.manage');
   const canMoney = can('billing.manage');
-  const overview = useQuery({ queryKey: ['overview', cid, days], queryFn: () => api.get<Overview>(`/v1/communities/${cid}/overview?days=${days}`), enabled: canOverview });
+  const overview = useQuery({ queryKey: ['overview', cid, range.from, range.to], queryFn: () => api.get<Overview>(`/v1/communities/${cid}/overview?${rangeQuery(range)}`), enabled: canOverview });
   const payout = useQuery({ queryKey: ['payout-settings', cid], queryFn: () => api.get<Payout>(`/v1/communities/${cid}/payout`), enabled: canMoney });
   const pending = useQuery({ queryKey: ['members', cid, 'pending-count'], queryFn: () => api.get<{ counts: Record<string, number> }>(`/v1/communities/${cid}/members?status=pending&limit=1`), enabled: can('member.manage') });
   const feed = useQuery({ queryKey: ['feed', cid, 'today'], queryFn: () => api.get<{ items: FeedPost[] }>(`/v1/communities/${cid}/feed`), enabled: can('post.moderate') && shell.community.tabs.feed !== false });
@@ -72,7 +77,6 @@ export default function Dashboard() {
     plan,
   });
   const loading = (canMoney && payout.isLoading) || pending.isLoading || feed.isLoading;
-  const from = new Date(Date.now() - days * 86_400_000);
 
   return (
     <div className="two-col">
@@ -85,7 +89,7 @@ export default function Dashboard() {
             <div className="owner-money">
               <div><span className="muted text-[14px] block">Đã thu 30 ngày</span><span className="serif text-[24px] font-extrabold">{money(payout.data.received30Minor)}</span></div>
               <div><span className="muted text-[14px] block">Đơn chờ xác nhận</span><span className="serif text-[24px] font-extrabold">{payout.data.pendingCount}</span></div>
-              <Link to={payout.data.ready ? `${base}/tien` : `${base}/cai-dat/nhan-tien`} className="btn btn-gold btn-sm"><Wallet size={16} />{payout.data.ready ? 'Xem tiền' : 'Cài nhận tiền'}</Link>
+              <Link to={payout.data.ready ? `${base}/tien` : `${base}/cai-dat/nhan-tien`} className="btn btn-gold btn-sm"><Wallet size={16} />{payout.data.ready ? 'Xem đơn hàng' : 'Cài nhận tiền'}</Link>
             </div>
           )}
         </section>
@@ -103,32 +107,33 @@ export default function Dashboard() {
 
         <nav className="owner-tiles md:hidden" aria-label="Quản lý hội">
           <Tile to={`${base}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />
-          {(canMoney || can('revenue.read')) && <Tile to={`${base}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
-          {can('affiliates.manage') && <Tile to={`${base}/cong-su`} icon={<Handshake size={20} />} label="Affiliate" />}
-          {canOverview && <Tile to={`${base}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
+          {(canMoney || can('revenue.read')) && <Tile to={`${base}/tien`} icon={<Wallet size={20} />} label="Đơn hàng" />}
+          {can('affiliates.manage') && <Tile to={`${base}/cong-su`} icon={<Handshake size={20} />} label="Quản lý affiliate" />}
+          {canOverview && <Tile to={`${base}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" />}
         </nav>
 
         {canOverview && (
           <>
             <div className="flex items-center gap-3 flex-wrap pt-1">
               <h2 className="m-0 font-bold text-[18px] flex-grow">Hội đang chạy thế nào</h2>
-              <div className="flex gap-2">{RANGES.map(([d, l]) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{l}</Chip>)}</div>
+              <DateRangePicker value={choice} onChange={setChoice} />
             </div>
             <QueryState q={overview} rows={3}>
               {(d) => {
-                const byDay = new Map(d.daily.map((x) => [x.date, x.amountMinor]));
-                const series = Array.from({ length: days }, (_, i) => { const dt = new Date(from.getTime() + (i + 1) * 86_400_000); const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`; return byDay.get(key) ?? 0; });
+                const series = dailySeries(d.daily, range);
+                // Lấy từ trước đến nay thì không có kỳ trước: không hiện phần tăng giảm thay vì hiện số sai.
+                const trend = (p: number | null) => (compared ? { sub: delta(p), subColor: (p ?? 0) >= 0 ? T.teal : T.accentText } : { sub: 'tính từ trước đến nay' });
                 return (
                   <>
                     <div className="grid grid-cols-2 gap-3">
-                      <StatCard label="Doanh thu" value={money(d.stats.revenueMinor)} sub={delta(d.stats.revenueDeltaPct)} subColor={(d.stats.revenueDeltaPct ?? 0) >= 0 ? T.teal : T.accentText} />
-                      <StatCard label="Thành viên mới" value={d.stats.newMembers} sub={delta(d.stats.newMembersDeltaPct)} subColor={(d.stats.newMembersDeltaPct ?? 0) >= 0 ? T.teal : T.accentText} />
+                      <StatCard label="Doanh thu" value={money(d.stats.revenueMinor)} {...trend(d.stats.revenueDeltaPct)} />
+                      <StatCard label="Thành viên mới" value={d.stats.newMembers} {...trend(d.stats.newMembersDeltaPct)} />
                       <StatCard label="Đang trả phí" value={d.stats.paying} sub={`Premium ${d.stats.premium} · VIP ${d.stats.vip}`} />
                       <StatCard label="Tỷ lệ hủy" value={`${d.stats.churnRatePct}%`} sub={`${d.stats.churned} người hủy trong kỳ`} subColor={d.stats.churned > 0 ? T.accentText : undefined} />
                     </div>
                     <div className="card flex flex-col gap-3" style={{ padding: '18px 20px' }}>
-                      <div className="flex items-center"><span className="font-semibold flex-grow">Doanh thu theo ngày</span><span className="muted text-[14px]">{fmtDate(from).slice(0, 5)} đến {fmtDate(now).slice(0, 5)}</span></div>
-                      <Bars values={series} height={120} />
+                      <div className="flex items-center gap-3"><span className="font-semibold flex-grow">{series.bucketDays === 1 ? 'Doanh thu theo ngày' : `Doanh thu, mỗi cột ${series.bucketDays} ngày`}</span><span className="muted text-[14px]">{rangeLabelShort(series)}</span></div>
+                      <Bars values={series.values} height={120} />
                     </div>
                   </>
                 );
