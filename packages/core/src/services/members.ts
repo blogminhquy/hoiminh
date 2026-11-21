@@ -33,13 +33,13 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     const p = await raw(ctx.db, sql`select enabled from community_plugins where community_id = ${c.id} and plugin_key = 'instant_approval'`);
     return (p[0] as { enabled: boolean } | undefined)?.enabled ?? true;
   });
-  // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới vào thì lấy người giới
-  // thiệu ghi lúc họ đăng ký tài khoản (chỉ khi chương trình của hội đang bật). Mã `ref` trên link lúc tham gia không
-  // được tính: tài khoản đã có rồi thì bấm link affiliate không đổi được gì.
+  // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới vào hội (kể cả đã có tài
+  // khoản Hội Mình từ trước) thì lấy người giới thiệu ghi lúc đăng ký, rồi tới mã của hội này họ đang mang theo
+  // (link vừa bấm và cookie 30 ngày). Chỉ nhận mã của chính chương trình hội này và khi chương trình đang bật.
   const keptAffiliateId = existing?.referredByAffiliateId ?? null;
   let affiliateId = keptAffiliateId;
   if (!affiliateId) {
-    const referrer = await resolveReferrer(ctx, { communityId: c.id, userId });
+    const referrer = await resolveReferrer(ctx, { communityId: c.id, userId, ref: input.ref });
     if (referrer.program?.status === 'active') affiliateId = referrer.account?.id ?? null;
   }
   // Hội đã chạm trần thành viên của gói: người mới vẫn gửi yêu cầu được và nằm ở hàng chờ duyệt, không ai bị từ chối.

@@ -110,13 +110,13 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const discount = applyCoupon(r.amountMinor, coupon);
   const total = r.amountMinor - discount;
 
-  // Affiliate: người giới thiệu cố định của thành viên, chưa có thì người giới thiệu ghi lúc đăng ký tài khoản (xem
-  // resolveReferrer). Mã `ref` trên link lúc thanh toán không được tính: cookie tính cho lượt đăng ký, không tính cho
-  // từng đơn hàng. Không tự giới thiệu.
+  // Affiliate của hội: người giới thiệu cố định của thành viên, rồi người giới thiệu ghi lúc đăng ký tài khoản; người
+  // chưa ở trong hội thì tính mã của hội này họ đang mang theo (xem resolveReferrer). Thành viên đang ở trong hội thì
+  // mã trên link lúc thanh toán không được tính: link không tính cho từng đơn hàng. Không tự giới thiệu.
   let affiliateId: string | null = null;
   let referredBy: string | null = null;
   if (r.communityId) {
-    const referrer = await resolveReferrer(ctx, { communityId: r.communityId, userId });
+    const referrer = await resolveReferrer(ctx, { communityId: r.communityId, userId, ref: input.ref });
     if (referrer.program?.status === 'active' && referrer.account) {
       affiliateId = referrer.account.id;
       const ref = await ctx.db.query.users.findFirst({ where: eq(users.id, referrer.account.userId), columns: { name: true } });

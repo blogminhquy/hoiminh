@@ -7,7 +7,7 @@ import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
-import { resolveReferrer } from './affiliate';
+import { accountForCodes, resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { releaseFiles } from './files';
 import { paymentsReady } from './owner-payout';
@@ -103,16 +103,17 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     ctx.db.query.communityJoinQuestions.findMany({ where: eq(communityJoinQuestions.communityId, c.id), orderBy: asc(communityJoinQuestions.sortOrder) }),
   ]);
   const access = ctx.actor.type === 'user' ? await resolveCommunityAccess(ctx, c.id) : null;
-  // Dòng "Bạn được ... giới thiệu": chỉ hiện khi lượt giới thiệu đó thật sự được tính. Khách chưa có tài khoản thì
-  // theo mã trên link (sẽ được ghi lúc đăng ký). Người đã đăng nhập thì theo người giới thiệu của chính tài khoản đó,
-  // vì tài khoản đã có rồi thì bấm link affiliate không được tính.
+  // Dòng "Bạn được ... giới thiệu": chỉ hiện khi lượt giới thiệu đó thật sự được tính cho hội này. Khách chưa có tài
+  // khoản thì theo mã của hội này trong các mã đang mang theo. Người đã đăng nhập thì theo đúng luật của resolveReferrer
+  // (thành viên đang ở trong hội mà chưa có người giới thiệu thì link không được tính, nên không hiện).
   let referrer: { name: string } | null = null;
   if (ctx.actor.type === 'user') {
-    const mine = await resolveReferrer(ctx, { communityId: c.id, userId: ctx.actor.userId });
+    const mine = await resolveReferrer(ctx, { communityId: c.id, userId: ctx.actor.userId, ref });
     if (mine.program?.status === 'active' && mine.account) referrer = (await ctx.db.query.users.findFirst({ where: eq(users.id, mine.account.userId), columns: { name: true } })) ?? null;
   } else if (ref) {
-    const r = await raw(ctx.db, sql`select u.name from affiliate_accounts a join affiliate_programs p on p.id = a.program_id join users u on u.id = a.user_id where a.affiliate_code = ${ref} and a.status = 'active' and p.community_id = ${c.id} and p.status = 'active' limit 1`);
-    referrer = (r[0] as { name: string } | undefined) ?? null;
+    const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, c.id), columns: { id: true, status: true } });
+    const acc = program?.status === 'active' ? await accountForCodes(ctx, program.id, ref) : null;
+    if (acc) referrer = (await ctx.db.query.users.findFirst({ where: eq(users.id, acc.userId), columns: { name: true } })) ?? null;
   }
   const onlineSince = new Date(ctx.now().getTime() - 15 * 60_000);
   const [online] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(communityMembers).where(and(eq(communityMembers.communityId, c.id), gte(communityMembers.lastActiveAt, onlineSince)));

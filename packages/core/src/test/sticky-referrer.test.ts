@@ -1,7 +1,8 @@
 // Ba việc chủ dự án báo ngày 21/11/2026:
 //   1. Affiliate "người giới thiệu cố định": thành viên đã có người giới thiệu thì mọi hoa hồng về người đó, bấm link
-//      của affiliate khác không đổi được. Link affiliate (cookie 30 ngày, lượt bấm cuối) chỉ tính lúc đăng ký tài khoản
-//      mới, không tính cho từng đơn hàng; ngoài ra chỉ thành viên tự chọn hoặc tự đổi được.
+//      của affiliate khác không đổi được. Link của hội (cookie 30 ngày, lượt bấm cuối) tính lúc đăng ký tài khoản và
+//      lúc một người chưa ở trong hội vào hội, không tính cho từng đơn hàng của thành viên; link nền tảng chỉ tính lúc
+//      đăng ký. Ngoài ra chỉ thành viên tự chọn hoặc tự đổi được.
 //   2. Hội đổi đường dẫn thì đường dẫn cũ vẫn dẫn về hội (thông báo cũ từng ra "Hội không tồn tại").
 //   3. Xóa bài học thì tiến độ không còn trỏ tới bài đã xóa (thẻ khóa học từng ra "Bài học không tồn tại").
 import { and, eq } from 'drizzle-orm';
@@ -51,7 +52,7 @@ describe('affiliate: người giới thiệu cố định', () => {
     expect((await memberOf('dien'))?.referredByAffiliateId).toBe(HV);
   });
 
-  it('tài khoản đã có mà chưa có người giới thiệu: bấm link affiliate rồi mua không được tính', async () => {
+  it('thành viên đang ở trong hội mà chưa có người giới thiệu: bấm link affiliate rồi mua không được tính', async () => {
     expect((await memberOf('duy'))?.referredByAffiliateId).toBeNull();
     const duy = await app.as('duy');
     const paidBefore = (await app.ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, HK) }))!.paidCount;
@@ -62,12 +63,12 @@ describe('affiliate: người giới thiệu cố định', () => {
     expect(await app.ctx.db.query.affiliateCommissions.findFirst({ where: eq(affiliateCommissions.orderId, session.orderId) })).toBeUndefined();
     expect((await memberOf('duy'))?.referredByAffiliateId).toBeNull();
     expect((await app.ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, HK) }))!.paidCount).toBe(paidBefore);
-    // Trang giới thiệu cũng không báo "Bạn được ... giới thiệu" với tài khoản này, còn khách chưa đăng nhập thì có.
+    // Trang giới thiệu cũng không báo "Bạn được ... giới thiệu" với thành viên này, còn khách chưa đăng nhập thì có.
     expect((await communities.aboutPage(duy, 'minhquy', 'hk3m1')).referrer).toBeNull();
     expect((await communities.aboutPage(app.anon(), 'minhquy', 'hk3m1')).referrer?.name).toBe('Hồng Kim');
   });
 
-  it('đăng ký tài khoản mới qua link: được tính, giữ mãi với tài khoản, link bấm sau đó không đổi được', async () => {
+  it('đăng ký tài khoản mới qua link của hội: được tính, giữ mãi, người khác không giới thiệu tranh được', async () => {
     const s = await register(app.anon(), app.auth, { name: 'Khách Qua Link', email: 'khach.qua.link@example.com', password: 'matkhau123', ref: 'hk3m1', acceptTerms: true });
     const ctx: Ctx = { ...app.anon(), actor: { type: 'user', userId: s.user.id, isSuperAdmin: false, email: s.user.email } };
     // Hai tháng sau mới vào hội, lại còn qua link của Hoàng Vũ: người giới thiệu vẫn là Hồng Kim (người lúc đăng ký).
@@ -85,14 +86,46 @@ describe('affiliate: người giới thiệu cố định', () => {
     expect((await app.ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, HK) }))!.paidCount).toBe(paidBefore + 1);
   });
 
-  it('đăng ký không qua link thì không có người giới thiệu, dù ngay sau đó bấm link rồi vào hội', async () => {
+  it('tài khoản đã có (đăng ký không qua link) vào hội qua link của hội: được tính cho hội này, rồi cố định', async () => {
     const s = await register(app.anon(), app.auth, { name: 'Khách Tự Đến', email: 'khach.tu.den@example.com', password: 'matkhau123', acceptTerms: true });
     const ctx: Ctx = { ...app.anon(), actor: { type: 'user', userId: s.user.id, isSuperAdmin: false, email: s.user.email } };
-    const about = await communities.aboutPage(ctx, 'minhquy', 'hv8k2');
-    expect(about.referrer).toBeNull();
-    const joined = await members.joinCommunity(ctx, 'minhquy', { ref: 'hv8k2', answers: about.joinQuestions.map((q) => ({ questionId: q.id, answer: 'Học bán hàng' })) });
-    expect(joined.member.referredByAffiliateId).toBeNull();
-    expect(joined.member.source).toBe('direct');
+    // Người này mang theo ba mã: mã của affiliate nền tảng (mới bấm nhất), rồi hai mã của hội này. Hội chỉ nhận mã của
+    // chính hội, và trong đó mã mới bấm hơn thắng (Hoàng Vũ đứng trước Hồng Kim).
+    const platformAcc = await affiliate.ensureAccount(app.system(), await app.ids('user:hongkim'), await app.ids('program:platform'));
+    const refs = `${platformAcc.affiliateCode},hv8k2,hk3m1`;
+    const about = await communities.aboutPage(ctx, 'minhquy', refs);
+    expect(about.referrer?.name).toBe('Hoàng Vũ');
+    const joined = await members.joinCommunity(ctx, 'minhquy', { ref: refs, answers: about.joinQuestions.map((q) => ({ questionId: q.id, answer: 'Học bán hàng' })) });
+    expect(joined.member.referredByAffiliateId).toBe(HV);
+    expect(joined.member.source).toBe('affiliate');
+    // Đã ở trong hội với người giới thiệu là Hoàng Vũ: mua qua link của Hồng Kim, hoa hồng vẫn về Hoàng Vũ.
+    const order = await premium(ctx, 'hk3m1');
+    expect(await affiliateOfOrder(order.orderId)).toBe(HV);
+  });
+
+  it('người mua lẻ chưa vào hội: link của hội được tính ở đơn đầu, các đơn sau vẫn về người đó', async () => {
+    const s = await register(app.anon(), app.auth, { name: 'Khách Mua Lẻ', email: 'khach.mua.le@example.com', password: 'matkhau123', acceptTerms: true });
+    const buyer: Ctx = { ...app.anon(), actor: { type: 'user', userId: s.user.id, isSuperAdmin: false, email: s.user.email } };
+    const memberRow = () => app.ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, KD), eq(communityMembers.userId, s.user.id)) });
+    expect(await memberRow()).toBeUndefined();
+    const first = await checkout.createCheckout(buyer, { target: { type: 'product', productId: await app.ids('product:prompts') }, provider: 'sepay', ref: 'hk3m1' });
+    expect(first.referredBy).toBe('Hồng Kim');
+    expect(await affiliateOfOrder(first.orderId)).toBe(HK);
+    await ownerBankPaid(app, first.reference, first.amountMinor);
+    expect((await app.ctx.db.query.affiliateCommissions.findFirst({ where: eq(affiliateCommissions.orderId, first.orderId) }))?.affiliateAccountId).toBe(HK);
+    // Sau đó mua gói thành viên qua link của Hoàng Vũ: vẫn là Hồng Kim, và khi vào hội thì Hồng Kim là người giới thiệu.
+    const second = await premium(buyer, 'hv8k2');
+    expect(await affiliateOfOrder(second.orderId)).toBe(HK);
+    await ownerBankPaid(app, second.reference, second.amountMinor);
+    expect((await memberRow())?.referredByAffiliateId).toBe(HK);
+  });
+
+  it('một lượt đăng ký ghi được người giới thiệu của cả nền tảng lẫn hội, mỗi chương trình một người', async () => {
+    const platform = await app.ids('program:platform');
+    const platformAcc = await affiliate.ensureAccount(app.system(), await app.ids('user:hongkim'), platform);
+    const s = await register(app.anon(), app.auth, { name: 'Khách Hai Tầng', email: 'khach.hai.tang@example.com', password: 'matkhau123', ref: `hv8k2,${platformAcc.affiliateCode},hk3m1`, acceptTerms: true });
+    const rows = await app.ctx.db.query.affiliateAttributions.findMany({ where: eq(affiliateAttributions.userId, s.user.id) });
+    expect(rows.map((r) => [r.programId, r.affiliateAccountId]).sort()).toEqual([[PROGRAM, HV], [platform, platformAcc.id]].sort());
   });
 
   it('đăng ký bằng Google cũng tính mã giới thiệu trong cookie; đăng nhập lại bằng Google thì không', async () => {

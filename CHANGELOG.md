@@ -2,17 +2,21 @@
 
 ## 1.37.0 - 2026-11-21
 
-Chốt cách tính cookie cho luật affiliate "người giới thiệu cố định" của bản 1.36.0, theo yêu cầu của chủ dự án. Không có migration.
+Chốt cách tính link và cookie cho affiliate, tách rõ hai tầng: affiliate nền tảng và affiliate của từng hội. Theo yêu cầu của chủ dự án. Không có migration.
 
 ### Thay đổi
 
-- **Link affiliate chỉ tính lúc đăng ký tài khoản mới, không tính cho từng đơn hàng.** Mã trên link được ghi nhớ 30 ngày, lượt bấm sau đè lượt bấm trước (last click). Đúng lúc một người đăng ký tài khoản (bằng email hay bằng Google), người giới thiệu được ghi vào tài khoản đó và giữ mãi, không hết hạn. Tài khoản đã có rồi mà bấm link affiliate thì không được tính, kể cả khi mua hàng hay vào hội ngay sau đó. Bản 1.36.0 còn tính mã trên link lúc tham gia hội và lúc thanh toán cho người chưa có người giới thiệu; nay bỏ.
-- Tài khoản đã có muốn ghi nhận người đã mời mình thì tự chọn ở thẻ "Người giới thiệu của bạn" bằng mã, link hoặc email (bản 1.36.1).
-- Trang giới thiệu hội chỉ hiện dòng "Bạn được ... giới thiệu" khi lượt giới thiệu đó thật sự được tính: khách chưa có tài khoản thì theo mã trên link, người đã đăng nhập thì theo người giới thiệu của chính tài khoản đó.
+- **Hai tầng affiliate tính riêng.** Link của hội nào thì tính hoa hồng cho hội đó. Link nền tảng tính cho dịch vụ của nền tảng (gói Hội Mình). Một người giới thiệu được nhiều người, ở nhiều hội khác nhau.
+- **Link của hội tính cho người mới vào hội đó, kể cả người đã có tài khoản Hội Mình.** Người đang ở hội khác bấm link của hội này rồi tham gia hoặc mua lần đầu thì người chia sẻ link được ghi nhận. Vào hội rồi thì người giới thiệu là cố định: người khác không giới thiệu tranh được nữa.
+- **Thành viên đang ở trong hội thì link không tính cho từng đơn hàng.** Thành viên chưa có người giới thiệu mà bấm link của ai đó rồi mua thì đơn đó không tính hoa hồng. Họ tự chọn người giới thiệu ở thẻ "Người giới thiệu của bạn" (mã, link hoặc email). Bản 1.36.0 còn tính trường hợp này; nay bỏ.
+- **Link nền tảng chỉ tính lúc đăng ký tài khoản.** Người giới thiệu ghi lúc đăng ký đi theo tài khoản mãi, không hết hạn.
+- **Cookie 30 ngày, lượt bấm cuối, và nhớ được nhiều mã.** Trước đây cookie chỉ nhớ một mã, nên bấm link của hội B là mất mã của hội A. Nay cookie nhớ tới 8 mã, mỗi hội (và nền tảng) tính mã mới nhất của chính mình. Một lượt đăng ký ghi được cả người giới thiệu nền tảng lẫn người giới thiệu của từng hội.
+- Trang giới thiệu hội chỉ hiện dòng "Bạn được ... giới thiệu" khi lượt giới thiệu đó thật sự được tính cho hội này.
 
 ### Sửa
 
 - **Đăng ký bằng Google làm rơi mã giới thiệu.** Tài khoản tạo qua Google không được ghi người giới thiệu dù có cookie. Nay được tính như đăng ký bằng email.
+- Mã giới thiệu của hội khác trên link không còn làm hiện sai tên người giới thiệu ở trang giới thiệu hội.
 
 ## 1.36.1 - 2026-11-21
 

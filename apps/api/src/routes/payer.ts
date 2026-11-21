@@ -1,5 +1,5 @@
 // Người chi trả hoa hồng (chủ hội / super admin): xem xét, đánh dấu đã trả, từ chối; affiliate hủy yêu cầu; link affiliate /r/:code.
-import { markPaidSchema, rejectWithdrawalSchema } from '@hoiminh/contracts';
+import { markPaidSchema, rejectWithdrawalSchema, joinRefs } from '@hoiminh/contracts';
 import { affiliate, withdrawals } from '@hoiminh/core';
 import { body, parse, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -30,7 +30,12 @@ refRoutes.get('/:code', async (c) => {
   const dest = r?.destinationUrl ?? ctx.env.APP_URL;
   const maxAge = (r?.cookieDays ?? 30) * 86_400;
   const secure = ctx.env.APP_ENV === 'production' ? '; Secure' : '';
-  c.header('Set-Cookie', `hm_ref=${encodeURIComponent(c.req.param('code'))}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`, { append: true });
+  // Cookie nhớ nhiều mã (mỗi hội, nền tảng một mã): mã vừa bấm lên đầu, các mã cũ giữ lại phía sau.
+  const remembered = cookies.split(';').map((s) => s.trim()).find((s) => s.startsWith('hm_ref='))?.slice(7);
+  let before = '';
+  try { before = decodeURIComponent(remembered ?? ''); } catch { /* cookie hỏng: coi như chưa nhớ mã nào */ }
+  const refs = joinRefs(c.req.param('code'), before) ?? c.req.param('code');
+  c.header('Set-Cookie', `hm_ref=${encodeURIComponent(refs)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`, { append: true });
   c.header('Set-Cookie', `hm_vid=${visitorId}; Path=/; Max-Age=${365 * 86_400}; SameSite=Lax${secure}`, { append: true });
   return c.redirect(dest, 302);
 });

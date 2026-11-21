@@ -93,7 +93,8 @@ export type UpdatePricingInput = z.infer<typeof updatePricingSchema>;
 
 export const joinCommunitySchema = z.object({
   answers: z.array(z.object({ questionId: idSchema, answer: z.string().max(500) })).max(3).default([]),
-  ref: z.string().max(32).optional(),
+  /** Một mã giới thiệu hoặc danh sách mã cách nhau bằng dấu phẩy (xem refCodes). */
+  ref: z.string().max(300).optional(),
 });
 
 export const memberFilterSchema = z.object({
