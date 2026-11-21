@@ -1,0 +1,19 @@
+/* Trang chứng nhận: khung tấm chứng chỉ, hàng nút, và bản in chỉ có đúng tấm chứng chỉ trên một trang ngang.
+   Luật @page (khổ giấy) nằm trong thẻ <style> của trang để chỉ có hiệu lực khi trang chứng nhận đang mở. */
+.cert-frame { border-radius: 14px; overflow: hidden; background: #FDF9ED; box-shadow: 0 1px 2px rgba(8, 24, 23, 0.08), 0 18px 48px rgba(8, 24, 23, 0.16); }
+.cert-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.cert-actions > :first-child { grid-column: 1 / -1; }
+.cert-actions > :last-child:nth-child(even) { grid-column: 1 / -1; }
+.cert-actions > .btn { padding-left: 12px; padding-right: 12px; }
+@media (min-width: 768px) {
+  .cert-actions { display: flex; flex-wrap: wrap; justify-content: center; width: auto; }
+  .cert-actions > .btn { padding-left: 26px; padding-right: 26px; }
+}
+@media print {
+  html, body, #root { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; }
+  .cert-noprint { display: none !important; }
+  .cert-page { min-height: 0 !important; background: #FFFFFF !important; }
+  .cert-main { max-width: none !important; margin: 0 !important; padding: 0 !important; display: block !important; }
+  .cert-frame { border-radius: 0; box-shadow: none; width: 100vw; height: 100vh; break-inside: avoid; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cert-frame svg { width: 100% !important; height: 100% !important; opacity: 1 !important; }
+}
