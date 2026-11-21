@@ -45,21 +45,58 @@ export const rejectWithdrawalSchema = z.object({ reason: z.string().trim().min(3
 /** Số mã giới thiệu tối đa một người xem mang theo (cookie và các trường `ref`). */
 export const REF_CODES_MAX = 8;
 
+/** Một phần tử trong danh sách mã: `mã`, hoặc `mã.phạm-vi` (phạm vi là trang mà link được mở). */
+const REF_TOKEN = /^[a-z0-9_-]{1,32}(?:\.[a-z0-9_-]{1,48})?$/;
+
 /**
  * Các mã giới thiệu một người đang mang theo, mới bấm đứng trước. Một người có thể được nhiều affiliate giới thiệu
  * tới nhiều hội khác nhau (và tới nền tảng), nên cookie và các trường `ref` chứa một DANH SÁCH mã cách nhau bằng dấu
  * phẩy, không phải một mã. Mỗi hội chỉ nhận mã của chương trình hội đó; mã mới nhất của hội đó thắng (last click).
+ * Mỗi phần tử là `mã` hoặc `mã.phạm-vi`: phạm vi là trang mà link được mở (xem refScopeOf), cần cho MÃ CHUNG của một
+ * người, vì mã chung dùng cho mọi chương trình nên phải biết link được mở ở trang nào mới tính đúng chương trình.
  */
 export function refCodes(...parts: Array<string | null | undefined>): string[] {
   const out: string[] = [];
   for (const part of parts) {
     for (const raw of (part ?? '').split(',')) {
       const code = raw.trim().toLowerCase();
-      if (code && code.length <= 32 && /^[a-z0-9_-]+$/.test(code) && !out.includes(code)) out.push(code);
+      if (code && REF_TOKEN.test(code) && !out.includes(code)) out.push(code);
     }
   }
   return out.slice(0, REF_CODES_MAX);
 }
+
+/** Phạm vi của một trang không thuộc hội nào (trang chủ, trang mở hội, trang đăng ký trơn): tính cho chương trình nền tảng. */
+export const REF_PLATFORM_SCOPE = '_';
+
+/**
+ * Phạm vi của trang đang mở, để gắn vào mã giới thiệu đọc từ link. Trang của một hội (`/javiser`,
+ * `/javiser/cua-hang/khoa-a`) có phạm vi là đoạn đầu của đường dẫn; trang đăng ký đi từ một hội (`?hoi=javiser`) lấy
+ * theo hội đó; trang chủ lấy REF_PLATFORM_SCOPE. Máy chủ mới là nơi quyết định đoạn đó có phải một hội hay không
+ * (không phải hội thì tính cho nền tảng), nên ở đây không cần biết danh sách hội.
+ */
+export function refScopeOf(pathname: string, hoi?: string | null): string {
+  const pick = (v: string | null | undefined) => {
+    const s = (v ?? '').trim().toLowerCase();
+    return /^[a-z0-9-]{1,48}$/.test(s) ? s : null;
+  };
+  return pick(hoi) ?? pick(pathname.split('/').find(Boolean)) ?? REF_PLATFORM_SCOPE;
+}
+
+/** Gắn phạm vi cho các mã vừa đọc từ link. Mã đã có phạm vi (được chuyển tiếp từ một trang khác) thì giữ nguyên. */
+export function scopeRefs(raw: string | null | undefined, scope: string): string | undefined {
+  return refCodes(...refCodes(raw).map((t) => (t.includes('.') ? t : `${t}.${scope}`))).join(',') || undefined;
+}
+
+/** Tách `mã.phạm-vi`. Không có phạm vi (mã gõ tay, cookie cũ) thì `scope` là null. */
+export function splitRef(token: string): { code: string; scope: string | null } {
+  const i = token.indexOf('.');
+  return i < 0 ? { code: token, scope: null } : { code: token.slice(0, i), scope: token.slice(i + 1) };
+}
+
+/** Mã giới thiệu chung do người dùng tự chọn: 3 đến 20 ký tự, chỉ chữ thường không dấu và số. */
+export const REFERRAL_CODE_PATTERN = /^[a-z0-9]{3,20}$/;
+export const setReferralCodeSchema = z.object({ code: z.string().trim().toLowerCase().regex(REFERRAL_CODE_PATTERN, 'Mã gồm 3 đến 20 ký tự, chỉ dùng chữ không dấu và số') });
 
 /** Gộp các nguồn mã (mã trên link trước, rồi mã đã nhớ) thành một chuỗi để gửi đi; không có mã nào thì undefined. */
 export function joinRefs(...parts: Array<string | null | undefined>): string | undefined {
