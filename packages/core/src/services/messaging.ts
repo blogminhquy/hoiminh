@@ -236,8 +236,8 @@ export async function sendWelcomeDm(ctx: Ctx, communityId: string, userId: strin
   if (already.length) return false;
   const firstName = member.name.trim().split(/\s+/).pop() ?? member.name;
   const startLink = `${ctx.env.APP_URL}/${c.slug}/bang-tin`;
-  const vars: Record<string, string> = { first_name: firstName, community_name: c.name, start_link: startLink };
-  let body = normalizeWelcomeTemplate(cfg.template ?? 'Chào {{first_name}}, chào mừng bạn đến với {{community_name}}.').replace(/\{\{(\w+)\}\}/g, (whole, key: string) => vars[key] ?? whole);
+  const vars: Record<string, string> = { full_name: member.name.trim(), first_name: firstName, community_name: c.name, start_link: startLink };
+  let body = normalizeWelcomeTemplate(cfg.template ?? 'Chào {{full_name}}, chào mừng bạn đến với {{community_name}}.').replace(/\{\{(\w+)\}\}/g, (whole, key: string) => vars[key] ?? whole);
   if (cfg.includeStartLink !== false && !body.includes(startLink)) body += `\n\nBắt đầu tại đây: ${startLink}`;
   await sendMessage(ctx, { senderUserId, recipientUserId: userId, communityId, body, automated: true });
   return true;

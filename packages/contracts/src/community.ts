@@ -116,17 +116,19 @@ export const updateMemberSchema = z.object({
 export const pluginKeySchema = z.enum(['welcome_dm', 'instant_approval', 'links', 'webhook', 'meta_pixel']);
 export type PluginKey = z.infer<typeof pluginKeySchema>;
 /** Biến dùng được trong mẫu tin nhắn chào: tên tiếng Anh, viết liền bằng gạch dưới (giống biến của Quy tắc tự động). */
-export const WELCOME_DM_VARIABLES = ['first_name', 'community_name', 'start_link'] as const;
+export const WELCOME_DM_VARIABLES = ['full_name', 'community_name', 'start_link'] as const;
 export type WelcomeDmVariable = (typeof WELCOME_DM_VARIABLES)[number];
 export const WELCOME_DM_TEMPLATE_MAX = 1000;
-export const WELCOME_DM_DEFAULT_TEMPLATE = 'Chào {{first_name}}, chào mừng bạn đến với {{community_name}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.';
-/** Tên biến tiếng Việt dùng trước 1.36.3. Mẫu đã lưu bằng tên cũ vẫn chạy và được đổi sang tên mới khi đọc, khi lưu. */
-const WELCOME_DM_LEGACY_VARIABLES: Record<string, WelcomeDmVariable> = { 'tên': 'first_name', 'cộng đồng': 'community_name', 'link bắt đầu': 'start_link' };
-/** Đổi biến tên cũ ({{tên}}, {{cộng đồng}}, {{link bắt đầu}}) sang tên mới và viết gọn biến tên mới ({{ First_Name }} → {{first_name}}). Biến lạ giữ nguyên. */
+export const WELCOME_DM_DEFAULT_TEMPLATE = 'Chào {{full_name}}, chào mừng bạn đến với {{community_name}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.';
+/** {{first_name}} (chỉ tên gọi) không còn trong gợi ý nhưng mẫu nào đang dùng thì vẫn chạy. */
+const WELCOME_DM_HIDDEN_VARIABLES = ['first_name'];
+/** Tên biến tiếng Việt dùng trước 1.36.4. Mẫu đã lưu bằng tên cũ vẫn chạy và được đổi sang tên mới khi đọc, khi lưu. */
+const WELCOME_DM_LEGACY_VARIABLES: Record<string, WelcomeDmVariable> = { 'tên': 'full_name', 'cộng đồng': 'community_name', 'link bắt đầu': 'start_link' };
+/** Đổi biến tên cũ ({{tên}}, {{cộng đồng}}, {{link bắt đầu}}) sang tên mới và viết gọn biến tên mới ({{ Full_Name }} → {{full_name}}). Biến lạ giữ nguyên. */
 export function normalizeWelcomeTemplate(template: string): string {
   return template.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (whole, inner: string) => {
     const key = inner.normalize('NFC').toLowerCase().replace(/\s+/g, ' ');
-    const name = WELCOME_DM_LEGACY_VARIABLES[key] ?? (WELCOME_DM_VARIABLES as readonly string[]).find((v) => v === key);
+    const name = WELCOME_DM_LEGACY_VARIABLES[key] ?? [...WELCOME_DM_VARIABLES, ...WELCOME_DM_HIDDEN_VARIABLES].find((v) => v === key);
     return name ? `{{${name}}}` : whole;
   });
 }
