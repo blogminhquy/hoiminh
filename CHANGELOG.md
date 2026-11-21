@@ -1,5 +1,70 @@
 # CHANGELOG
 
+## 1.43.0 - 2026-11-22
+
+Mỗi người tự chọn được một mã giới thiệu chung, dùng cho link của mọi chương trình mình làm affiliate, theo yêu cầu của chủ dự án. Có migration `0019_affiliate_user_codes` (thêm một bảng, không đổi dữ liệu cũ).
+
+### Thêm
+
+- **Đổi mã giới thiệu, một mã cho mọi nơi.** Ở trang Tài khoản, mục Affiliate, cạnh nút "Sao chép mã" có nút "Đổi mã". Bạn chọn một mã dễ nhớ (3 đến 20 ký tự, chữ không dấu và số, ví dụ `minhquy`) và mã đó dùng cho link Hội Mình lẫn link của mọi hội bạn làm affiliate. Mã không được trùng với mã của bất kỳ ai trên toàn nền tảng, không trùng tên định danh của người khác, và không dùng các tên dành cho hệ thống.
+- **Mỗi người chỉ đổi được một lần.** Bảng đổi mã bắt xác nhận trước khi lưu. Lưu xong thì nút "Đổi mã" biến mất. Mã không hợp lệ hoặc đã có người dùng thì chưa mất lượt.
+- **Link cũ không hỏng.** Link đã chia sẻ với mã cũ vẫn chạy và vẫn tính hoa hồng. Trang Affiliate ghi rõ mã cũ nào còn hiệu lực.
+- **Thành viên chưa từng lấy link vẫn dùng được mã chung ở hội mình đang tham gia.** Ví affiliate của hội đó tự mở khi có người đầu tiên đi qua link, như lúc tự mở trang Affiliate.
+
+### Thay đổi
+
+- **Trang Affiliate trong Tài khoản nay tên là "Affiliate của tôi".** Để khỏi lẫn với phần quản lý chương trình affiliate của hội.
+
+### Không đổi
+
+- Luật tính hoa hồng giữ nguyên. Link mở ở trang của một hội (trang giới thiệu, trang sản phẩm) chỉ tính cho chương trình của hội đó; link mở ở trang nền tảng (trang chủ, trang mở hội) chỉ tính cho chương trình nền tảng. Người vào một hội mà chưa có người giới thiệu nền tảng thì người giới thiệu nền tảng vẫn mặc định là chủ hội.
+
+### Kỹ thuật
+
+- Bảng `affiliate_user_codes` (mỗi người một dòng, mã duy nhất), có RLS như các bảng khác. Mã riêng của từng tài khoản affiliate (`affiliate_accounts.affiliate_code`) không đổi.
+- `packages/core/src/services/referral-codes.ts`: `setMyReferralCode`, `myReferralCode`, và `canonicalRefs` đổi mã chung thành mã riêng của đúng một chương trình ở cửa vào (`attachAttribution`, `accountForCodes`, `trackClick`, `recordLandingClick`), nên phần tính người giới thiệu và hoa hồng phía sau chạy như cũ.
+- Mã trong cookie `hm_ref` và các trường `ref` nay có dạng `mã.phạm-vi` (phạm vi là trang mà link được mở, web tự gắn lúc ghi nhớ); mã không có phạm vi (cookie cũ, mã gõ tay) vẫn được nhận. Trường `ref` nới giới hạn từ 300 lên 700 ký tự.
+- API: `GET` và `PUT /v1/me/referral-code`. Ví (`/v1/me/affiliate/:programId`) trả thêm `codeEditable`, `previousCode`.
+- Test: `packages/core/src/test/referral-code.test.ts` (15 ca), bổ sung `apps/web/src/lib/referral.test.ts` và `affiliate-link.test.ts`. Các test hoa hồng sẵn có không sửa và vẫn qua.
+
+## 1.42.0 - 2026-11-22
+
+Rà soát toàn bộ MCP, API key và webhook theo yêu cầu của chủ dự án ngày 21/11/2026: đối chiếu từng route REST với bảng quyền của API key và bộ lệnh MCP, bổ sung những chỗ còn thiếu để trợ lý AI thêm, sửa, xóa được ở bài viết, bình luận, thành viên, affiliate, sự kiện, webhook và cài đặt. Bộ lệnh MCP từ 100 lên 121 lệnh. Kèm theo đó sửa link mời vào hội (lỗi tìm ra khi rà): mã mời trên link trước đây không được đọc lại. Không có migration.
+
+### Thêm
+
+- **Sửa bình luận.** Trước đây bình luận chỉ tạo, ghim và xóa được. Nay có `PATCH /v1/comments/:id` và lệnh `update_comment` (tác giả hoặc người kiểm duyệt sửa nội dung; ảnh, lượt thích, các trả lời giữ nguyên).
+- **Thả cảm xúc qua API key.** Lệnh `toggle_reaction` thả, đổi, gỡ cảm xúc ở bài viết và bình luận dưới tên chủ hội.
+- **Hủy sự kiện và xóa bản ghi.** Lệnh `cancel_event` (`DELETE /v1/events/:id`) đưa buổi sang trạng thái đã hủy: biến khỏi lịch, ngừng nhắc, dữ liệu còn nguyên; `update_event` với `status: "scheduled"` mở lại. Lệnh `delete_event_recording` gỡ một bản ghi khỏi mục Xem lại.
+- **Quản lý từng affiliate.** Lệnh `list_affiliates` liệt kê affiliate của hội kèm mã, lượt bấm, số đơn, hoa hồng đang giữ, rút được, đã trả. Lệnh `update_affiliate` tạm khóa, mở lại hoặc đặt tỉ lệ hoa hồng riêng cho một affiliate. Lệnh `export_withdrawals_csv` xuất bảng đối soát.
+- **Thu hồi khóa học đã cấp tay.** Lệnh `revoke_course` là chiều ngược của `grant_course`; quyền có do mua hoặc do gói không bị đụng tới.
+- **Xuất thành viên ra CSV.** Lệnh `export_members_csv`.
+- **Sửa, gửi thử, đổi secret webhook.** Lệnh `update_webhook` (đổi địa chỉ, đổi sự kiện, tạm dừng, bật lại webhook đã tự dừng vì lỗi), `test_webhook` (gửi sự kiện `ping` qua đúng đường giao thật), `rotate_webhook_secret`.
+- **Ba sự kiện webhook mới.** `member.removed` (bị mời ra), `member.banned` (bị khóa), `affiliate.withdrawal_requested` (affiliate gửi yêu cầu rút, để trợ lý báo chủ hội xử lý ngay). Tổng cộng 15 sự kiện.
+- **Cài đặt hội.** Lệnh `get_community_about` đọc trang giới thiệu (gồm câu hỏi tham gia đang đặt, trước đây chỉ ghi được mà không đọc lại được), `update_about_media` đặt bộ ảnh và video giới thiệu.
+- **Tin nhắn và thông báo.** Lệnh `recall_message` (thu hồi tin đã gửi), `archive_conversation`, `mark_notifications_read`.
+- **Lời mời đang chờ và thu hồi lời mời.** Khung "Mời thành viên" hiện danh sách lời mời chưa có người nhận (email, vai trò, ngày hết hạn) kèm nút Thu hồi. Qua API và MCP có `list_invites` và `revoke_invite`.
+- **Việc lặt vặt còn thiếu lệnh.** `rotate_inbound_source` (đổi địa chỉ nguồn đồng bộ khi bị lộ), `delete_file` (bỏ tệp tải lên mà không dùng).
+
+### Sửa
+
+- **Link mời vào hội không có tác dụng.** Email mời chứa link `?invite=<mã>` nhưng không nơi nào đọc lại mã đó: người được mời vẫn phải trả lời câu hỏi và chờ duyệt như người lạ, mời với vai trò quản trị viên không trao quyền gì, và lời mời không bao giờ hết hạn hay được đánh dấu đã nhận. Nay người được mời mở link, đăng ký hoặc đăng nhập xong là vào thẳng hội: không chờ duyệt, không câu hỏi, vào được cả khi hội đã đóng cổng. Mời làm quản trị viên thì người đó nhận đúng vai trò quản trị (thành viên sẵn có được nâng lên). Lời mời gửi qua email dùng một lần trong 14 ngày và chỉ đúng email được mời, đã xác minh, mới nhận được; hết hạn, đã dùng, sai người hay đã thu hồi đều có lời báo rõ trên trang hội. Hội thu phí: được mời làm thành viên vẫn phải thanh toán.
+- **Không hủy được sự kiện.** Tầng dịch vụ nhận `status` khi sửa sự kiện nhưng hợp đồng API bỏ trường này đi, nên không có đường nào (web, REST, MCP) hủy được một buổi. Nay `updateEventSchema` nhận `status` là `scheduled` hoặc `cancelled`.
+
+## 1.41.3 - 2026-11-22
+
+Trang bán của khóa học hiện lại ảnh bìa, theo báo lỗi của chủ dự án (trang mở từ link affiliate chỉ thấy nền màu). Không có migration, không cần sửa dữ liệu.
+
+### Sửa
+
+- **Trang bán và thẻ cửa hàng của khóa học mất ảnh bìa.** Lúc khóa học được đăng lần đầu, hệ thống tạo sản phẩm cửa hàng nhưng không chép ảnh bìa của khóa học sang, nên trang bán (nơi link affiliate dẫn tới) chỉ hiện nền màu dù khóa học đã có ảnh. Nay sản phẩm tạo ra mang luôn ảnh bìa của khóa học. Sản phẩm đã tạo từ trước cũng hiện ảnh ngay: trang bán và cửa hàng lấy ảnh của khóa học khi sản phẩm chưa có ảnh riêng.
+- **Chữ tiêu đề đè lên ảnh bìa ở trang bán.** Có ảnh bìa thì trang bán không vẽ tiêu đề lên trên ảnh nữa, giống thẻ ở cửa hàng và trang khóa học. Tên sản phẩm vẫn nằm ngay bên dưới. Chưa có ảnh thì vẫn là nền màu kèm tiêu đề như trước.
+
+### Kỹ thuật
+
+- `packages/core/src/services/store.ts`: `createProduct` chép `courses.coverUrl` khi sản phẩm loại khóa học không tải ảnh riêng; `getProduct` và `listProducts` trả `coverUrl` của khóa học khi bản sao ở sản phẩm trống (hàm `coverOf`).
+- Test: `packages/core/src/test/file-cleanup.test.ts` thêm ca đăng khóa học bán lẻ lần đầu, khách chưa đăng nhập đọc trang bán, và sản phẩm cũ có bản sao ảnh trống.
+
 ## 1.41.2 - 2026-11-22
 
 Đăng ký hoặc đăng nhập từ trang của một hội thì xong là vào thẳng hội đó, theo yêu cầu của chủ dự án. Chỉ sửa giao diện web, không đổi máy chủ, không có migration.

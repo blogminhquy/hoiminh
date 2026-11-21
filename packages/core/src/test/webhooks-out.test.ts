@@ -7,7 +7,7 @@ import type { Ctx } from '../context';
 import type { EnqueueOptions, JobMap, JobName, JobQueue } from '../jobs/queue';
 import { runSweep } from '../jobs/sweep';
 import { withSystemScope } from '../lib/tenant-scope';
-import { createWebhook, deliver, dispatch } from '../services/webhooks-out';
+import { createWebhook, deliver, dispatch, rotateWebhookSecret, sendTestEvent, updateWebhook, verifySignature } from '../services/webhooks-out';
 import { createTestApp, type TestApp } from './setup';
 
 class SpyQueue implements JobQueue {
@@ -171,5 +171,53 @@ describe('deliver: không giao trùng', () => {
     expect(spy.sent).toHaveLength(0);
     const swept = await withSystemScope({ ...app.system(), queue: spy }, (c) => runSweep(c));
     expect(swept.webhookRequeued).toBe(0);
+  });
+});
+
+describe('sửa, gửi thử, đổi secret', () => {
+  /** Ghi lại header và thân của lượt POST để kiểm chữ ký. */
+  const recordingFetch = (seen: Array<{ headers: Record<string, string>; body: string }>) => (async (_url: string | URL | Request, init?: RequestInit) => {
+    seen.push({ headers: init?.headers as Record<string, string>, body: String(init?.body) });
+    return new Response('ok', { status: 200 });
+  }) as typeof fetch;
+
+  it('gửi thử đi đúng đường giao thật: sự kiện ping, có chữ ký kiểm được bằng secret của webhook', async () => {
+    const spy = new SpyQueue();
+    const ctx: Ctx = { ...app.system(), queue: spy };
+    const hook = await createWebhook(ctx, workspaceId, { url: 'https://khach.example/hook', events: ['member.joined'] });
+    const { deliveryId } = await sendTestEvent(ctx, workspaceId, hook.id);
+    expect(spy.sent).toEqual([{ name: 'webhook.deliver', payload: { deliveryId }, opts: undefined }]);
+    const seen: Array<{ headers: Record<string, string>; body: string }> = [];
+    expect(await deliverInScope(ctx, deliveryId, recordingFetch(seen))).toBe('delivered');
+    expect(seen[0]!.headers['X-HoiMinh-Event']).toBe('ping');
+    expect(JSON.parse(seen[0]!.body)).toMatchObject({ event: 'ping', data: { test: true, webhookId: hook.id } });
+    expect(await verifySignature(hook.secret, seen[0]!.headers['X-HoiMinh-Timestamp']!, seen[0]!.body, seen[0]!.headers['X-HoiMinh-Signature']!)).toBe(true);
+  });
+
+  it('đổi secret: lượt gửi sau ký bằng secret mới, secret cũ không còn khớp', async () => {
+    const ctx: Ctx = { ...app.system(), queue: new SpyQueue() };
+    const hook = await createWebhook(ctx, workspaceId, { url: 'https://khach.example/hook', events: ['member.joined'] });
+    const fresh = await rotateWebhookSecret(ctx, workspaceId, hook.id);
+    expect(fresh.secret).not.toBe(hook.secret);
+    const { deliveryId } = await sendTestEvent(ctx, workspaceId, hook.id);
+    const seen: Array<{ headers: Record<string, string>; body: string }> = [];
+    await deliverInScope(ctx, deliveryId, recordingFetch(seen));
+    const h = seen[0]!.headers;
+    expect(await verifySignature(fresh.secret, h['X-HoiMinh-Timestamp']!, seen[0]!.body, h['X-HoiMinh-Signature']!)).toBe(true);
+    expect(await verifySignature(hook.secret, h['X-HoiMinh-Timestamp']!, seen[0]!.body, h['X-HoiMinh-Signature']!)).toBe(false);
+  });
+
+  it('webhook tự tạm dừng vì lỗi: bật lại thì xóa bộ đếm lỗi và nhận sự kiện trở lại; đổi danh sách sự kiện có hiệu lực ngay', async () => {
+    const ctx: Ctx = { ...app.system(), queue: new SpyQueue() };
+    const hook = await createWebhook(ctx, workspaceId, { url: 'https://khach.example/hook', events: ['member.joined'] });
+    await app.ctx.db.update(webhooks).set({ status: 'paused', failureCount: 20 }).where(eq(webhooks.id, hook.id));
+    expect(await dispatch(ctx, workspaceId, 'member.joined', { userId: 'u1' })).toBe(0);
+    await expect(sendTestEvent(ctx, workspaceId, hook.id)).rejects.toThrow(/tạm dừng/);
+    expect(await updateWebhook(ctx, workspaceId, hook.id, { status: 'active' })).toMatchObject({ status: 'active', failureCount: 0, url: 'https://khach.example/hook' });
+    expect(await dispatch(ctx, workspaceId, 'member.joined', { userId: 'u1' })).toBe(1);
+    await updateWebhook(ctx, workspaceId, hook.id, { events: ['member.banned'], url: 'https://khach.example/moi' });
+    expect(await dispatch(ctx, workspaceId, 'member.joined', { userId: 'u1' })).toBe(0);
+    expect(await dispatch(ctx, workspaceId, 'member.banned', { userId: 'u1' })).toBe(1);
+    await expect(updateWebhook(ctx, crypto.randomUUID(), hook.id, { status: 'paused' })).rejects.toThrow();
   });
 });
