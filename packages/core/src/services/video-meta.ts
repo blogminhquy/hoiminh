@@ -2,7 +2,7 @@
 // Có YOUTUBE_API_KEY: hỏi YouTube Data API v3, lấy chắc chắn cả ba.
 // Không có key (hoặc API lỗi): tên lấy từ oEmbed (ổn định), mô tả và thời lượng đọc từ trang xem video.
 // YouTube hay chuyển máy chủ ở trung tâm dữ liệu sang trang kiểm tra robot thay vì trả trang xem; khi đó vẫn có tên, mô tả để trống.
-import { parseVideoUrl, type VideoEmbed } from '@hoiminh/contracts';
+import { parseLessonVideoUrl, type VideoEmbed } from '@hoiminh/contracts';
 
 export interface VideoMeta {
   title: string;
@@ -134,7 +134,7 @@ const cleanTitle = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, TITLE_M
  * `meta` là null khi không phải YouTube hoặc không lấy được tên (video riêng tư, đã xóa, YouTube không trả lời).
  */
 export async function fetchVideoMeta(rawUrl: string, opts: { fetch?: FetchLike; timeoutMs?: number; apiKey?: string; warn?: (msg: string, data: Record<string, unknown>) => void } = {}): Promise<VideoMetaResult> {
-  const embed = parseVideoUrl(rawUrl);
+  const embed = parseLessonVideoUrl(rawUrl);
   if (!embed || embed.provider !== 'youtube') return { embed, meta: null };
   const f: FetchLike = opts.fetch ?? ((url, init) => fetch(url, init));
   const signal = AbortSignal.timeout(opts.timeoutMs ?? 6000);
