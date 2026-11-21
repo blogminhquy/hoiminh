@@ -16,7 +16,13 @@ Bấm chuông thì hiện bảng thông báo nổi ngay tại chỗ thay vì nh�
 - **Chuông hiện số thông báo chưa đọc** thay cho chấm đỏ: 1 đến 9 hiện đúng số, nhiều hơn thì "9+". Đánh dấu đã đọc thì số trên chuông và danh sách đổi ngay lúc bấm, không chờ tải lại.
 - **Trang Thông báo xếp cái chưa đọc lên đầu** (khối "Chưa đọc"), phần đã đọc nhạt hơn và chia theo ngày như trước. Trang và bảng nổi dùng chung một kiểu dòng thông báo.
 
+### Sửa
+
+- **Nút hành động trong dòng thông báo ("Vào học", "Trả lời", "Xem ví") bị lệch.** Trước đây chữ dính sát mép trên của nút, phía dưới thừa khoảng trống, và nút đứng lệch lên trên so với dòng. Nay chữ nằm chính giữa nút, nút cao 36px và nằm giữa dòng theo chiều dọc, không xuống dòng. Trên điện thoại và trong bảng nổi (chỗ hẹp), nút nằm dưới dòng chữ, căn trái, cao 44px, để chữ không bị ép thành cột hẹp; trước đây trên điện thoại nút này bị ẩn hẳn.
+
 ### Kỹ thuật
+
+- Nguyên nhân nút lệch: thẻ nút mang cả lớp `btn` lẫn `hide-mobile`. `.hide-mobile { display: initial }` khai báo sau `.btn` trong `styles.css` nên đè mất `display: inline-flex` của `.btn`; nút thành một khối thường, `align-items` và `justify-content` hết tác dụng nên chữ nằm ở mép trên của khung cao 36px. Thêm nữa hàng dùng `align-items: flex-start` nên nút đứng ở đầu dòng thay vì giữa dòng. Nay nút không mang `hide-mobile`, khối chữ và nút nằm trong `.notif-content` (hàng ngang khi rộng, cột khi hẹp).
 
 - `apps/web/src/components/NotificationBell.tsx` (chuông và bảng nổi), `apps/web/src/components/NotificationRow.tsx` (dòng thông báo dùng chung), thay ba link chuông ở `AppShell.tsx`, `LearnerShell.tsx`, `WorkspaceShell.tsx`.
 - `apps/web/src/lib/notifications.ts`: logic thuần (nhãn số "9+", đích của thông báo, ghép "chưa đọc" với "tất cả" và bỏ trùng, chia khối, cập nhật bộ nhớ đệm khi đánh dấu đã đọc), có test trong `notifications.test.ts`. `apps/web/src/lib/use-notifications.ts`: truy vấn và thao tác đánh dấu đã đọc dùng chung.

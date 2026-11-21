@@ -104,7 +104,7 @@ export default function Page() {
               {notifSections(d.items, { byDay: true }).map((s) => (
                 <section key={s.key} aria-label={s.label}>
                   <div className="th" style={{ padding: '12px 20px 8px' }}>{s.label}</div>
-                  {s.items.map((n) => <NotificationRow key={n.id} n={n} showAction onOpen={() => { if (!n.readAt) read.mutate(n.id); }} onMarkRead={() => read.mutate(n.id)} />)}
+                  {s.items.map((n) => <NotificationRow key={n.id} n={n} onOpen={() => { if (!n.readAt) read.mutate(n.id); }} onMarkRead={() => read.mutate(n.id)} />)}
                 </section>
               ))}
               {hasMore && <div className="flex justify-center py-3" style={{ borderTop: `1px solid ${T.line}` }}><button type="button" className="btn btn-ghost btn-sm" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Đang tải…' : 'Tải thêm'}</button></div>}

@@ -648,10 +648,10 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
    nhuộm nhẹ và nút tròn "Đánh dấu đã đọc"; đã đọc thì chữ nhạt hơn. Vùng bấm của dòng và của nút đều từ 44px. */
 .notif-row { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
 .notif-row.unread { background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
-.notif-row-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: 12px; min-height: 44px; padding: 14px 12px 14px 8px; text-align: left; color: var(--ink2); cursor: pointer; }
+.notif-row-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 14px 12px 14px 8px; text-align: left; color: var(--ink2); cursor: pointer; }
 .notif-row-main:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .notif-row-main:focus-visible, .notif-row-read:focus-visible, .notif-link-btn:focus-visible, .notif-close:focus-visible, .notif-foot a:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.notif-dot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 16px; border-radius: 999px; background: transparent; }
+.notif-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; background: transparent; }
 .notif-row.unread .notif-dot { background: var(--accent); }
 .notif-row:not(.unread) .notif-avatar { opacity: 0.72; }
 .notif-title { font-size: 15px; line-height: 1.45; color: var(--ink2); overflow-wrap: anywhere; }
@@ -659,6 +659,10 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .notif-body { font-weight: 400; color: var(--ink3); }
 .notif-row.unread .notif-body { color: var(--ink2); }
 .notif-meta { font-size: 14px; line-height: 1.4; color: var(--ink3); }
+/* Khối chữ và nhãn hành động. Đủ rộng thì nhãn nằm bên phải khối chữ, giữa theo chiều dọc; chật (điện thoại, bảng nổi)
+   thì xuống dưới dòng chữ, căn trái, để chữ không bị ép thành cột hẹp. Nhãn dùng .btn nên chữ tự nằm giữa cả hai chiều. */
+.notif-content { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.notif-action { flex-shrink: 0; }
 .notif-row-read { flex-shrink: 0; width: 48px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--primary-text); cursor: pointer; }
 .notif-row-read > span { width: 34px; height: 34px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--line2); }
 .notif-row-read:hover > span { background: var(--primary-soft); border-color: var(--primary); }
@@ -687,6 +691,11 @@ section + section > .notif-section { border-top: 1px solid var(--line); }
 /* Trong bảng nổi mỗi dòng gọn lại để thấy được nhiều thông báo: nội dung tối đa ba dòng, dòng thời gian không xuống dòng. Trang /thong-bao hiện đủ. */
 .notif-panel .notif-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .notif-panel .notif-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Bố cục chật: nhãn hành động xuống dưới dòng chữ, nên dòng cao hơn. Ảnh đại diện và chấm đứng ở đầu dòng (chấm ngang tâm ảnh), không trôi xuống giữa. */
+.notif-panel .notif-row-main { align-items: flex-start; }
+.notif-panel .notif-dot { margin-top: 16px; }
+.notif-panel .notif-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+.notif-panel .notif-content > :first-child { width: 100%; }
 .notif-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 20px 36px; text-align: center; }
 .notif-empty-ic { width: 48px; height: 48px; margin-bottom: 6px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary-text); }
 .notif-foot { flex-shrink: 0; border-top: 1px solid var(--line); }
@@ -696,6 +705,11 @@ section + section > .notif-section { border-top: 1px solid var(--line); }
 @media (max-width: 767px) {
   .notif-title { font-size: 16px; }
   .notif-meta, .notif-section, .notif-link-btn { font-size: 15px; }
+  .notif-row-main { align-items: flex-start; }
+  .notif-dot { margin-top: 16px; }
+  .notif-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .notif-content > :first-child { width: 100%; }
+  .notif-action { height: 44px; }
   .notif-backdrop { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.5); cursor: default; }
   .notif-panel { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 61; width: auto; max-width: none; max-height: 86vh; max-height: 86dvh; padding-bottom: env(safe-area-inset-bottom); border: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 28px rgba(8, 24, 23, 0.24); animation: notif-sheet-in 0.18s ease-out; }
   /* Nút đóng ghim ở góc trên bên phải; hàng tiêu đề chừa chỗ cho nó. Màn hẹp thì "Đánh dấu tất cả đã đọc" bỏ biểu tượng cho vừa một hàng. */

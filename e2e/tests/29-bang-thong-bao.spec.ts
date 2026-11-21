@@ -66,6 +66,23 @@ test('chuông mở bảng thông báo tại chỗ, đánh dấu đã đọc, và
   // Trang Thông báo cũng xếp cái chưa đọc lên đầu.
   const pageOrder = await page.locator('.main .notif-row').evaluateAll((rows) => rows.map((r) => (r.classList.contains('unread') ? 'U' : 'R')).join(''));
   expect(pageOrder).toMatch(/^U*R*$/);
+
+  // Nhãn hành động của dòng ("Trả lời", "Xem"): chữ nằm giữa nút, nút nằm giữa dòng theo chiều dọc và không xuống dòng.
+  // (Trước đây lớp hide-mobile đè mất display của .btn nên chữ dính mép trên.)
+  const action = page.locator('.main .notif-action').first();
+  await expect(action).toBeVisible();
+  const m = await action.evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const t = range.getBoundingClientRect();
+    const row = el.closest('.notif-row')!.getBoundingClientRect();
+    return { height: b.height, textOff: Math.abs(t.top + t.height / 2 - (b.top + b.height / 2)), rowOff: Math.abs(b.top + b.height / 2 - (row.top + row.height / 2)), oneLine: t.height < b.height };
+  });
+  expect(m.height).toBe(36);
+  expect(m.textOff).toBeLessThanOrEqual(1.5);
+  expect(m.rowOff).toBeLessThanOrEqual(1.5);
+  expect(m.oneLine).toBe(true);
 });
 
 test.describe('điện thoại', () => {
@@ -89,6 +106,19 @@ test.describe('điện thoại', () => {
       const h = await panel.locator(sel).first().evaluate((el) => el.getBoundingClientRect().height);
       expect(h, `${sel} cao tối thiểu 44px`).toBeGreaterThanOrEqual(44);
     }
+    // Chỗ hẹp: nhãn hành động nằm dưới dòng chữ, căn trái theo dòng chữ, không ép chữ thành cột hẹp.
+    // Xem ở mục "Tất cả" để có cả thông báo đã đọc mang nhãn hành động.
+    await panel.getByRole('button', { name: 'Tất cả', exact: true }).click();
+    await expect(panel.locator('.notif-action').first()).toBeVisible();
+    const stacked = await panel.locator('.notif-row:has(.notif-action)').first().evaluate((row) => {
+      const a = row.querySelector('.notif-action')!.getBoundingClientRect();
+      const t = row.querySelector('.notif-title')!.getBoundingClientRect();
+      return { below: a.top >= t.bottom, left: Math.abs(a.left - t.left), height: a.height, titleWidth: t.width };
+    });
+    expect(stacked.below).toBe(true);
+    expect(stacked.left).toBeLessThanOrEqual(1);
+    expect(stacked.height).toBeGreaterThanOrEqual(44);
+    expect(stacked.titleWidth).toBeGreaterThan(200);
     await panel.getByRole('button', { name: 'Đóng thông báo' }).click();
     await expect(panel).toHaveCount(0);
 
