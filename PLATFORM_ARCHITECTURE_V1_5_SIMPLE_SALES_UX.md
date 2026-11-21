@@ -6432,7 +6432,7 @@ member.joined
 ↓
 plugin welcome_dm enabled?
 ↓
-Render template với {{first_name}}, {{community_name}}, {{start_link}}
+Render template với {{full_name}}, {{community_name}}, {{start_link}}
 ↓
 Tạo conversation owner ↔ member
 ↓
