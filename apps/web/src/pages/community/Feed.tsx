@@ -9,7 +9,7 @@ import { LoadingBlock } from '@/components/QueryState';
 import { Empty, ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { isPremium, useShell, type Shell } from '@/lib/community';
+import { isGuest, isPremium, useShell, type Shell } from '@/lib/community';
 import { checkoutQuery, entryChoice, promoEndLabel } from '@/lib/membership';
 import { fmtTime } from '@/lib/format';
 import { Composer } from './Composer';
@@ -34,7 +34,8 @@ function MiniComposer({ onOpen }: { onOpen: () => void }) {
 
 function Rail({ shell }: { shell: Shell }) {
   const c = shell.community;
-  const premium = shell.premium && !isPremium(shell) ? shell.premium : null;
+  // Thẻ mời nâng Premium chỉ dành cho thành viên; khách thì việc trước mắt là tham gia hội.
+  const premium = shell.premium && !isPremium(shell) && !isGuest(shell) ? shell.premium : null;
   const entry = entryChoice(premium, c.pricingMode);
   return (
     <aside className="rail">
@@ -125,10 +126,11 @@ export default function Page() {
             <span className="muted text-[13px]">{posts.length} bài</span>
           </div>
         )}
-        <MiniComposer onOpen={() => navigate(`/${slug}/bang-tin/moi`)} />
+        {/* Khách xem hội mở không có ô viết bài: dải ở đầu trang đã mời tham gia. */}
+        {!isGuest(shell) && <MiniComposer onOpen={() => navigate(`/${slug}/bang-tin/moi`)} />}
         {feed.isLoading && <LoadingBlock rows={3} />}
         {feed.isError && <ErrorBox message={errorMessage(feed.error)} onRetry={() => void feed.refetch()} />}
-        {feed.isSuccess && posts.length === 0 && <Empty title={q ? 'Không tìm thấy bài nào' : 'Chưa có bài viết'} hint={q ? 'Thử từ khóa khác' : 'Hãy là người đầu tiên chia sẻ với cộng đồng'} />}
+        {feed.isSuccess && posts.length === 0 && <Empty title={q ? 'Không tìm thấy bài nào' : 'Chưa có bài viết'} hint={q ? 'Thử từ khóa khác' : isGuest(shell) ? 'Hội chưa có bài nào' : 'Hãy là người đầu tiên chia sẻ với cộng đồng'} />}
         {posts.map((p) => <PostCard key={p.id} post={p} slug={slug} canModerate={feed.data?.pages[0]?.access.canModerate} onOpen={openPost} />)}
         {feed.hasNextPage && !q && (
           <Button block loading={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>Tải thêm</Button>

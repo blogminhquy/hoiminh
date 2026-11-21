@@ -43,18 +43,26 @@ export interface CommunityAccess {
   tierId: string | null;
   memberStatus: string | null;
   permissions: Set<Permission>;
+  /**
+   * Xem được nội dung bên trong hội (bảng tin, khóa học, sự kiện, thành viên): người có quyền `community.read`,
+   * hoặc bất kỳ ai khi hội để chế độ mở và đang hoạt động. Chỉ dùng cho các đường ĐỌC. Mọi việc ghi (đăng bài,
+   * bình luận, thả tim, bình chọn, đăng ký sự kiện) vẫn kiểm `permissions` như cũ, nên người ngoài không ghi được.
+   */
+  canView: boolean;
 }
 
 /** Xác định vai trò của actor trong một hội (chủ workspace = owner; super admin = owner khi thao tác quản trị). */
 export async function resolveCommunityAccess(ctx: Ctx, communityId: string): Promise<CommunityAccess> {
-  const community = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { id: true, workspaceId: true } });
+  const community = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { id: true, workspaceId: true, visibility: true, status: true, deletedAt: true } });
   if (!community) throw notFound('Hội không tồn tại');
-  const base: CommunityAccess = { communityId, workspaceId: community.workspaceId, role: 'guest', memberId: null, tierId: null, memberStatus: null, permissions: new Set() };
-  if (ctx.actor.type === 'system') return { ...base, role: 'owner', permissions: new Set(ROLE_PERMISSIONS.owner) };
+  // Hội mở: người ngoài (kể cả chưa đăng nhập) xem được. Hội nháp, bị khóa, đã lưu trữ hoặc đã xóa thì không.
+  const open = community.visibility === 'public' && community.status === 'active' && !community.deletedAt;
+  const base: CommunityAccess = { communityId, workspaceId: community.workspaceId, role: 'guest', memberId: null, tierId: null, memberStatus: null, permissions: new Set(), canView: open };
+  if (ctx.actor.type === 'system') return { ...base, role: 'owner', permissions: new Set(ROLE_PERMISSIONS.owner), canView: true };
   if (ctx.actor.type === 'api_key') {
     if (ctx.actor.workspaceId !== community.workspaceId) return base;
     const perms = new Set<Permission>(ctx.actor.scopes.flatMap((s) => SCOPE_PERMISSIONS[s] ?? []));
-    return { ...base, role: 'admin', permissions: perms };
+    return { ...base, role: 'admin', permissions: perms, canView: open || perms.has('community.read') };
   }
   if (ctx.actor.type !== 'user') return base;
   const userId = ctx.actor.userId;
@@ -68,7 +76,7 @@ export async function resolveCommunityAccess(ctx: Ctx, communityId: string): Pro
   else if (member && (member.status === 'active' || member.status === 'cancelling')) role = member.role;
   const permissions = new Set(ROLE_PERMISSIONS[role]);
   if (member && member.status !== 'active' && member.status !== 'cancelling' && role === 'member') permissions.clear();
-  return { ...base, role, memberId: member?.id ?? null, tierId: member?.tierId ?? null, memberStatus: member?.status ?? null, permissions };
+  return { ...base, role, memberId: member?.id ?? null, tierId: member?.tierId ?? null, memberStatus: member?.status ?? null, permissions, canView: open || permissions.has('community.read') };
 }
 
 /** Ném forbidden nếu không có quyền trong hội. */

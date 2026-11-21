@@ -45,6 +45,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     { id: 'go-account', group: 'Đi tới', label: 'Tài khoản của tôi', hint: 'Hồ sơ, mật khẩu, đăng xuất', to: '/tai-khoan/ho-so' },
 
     settings && { id: 'set-general', group: 'Cài đặt', label: 'Đổi tên, logo, mô tả hội', to: `${b}/cai-dat/chung`, keywords: 'thong tin duong dan' },
+    settings && { id: 'set-visibility', group: 'Cài đặt', label: 'Hội kín hay hội mở', to: `${b}/cai-dat/chung#che-do`, keywords: 'rieng tu cong khai public private ai xem duoc nguoi ngoai' },
     settings && { id: 'set-rules', group: 'Cài đặt', label: 'Quy tắc và câu hỏi khi tham gia', to: `${b}/cai-dat/chung`, keywords: 'noi quy' },
     settings && { id: 'set-domain', group: 'Cài đặt', label: 'Tên miền riêng', to: `${b}/cai-dat/chung`, keywords: 'domain' },
     settings && { id: 'set-spaces', group: 'Cài đặt', label: 'Chuyên mục và duyệt bài', to: `${b}/cai-dat/bang-tin`, keywords: 'bang tin quyen dang' },

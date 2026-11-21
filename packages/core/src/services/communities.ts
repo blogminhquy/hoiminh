@@ -120,14 +120,14 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
 }
 
 /** Cài đặt · Chung. */
-export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; links?: Array<{ label: string; url: string }> }) {
+export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; visibility?: 'private' | 'public'; links?: Array<{ label: string; url: string }> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   if (input.slug) await assertSlugAvailable(ctx, input.slug, communityId);
-  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true } });
+  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true, visibility: true } });
   // Tên miền riêng là tính năng trả phí: chỉ chặn khi gắn hoặc đổi tên miền, còn gỡ tên miền thì gói nào cũng làm được.
   if (input.customDomain && input.customDomain !== before?.customDomain) await requirePlanFeature(ctx, communityId, 'custom_domain');
   const patch: Partial<typeof communities.$inferInsert> = { updatedAt: ctx.now() };
-  for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'links'] as const) {
+  for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'visibility', 'links'] as const) {
     if (input[k] !== undefined) (patch as Record<string, unknown>)[k] = input[k];
   }
   if (input.name) patch.logoMark = markOf(input.name);
@@ -137,6 +137,8 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
   const replaced = [input.logoUrl !== undefined && input.logoUrl !== before?.logoUrl ? before?.logoUrl : null, input.coverUrl !== undefined && input.coverUrl !== before?.coverUrl ? before?.coverUrl : null];
   await releaseFiles(ctx, { urls: replaced }, { communityId });
   await audit(ctx, { action: 'community.update_general', resourceType: 'community', resourceId: communityId, communityId, metadata: { keys: Object.keys(patch) } });
+  // Đổi hội kín sang hội mở (hoặc ngược lại) đổi luôn việc người ngoài đọc được gì, nên ghi riêng một dòng nhật ký.
+  if (input.visibility && before && input.visibility !== before.visibility) await audit(ctx, { action: 'community.set_visibility', resourceType: 'community', resourceId: communityId, communityId, metadata: { from: before.visibility, to: input.visibility } });
   return row!;
 }
 

@@ -120,6 +120,13 @@
       "when": 1795247686562,
       "tag": "0016_slug_aliases_lesson_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795253457226,
+      "tag": "0017_community_visibility",
+      "breakpoints": true
     }
   ]
 }

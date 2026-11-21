@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { askForPushSoon } from '@/lib/pwa';
 import { useAuth } from '@/lib/auth';
+import { useJoinGate } from '@/lib/community';
 import { timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { ReactionButton, ReactionSummary } from './post/Reactions';
@@ -74,6 +75,7 @@ function Composer({ onSubmit, placeholder, loading, autoFocus, compact }: { onSu
 function One({ c, canModerate, meId, onReply, onPin, onDelete, depth = 0 }: { c: CommentItem; canModerate: boolean; meId: string | null; onReply: (parentId: string, text: string) => void; onPin: (id: string, pinned: boolean) => void; onDelete: (id: string) => void; depth?: number }) {
   const [replying, setReplying] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const gate = useJoinGate();
   const replies = showAll ? c.replies : c.replies.slice(0, 2);
   return (
     <div className="flex gap-2 items-start" id={`binh-luan-${c.id}`}>
@@ -96,7 +98,7 @@ function One({ c, canModerate, meId, onReply, onPin, onDelete, depth = 0 }: { c:
         <div className="flex items-center gap-3 text-[13px] pl-3 flex-wrap" style={{ color: T.ink3 }}>
           <span>{timeAgo(c.createdAt, true)}</span>
           <ReactionButton targetType="comment" targetId={c.id} mine={c.myReaction ?? (c.liked ? 'like' : null)} variant="text" />
-          {depth === 0 && <button type="button" className="font-semibold" style={{ color: T.ink2 }} onClick={() => setReplying((v) => !v)}>Trả lời</button>}
+          {depth === 0 && <button type="button" className="font-semibold" style={{ color: T.ink2 }} onClick={() => (gate.guest ? gate.askJoin() : setReplying((v) => !v))}>Trả lời</button>}
           {canModerate && depth === 0 && <button type="button" className="font-semibold" style={{ color: T.ink3 }} onClick={() => onPin(c.id, !c.pinned)}>{c.pinned ? 'Bỏ ghim' : 'Ghim'}</button>}
           {(canModerate || (meId && c.author.id === meId)) && <button type="button" className="font-semibold" style={{ color: T.ink3 }} onClick={() => { if (window.confirm('Xóa bình luận này?')) onDelete(c.id); }}>Xóa</button>}
         </div>
@@ -133,7 +135,11 @@ export function CommentThread({ targetType, targetId, title, extraHeader, placeh
   const del = useMutation({ mutationFn: (id: string) => api.del(`/v1/comments/${id}`), onSuccess: invalidate });
   const meId = useAuth().user?.id ?? null;
   const plain = variant === 'plain';
-  const composer = <Composer placeholder={placeholder} loading={create.isPending} onSubmit={(t) => create.mutate({ contentMd: t })} />;
+  // Khách xem hội mở đọc được bình luận; ô viết bình luận thành lời mời tham gia hội.
+  const gate = useJoinGate();
+  const composer = gate.guest
+    ? <button type="button" className="input w-full text-left text-[15px]" style={{ color: T.ink3 }} onClick={gate.askJoin}>Tham gia hội để bình luận</button>
+    : <Composer placeholder={placeholder} loading={create.isPending} onSubmit={(t) => create.mutate({ contentMd: t })} />;
   const sortButton = <button type="button" className="inline-flex items-center gap-1 text-[14px] font-semibold" style={{ color: T.ink2 }} onClick={() => setSort(sort === 'top' ? 'newest' : 'top')}>{sort === 'top' ? 'Nhiều tương tác' : 'Mới nhất'} <ChevronDown size={14} /></button>;
   return (
     <div className={plain ? 'flex flex-col gap-3' : 'card px-5 md:px-6 py-5 flex flex-col gap-4'}>

@@ -39,6 +39,10 @@ export const createCommunitySchema = z.object({
 });
 export type CreateCommunityInput = z.infer<typeof createCommunitySchema>;
 
+/** Hội kín ('private'): chỉ thành viên xem được bên trong. Hội mở ('public'): ai cũng xem được, chỉ thành viên mới đăng bài, bình luận, học. */
+export const communityVisibilitySchema = z.enum(['private', 'public']);
+export type CommunityVisibility = z.infer<typeof communityVisibilitySchema>;
+
 export const updateCommunityGeneralSchema = z.object({
   name: z.string().trim().min(3).max(80).optional(),
   slug: slugSchema.optional(),
@@ -51,6 +55,7 @@ export const updateCommunityGeneralSchema = z.object({
   introVideoUrl: z.string().url().nullable().optional(),
   customDomain: z.string().max(253).nullable().optional(),
   discoverable: z.boolean().optional(),
+  visibility: communityVisibilitySchema.optional(),
   links: z.array(z.object({ label: z.string().max(60), url: z.string().url() })).max(6).optional(),
 });
 
