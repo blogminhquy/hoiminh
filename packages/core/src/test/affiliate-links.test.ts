@@ -178,4 +178,32 @@ describe('affiliate: chương trình nền tảng tự có', () => {
     expect(w.link).toContain('/tao-hoi?ref=');
     expect((await affiliate.myPrograms(await app.as('member2')))[0]?.hasAccount).toBe(true);
   });
+  it('người vào hội khi database chưa có chương trình nền tảng: chương trình được tạo và chủ hội là người giới thiệu nền tảng', async () => {
+    await app.ctx.db.delete(affiliatePrograms).where(eq(affiliatePrograms.scopeType, 'platform'));
+    expect(await platformRows()).toHaveLength(0);
+    const member = await app.ids('user:member1');
+    const owner = await app.ids('user:minhquy');
+    await affiliate.defaultPlatformReferrer(app.system(), { userId: member, communityId: KD });
+    const [program] = await platformRows();
+    expect(program).toMatchObject({ status: 'active', commissionRateBps: 4000 });
+    const rows = await app.ctx.db.select({ accountUser: affiliateAccounts.userId }).from(affiliateAttributions).innerJoin(affiliateAccounts, eq(affiliateAccounts.id, affiliateAttributions.affiliateAccountId)).where(sql`${affiliateAttributions.userId} = ${member} and ${affiliateAttributions.programId} = ${program!.id}`);
+    expect(rows).toEqual([{ accountUser: owner }]);
+    // Gọi lại (người đó vào thêm hội khác) không ghi thêm và không tạo thêm chương trình.
+    await affiliate.defaultPlatformReferrer(app.system(), { userId: member, communityId: KD });
+    expect(await platformRows()).toHaveLength(1);
+    expect((await app.ctx.db.select({ n: sql<number>`count(*)::int` }).from(affiliateAttributions).where(sql`${affiliateAttributions.userId} = ${member} and ${affiliateAttributions.programId} = ${program!.id}`))[0]!.n).toBe(1);
+  });
+
+  it('chương trình nền tảng đang tạm dừng thì không ghi người giới thiệu mặc định', async () => {
+    const [program] = await platformRows();
+    await app.ctx.db.update(affiliatePrograms).set({ status: 'paused' }).where(eq(affiliatePrograms.id, program!.id));
+    try {
+      const member = await app.ids('user:member2');
+      await app.ctx.db.delete(affiliateAttributions).where(sql`${affiliateAttributions.userId} = ${member} and ${affiliateAttributions.programId} = ${program!.id}`);
+      await affiliate.defaultPlatformReferrer(app.system(), { userId: member, communityId: KD });
+      expect((await app.ctx.db.select({ n: sql<number>`count(*)::int` }).from(affiliateAttributions).where(sql`${affiliateAttributions.userId} = ${member} and ${affiliateAttributions.programId} = ${program!.id}`))[0]!.n).toBe(0);
+    } finally {
+      await app.ctx.db.update(affiliatePrograms).set({ status: 'active' }).where(eq(affiliatePrograms.id, program!.id));
+    }
+  });
 });
