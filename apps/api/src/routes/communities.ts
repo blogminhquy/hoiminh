@@ -16,7 +16,7 @@ communityRoutes.get('/discover', async (c) => {
   return c.json(await communities.discover(c.get('ctx'), { category: q.category, search: q.q, limit: q.limit ? Number(q.limit) : undefined }));
 });
 communityRoutes.post('/', requireAuth, async (c) => c.json(await communities.createCommunity(c.get('ctx'), await parse(createCommunitySchema, await body(c))), 201));
-communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), joinRefs(query(c).ref) ?? null)));
+communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), joinRefs(query(c).ref) ?? null, query(c).invite?.slice(0, 64) || null)));
 communityRoutes.get('/by-slug/:slug/shell', async (c) => c.json(await shell.communityShell(c.get('ctx'), c.req.param('slug'))));
 communityRoutes.post('/by-slug/:slug/join', requireAuth, async (c) => {
   const input = await parse(joinCommunitySchema, await body(c));

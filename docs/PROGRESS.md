@@ -14,7 +14,7 @@ Quy ước làm việc: mỗi phiên một nhánh và một PR, code xong phần
 | `packages/payments` SePay/MoMo/VNPAY/PayPal | ✅ xong | 9 test xanh |
 | `packages/email`, `packages/media` | ✅ xong; 20/09: R2 qua binding Worker, RecordingSender ghi mọi email | 3 + 7 test xanh |
 | `apps/api` Hono REST + webhook + cron + worker | ✅ xong | 9 test tích hợp xanh |
-| MCP từ xa `POST /mcp` 119 lệnh + cầu nối stdio `apps/mcp` | ✅ xong (1.35.0, rà soát bổ sung 21/11) | `apps/api/src/mcp.test.ts` 24 test, `apps/mcp` 2 test |
+| MCP từ xa `POST /mcp` 121 lệnh + cầu nối stdio `apps/mcp` | ✅ xong (1.35.0, rà soát bổ sung 21/11) | `apps/api/src/mcp.test.ts` 24 test, `apps/mcp` 2 test |
 | `packages/ui` token + component + CSS | ✅ xong | — |
 | `apps/web` nền (router 50 route, layouts, API client, auth, shell hội, PostCard/PhotoGrid/PollBox/CommentThread) | ✅ xong | — |
 | `apps/web` 50 trang | ✅ xong (đủ 50 route, typecheck + lint + build xanh) | — |

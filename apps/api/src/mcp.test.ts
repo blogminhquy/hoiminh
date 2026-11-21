@@ -148,6 +148,8 @@ describe('MCP từ xa: POST /mcp', () => {
     }
     expect(all.find((t) => t.name === 'create_post').inputSchema.required).toEqual(expect.arrayContaining(['communityId', 'contentMd']));
     expect(all.find((t) => t.name === 'delete_post').annotations).toMatchObject({ destructiveHint: true, readOnlyHint: false });
+    // Mời thành viên gửi email ra ngoài và có thể trao quyền quản trị: trợ lý phải hỏi lại chủ hội.
+    expect(all.find((t) => t.name === 'invite_members').annotations).toMatchObject({ destructiveHint: true });
     expect(all.find((t) => t.name === 'list_members').annotations).toMatchObject({ readOnlyHint: true });
     const few = (await rpc(readKey, 'tools/list')).result.tools.map((t: Loose) => t.name) as string[];
     expect(few).toEqual(toolsFor(['communities:read', 'members:read']).map((t) => t.name));
@@ -255,6 +257,25 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect((await tool('get_member', { communityId, memberId: m.id })).member.id).toBe(m.id);
     await tool('update_member', { communityId, memberId: m.id, tierKey: 'premium' });
     expect(await tool('invite_members', { communityId, emails: ['khach.moi@example.com'] })).toBeTruthy();
+    // Lời mời làm quản trị viên: thấy ở danh sách đang chờ, link dùng được, sai người thì bị từ chối, thu hồi thì link chết.
+    const sent = await tool('invite_members', { communityId, emails: ['moi.quan.tri@example.com'], role: 'admin' });
+    const waiting = (await tool('list_invites', { communityId })).items;
+    const inv = waiting.find((i: Loose) => i.email === 'moi.quan.tri@example.com');
+    expect(inv).toMatchObject({ role: 'admin', expired: false, url: sent[0].url });
+    expect(waiting.some((i: Loose) => i.email === 'khach.moi@example.com' && i.role === 'member')).toBe(true);
+    const inviteToken = new URL(inv.url).searchParams.get('invite')!;
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`)).data.invite).toEqual({ state: 'valid', role: 'admin', message: null });
+    const cong = (await http('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) })).data.accessToken as string;
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`, { auth: cong })).data.invite.state).toBe('wrong_email');
+    const stolen = await http('/v1/communities/by-slug/minhquy/join', { method: 'POST', auth: cong, body: JSON.stringify({ invite: inviteToken }) });
+    expect(stolen.status).toBeGreaterThanOrEqual(400);
+    expect(stolen.data.message).toContain('địa chỉ email khác');
+    expect((await tool('list_members', { communityId, q: 'congtran' })).items[0].role).toBe('member');
+    await expect(tool('invite_members', { communityId, emails: [], role: 'admin' })).rejects.toThrow(/validation_error/);
+    await tool('revoke_invite', { communityId, inviteId: inv.id });
+    expect((await tool('list_invites', { communityId })).items.some((i: Loose) => i.id === inv.id)).toBe(false);
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`)).data.invite.state).toBe('not_found');
+    await expect(tool('revoke_invite', { communityId, inviteId: inv.id })).rejects.toThrow(/not_found/);
     const courses = await tool('list_courses', { communityId });
     await tool('grant_course', { communityId, memberId: m.id, courseId: courses.items[0].id });
     expect(await tool('revoke_course', { communityId, memberId: m.id, courseId: courses.items[0].id })).toEqual({ revoked: 1 });

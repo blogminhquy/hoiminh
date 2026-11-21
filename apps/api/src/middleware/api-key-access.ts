@@ -70,7 +70,9 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   [`POST ${C}/members/:memberId/actions`, ['members:write']],
   [`POST ${C}/members/:memberId/grant-course`, ['members:write', 'entitlements:write']],
   [`POST ${C}/members/:memberId/revoke-course`, ['members:write', 'entitlements:write']],
+  [`GET ${C}/invites`, ['members:write']],
   [`POST ${C}/invites`, ['members:write']],
+  [`DELETE ${C}/invites/:inviteId`, ['members:write']],
 
   // Bảng tin
   // `posts:write` cũng đọc được bảng tin: đăng bài phải tra chuyên mục, và chuyên mục nằm trong phản hồi của bảng tin.
