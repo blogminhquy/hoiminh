@@ -8,7 +8,7 @@ import { communities, communityMembers, communityPlugins, communityTiers, conver
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, notFound } from '../errors';
-import { requireUser } from '../permissions';
+import { requireUser, resolveCommunityAccess } from '../permissions';
 import { releaseFiles } from './files';
 import { anyBlockBetween, blockState } from './safety';
 
@@ -205,13 +205,23 @@ export async function pinConversation(ctx: Ctx, conversationId: string, pinned: 
   if (!done.length) throw forbidden();
 }
 
-/** Panel bên phải màn Tin nhắn: gói, ngày tham gia, đang học, giới thiệu bởi. */
+/**
+ * Thông tin thành viên của người đang trò chuyện, hiện ở bảng "Thông tin hội thoại". Bảng này là để người quản lý hội
+ * biết mình đang nói chuyện với ai, nên phần riêng tư chỉ người có quyền quản lý thành viên của hội (chủ hội, quản trị)
+ * mới nhận: tình trạng thành viên, giá gói, khóa đang học kèm tiến độ, và người giới thiệu. Người xem khác (thành viên
+ * thường, điều hành viên) chỉ nhận đúng những gì danh bạ thành viên của hội vốn đã cho mọi thành viên thấy: vai trò,
+ * tên gói, ngày tham gia (xem memberDirectory). Trước đây ai trò chuyện cũng nhận đủ, nên một thành viên xem được tiến
+ * độ học và người giới thiệu của người khác.
+ */
 async function memberPanel(ctx: Ctx, communityId: string, otherUserId: string) {
   const m = await ctx.db.select({ m: communityMembers, tier: { key: communityTiers.key, name: communityTiers.name, monthlyMinor: communityTiers.monthlyMinor } }).from(communityMembers).leftJoin(communityTiers, eq(communityTiers.id, communityMembers.tierId)).where(and(eq(communityMembers.communityId, communityId), eq(communityMembers.userId, otherUserId))).then((r) => r[0]);
   if (!m) return null;
+  // Không xác định được quyền (hội đã bị xóa hẳn) thì coi như không có quyền: thiếu thông tin còn hơn lộ thông tin.
+  const canManage = await resolveCommunityAccess(ctx, communityId).then((a) => a.permissions.has('member.manage'), () => false);
+  if (!canManage) return { memberId: m.m.id, role: m.m.role, status: null, tier: m.tier ? { key: m.tier.key, name: m.tier.name, monthlyMinor: null } : null, joinedAt: m.m.joinedAt, learning: null, referrer: null };
   const learning = await ctx.db.select({ title: courses.title, percent: courseProgress.percent }).from(courseProgress).innerJoin(courses, eq(courses.id, courseProgress.courseId)).where(and(eq(courseProgress.userId, otherUserId), eq(courses.communityId, communityId))).orderBy(desc(courseProgress.lastAccessedAt)).limit(1).then((r) => r[0] ?? null);
   const referrer = m.m.referredByAffiliateId ? await raw(ctx.db, sql`select u.name from affiliate_accounts a join users u on u.id = a.user_id where a.id = ${m.m.referredByAffiliateId}`).then((r) => (r[0] as { name: string } | undefined)?.name ?? null) : null;
-  return { memberId: m.m.id, role: m.m.role, status: m.m.status, tier: m.tier, joinedAt: m.m.joinedAt, learning, referrer };
+  return { memberId: m.m.id, role: m.m.role, status: m.m.status as string | null, tier: m.tier, joinedAt: m.m.joinedAt, learning, referrer };
 }
 
 /** Lưu trữ / bỏ lưu trữ hội thoại (chỉ phía mình). Hội thoại đã lưu trữ nằm ở tab "Lưu trữ" và tự trở lại khi có tin mới. */

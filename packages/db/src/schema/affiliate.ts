@@ -53,6 +53,24 @@ export const affiliateAccounts = pgTable(
   (t) => [uniqueIndex('affiliate_accounts_uq').on(t.userId, t.programId), uniqueIndex('affiliate_accounts_code_uq').on(t.affiliateCode)],
 );
 
+/**
+ * Mã giới thiệu chung của một người (chủ dự án yêu cầu ngày 21/11/2026): một mã tự chọn, dùng cho link của mọi chương
+ * trình người đó làm affiliate (nền tảng và từng hội), không trùng với mã của bất kỳ ai. Mỗi người có nhiều nhất một
+ * dòng và dòng đã ghi thì không sửa nữa: đó là luật "chỉ được sửa một lần".
+ * Mã riêng của từng tài khoản (`affiliate_accounts.affiliate_code`) vẫn giữ nguyên và vẫn chạy, nên link đã chia sẻ
+ * trước khi đổi mã không hỏng. Mã chung không tự nói nó thuộc chương trình nào: chương trình lấy theo trang mà link
+ * được mở (xem canonicalRefs ở packages/core/src/services/referral-codes.ts).
+ */
+export const affiliateUserCodes = pgTable(
+  'affiliate_user_codes',
+  {
+    userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('affiliate_user_codes_code_uq').on(t.code)],
+);
+
 export const affiliateLinks = pgTable(
   'affiliate_links',
   {
