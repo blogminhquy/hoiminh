@@ -3,11 +3,12 @@
 // Dữ liệu đầu vào lấy thẳng từ schema của `@hoiminh/contracts`, sửa hợp đồng API là lệnh MCP đổi theo.
 import {
   affiliateSettingsSchema, automationRuleSchema, contactCreateSchema, contactFilterSchema, createCommentSchema, createCommunitySchema, createCourseSchema,
-  createEventSchema, createPostSchema, createProductSchema, createWebhookSchema, daySchema, eventRecordingSchema, eventsQuerySchema, feedQuerySchema, feedSettingsSchema,
+  createEventSchema, createPostSchema, createProductSchema, createWebhookSchema, eventRecordingSchema, eventsQuerySchema, feedQuerySchema, feedSettingsSchema,
   inboundSourceSchema, inboundSourceUpdateSchema, inviteSchema, joinQuestionSchema, leaderboardQuerySchema, lessonInputSchema, markPaidSchema, memberFilterSchema,
-  moduleInputSchema, orderAffiliateFilterSchema, orderViewStatusSchema, rejectWithdrawalSchema, reorderCoursesSchema, reorderSchema, storeQuerySchema, tagNameSchema, updateCommunityGeneralSchema, updateCourseSchema,
+  moduleInputSchema, rejectWithdrawalSchema, reorderCoursesSchema, reorderSchema, storeQuerySchema, tagNameSchema, updateCommunityGeneralSchema, updateCourseSchema,
   updateEventSchema, updateLessonSchema, updateMemberSchema, updatePluginSchema, pluginKeySchema, updatePricingSchema, updateProductSchema, type ApiScope,
 } from '@hoiminh/contracts';
+import { daySchema, orderAffiliateFilterSchema, orderViewStatusSchema } from '@hoiminh/contracts';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 

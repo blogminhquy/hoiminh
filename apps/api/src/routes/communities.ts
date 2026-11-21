@@ -1,5 +1,6 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, dateRangeQuerySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ordersQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, revenueQuerySchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { dateRangeQuerySchema, ordersQuerySchema, revenueQuerySchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';

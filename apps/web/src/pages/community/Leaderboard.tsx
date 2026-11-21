@@ -53,7 +53,7 @@ export default function Page() {
           {q.data?.computedAt && <span className="muted text-[13px]">Cập nhật {timeAgo(q.data.computedAt)}</span>}
         </div>
         {denied ? (
-          <div className="card p-8 text-center flex flex-col items-center gap-2"><div className="font-semibold">{q.error instanceof ApiError ? q.error.message : 'Bảng xếp hạng chưa mở'}</div><div className="muted text-[13px]">Vào Tài khoản · Affiliate của tôi để lấy link giới thiệu của bạn.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm mt-1">Ví affiliate</Link></div>
+          <div className="card p-8 text-center flex flex-col items-center gap-2"><div className="font-semibold">{q.error instanceof ApiError ? q.error.message : 'Bảng xếp hạng chưa mở'}</div><div className="muted text-[13px]">Vào Tài khoản · Affiliate để lấy link giới thiệu của bạn.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm mt-1">Ví affiliate</Link></div>
         ) : (
           <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có xếp hạng kỳ này', hint: 'Bảng cập nhật 10 phút một lần khi có hoa hồng phát sinh' }}>
             {(d) => {
