@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 1.42.0 - 2026-11-22
+
+Rà soát toàn bộ MCP, API key và webhook theo yêu cầu của chủ dự án ngày 21/11/2026: đối chiếu từng route REST với bảng quyền của API key và bộ lệnh MCP, bổ sung những chỗ còn thiếu để trợ lý AI thêm, sửa, xóa được ở bài viết, bình luận, thành viên, affiliate, sự kiện, webhook và cài đặt. Bộ lệnh MCP từ 100 lên 121 lệnh. Kèm theo đó sửa link mời vào hội (lỗi tìm ra khi rà): mã mời trên link trước đây không được đọc lại. Không có migration.
+
+### Thêm
+
+- **Sửa bình luận.** Trước đây bình luận chỉ tạo, ghim và xóa được. Nay có `PATCH /v1/comments/:id` và lệnh `update_comment` (tác giả hoặc người kiểm duyệt sửa nội dung; ảnh, lượt thích, các trả lời giữ nguyên).
+- **Thả cảm xúc qua API key.** Lệnh `toggle_reaction` thả, đổi, gỡ cảm xúc ở bài viết và bình luận dưới tên chủ hội.
+- **Hủy sự kiện và xóa bản ghi.** Lệnh `cancel_event` (`DELETE /v1/events/:id`) đưa buổi sang trạng thái đã hủy: biến khỏi lịch, ngừng nhắc, dữ liệu còn nguyên; `update_event` với `status: "scheduled"` mở lại. Lệnh `delete_event_recording` gỡ một bản ghi khỏi mục Xem lại.
+- **Quản lý từng affiliate.** Lệnh `list_affiliates` liệt kê affiliate của hội kèm mã, lượt bấm, số đơn, hoa hồng đang giữ, rút được, đã trả. Lệnh `update_affiliate` tạm khóa, mở lại hoặc đặt tỉ lệ hoa hồng riêng cho một affiliate. Lệnh `export_withdrawals_csv` xuất bảng đối soát.
+- **Thu hồi khóa học đã cấp tay.** Lệnh `revoke_course` là chiều ngược của `grant_course`; quyền có do mua hoặc do gói không bị đụng tới.
+- **Xuất thành viên ra CSV.** Lệnh `export_members_csv`.
+- **Sửa, gửi thử, đổi secret webhook.** Lệnh `update_webhook` (đổi địa chỉ, đổi sự kiện, tạm dừng, bật lại webhook đã tự dừng vì lỗi), `test_webhook` (gửi sự kiện `ping` qua đúng đường giao thật), `rotate_webhook_secret`.
+- **Ba sự kiện webhook mới.** `member.removed` (bị mời ra), `member.banned` (bị khóa), `affiliate.withdrawal_requested` (affiliate gửi yêu cầu rút, để trợ lý báo chủ hội xử lý ngay). Tổng cộng 15 sự kiện.
+- **Cài đặt hội.** Lệnh `get_community_about` đọc trang giới thiệu (gồm câu hỏi tham gia đang đặt, trước đây chỉ ghi được mà không đọc lại được), `update_about_media` đặt bộ ảnh và video giới thiệu.
+- **Tin nhắn và thông báo.** Lệnh `recall_message` (thu hồi tin đã gửi), `archive_conversation`, `mark_notifications_read`.
+- **Lời mời đang chờ và thu hồi lời mời.** Khung "Mời thành viên" hiện danh sách lời mời chưa có người nhận (email, vai trò, ngày hết hạn) kèm nút Thu hồi. Qua API và MCP có `list_invites` và `revoke_invite`.
+- **Việc lặt vặt còn thiếu lệnh.** `rotate_inbound_source` (đổi địa chỉ nguồn đồng bộ khi bị lộ), `delete_file` (bỏ tệp tải lên mà không dùng).
+
+### Sửa
+
+- **Link mời vào hội không có tác dụng.** Email mời chứa link `?invite=<mã>` nhưng không nơi nào đọc lại mã đó: người được mời vẫn phải trả lời câu hỏi và chờ duyệt như người lạ, mời với vai trò quản trị viên không trao quyền gì, và lời mời không bao giờ hết hạn hay được đánh dấu đã nhận. Nay người được mời mở link, đăng ký hoặc đăng nhập xong là vào thẳng hội: không chờ duyệt, không câu hỏi, vào được cả khi hội đã đóng cổng. Mời làm quản trị viên thì người đó nhận đúng vai trò quản trị (thành viên sẵn có được nâng lên). Lời mời gửi qua email dùng một lần trong 14 ngày và chỉ đúng email được mời, đã xác minh, mới nhận được; hết hạn, đã dùng, sai người hay đã thu hồi đều có lời báo rõ trên trang hội. Hội thu phí: được mời làm thành viên vẫn phải thanh toán.
+- **Không hủy được sự kiện.** Tầng dịch vụ nhận `status` khi sửa sự kiện nhưng hợp đồng API bỏ trường này đi, nên không có đường nào (web, REST, MCP) hủy được một buổi. Nay `updateEventSchema` nhận `status` là `scheduled` hoặc `cancelled`.
+
 ## 1.41.3 - 2026-11-22
 
 Trang bán của khóa học hiện lại ảnh bìa, theo báo lỗi của chủ dự án (trang mở từ link affiliate chỉ thấy nền màu). Không có migration, không cần sửa dữ liệu.
