@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 1.49.0 - 2026-11-22
+
+Học xong bài cuối của khóa thì ứng dụng tự chuyển sang màn chúc mừng, và tấm chứng chỉ được thiết kế lại để đáng đem khoe. Làm theo yêu cầu của chủ dự án ngày 21/11/2026. Không có migration.
+
+### Thêm
+
+- **Màn chúc mừng khi hoàn thành khóa học.** Bấm hoàn thành bài cuối cùng còn lại của một khóa thì ứng dụng tự chuyển sang trang chứng nhận ở chế độ chúc mừng: lời chúc có tên bạn và tên khóa, hoa giấy rơi vài giây, số bài và thời lượng đã học, rồi tới tấm chứng chỉ cùng lời mời khoe thành quả. Lời chúc chỉ hiện đúng một lần lúc vừa học xong; tải lại trang hay mở lại link thì chỉ còn trang chứng nhận bình thường. Máy đặt "giảm chuyển động" thì không có hoa giấy.
+- **Khóa không cấp chứng nhận cũng được chúc mừng.** Học xong khóa tắt chứng nhận thì một bảng chúc mừng mở ngay trên trang học, có số bài, thời lượng và lối về trang khóa học.
+- **Tải chứng chỉ thành ảnh.** Nút "Tải ảnh" lưu tấm chứng chỉ thành tệp PNG nét (2000 x 1414) để đăng Facebook, Zalo, LinkedIn. Ảnh giống hệt tấm đang xem, kể cả logo của hội; nếu logo không tải được thì ảnh dùng dấu chữ viết tắt của hội, việc tải ảnh không bị hỏng.
+- **Chia sẻ chứng chỉ.** Trên điện thoại, nút "Chia sẻ" mở bảng chia sẻ của máy và gửi kèm ảnh chứng chỉ khi máy cho phép. Trên máy tính không có bảng chia sẻ thì nút thành "Sao chép link".
+- **Lối vào "Xem chứng chỉ".** Khóa đã học xong và có cấp chứng nhận thì trang tổng quan khóa học và trang học đều có nút "Xem chứng chỉ" màu vàng dễ thấy, thay cho dòng chữ nhỏ ở cột bên.
+
+### Thay đổi
+
+- **Tấm chứng chỉ thiết kế lại.** Khổ A4 ngang, nền giấy ấm, khung viền kép có họa tiết ở bốn góc, logo và tên hội, dòng "CHỨNG NHẬN HOÀN THÀNH", tên học viên thật lớn, tên khóa, số bài và thời lượng, ngày hoàn thành, con dấu "Đã hoàn thành", chữ ký giảng viên, mã kiểm tra và địa chỉ kiểm tra. Tên dài tự co cỡ chữ hoặc xuống hai dòng, không tràn khung. Trên điện thoại tấm vẫn là khổ ngang thu nhỏ vừa màn hình.
+- **Trang chứng nhận gọn hơn.** Dòng link kiểm tra dài được thay bằng ô link có nút sao chép và mã kiểm tra tách nhóm bốn ký tự. Người mở link để kiểm tra thấy ngay dòng "Chứng nhận hợp lệ" nêu rõ ai, khóa nào, ngày nào. Địa chỉ `/chung-nhan/...` giữ nguyên, link đã phát hành vẫn chạy.
+- **In hoặc lưu PDF.** Bản in ra đúng một trang A4 ngang, chỉ có tấm chứng chỉ, không có nút và thanh điều hướng.
+- **Ngày trên chứng chỉ.** Viết kiểu "22 tháng 11, 2026" theo giờ Việt Nam, nên ai mở link cũng thấy cùng một ngày.
+
+### Sửa
+
+- **Ngày hoàn thành không còn bị đổi.** Trước đây bấm hoàn thành lại một bài của khóa đã học xong thì ngày hoàn thành trên chứng nhận bị ghi đè thành ngày bấm lại. Nay ngày hoàn thành giữ nguyên; chỉ đổi khi khóa được thêm bài mới và bạn học xong lần nữa.
+
 ## 1.48.1 - 2026-11-22
 
 Sửa lỗi video YouTube của bài học cứ phát ở 360p và chọn chất lượng không đổi gì, theo yêu cầu của chủ dự án ngày 21/11/2026. Không có migration.

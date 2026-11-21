@@ -1,6 +1,6 @@
 // Rail của trang khóa học: vòng tiến độ, chứng nhận, tài liệu, giảng viên, người đang học.
 import { Avatar, Button, T } from '@hoiminh/ui';
-import { BadgeCheck, Download, FileText, MessageCircle } from 'lucide-react';
+import { Award, BadgeCheck, Download, FileText, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
 import { fmtDuration, timeAgo } from '@/lib/format';
@@ -25,7 +25,7 @@ export function ProgressRing({ percent, doneLessons, watchedSeconds, lastAccesse
       </div>
       {certificate && (
         percent >= 100 && certificateUrl
-          ? <Link to={certificateUrl} className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px] font-semibold" style={{ background: T.tealSoft, color: T.tealText }}><BadgeCheck size={16} /><span>Xem chứng nhận hoàn thành của bạn</span></Link>
+          ? <Link to={certificateUrl} className="btn btn-gold w-full"><Award size={18} />Xem chứng chỉ của bạn</Link>
           : <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[12px]" style={{ background: T.goldSoft, color: T.goldDark }}><BadgeCheck size={16} /><span>Hoàn thành 100% để nhận <strong>chứng nhận</strong> có tên bạn và link kiểm tra.</span></div>
       )}
     </div>
