@@ -55,9 +55,6 @@ export const reorderSchema = z.object({
   modules: z.array(z.object({ id: idSchema, sortOrder: z.number().int(), lessonIds: z.array(idSchema) })),
 });
 
-/** Thứ tự thẻ khóa học trong thư viện của hội: danh sách id theo thứ tự mới. */
-export const reorderCoursesSchema = z.object({ courseIds: z.array(idSchema).min(1).max(500) });
-
 export const embedSchema = z.object({
   provider: videoProviderSchema,
   externalId: z.string(),

@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.36.3 - 2026-11-21
+## 1.36.2 - 2026-11-21
 
 Giảm CPU và số câu lệnh database của mỗi request, theo yêu cầu của chủ dự án sau khi rà soát giới hạn 10 ms CPU của gói Workers miễn phí. Không đổi tính năng, không đổi dữ liệu trả về, không có migration.
 
@@ -15,28 +15,6 @@ Số đo dưới đây lấy trên workerd chạy tại máy (cùng nhân với 
 ### Chưa giải quyết được bằng mã
 
 - Đăng nhập (khoảng 19 ms CPU) và đăng ký (khoảng 43 ms) vẫn vượt 10 ms vì riêng bước băm mật khẩu PBKDF2 100.000 vòng đã tốn khoảng 13 ms. Không giảm số vòng vì đó là lớp bảo vệ mật khẩu. Hai đường này chỉ chạy ổn định trên gói Workers Paid.
-## 1.36.2 - 2026-11-21
-
-Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Theo yêu cầu của chủ dự án.
-
-### Thêm
-
-- **Nút ba chấm ở góc trên bên phải mỗi thẻ khóa học.** Chỉ người quản lý khóa (chủ hội, quản trị viên) thấy. Bấm vào mở menu: Cài đặt khóa học, Soạn bài học, Xem trang khóa học, Đăng khóa học hoặc Gỡ về nháp, Chuyển lên trước, Chuyển ra sau, Nhân bản khóa học, Chép link khóa học, Xóa khóa học. Trên máy tính menu thả ngay dưới nút; trên điện thoại menu trượt lên từ đáy màn hình, hàng cao 48px, chữ 16px cho dễ bấm. Bấm ra ngoài hoặc phím Esc để đóng.
-- **Sắp thứ tự thẻ khóa học.** "Chuyển lên trước" và "Chuyển ra sau" đổi chỗ thẻ với thẻ đứng cạnh, thấy ngay trên màn hình. Thứ tự này áp dụng cho mọi học viên của hội. Trước đây thư viện chỉ xếp theo ngày tạo, không đổi được.
-- **Nhân bản khóa học.** Bản sao là nháp (chỉ người quản lý thấy), tên thêm "(bản sao)", đứng ngay sau khóa gốc, có đủ thông tin, cài đặt, chương, bài học và tài liệu đính kèm. Không chép tiến độ học viên, bình luận hay sản phẩm cửa hàng.
-- Sau mỗi thao tác có một dòng báo kết quả ngay trên lưới thẻ (đã nhân bản, đã đăng, đã chép link, hoặc lý do không làm được, ví dụ khóa chưa có bài nên chưa đăng được). Xóa khóa học luôn hỏi lại trước khi xóa.
-- Hai lệnh MCP mới cho trợ lý AI: `duplicate_course` và `reorder_courses` (phạm vi `courses:write`), nâng bộ lệnh lên 100.
-
-### Thay đổi
-
-- Với người quản lý khóa, nhãn "Hoàn thành" trên bìa thẻ dời sang góc trái để nhường góc phải cho nút ba chấm. Học viên vẫn thấy như cũ.
-
-### Kỹ thuật
-
-- API mới: `PUT /v1/communities/:id/courses/order` (thân `{ courseIds }`, khóa không có trong danh sách giữ thứ tự cũ và xếp sau) và `POST /v1/courses/:id/duplicate`. Cả hai cần quyền `course.manage`, đã thêm vào bảng luật API key.
-- `packages/core/src/services/courses.ts`: `reorderCourses`, `duplicateCourse`. Giao diện: `apps/web/src/pages/community/CourseMenu.tsx`, lớp `.course-more`, `.course-menu` trong `packages/ui/src/styles.css`.
-- Test: `packages/core/src/test/course-manage.test.ts` (6 test), thêm một test HTTP trong `apps/api/src/api.test.ts`.
-- Không có migration database (dùng cột `courses.sort_order` đã có sẵn).
 ## 1.36.1 - 2026-11-21
 
 ### Thêm

@@ -90,8 +90,6 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   [`POST ${C}/courses`, ['courses:write']],
   ['PATCH /v1/courses/:id', ['courses:write']],
   ['DELETE /v1/courses/:id', ['courses:write']],
-  [`PUT ${C}/courses/order`, ['courses:write']],
-  ['POST /v1/courses/:id/duplicate', ['courses:write']],
   ['POST /v1/courses/:id/modules', ['courses:write']],
   ['PATCH /v1/courses/:id/modules/:moduleId', ['courses:write']],
   ['DELETE /v1/modules/:id', ['courses:write']],

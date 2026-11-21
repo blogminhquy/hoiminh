@@ -89,28 +89,6 @@ describe('API', () => {
     const list = await courses.json();
     expect(list.items.find((c: { title: string }) => c.title === 'Funnel Money Model 2026').locked).toBe(false);
   });
-  it('quản lý khóa tại thư viện: sắp thứ tự và nhân bản qua HTTP, người chưa đăng nhập bị chặn', async () => {
-    const list = async () => (await (await json(`/v1/communities/${communityId}/courses`, { auth: token })).json()).items as Array<{ id: string; title: string; status: string }>;
-    const before = await list();
-    const reversed = before.map((c) => c.id).reverse();
-    expect((await json(`/v1/communities/${communityId}/courses/order`, { method: 'PUT', body: JSON.stringify({ courseIds: reversed }) })).status).toBe(401);
-    const ordered = await json(`/v1/communities/${communityId}/courses/order`, { method: 'PUT', auth: token, body: JSON.stringify({ courseIds: reversed }) });
-    expect(ordered.status).toBe(200);
-    expect((await list()).map((c) => c.id)).toEqual(reversed);
-    expect((await json(`/v1/communities/${communityId}/courses/order`, { method: 'PUT', auth: token, body: JSON.stringify({ courseIds: [] }) })).status).toBe(422);
-
-    const source = before[0]!;
-    expect((await json(`/v1/courses/${source.id}/duplicate`, { method: 'POST', body: '{}' })).status).toBe(401);
-    const dup = await json(`/v1/courses/${source.id}/duplicate`, { method: 'POST', auth: token, body: '{}' });
-    expect(dup.status).toBe(201);
-    const copy = await dup.json();
-    expect(copy).toMatchObject({ title: `${source.title} (bản sao)`, status: 'draft' });
-    const after = await list();
-    expect(after[after.findIndex((c) => c.id === source.id) + 1]?.id).toBe(copy.id);
-    // Dọn bản sao để các test sau vẫn thấy thư viện như seed.
-    expect((await json(`/v1/courses/${copy.id}`, { method: 'DELETE', auth: token })).status).toBeLessThan(300);
-    expect((await list()).map((c) => c.id)).not.toContain(copy.id);
-  });
   it('API key: tạo, gọi bằng key, thu hồi', async () => {
     const me = await json('/v1/me/workspace', { auth: token });
     const wsId = (await me.json()).workspace.id;
