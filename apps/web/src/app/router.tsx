@@ -1,5 +1,5 @@
 // Bảng route: công khai (trang chủ "/" là Khám phá), chủ hội (/admin), hội (/:slug/..., gồm Tiền, Affiliate và Cài đặt 4 nhóm của người quản lý), Khu học tập người mua lẻ (/hoc), tài khoản, quản trị hệ thống (/he-thong).
-import { lazy, Suspense, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useLocation, useParams, type RouteObject } from 'react-router-dom';
 import { InstallGate } from '@/components/InstallGate';
 import { FeatureGate } from '@/components/PlanGate';
@@ -8,6 +8,7 @@ import { AdminShell } from '@/layouts/AdminShell';
 import { AppShell } from '@/layouts/AppShell';
 import { AccountShell, LearnerShell } from '@/layouts/LearnerShell';
 import { WorkspaceShell } from '@/layouts/WorkspaceShell';
+import { rememberRef } from '@/lib/referral';
 
 // InstallGate bọc mọi khu vực của người đã đăng nhập (trừ Quản trị hệ thống): trên điện thoại, từ lần vào thứ hai,
 // phải thêm Hội Mình ra màn hình chính. Các trang công khai (trang chủ, đăng nhập, thanh toán) không đi qua cổng này.
@@ -162,6 +163,13 @@ const adminRoutes: RouteObject = {
   ],
 };
 
+/** Gốc của mọi trang: link affiliate (`?ref=`) dẫn tới trang nào cũng được ghi nhớ, không riêng trang giới thiệu hội. */
+function Root() {
+  const { search } = useLocation();
+  useEffect(() => { rememberRef(new URLSearchParams(search).get('ref')); }, [search]);
+  return <Outlet />;
+}
+
 export const router = createBrowserRouter([
-  { element: <Outlet />, children: [...publicRoutes, ownerRoutes, learnerRoutes, accountRoutes, adminRoutes, communityRoutes] },
+  { element: <Root />, children: [...publicRoutes, ownerRoutes, learnerRoutes, accountRoutes, adminRoutes, communityRoutes] },
 ]);

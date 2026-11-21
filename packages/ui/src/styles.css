@@ -487,6 +487,26 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-menu [role='menuitem'] { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border-radius: 8px; font-size: 15px; text-align: left; color: var(--ink); white-space: nowrap; }
 .chat-menu [role='menuitem']:hover { background: var(--bg); }
 
+/* Menu ba chấm trên thẻ khóa học (chỉ người quản lý khóa thấy). Máy tính: bảng thả dưới nút, tràn ra ngoài thẻ được.
+   Điện thoại: bảng trượt từ đáy, nằm trên thanh dưới (30), hàng cao 48px cho dễ bấm. */
+.course-more { position: absolute; top: 10px; right: 10px; z-index: 2; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: rgba(15, 31, 29, 0.74); color: #FFFFFF; }
+.course-more:hover, .course-more.on { background: rgba(15, 31, 29, 0.94); }
+.course-more:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.course-menu-backdrop { position: fixed; inset: 0; z-index: 40; cursor: default; }
+.course-menu { position: absolute; z-index: 41; top: 56px; right: 10px; min-width: 248px; max-width: calc(100vw - 32px); padding: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(8, 24, 23, 0.16); }
+.course-menu [role='menuitem'] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 12px; border-radius: 8px; font-size: 15px; font-weight: 500; text-align: left; color: var(--ink); white-space: nowrap; }
+.course-menu [role='menuitem']:hover:not(:disabled) { background: var(--bg); }
+.course-menu [role='menuitem']:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.course-menu [role='menuitem']:disabled { opacity: 0.4; cursor: default; }
+.course-menu-sep { height: 1px; margin: 6px 4px; background: var(--line); }
+.course-menu-title { display: none; }
+@media (max-width: 767px) {
+  .course-menu-backdrop { z-index: 60; background: rgba(0, 0, 0, 0.5); }
+  .course-menu { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 61; min-width: 0; max-width: none; max-height: 82vh; overflow-y: auto; overscroll-behavior: contain; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); border: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 28px rgba(8, 24, 23, 0.24); }
+  .course-menu [role='menuitem'] { min-height: 48px; padding: 0 14px; font-size: 16px; }
+  .course-menu-title { display: block; padding: 8px 14px 10px; font-size: 16px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+}
+
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
 .chat-scroll > :first-child { margin-top: auto; }
