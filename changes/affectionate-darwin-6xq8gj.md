@@ -2,7 +2,7 @@
 bump: minor
 ---
 
-Thêm lựa chọn hội kín hay hội mở trong Cài đặt, theo yêu cầu của chủ dự án ngày 21/11/2026. Có migration database (`0017_community_visibility`): thêm cột `communities.visibility`, mặc định `private`, nên mọi hội đang có vẫn là hội kín như trước.
+Thêm lựa chọn hội kín hay hội mở trong Cài đặt, theo yêu cầu của chủ dự án ngày 21/11/2026. Có migration database (`0018_community_visibility`): thêm cột `communities.visibility`, mặc định `private`, nên mọi hội đang có vẫn là hội kín như trước.
 
 ### Thêm
 
