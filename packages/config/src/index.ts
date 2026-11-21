@@ -169,8 +169,15 @@ export const BUSINESS = {
   defaultLocale: 'vi-VN',
 } as const;
 
-/** Slug bị cấm dùng cho hội (trùng route hệ thống). */
+/**
+ * Slug bị cấm dùng cho hội (trùng route hệ thống). Trang của hội nằm ở `hoiminh.com/<slug>`, nên mọi đoạn đầu đường dẫn
+ * mà hệ thống đã dùng đều phải có ở đây, không thì hội mang tên đó bị che mất trang. Ba nguồn phải khớp, có test
+ * `reserved-paths.test.ts` kiểm: route cấp cao nhất của web (`apps/web/src/app/router.tsx`), các đường dẫn chạy Worker
+ * trước giao diện (`run_worker_first` trong `apps/api/wrangler.toml`), và thư mục tệp tĩnh của web (`apps/web/public`).
+ */
 export const RESERVED_SLUGS = new Set([
+  // Còn thiếu trước ngày 22/11/2026: trang chứng nhận của web, các đường dẫn Worker trả lời thay giao diện, thư mục biểu tượng.
+  'chung-nhan', 'mcp', 'webhooks', 'pay', 'files', 'health', 'icons',
   'admin', 'he-thong', 'api', 'v1', 'kham-pha', 'dang-nhap', 'dang-ky', 'quen-mat-khau', 'dat-lai-mat-khau',
   'xac-minh-email', 'kich-hoat', 'vao', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
   'static', 'hoiminh', 'www', 'app', 'mail', 'support', 'help',
