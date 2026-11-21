@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock } f
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
+import { DrivePlayer } from '@/components/DrivePlayer';
 import { QueryState } from '@/components/QueryState';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { api } from '@/lib/api';
@@ -98,6 +99,9 @@ export default function Page() {
                 {d.locked ? <LockedPlayer d={d} slug={slug} courseHref={links.course(d.course.id)} /> : d.embed?.provider === 'youtube' ? (
                   // YouTube: trình phát riêng, không bấm sang YouTube được và không hiện video gợi ý. Nền tảng khác giữ khung nhúng gốc.
                   <YouTubePlayer key={d.embed.externalId} videoId={d.embed.externalId} title={d.lesson.title} vertical={isVerticalVideoUrl(d.lesson.videoUrl)} />
+                ) : d.embed?.provider === 'gdrive' ? (
+                  // Google Drive: khung xem trước của Drive, chặn mở sang Drive (nơi có link gốc và nút tải về).
+                  <DrivePlayer key={d.lesson.id} src={d.embed.embedUrl} title={d.lesson.title} />
                 ) : d.embed ? (
                   <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '16 / 9', background: T.player }}><iframe src={d.embed.embedUrl} title={d.lesson.title} className="absolute inset-0 w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
                 ) : null}

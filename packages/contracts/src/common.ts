@@ -55,7 +55,7 @@ export const paymentStatusSchema = z.enum([
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 
 /** Nhà cung cấp video nhúng ngoài. */
-export const videoProviderSchema = z.enum(['youtube', 'tiktok', 'facebook', 'loom', 'vimeo', 'bunny']);
+export const videoProviderSchema = z.enum(['youtube', 'tiktok', 'facebook', 'loom', 'vimeo', 'bunny', 'gdrive']);
 export type VideoProvider = z.infer<typeof videoProviderSchema>;
 
 /** Chuẩn hóa chuỗi thành slug tiếng Việt không dấu. */

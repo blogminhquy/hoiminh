@@ -1,28 +1,37 @@
 # CHANGELOG
 
-## 1.37.0 - 2026-11-21
+## 1.36.3 - 2026-11-21
 
-Gói Hội Mình bán theo bốn kỳ với giá riêng từng kỳ, theo yêu cầu của chủ dự án ngày 21/11/2026. Thay luật "chỉ bán hai chu kỳ, giá 3 tháng và 1 năm tự tính từ giá tháng" của kế hoạch 11/11/2026.
+Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Bài học nhận thêm link Google Drive, phát ngay trong trang và chặn mở sang Drive. Theo yêu cầu của chủ dự án.
 
 ### Thêm
 
-- **Bốn kỳ trả tiền: 1 tháng, 3 tháng, 6 tháng, 1 năm.** Số ngày của từng kỳ là 30, 90, 180, 365. Gia hạn nối tiếp và nâng gói tặng ngày còn lại vẫn như cũ, dùng được với mọi kỳ.
-- **Quản trị nhập giá riêng cho từng kỳ của từng gói** ở Hệ thống, Gói nền tảng. Dưới mỗi ô có ghi giá quy ra mỗi tháng để dễ so.
-- **Kỳ nào để giá 0 thì không bán.** Trang mua gói, bảng giá công khai và bước chọn gói khi tạo hội thứ hai chỉ hiện tab của kỳ có ít nhất một gói đang bán; gói không bán kỳ đang chọn thì không có thẻ ở kỳ đó. Gói để 0 ở cả bốn kỳ thì không hiện ở đâu để mua. Gọi thẳng API mua một kỳ có giá 0 cũng bị từ chối.
-- **Lời mời tự tính theo giá đã nhập.** "Tặng 2 tháng" không còn viết cứng: mức lợi của kỳ dài tính so với kỳ ngắn nhất gói đang bán, ra số tháng tròn thì ghi "tặng N tháng", không thì ghi "tiết kiệm N%".
+- **Bài học dùng link Google Drive.** Ở ô Video của màn Soạn bài học, dán link tệp Drive đang chia sẻ "Bất kỳ ai có đường liên kết" (dạng `drive.google.com/file/d/...`, `open?id=...`, `uc?id=...`). Tệp phát ngay trong trang bài học bằng khung xem trước của Drive, dùng được cho video và cả PDF. Link thư mục không nhận. Nhập nhanh từ danh sách link cũng nhận link Drive.
+- **Chặn tải và chặn mở sang Drive.** Nút "Mở trong cửa sổ mới" của Drive (đường dẫn tới link gốc và nút tải về) bị vô hiệu: khung phát không cho mở cửa sổ mới, và có một lớp chắn đè lên đúng chỗ nút đó. Chuột phải trên khung bị tắt. Google không nhận được địa chỉ trang bài học.
+- **Không gửi link gốc cho học viên.** Học viên chỉ nhận địa chỉ khung phát; link chia sẻ gốc và id tệp ở dạng trường riêng chỉ người quản lý khóa nhận. Tên bài tạm khi nhập nhanh link Drive không kèm id tệp.
+- Khi dán link Drive, màn soạn bài hiện hai việc chủ khóa cần làm trên Drive: đặt quyền "Bất kỳ ai có đường liên kết" và tắt "Người xem có thể tải xuống".
+- **Nút ba chấm ở góc trên bên phải mỗi thẻ khóa học.** Chỉ người quản lý khóa (chủ hội, quản trị viên) thấy. Bấm vào mở menu: Cài đặt khóa học, Soạn bài học, Xem trang khóa học, Đăng khóa học hoặc Gỡ về nháp, Chuyển lên trước, Chuyển ra sau, Nhân bản khóa học, Chép link khóa học, Xóa khóa học. Trên máy tính menu thả ngay dưới nút; trên điện thoại menu trượt lên từ đáy màn hình, hàng cao 48px, chữ 16px cho dễ bấm. Bấm ra ngoài hoặc phím Esc để đóng.
+- **Sắp thứ tự thẻ khóa học.** "Chuyển lên trước" và "Chuyển ra sau" đổi chỗ thẻ với thẻ đứng cạnh, thấy ngay trên màn hình. Thứ tự này áp dụng cho mọi học viên của hội. Trước đây thư viện chỉ xếp theo ngày tạo, không đổi được.
+- **Nhân bản khóa học.** Bản sao là nháp (chỉ người quản lý thấy), tên thêm "(bản sao)", đứng ngay sau khóa gốc, có đủ thông tin, cài đặt, chương, bài học và tài liệu đính kèm. Không chép tiến độ học viên, bình luận hay sản phẩm cửa hàng.
+- Sau mỗi thao tác có một dòng báo kết quả ngay trên lưới thẻ (đã nhân bản, đã đăng, đã chép link, hoặc lý do không làm được, ví dụ khóa chưa có bài nên chưa đăng được). Xóa khóa học luôn hỏi lại trước khi xóa.
+- Hai lệnh MCP mới cho trợ lý AI: `duplicate_course` và `reorder_courses` (phạm vi `courses:write`), nâng bộ lệnh lên 100.
 
 ### Thay đổi
 
-- **Sau khi cập nhật, trang mua gói chưa đổi gì.** Giá 3 tháng và 1 năm giữ nguyên con số đang bán; 1 tháng và 6 tháng để 0 (trước đây không bán) cho tới khi quản trị nhập giá.
-- **Bảng gói có thêm hai luật kiểm tra khi lưu.** Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn (bắt lỗi gõ thiếu một số 0). Gói cao hơn không được rẻ hơn gói thấp hơn ở kỳ mà cả hai cùng bán.
-- **Bảng so sánh** có một dòng giá cho mỗi kỳ đang bán, gói không bán kỳ đó ghi "Không bán". Bỏ dòng "Giá niêm yết mỗi tháng".
-- **Lời mời nâng gói** ghi "từ ... mỗi tháng" theo kỳ rẻ nhất, và không gợi ý gói đã ngừng bán.
-- **Dãy tab kỳ hạn trên điện thoại** thu lề để bốn tab nằm gọn một hàng.
-- API: `GET /v1/plans` và `GET /v1/admin/plans` trả `prices` (`monthly`, `quarterly`, `semiannual`, `yearly`) thay cho `monthlyMinor`; `PUT /v1/admin/plans` nhận `prices`; `POST /v1/checkout` cho gói nhận thêm `cycle` là `monthly` và `semiannual`. Số liệu gói trả `cycleCounts` thay cho `quarterlyCount`, `yearlyCount`.
+- Với người quản lý khóa, nhãn "Hoàn thành" trên bìa thẻ dời sang góc trái để nhường góc phải cho nút ba chấm. Học viên vẫn thấy như cũ.
 
-### Database
+### Kỹ thuật
 
-- Migration `0017_plan_cycle_prices`: thêm cột `plans.cycle_prices` (jsonb) và điền sẵn từ giá cũ. Chạy lại được. **Áp dụng lên database thật trước khi merge.**
+- API mới: `PUT /v1/communities/:id/courses/order` (thân `{ courseIds }`, khóa không có trong danh sách giữ thứ tự cũ và xếp sau) và `POST /v1/courses/:id/duplicate`. Cả hai cần quyền `course.manage`, đã thêm vào bảng luật API key.
+- `packages/core/src/services/courses.ts`: `reorderCourses`, `duplicateCourse`. Giao diện: `apps/web/src/pages/community/CourseMenu.tsx`, lớp `.course-more`, `.course-menu` trong `packages/ui/src/styles.css`.
+- Test: `packages/core/src/test/course-manage.test.ts` (6 test), thêm một test HTTP trong `apps/api/src/api.test.ts`.
+- Google Drive: `parseDriveUrl`, `parseLessonVideoUrl` trong `packages/contracts/src/learning.ts` (tách khỏi `parseVideoUrl` nên bài viết, sự kiện, trang giới thiệu không nhận Drive), `apps/web/src/components/DrivePlayer.tsx`, `POST /v1/video/parse` nhận thêm `lesson: true`. Test: `packages/core/src/test/lesson-drive.test.ts` (23 test).
+- Không có migration database (dùng cột `courses.sort_order` đã có sẵn; `video_provider` là cột chữ nên nhận thêm giá trị `gdrive`).
+
+### Giới hạn cần biết
+
+- **Không giấu được link Drive với người rành kỹ thuật.** Trình duyệt của học viên tải tệp thẳng từ Google, nên địa chỉ khung phát (có id tệp) vẫn đọc được trong công cụ nhà phát triển của trình duyệt. Phần chặn ở trên ngăn người dùng thông thường. Lớp chặn tải thật sự là cài đặt "Người xem có thể tải xuống" trên Drive: tắt mục đó thì có link cũng không tải được bằng nút của Drive.
+- Phần chặn chưa thử được với Google Drive thật trên máy phát triển (máy đó không ra được Google). Cần mở một bài Drive trên bản chạy thật để xác nhận video phát bình thường và nút mở sang Drive không còn bấm được.
 
 ## 1.36.2 - 2026-11-21
 
@@ -39,6 +48,7 @@ Số đo dưới đây lấy trên workerd chạy tại máy (cùng nhân với 
 ### Chưa giải quyết được bằng mã
 
 - Đăng nhập (khoảng 19 ms CPU) và đăng ký (khoảng 43 ms) vẫn vượt 10 ms vì riêng bước băm mật khẩu PBKDF2 100.000 vòng đã tốn khoảng 13 ms. Không giảm số vòng vì đó là lớp bảo vệ mật khẩu. Hai đường này chỉ chạy ổn định trên gói Workers Paid.
+
 ## 1.36.1 - 2026-11-21
 
 ### Thêm

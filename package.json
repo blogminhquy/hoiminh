@@ -1,7 +1,7 @@
 {
   "name": "hoiminh",
   "private": true,
-  "version": "1.37.0",
+  "version": "1.36.3",
   "description": "Hội Mình · nền tảng cộng đồng, khóa học và thanh toán cho Việt Nam",
   "packageManager": "pnpm@9.15.4",
   "engines": {
@@ -23,7 +23,10 @@
     "db:reset": "pnpm --filter @hoiminh/db reset",
     "deploy": "node infra/deploy.mjs",
     "deploy:check": "node infra/verify-live.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "test:scripts": "node --test \"scripts/*.test.mjs\"",
+    "check:parallel": "node scripts/check-parallel.mjs",
+    "version:stamp": "node scripts/stamp-version.mjs",
+    "check": "pnpm check:parallel && pnpm typecheck && pnpm lint && pnpm test && pnpm test:scripts"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",

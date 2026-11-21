@@ -181,7 +181,7 @@ Không còn nhãn phiên bản trên mọi màn hình. Mọi thứ nằm ở **Q
 
 - **Bản đang chạy**: phiên bản, nhánh, giờ build, commit của trình duyệt đang mở, so với `/version.json` trên Cloudflare.
 - **Phát hành**: danh sách 15 bản gần nhất đã tải lên Cloudflare. Bấm **Cập nhật** để đưa một bản lên chạy 100% cho mọi người, bấm **Quay lui** ở bản cũ hơn khi có lỗi. Mỗi lần bấm được ghi vào nhật ký thao tác (`release.deploy`).
-- **Lịch sử phiên bản**: đọc từ `CHANGELOG.md` lúc build, nên viết CHANGELOG là đủ.
+- **Lịch sử phiên bản**: đọc từ `CHANGELOG.md` lúc build. Nhánh không viết thẳng vào CHANGELOG mà viết phiếu trong `changes/`; phiên merge gom phiếu vào CHANGELOG lúc đóng số (xem `changes/README.md`).
 
 Người dùng thường không thấy gì: khi máy chủ có bản mới, trình duyệt tự nạp lại ở lần chuyển trang kế tiếp (không mất nội dung đang gõ dở), và nếu chunk cũ đã bị xóa sau deploy thì cũng tự nạp lại một lần.
 
@@ -193,7 +193,7 @@ Bật phát hành thủ công (admin bấm mới lên bản mới):
 
 Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
 
-Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
+Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Không tăng số bằng tay: `pnpm version:stamp` ghi cả ba nơi lúc merge (luật ở `CLAUDE.md`, mục "Làm song song nhiều phiên"). Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 
 ## Cấu hình cổng thanh toán
 
@@ -216,6 +216,6 @@ Super admin có thể bật/tắt từng cổng và nhập credential trong `/he
 
 - REST: prefix `/v1`, xác thực `Authorization: Bearer <JWT>` (web dùng cookie httpOnly `hm_at` thay cho header, gửi `X-HM-Auth: cookie` khi đăng nhập) hoặc API key `hm_live_…`/`hm_test_…` (tạo ở **Hội của tôi · Nhà phát triển**, `/admin/nha-phat-trien`). Lỗi trả `{ code, message }`.
 - Webhook gửi đi: đăng ký URL + sự kiện ở **Hội của tôi · Nhà phát triển**; Hội Mình ký HMAC-SHA256 ở header `X-HoiMinh-Signature`, thử lại theo backoff, lịch sử 10 lần gửi gần nhất hiện ngay trong màn đó. 12 sự kiện (`WEBHOOK_EVENTS`), trong đó `post.created` và `comment.created` kèm nội dung, tác giả, đường dẫn và cờ `viaApiKey` (nội dung do chính API key tạo, để trợ lý không tự trả lời mình).
-- MCP từ xa: `POST https://api.hoiminh.com/mcp` (cũng chạy ở `https://hoiminh.com/mcp`), giao thức MCP Streamable HTTP dạng JSON, không giữ phiên. Xác thực bằng API key ở header `Authorization: Bearer hm_live_…`. Trợ lý AI (Javis, Claude, Cursor…) chỉ cần địa chỉ này và một key, không phải cài gì. Bộ lệnh nằm ở `apps/api/src/mcp/tools.ts` (98 lệnh: hội, thành viên, bảng tin, khóa học, sự kiện, cửa hàng, doanh thu và đơn hàng, affiliate, thẻ và quy tắc tự động, tin nhắn, webhook, tải tệp); mỗi lệnh gọi lại chính REST `/v1` bằng key của người gọi nên quyền và nhật ký giống hệt REST. `tools/list` chỉ trả những lệnh mà phạm vi của key gọi được. Cờ `mcp` (Hệ thống, Gói nền tảng, Tính năng) tắt thì địa chỉ trả 403.
+- MCP từ xa: `POST https://api.hoiminh.com/mcp` (cũng chạy ở `https://hoiminh.com/mcp`), giao thức MCP Streamable HTTP dạng JSON, không giữ phiên. Xác thực bằng API key ở header `Authorization: Bearer hm_live_…`. Trợ lý AI (Javis, Claude, Cursor…) chỉ cần địa chỉ này và một key, không phải cài gì. Bộ lệnh nằm ở `apps/api/src/mcp/tools.ts` (100 lệnh: hội, thành viên, bảng tin, khóa học, sự kiện, cửa hàng, doanh thu và đơn hàng, affiliate, thẻ và quy tắc tự động, tin nhắn, webhook, tải tệp); mỗi lệnh gọi lại chính REST `/v1` bằng key của người gọi nên quyền và nhật ký giống hệt REST. `tools/list` chỉ trả những lệnh mà phạm vi của key gọi được. Cờ `mcp` (Hệ thống, Gói nền tảng, Tính năng) tắt thì địa chỉ trả 403.
 - MCP stdio: `pnpm --filter @hoiminh/mcp start` với `HOIMINH_API_URL` và `HOIMINH_API_KEY`, là cầu nối mỏng tới MCP từ xa ở trên cho ứng dụng chỉ nhận máy chủ chạy trên máy.
 - Phạm vi API key (19 phạm vi, `API_SCOPES` trong `packages/contracts/src/platform.ts`): `communities:read|write`, `members:read|write`, `posts:write|moderate`, `courses:read|write`, `events:write`, `store:write`, `revenue:read`, `billing:manage`, `affiliates:read|manage`, `automation:manage`, `messages:read|write`, `webhooks:manage`, `entitlements:write`. API key mặc định bị chặn: chỉ vào được đường dẫn có trong bảng `apps/api/src/middleware/api-key-access.ts` và đúng phạm vi. Không key nào quản lý được API key, mật khẩu và 2FA, tài khoản nhận tiền và khóa cổng thanh toán, lưu trữ hội, hay `/v1/admin`; các việc đó chỉ làm trên web.
