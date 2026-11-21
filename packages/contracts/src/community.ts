@@ -173,6 +173,11 @@ export const affiliateSettingsSchema = z.object({
   leaderboardVisibility: z.enum(['members', 'affiliates_only', 'hidden']).default('members'),
   leaderboardShowMoney: z.boolean().default(true),
 });
+/** Chủ hội chỉnh một affiliate: tạm khóa hoặc mở lại, đặt tỉ lệ hoa hồng riêng (`null` là quay về mức chung của chương trình). */
+export const updateAffiliateAccountSchema = z.object({
+  status: z.enum(['active', 'suspended']).optional(),
+  commissionRateBps: z.number().int().min(0).max(5000).nullable().optional(),
+}).refine((v) => v.status !== undefined || v.commissionRateBps !== undefined, { message: 'Chưa có gì để đổi' });
 
 export const joinQuestionSchema = z.object({
   id: idSchema.optional(),

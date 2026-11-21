@@ -42,6 +42,8 @@ export const createCommentSchema = z.object({
   parentCommentId: idSchema.nullable().optional(),
   imageFileId: idSchema.nullable().optional(),
 });
+/** Sửa bình luận: chỉ đổi nội dung chữ, ảnh đính kèm và vị trí trong luồng giữ nguyên. */
+export const updateCommentSchema = z.object({ contentMd: z.string().trim().min(1).max(5000) });
 
 export const reactionTargetSchema = z.enum(['post', 'comment']);
 /** Các loại cảm xúc cho bài viết và bình luận (giống thanh cảm xúc của Facebook). */

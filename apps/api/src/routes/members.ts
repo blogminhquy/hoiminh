@@ -33,6 +33,10 @@ memberRoutes.post('/:id/members/:memberId/grant-course', async (c) => {
   await members.grantCourse(c.get('ctx'), c.req.param('id'), c.req.param('memberId'), courseId);
   return c.json({ ok: true });
 });
+memberRoutes.post('/:id/members/:memberId/revoke-course', async (c) => {
+  const { courseId } = await parse(z.object({ courseId: z.string().uuid() }), await body(c));
+  return c.json(await members.revokeCourse(c.get('ctx'), c.req.param('id'), c.req.param('memberId'), courseId));
+});
 memberRoutes.post('/:id/invites', async (c) => c.json(await members.invite(c.get('ctx'), c.req.param('id'), await parse(inviteSchema.partial({ emails: true }), await body(c))), 201));
 /** Việc người xem đã làm hôm nay trong hội (trang Hôm nay): số bài học xong, bình luận, bài đăng. */
 memberRoutes.get('/:id/today', async (c) => c.json(await members.todayActivity(c.get('ctx'), c.req.param('id'))));

@@ -1,5 +1,5 @@
 // Bảng tin, bài viết, bình chọn, bình luận, phản ứng.
-import { createCommentSchema, createPostSchema, feedQuerySchema, toggleReactionSchema, updatePostSchema, voteSchema } from '@hoiminh/contracts';
+import { createCommentSchema, createPostSchema, feedQuerySchema, toggleReactionSchema, updateCommentSchema, updatePostSchema, voteSchema } from '@hoiminh/contracts';
 import { comments, posts } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
@@ -44,6 +44,7 @@ contentRoutes.post('/comments', requireAuth, rateLimit('write', { scope: 'commen
   const imageUrl = input.imageFileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null) : null;
   return c.json(await comments.createComment(ctx, input.targetType, input.targetId, { contentMd: input.contentMd, parentCommentId: input.parentCommentId ?? null, imageUrl }), 201);
 });
+contentRoutes.patch('/comments/:id', requireAuth, async (c) => c.json(await comments.updateComment(c.get('ctx'), c.req.param('id'), await parse(updateCommentSchema, await body(c)))));
 contentRoutes.post('/comments/:id/pin', requireAuth, async (c) => {
   const { pinned } = await parse(z.object({ pinned: z.boolean() }), await body(c));
   await comments.pinComment(c.get('ctx'), c.req.param('id'), pinned);

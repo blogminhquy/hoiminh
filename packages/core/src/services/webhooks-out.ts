@@ -4,7 +4,7 @@ import type { WebhookEventName } from '@hoiminh/contracts';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { webhookDeliveries, webhooks } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { notFound } from '../errors';
+import { invalidState, notFound } from '../errors';
 import { requireWorkspaceRole } from '../permissions';
 import { audit } from './audit';
 import { requireWorkspaceFeature, workspaceHasFeature } from './plans';
@@ -38,6 +38,47 @@ export async function deleteWebhook(ctx: Ctx, workspaceId: string, id: string) {
   const rows = await ctx.db.delete(webhooks).where(and(eq(webhooks.id, id), eq(webhooks.workspaceId, workspaceId))).returning({ id: webhooks.id });
   if (!rows.length) throw notFound();
   await audit(ctx, { action: 'webhook.delete', resourceType: 'webhook', resourceId: id, workspaceId });
+}
+
+async function ownWebhook(ctx: Ctx, workspaceId: string, id: string) {
+  await requireWorkspaceRole(ctx, workspaceId, ['owner', 'admin']);
+  const w = await ctx.db.query.webhooks.findFirst({ where: and(eq(webhooks.id, id), eq(webhooks.workspaceId, workspaceId)) });
+  if (!w) throw notFound();
+  return w;
+}
+
+/** Sửa địa chỉ, danh sách sự kiện, mô tả, hoặc tạm dừng và bật lại. Bật lại thì xóa bộ đếm lỗi để webhook không bị dừng ngay ở lỗi kế tiếp. */
+export async function updateWebhook(ctx: Ctx, workspaceId: string, id: string, input: { url?: string; events?: WebhookEventName[]; description?: string; status?: 'active' | 'paused' }) {
+  const w = await ownWebhook(ctx, workspaceId, id);
+  if (input.status === 'active' && w.status !== 'active') await requireWorkspaceFeature(ctx, workspaceId, 'api');
+  const [row] = await ctx.db.update(webhooks).set({
+    url: input.url ?? w.url, events: input.events ?? w.events, description: input.description ?? w.description, status: input.status ?? w.status,
+    failureCount: input.status === 'active' ? 0 : w.failureCount, updatedAt: ctx.now(),
+  }).where(eq(webhooks.id, id)).returning();
+  await audit(ctx, { action: 'webhook.update', resourceType: 'webhook', resourceId: id, workspaceId, metadata: { ...input } });
+  return { id: row!.id, url: row!.url, description: row!.description, events: row!.events, status: row!.status, failureCount: row!.failureCount };
+}
+
+/**
+ * Gửi thử một sự kiện `ping` tới webhook để bên nhận kiểm đường truyền và chữ ký. Đi đúng đường giao thật (hàng đợi, ký HMAC,
+ * thử lại), kết quả xem ở `recent` của listWebhooks. Bên nhận phân biệt bằng header `X-HoiMinh-Event: ping`.
+ */
+export async function sendTestEvent(ctx: Ctx, workspaceId: string, id: string) {
+  const w = await ownWebhook(ctx, workspaceId, id);
+  if (w.status !== 'active') throw invalidState('Webhook đang tạm dừng, bật lại rồi mới gửi thử được');
+  await requireWorkspaceFeature(ctx, workspaceId, 'api');
+  const [d] = await ctx.db.insert(webhookDeliveries).values({ webhookId: w.id, eventName: 'ping', eventId: crypto.randomUUID(), payload: { test: true, webhookId: w.id, message: 'Sự kiện thử từ Hội Mình' }, nextAttemptAt: ctx.now() }).returning();
+  await ctx.queue.enqueue('webhook.deliver', { deliveryId: d!.id });
+  return { deliveryId: d!.id, eventName: 'ping' };
+}
+
+/** Đổi secret ký của webhook khi secret cũ bị lộ. Secret mới chỉ trả về một lần; các lần gửi sau đó ký bằng secret mới. */
+export async function rotateWebhookSecret(ctx: Ctx, workspaceId: string, id: string) {
+  const w = await ownWebhook(ctx, workspaceId, id);
+  const secret = `whsec_${randomToken(24)}`;
+  await ctx.db.update(webhooks).set({ secretEncrypted: await encryptJson({ secret }, ctx.env.ENCRYPTION_KEY, ctx.env.ENCRYPTION_KEY_VERSION), updatedAt: ctx.now() }).where(eq(webhooks.id, w.id));
+  await audit(ctx, { action: 'webhook.rotate_secret', resourceType: 'webhook', resourceId: id, workspaceId });
+  return { id: w.id, secret };
 }
 
 /** Phát một sự kiện tới mọi webhook đang bật của workspace (đưa vào hàng đợi). */

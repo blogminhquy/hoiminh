@@ -209,6 +209,27 @@ export async function addRecording(ctx: Ctx, eventId: string, input: { videoUrl:
   return row!;
 }
 
+/** Xóa một bản ghi khỏi "Xem lại". Sự kiện và các bản ghi khác giữ nguyên. */
+export async function deleteRecording(ctx: Ctx, recordingId: string) {
+  const r = await ctx.db.query.eventRecordings.findFirst({ where: eq(eventRecordings.id, recordingId) });
+  if (!r) throw notFound();
+  await requireCommunityPermission(ctx, r.communityId, 'event.manage');
+  await ctx.db.delete(eventRecordings).where(eq(eventRecordings.id, recordingId));
+  await audit(ctx, { action: 'event.delete_recording', resourceType: 'event', resourceId: r.eventId, communityId: r.communityId, metadata: { recordingId } });
+}
+
+/**
+ * Hủy một buổi: buổi chuyển sang `cancelled`, biến khỏi lịch và ngừng nhắc. Dòng dữ liệu còn nguyên (người đã đăng ký,
+ * câu hỏi, bản ghi), nên mở lại được bằng updateEvent với `status: 'scheduled'`.
+ */
+export async function cancelEvent(ctx: Ctx, eventId: string) {
+  const e = await ctx.db.query.events.findFirst({ where: eq(events.id, eventId) });
+  if (!e) throw notFound();
+  await requireCommunityPermission(ctx, e.communityId, 'event.manage');
+  if (e.status !== 'cancelled') await ctx.db.update(events).set({ status: 'cancelled', updatedAt: ctx.now() }).where(eq(events.id, eventId));
+  await audit(ctx, { action: 'event.cancel', resourceType: 'event', resourceId: eventId, communityId: e.communityId });
+}
+
 /** Danh sách bản ghi của hội. */
 export async function listRecordings(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'community.read');

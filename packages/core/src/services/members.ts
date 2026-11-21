@@ -149,6 +149,22 @@ export async function grantCourse(ctx: Ctx, communityId: string, memberId: strin
   await audit(ctx, { action: 'entitlement.grant_manual', resourceType: 'course', resourceId: courseId, communityId, metadata: { memberId } });
 }
 
+/**
+ * Thu hồi khóa học đã cấp tay cho thành viên. Chỉ gỡ quyền cấp tay: quyền có được do mua khóa hoặc do gói thành viên
+ * không đổi (muốn thu thì hoàn tiền đơn hoặc đổi gói).
+ */
+export async function revokeCourse(ctx: Ctx, communityId: string, memberId: string, courseId: string) {
+  await requireCommunityPermission(ctx, communityId, 'member.manage');
+  const m = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.id, memberId), eq(communityMembers.communityId, communityId)) });
+  if (!m) throw notFound();
+  const rows = await ctx.db.update(entitlements).set({ status: 'revoked', revokedAt: ctx.now() })
+    .where(and(eq(entitlements.userId, m.userId), eq(entitlements.communityId, communityId), eq(entitlements.resourceType, 'course'), eq(entitlements.resourceId, courseId), eq(entitlements.sourceType, 'manual_grant'), eq(entitlements.status, 'active')))
+    .returning({ id: entitlements.id });
+  if (!rows.length) throw invalidState('Thành viên không có quyền cấp tay cho khóa học này');
+  await audit(ctx, { action: 'entitlement.revoke_manual', resourceType: 'course', resourceId: courseId, communityId, metadata: { memberId } });
+  return { revoked: rows.length };
+}
+
 /** Xóa khỏi nhóm (giữ lịch sử thanh toán), chặn, hoặc hủy đăng ký. */
 export async function memberAction(ctx: Ctx, communityId: string, memberId: string, action: 'remove' | 'ban' | 'cancel_subscription' | 'approve' | 'unban') {
   await requireCommunityPermission(ctx, communityId, 'member.manage');
