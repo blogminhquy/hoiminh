@@ -89,8 +89,26 @@ export const templates = {
     make('welcome_member', to, `Chào mừng bạn đến với ${community}`, `Chào mừng ${name}`, `<p>Bạn đã là thành viên của <strong>${h(community)}</strong>. Bắt đầu ở Bảng tin, học module 1 miễn phí và đặt câu hỏi ở Hỏi đáp.</p>`, { label: 'Vào hội', url }),
   paymentSucceeded: (to: string, name: string, item: string, amount: string, url: string) =>
     make('payment_succeeded', to, `Đã nhận thanh toán ${amount} · ${item}`, 'Thanh toán thành công', `<p>Chào ${h(name)}, chúng tôi đã nhận <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong>. Quyền truy cập đã được mở.</p>`, { label: 'Vào học ngay', url }),
-  paymentRefunded: (to: string, name: string, item: string, amount: string) =>
-    make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được hoàn. Tiền về theo phương thức bạn đã trả trong 3-7 ngày làm việc.</p>`),
+  /** `note`: tiền hoàn về bằng đường nào (cổng tự hoàn, hay người bán tự chuyển lại), xem refundRouteNote ở @hoiminh/contracts. */
+  paymentRefunded: (to: string, name: string, item: string, amount: string, note: string) =>
+    make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được ghi nhận hoàn tiền.</p><p>${h(note)}</p>`),
+  /**
+   * Báo chủ hội: người mua vừa bấm "Tôi đã chuyển khoản" ở đơn chủ hội tự xác nhận. Chủ hội phải tự kiểm tra tài khoản
+   * (tiền về thẳng chủ hội, Hội Mình không thấy) rồi bấm xác nhận thì người mua mới được mở quyền.
+   */
+  ownerTransferReported: (to: string, p: { ownerName: string; buyerName: string; item: string; community: string; amount: string; reference: string; url: string }) =>
+    make('owner_transfer_reported', to, `${p.buyerName} báo đã chuyển ${p.amount} · ${p.reference}`, 'Có người báo đã chuyển khoản',
+      `<p>Chào ${h(p.ownerName)}, <strong>${h(p.buyerName)}</strong> báo đã chuyển khoản để mua <strong>${h(p.item)}</strong> tại hội <strong>${h(p.community)}</strong>.</p>`
+      + `<p style="margin:0;">Số tiền: <strong>${h(p.amount)}</strong><br>Nội dung chuyển khoản cần đối chiếu: <strong>${h(p.reference)}</strong></p>`
+      + `<p>Bạn mở app ngân hàng, thấy đúng số tiền và đúng nội dung thì bấm "Đã nhận tiền" để mở quyền cho người mua. Tiền về thẳng tài khoản của bạn nên Hội Mình không kiểm tra hộ được, người mua đang chờ bạn xác nhận.</p>`,
+      { label: 'Mở trang Tiền để xác nhận', url: p.url }),
+  /** Báo chủ hội: một đơn của hội vừa được thanh toán xong (ngân hàng hoặc cổng báo về, hoặc chủ hội bấm xác nhận). */
+  ownerOrderPaid: (to: string, p: { ownerName: string; buyerName: string; item: string; community: string; amount: string; reference: string; url: string }) =>
+    make('owner_order_paid', to, `Đơn mới đã thanh toán: ${p.buyerName} · ${p.amount}`, 'Có đơn mới đã thanh toán',
+      `<p>Chào ${h(p.ownerName)}, <strong>${h(p.buyerName)}</strong> đã thanh toán <strong>${h(p.amount)}</strong> cho <strong>${h(p.item)}</strong> tại hội <strong>${h(p.community)}</strong>.</p>`
+      + `<p style="margin:0;">Mã đơn: <strong>${h(p.reference)}</strong></p>`
+      + `<p>Hệ thống đã mở quyền cho người mua. Bạn xem lại đơn ở trang Tiền của hội.</p>`,
+      { label: 'Xem ở trang Tiền', url: p.url }),
   eventReminder: (to: string, name: string, event: string, when: string, url: string) =>
     make('event_reminder', to, `Sắp diễn ra: ${event}`, `${event}`, `<p>Chào ${h(name)}, sự kiện bắt đầu ${h(when)}. Link phòng hiện trong trang sự kiện.</p>`, { label: 'Xem sự kiện', url }),
   /** Nhắc gia hạn gói Hội Mình của một hội (daysLeft > 0), hoặc báo gói đã hết hạn (daysLeft = 0). Email hệ thống, luôn gửi. */

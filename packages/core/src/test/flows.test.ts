@@ -1,7 +1,8 @@
 // Kiểm tra các luồng nghiệp vụ chính ở tầng service (mục 6 của prompt), chạy trên PGlite với dữ liệu seed.
 import { and, eq, like } from 'drizzle-orm';
 import { affiliateCommissions, communities as communitiesTable, communityMembers, communityPlugins, entitlements, messages as messagesTable, orders, payments } from '@hoiminh/db';
-import { normalizeWelcomeTemplate } from '@hoiminh/contracts';
+import { BUSINESS } from '@hoiminh/config';
+import { SELF_REFUND, normalizeWelcomeTemplate, refundRouteNote, selfRefundConditions, selfRefundRule } from '@hoiminh/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register, login, verifyEmail, forgotPassword, resetPassword, verifyTwoFactor } from '../auth/service';
 import * as totp from '../auth/totp';
@@ -178,6 +179,23 @@ describe('Luồng 3: mua lẻ trong Cửa hàng bằng chuyển khoản tới ch
     expect(after).toBe(false);
     const pay = await app.ctx.db.query.payments.findFirst({ where: eq(payments.orderId, session.orderId) });
     expect(pay?.status).toBe('refunded');
+    // Đơn chuyển khoản tới chủ hội không có lệnh hoàn tự động: email và thông báo phải nói thật là chủ hội tự chuyển
+    // lại tiền, không hứa "tiền về trong 3-7 ngày làm việc" như trước.
+    const mail = app.emails.filter((m) => m.to === 'duynguyen@gmail.com' && m.template === 'payment_refunded').at(-1)!;
+    expect(mail.html).toContain('chủ hội sẽ tự chuyển lại tiền');
+    expect(mail.html).not.toMatch(/3\s*[-\u2013]\s*7 ngày/);
+    const note = (await notifications.listNotifications(duy, { filter: 'all' })).items.find((n) => n.kind === 'payment.refunded');
+    expect(note?.body).toBe(refundRouteNote('seller_transfer'));
+  });
+
+  it('luật hoàn tiền hiện cho người mua khớp với luật máy chủ đang chặn', () => {
+    expect(SELF_REFUND).toEqual({ days: BUSINESS.courseRefundDays, maxCourseProgressPercent: BUSINESS.courseRefundMaxProgressPercent });
+    expect(selfRefundRule('course')).toBe('Hoàn tiền trong 7 ngày nếu bạn xem chưa quá 20% nội dung.');
+    // Điều kiện tiến độ chỉ áp dụng cho khóa học: combo và sản phẩm số không được ghi thêm điều kiện không có thật.
+    expect(selfRefundRule('digital')).toBe('Hoàn tiền trong 7 ngày kể từ khi thanh toán.');
+    expect(selfRefundConditions()).toContain('7 ngày');
+    expect(selfRefundConditions()).toContain('20%');
+    for (const route of ['gateway', 'seller_transfer', 'platform_transfer'] as const) expect(refundRouteNote(route)).not.toMatch(/\d+\s*[-\u2013]\s*\d+ ngày/);
   });
 });
 
@@ -198,8 +216,15 @@ describe('Luồng 4: affiliate · hold → available → rút ≥ 500k → xem x
     const programId = await app.ids('program:kd');
     await expect(withdrawals.requestWithdrawal(hv, programId, 100_000)).rejects.toThrow(/tối thiểu/);
     const w = await affiliate.myWallet(hv, programId);
+    // Chủ hội đăng ký webhook để trợ lý biết ngay khi có yêu cầu rút cần xử lý.
+    const { createWebhook } = await import('../services/webhooks-out');
+    const { webhookDeliveries } = await import('@hoiminh/db');
+    const hook = await createWebhook(await app.as('minhquy'), await app.ids('workspace:minhquy'), { url: 'https://example.com/rut', events: ['affiliate.withdrawal_requested'] });
     const wd = await withdrawals.requestWithdrawal(hv, programId, w.availableMinor);
     expect(wd.status).toBe('requested');
+    const sent = await app.ctx.db.query.webhookDeliveries.findMany({ where: eq(webhookDeliveries.webhookId, hook.id) });
+    expect(sent.map((d) => d.eventName)).toEqual(['affiliate.withdrawal_requested']);
+    expect(sent[0]!.payload).toMatchObject({ withdrawalId: wd.id, amountMinor: w.availableMinor, communityId: await app.ids(KD) });
     await expect(withdrawals.requestWithdrawal(hv, programId, 500_000)).rejects.toThrow();
     const mq = await app.as('minhquy');
     const review = await withdrawals.reviewWithdrawal(mq, wd.id);

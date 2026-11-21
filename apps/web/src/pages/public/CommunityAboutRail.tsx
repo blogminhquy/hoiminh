@@ -1,13 +1,14 @@
 // Rail trang giới thiệu hội: thẻ hội (số liệu, avatar, giá, nút tham gia), câu hỏi khi tham gia, giới thiệu, liên kết.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, CommunityMark, Modal, money, T } from '@hoiminh/ui';
-import { ExternalLink, Eye, Globe, Lock, Sparkles, Tag, Users } from 'lucide-react';
+import { ExternalLink, Eye, Globe, Lock, MailCheck, Sparkles, Tag, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { fmtCount } from '@/lib/format';
 import { guestHome } from '@/lib/guest';
+import { forgetInvite, inviteEffect } from '@/lib/invite';
 import { JOIN_PARAM, signupPathFor } from '@/lib/join-intent';
 import { checkoutQuery, modeChoices, promoEndLabel } from '@/lib/membership';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
@@ -39,7 +40,7 @@ function JoinQuestionsModal({ d, open, onClose, onSubmit, saving, error }: { d: 
   );
 }
 
-export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string | null }) {
+export function AboutRail({ d, refCode: ref, invite }: { d: AboutPage; refCode: string | null; invite?: string | null }) {
   const c = d.community;
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -55,11 +56,18 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const longer = d.pricing.mode === 'subscription' ? choices.slice(1, 3) : [];
   const [asking, setAsking] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Lời mời trên link đổi được gì cho người này: vào thẳng, nhận quyền quản trị, hay vẫn phải thanh toán (xem inviteEffect).
+  const inv = d.invite ?? null;
+  const effect = invite ? inviteEffect(inv, { member, role: d.viewer?.role, paid }) : 'none';
+  const byInvite = effect === 'join' || effect === 'promote';
 
   const join = useMutation({
-    mutationFn: (answers: Array<{ questionId: string; answer: string }>) => api.post<JoinResult>(`/v1/communities/by-slug/${c.slug}/join`, { answers, ref: ref ?? undefined }),
+    mutationFn: (answers: Array<{ questionId: string; answer: string }>) => api.post<JoinResult>(`/v1/communities/by-slug/${c.slug}/join`, { answers, ref: ref ?? undefined, invite: byInvite ? invite ?? undefined : undefined }),
+    // Lời mời vừa hết hạn hoặc vừa bị thu hồi giữa chừng: tải lại để trang hiện đúng trạng thái và nút tham gia thường.
+    onError: () => { if (byInvite) void qc.invalidateQueries({ queryKey: ['about', c.slug] }); },
     onSuccess: async (r) => {
       setAsking(false);
+      if (byInvite) { forgetInvite(c.slug); await qc.invalidateQueries({ queryKey: ['shell'] }); }
       await qc.invalidateQueries({ queryKey: ['me'] });
       await qc.invalidateQueries({ queryKey: ['about', c.slug] });
       if (r.member.status === 'pending') { setNotice(r.waitlisted ? 'Hội đang đủ chỗ. Yêu cầu của bạn đã vào hàng chờ, chủ hội sẽ duyệt khi có chỗ.' : 'Đã gửi yêu cầu, chờ chủ hội duyệt.'); return; }
@@ -69,8 +77,10 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   });
 
   const onJoin = () => {
-    if (member) { rememberCommunitySlug(c.slug); navigate(`/${c.slug}/bang-tin`); return; }
+    if (member && effect !== 'promote') { rememberCommunitySlug(c.slug); navigate(`/${c.slug}/bang-tin`); return; }
     if (!user) { navigate(signupPathFor(c.slug, ref)); return; }
+    // Được mời thì vào thẳng: không qua thanh toán (chỉ lời mời quản trị), không qua bảng câu hỏi.
+    if (byInvite) { join.mutate([]); return; }
     if (paid) { navigate(`/${c.slug}/thanh-toan?${checkoutQuery(entry)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
     if (d.joinQuestions.length) { setAsking(true); return; }
     join.mutate([]);
@@ -80,7 +90,9 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const priceSub = paid && entry ? (entry.months ? `/${entry.unit}` : 'trọn đời') : 'để tham gia';
   const promoEnd = promoEndLabel(d.pricing.promo);
   // Hội thu phí mà chủ hội chưa cài nhận tiền: chưa có tài khoản nào để chuyển khoản tới, nên khóa nút tham gia.
-  const payLocked = paid && !member && !d.pricing.paymentsReady;
+  const payLocked = paid && !member && !d.pricing.paymentsReady && !byInvite;
+  // Hội đóng cổng hoặc đang chờ duyệt vẫn vào được khi có lời mời của chủ hội.
+  const blocked = !byInvite && (pending || payLocked || (!member && !c.doorsOpen));
 
   // Vừa đăng ký hoặc đăng nhập xong từ trang của hội này (?thamgia=1): vào thẳng hội, không bắt bấm "Tham gia" lần nữa.
   // Chạy đúng việc của nút: thành viên và hội miễn phí vào Bảng tin, hội có câu hỏi mở bảng câu hỏi, hội thu phí sang thanh toán.
@@ -93,11 +105,11 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
     const rest = new URLSearchParams(params);
     rest.delete(JOIN_PARAM);
     setParams(rest, { replace: true });
-    if (!user || pending || (!member && (!c.doorsOpen || payLocked))) return;
+    if (!user || blocked) return;
     onJoin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsJoin, authLoading, user]);
-  const label = member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : payLocked ? 'Hội chưa mở thanh toán' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
+  const label = effect === 'promote' ? 'Nhận quyền quản trị viên' : effect === 'join' ? (inv?.role === 'admin' ? 'Nhận lời mời làm quản trị viên' : 'Nhận lời mời và vào hội') : member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : payLocked ? 'Hội chưa mở thanh toán' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
   const others = Math.max(0, d.stats.members - d.sampleMembers.length);
 
   return (
@@ -137,9 +149,18 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
             {d.pricing.mode === 'freemium' && entry ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Premium {money(entry.payMinor)}/{entry.unit} để mở toàn bộ khóa học</div> : null}
             {longer.length > 0 && <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {longer.map((x) => `${money(x.payMinor)}/${x.unit}`).join(', ')}</div>}
           </div>
-          <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={pending || payLocked || (!member && !c.doorsOpen)} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
+          <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={blocked} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
           {open && !member && <Link to={guestHome(c.slug, c.tabs)} className="btn btn-ghost" style={{ height: 44, borderRadius: 12 }}><Eye size={16} />Xem trước bên trong</Link>}
           {(notice || join.isError) && <div className="text-[12px]" style={{ color: join.isError ? T.accentText : T.tealText }}>{join.isError ? errorMessage(join.error) : notice}</div>}
+          {invite && inv && effect !== 'none' && (
+            <div className="flex items-start gap-2 rounded-[10px] text-[13px] leading-[1.5]" style={{ padding: '10px 12px', background: T.goldSoft, color: T.goldDark }}>
+              <MailCheck size={16} className="flex-shrink-0" style={{ marginTop: 2 }} />
+              <span>{effect === 'promote' ? 'Chủ hội mời bạn làm quản trị viên của hội này.' : effect === 'pay' ? 'Bạn được chủ hội mời vào hội này. Hội thu phí nên bạn cần thanh toán để tham gia.' : inv.role === 'admin' ? 'Chủ hội mời bạn vào hội với vai trò quản trị viên.' : 'Bạn được chủ hội mời vào hội này, bấm để vào ngay.'}</span>
+            </div>
+          )}
+          {invite && inv && inv.state !== 'valid' && !member && inv.message && (
+            <div className="rounded-[10px] text-[13px] leading-[1.5]" style={{ padding: '10px 12px', background: T.accentSoft, color: T.accentText }}>{inv.message}</div>
+          )}
           {d.referrer && (
             <div className="flex items-center gap-2 rounded-[10px] text-[12px]" style={{ padding: '10px 12px', background: T.goldSoft, color: T.goldDark }}><Users size={14} />Bạn được <strong className="mx-1">{d.referrer.name}</strong> giới thiệu</div>
           )}

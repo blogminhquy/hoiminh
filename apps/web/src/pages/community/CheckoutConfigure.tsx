@@ -1,15 +1,16 @@
-// Bước chọn: /:slug/thanh-toan?tier=premium&months=3 hoặc ?product=<id> → chọn kỳ hạn, mã giảm giá, cổng → POST /v1/checkout.
+// Bước chọn: /:slug/thanh-toan?tier=premium&months=3 hoặc ?product=<id> → chọn kỳ hạn, cách thanh toán, mã giảm giá → POST /v1/checkout.
+// Một cột từ trên xuống: đầu trang, chọn thời hạn, quyền lợi, cách thanh toán, mã giảm giá, bảng tiền, nút thanh toán.
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, CommunityMark, Radio, T, money } from '@hoiminh/ui';
-import { Check, Lock, Tag } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { Button, CommunityMark, T, money } from '@hoiminh/ui';
+import { Check, Lock, ShieldCheck, Tag } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import type { Shell } from '@/lib/community';
 import { modeChoices, promoEndLabel, type TermChoice } from '@/lib/membership';
 import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
-import { CheckoutFrame, ProviderOption, Totals, providerMeta, type Provider } from './CheckoutParts';
+import { CheckoutFrame, ProviderOption, RadioRow, RadioRows, Section, Totals, providerMeta, type Provider } from './CheckoutParts';
 
 /** Lời giới thiệu từng cách ở bước thanh toán của hội: nói rõ tiền về thẳng chủ hội. */
 function buyerDesc(k: Provider, community: string, bankMode: 'manual' | 'auto' | null): string {
@@ -20,16 +21,30 @@ function buyerDesc(k: Provider, community: string, bankMode: 'manual' | 'auto' |
   return 'Thẻ quốc tế, thanh toán an toàn qua Stripe';
 }
 
+/** Nút thanh toán: cao, chữ được xuống dòng khi tên cách thanh toán dài (điện thoại hẹp) thay vì tràn ra ngoài nút. */
+const PAY_BUTTON: CSSProperties = { height: 'auto', minHeight: 56, whiteSpace: 'normal', padding: '8px 12px', fontSize: 16, lineHeight: 1.25, textAlign: 'center' };
+
 interface ProductLite { id: string; name: string; priceMinor: number; compareAtMinor: number | null; kind: string; slug: string }
 interface ProductList { items: ProductLite[] }
 
-function CycleCard({ on, title, sub, badge, onClick }: { on: boolean; title: string; sub: ReactNode; badge?: string; onClick: () => void }) {
+/**
+ * Một lựa chọn thời hạn: một hàng rộng hết bề ngang. Bên trái là tên và nhãn tiết kiệm (nằm gọn trong hàng), bên phải
+ * là tổng tiền in đậm, dưới đó là giá quy ra mỗi tháng.
+ */
+function TermRow({ x, on, onClick }: { x: TermChoice; on: boolean; onClick: () => void }) {
+  const sub = x.months && x.months > 1 ? `${money(Math.round(x.payMinor / x.months))} mỗi tháng` : x.months ? '' : 'một lần';
   return (
-    <button type="button" onClick={onClick} className="flex-1 min-w-[150px] p-3.5 rounded-xl text-left relative" style={{ border: `1.5px solid ${on ? T.primary : T.line2}`, background: on ? T.primarySoft : T.surface }}>
-      {badge && <span className="tag absolute -top-2.5 right-3" style={{ background: T.ink, color: T.surface }}>{badge}</span>}
-      <span className="flex items-center gap-2"><Radio on={on} /><span className="font-semibold">{title}</span></span>
-      <span className="block pl-[26px] text-[13px]" style={{ color: T.ink2 }}>{sub}</span>
-    </button>
+    <RadioRow on={on} onClick={onClick}>
+      <span className="flex-1 min-w-[6rem] flex items-center flex-wrap gap-x-2.5 gap-y-1">
+        <span className="text-[17px] font-semibold whitespace-nowrap">{x.months ? `${x.months} tháng` : 'Trọn đời'}</span>
+        {x.savingPercent > 0 && <span className="tag" style={{ background: T.goldSoft, color: T.goldDark }}>Rẻ hơn {x.savingPercent}%</span>}
+      </span>
+      {/* Màn hình hẹp mà giá dài (đang khuyến mãi): giá gốc gạch đi tự xuống dòng riêng phía trên, không tràn ra ngoài hàng. */}
+      <span className="min-w-0 flex flex-col items-end text-right">
+        <span className="flex flex-wrap justify-end items-baseline gap-x-2">{x.percentOff > 0 && <span className="line-through text-[14px] whitespace-nowrap" style={{ color: T.ink3 }}>{money(x.listMinor)}</span>}<strong className="text-[17px] whitespace-nowrap">{money(x.payMinor)}</strong></span>
+        {sub && <span className="text-[14px] whitespace-nowrap" style={{ color: T.ink2 }}>{sub}</span>}
+      </span>
+    </RadioRow>
   );
 }
 
@@ -76,62 +91,63 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
 
   return (
     <CheckoutFrame backTo={product ? `/${c.slug}/cua-hang` : `/${c.slug}/bang-tin`}>
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="w-full md:w-[520px]">
-          <div className="card p-6 flex flex-col gap-4">
-            <div className="flex gap-3.5 items-center">
-              <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={56} radius={14} />
-              <div><div className="muted text-[12px]">{product ? 'Mua tại' : 'Nâng cấp tại'} {c.name}</div><div className="serif text-[22px] font-extrabold">{title}</div></div>
-            </div>
-            {!product && promo && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] font-semibold" style={{ background: T.goldSoft, color: T.goldDark }}><Tag size={16} />Đang giảm {promo.percentOff}%{promoEnd ? ` đến hết ngày ${promoEnd}` : ''}</div>
-            )}
-            {!product && choices.length > 0 && (
-              <div className="flex gap-2.5 flex-col sm:flex-row sm:flex-wrap">
-                {choices.map((x) => (
-                  <CycleCard
-                    key={x.months ?? 'once'}
-                    on={choice?.months === x.months}
-                    title={x.months ? `${x.months} tháng` : 'Trọn đời'}
-                    badge={x.savingPercent > 0 ? `Rẻ hơn ${x.savingPercent}%` : undefined}
-                    sub={<>{x.percentOff > 0 && <span className="line-through muted mr-1.5">{money(x.listMinor)}</span>}<strong style={{ color: T.ink }}>{money(x.payMinor)}</strong>{x.months && x.months > 1 ? ` · ${money(Math.round(x.payMinor / x.months))} mỗi tháng` : x.months ? '' : ' một lần'}</>}
-                    onClick={() => setMonths(x.months)}
-                  />
-                ))}
-              </div>
-            )}
-            <div className="flex flex-col gap-2 text-[13px] pt-1" style={{ color: T.ink2 }}>
-              {benefits.map((b) => <div key={b} className="flex items-center gap-2"><span style={{ color: T.teal }}><Check size={14} /></span>{b}</div>)}
-            </div>
-            <div className="flex gap-2 pt-2" style={{ borderTop: `1px solid ${T.line}` }}>
-              <div className="input flex-1 min-w-0" style={{ width: 'auto' }}><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="flex-grow" /></div>
-              <Button className="flex-shrink-0" onClick={() => setApplied(coupon.trim() || null)}>{applied ? 'Đã áp dụng' : 'Áp dụng'}</Button>
-            </div>
-            <Totals lines={[{ label: line, amountMinor: listAmount }, { label: promo ? `Khuyến mãi ${promo.percentOff}%` : 'Giảm giá', amountMinor: amount - listAmount }]} total={amount} referredBy={null} />
-            {applied && <div className="muted text-[12px]">Mã {applied} sẽ được kiểm tra khi tạo đơn.</div>}
-          </div>
+      <div className="flex gap-3.5 items-center">
+        <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={56} radius={14} />
+        <div className="min-w-0"><div className="text-[14px]" style={{ color: T.ink2 }}>{product ? 'Mua tại' : 'Nâng cấp tại'} {c.name}</div><h1 className="serif text-[24px] leading-tight font-extrabold">{title}</h1></div>
+      </div>
+      {!product && promo && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-[15px] font-semibold" style={{ background: T.goldSoft, color: T.goldDark }}><Tag size={18} className="flex-shrink-0" />Đang giảm {promo.percentOff}%{promoEnd ? ` đến hết ngày ${promoEnd}` : ''}</div>
+      )}
+      {!product && choices.length > 0 && (
+        <Section title={choices.length > 1 ? 'Chọn thời hạn' : 'Thời hạn'}>
+          <RadioRows label="Thời hạn">
+            {choices.map((x) => <TermRow key={x.months ?? 'once'} x={x} on={choice?.months === x.months} onClick={() => setMonths(x.months)} />)}
+          </RadioRows>
+        </Section>
+      )}
+      {benefits.length > 0 && (
+        <Section title={product ? 'Bạn nhận được' : 'Quyền lợi của gói'}>
+          <ul className="card px-4 py-3.5 md:px-5 flex flex-col gap-2.5 text-[15px]">
+            {benefits.map((b) => <li key={b} className="flex items-start gap-2.5 leading-snug"><Check size={18} className="flex-shrink-0 mt-0.5" style={{ color: T.teal }} />{b}</li>)}
+          </ul>
+        </Section>
+      )}
+      <Section title="Cách thanh toán">
+        {ready ? (
+          <RadioRows label="Cách thanh toán">
+            {methods.map((k) => <ProviderOption key={k} p={{ ...providerMeta(k), desc: buyerDesc(k, c.name, c.bankConfirmMode) }} on={provider === k} onClick={() => setPicked(k)} />)}
+          </RadioRows>
+        ) : (
+          <div className="px-4 py-3 rounded-xl text-[15px] leading-snug" style={{ background: T.goldSoft, color: T.goldDark }}>{shell.viewer.permissions.includes('billing.manage')
+            ? <>Bạn chưa cài cách nhận tiền nào. <Link to={`/${c.slug}/cai-dat/nhan-tien`} className="font-semibold underline">Cài nhận tiền</Link> để mở nút mua.</>
+            : 'Chủ hội chưa cài cách nhận tiền nên chưa mua được. Bạn quay lại sau nhé.'}</div>
+        )}
+      </Section>
+      <Section title="Mã giảm giá">
+        <div className="flex gap-2">
+          <div className="input flex-1 min-w-0" style={{ width: 'auto', height: 48 }}><input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder="Mã giảm giá" aria-label="Mã giảm giá" autoCapitalize="characters" autoCorrect="off" spellCheck={false} className="flex-grow" /></div>
+          <Button className="flex-shrink-0" style={{ height: 48 }} onClick={() => setApplied(coupon.trim() || null)}>{applied ? 'Đã áp dụng' : 'Áp dụng'}</Button>
         </div>
-        <div className="w-full md:w-[520px] flex flex-col gap-3 md:pt-9">
-          <span className="font-semibold">Cách thanh toán</span>
-          {ready && (
-            <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="Cách thanh toán">
-              {methods.map((k) => <ProviderOption key={k} p={{ ...providerMeta(k), desc: buyerDesc(k, c.name, c.bankConfirmMode) }} on={provider === k} onClick={() => setPicked(k)} />)}
-            </div>
-          )}
-          {m.isError && <div className="text-[14px]" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
+        {applied && <div className="text-[14px]" style={{ color: T.ink2 }}>Mã {applied} sẽ được kiểm tra khi tạo đơn.</div>}
+      </Section>
+      <Section title="Tóm tắt đơn">
+        <Totals lines={[{ label: line, amountMinor: listAmount }, { label: promo ? `Khuyến mãi ${promo.percentOff}%` : 'Giảm giá', amountMinor: amount - listAmount }]} total={amount} referredBy={null} totalOnDesktopOnly />
+      </Section>
+      {/* Tổng tiền và nút thanh toán. Điện thoại: ghim dưới đáy màn hình (sticky) để lúc nào cũng bấm được; cuộn tới cuối
+          trang thì thanh nằm lại đúng chỗ của nó nên không che dòng nào. Trang này nằm ngoài khung hội, không có thanh
+          điều hướng dưới để đè lên. Máy tính: nút rộng hết cột, ngay dưới bảng tiền. */}
+      <div className="sticky bottom-0 z-10 -mx-4 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] flex flex-col gap-2 border-t border-[color:var(--line)] bg-[color:var(--surface)] shadow-[0_-6px_18px_rgba(8,24,23,0.07)] md:static md:mx-0 md:p-0 md:border-0 md:bg-transparent md:shadow-none">
+        {m.isError && <div role="alert" className="text-[15px] leading-snug" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
+        <div className="flex items-center gap-3">
+          <div className="md:hidden flex-shrink-0"><div className="leading-tight" style={{ color: T.ink2, fontSize: 15 }}>Tổng tiền</div><div className="serif text-[20px] leading-tight font-extrabold whitespace-nowrap">{money(amount)}</div></div>
           {ready ? (
-            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="mt-1.5">{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán ${money(amount)} bằng ${BUYER_METHOD_NAME[provider!]}`}</Button>
+            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="flex-1 min-w-0" style={PAY_BUTTON}>{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán ${money(amount)} bằng ${BUYER_METHOD_NAME[provider!]}`}</Button>
           ) : (
-            <>
-              <Button size="lg" disabled className="mt-1.5" icon={<Lock size={18} />}>Hội chưa mở thanh toán</Button>
-              <div className="text-[14px] text-center" style={{ color: T.goldText }}>{shell.viewer.permissions.includes('billing.manage')
-                ? <>Bạn chưa cài cách nhận tiền nào. <Link to={`/${c.slug}/cai-dat/nhan-tien`} className="font-semibold underline">Cài nhận tiền</Link> để mở nút mua.</>
-                : 'Chủ hội chưa cài cách nhận tiền nên chưa mua được. Bạn quay lại sau nhé.'}</div>
-            </>
+            <Button size="lg" disabled className="flex-1 min-w-0" style={PAY_BUTTON} icon={<Lock size={18} className="flex-shrink-0" />}>Hội chưa mở thanh toán</Button>
           )}
-          <div className="muted text-[13px] text-center">Hội Mình không thu phí giao dịch và không giữ tiền của bạn</div>
         </div>
       </div>
+      <div className="text-[14px] leading-snug flex items-start justify-center gap-1.5" style={{ color: T.ink2 }}><ShieldCheck size={18} className="flex-shrink-0 mt-0.5" /><span>Hội Mình không thu phí giao dịch và không giữ tiền của bạn</span></div>
     </CheckoutFrame>
   );
 }

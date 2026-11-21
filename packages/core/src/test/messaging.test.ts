@@ -194,3 +194,30 @@ describe('tin nhắn: tệp đính kèm, đã nhận, lưu trữ, chặn, báo c
     expect((await safety.reportUser(cong, { userId: duyId, reason: 'other' })).id).not.toBe(first.id);
   });
 });
+
+describe('tin nhắn: thông tin thành viên ở bảng "Thông tin hội thoại"', () => {
+  it('chỉ người quản lý thành viên của hội thấy phần riêng tư; thành viên thường chỉ thấy như ở danh bạ', async () => {
+    const kd = await app.ids('community:kd');
+    const dienId = await app.ids('user:dien');
+    const owner = await app.as('minhquy');
+    // Chủ hội trò chuyện với Điền (thành viên do Hoàng Vũ giới thiệu): thấy đủ tình trạng, gói kèm giá, người giới thiệu.
+    const fromOwner = await messaging.send(owner, { recipientUserId: dienId, communityId: kd, body: 'Chào Điền' });
+    const full = (await messaging.listMessages(owner, fromOwner.conversationId, {})).panel!;
+    expect(full).toMatchObject({ status: 'active', referrer: 'Hoàng Vũ' });
+    expect(full.tier?.name).toBeTruthy();
+    expect(full.learning).not.toBeNull();
+    // Điền nhìn ngược lại chủ hội trong chính hội thoại đó: không có tình trạng, giá gói, tiến độ học, người giới thiệu.
+    const back = (await messaging.listMessages(await app.as('dien'), fromOwner.conversationId, {})).panel!;
+    expect(back).toMatchObject({ status: null, learning: null, referrer: null });
+    expect(back.tier?.monthlyMinor ?? null).toBeNull();
+    expect(back.joinedAt).toBeTruthy();
+    // Một thành viên thường trò chuyện với Điền: cũng chỉ thấy vai trò, tên gói, ngày tham gia.
+    const fromDuy = await messaging.send(duy, { recipientUserId: dienId, communityId: kd, body: 'Chào Điền, mình là Duy' });
+    const limited = (await messaging.listMessages(duy, fromDuy.conversationId, {})).panel!;
+    expect(limited).toEqual({ memberId: full.memberId, role: full.role, status: null, tier: full.tier ? { key: full.tier.key, name: full.tier.name, monthlyMinor: null } : null, joinedAt: full.joinedAt, learning: null, referrer: null });
+  });
+
+  it('hội thoại không gắn với hội nào thì không có thông tin thành viên', async () => {
+    expect((await thread(duy)).panel).toBeNull();
+  });
+});

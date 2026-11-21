@@ -1,10 +1,11 @@
 // Mảnh trang Affiliate, phần lấy link: chọn chương trình (nền tảng, từng hội), chọn trang muốn chia sẻ (trang hội
 // hoặc từng sản phẩm), ô link với nút sao chép lớn; thông báo có lối đi tiếp khi chương trình chưa bật.
 import { CommunityMark, Radio, T, Tag, money } from '@hoiminh/ui';
-import { Check, Copy, Search, Share2 } from 'lucide-react';
+import { Check, Copy, Pencil, Search, Share2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { copyText, earnLine, estimateCommission, filterTargets, ratePercent, type AffiliateProgram, type LinkTarget } from '@/lib/affiliate-link';
+import { ReferralCodeModal } from './AffiliateCodeParts';
 
 /** Số ô hiện sẵn trước khi phải bấm "Xem thêm". */
 const PROGRAMS_SHOWN = 6;
@@ -125,12 +126,18 @@ export interface LinkCardProps {
   program: Pick<AffiliateProgram, 'scope' | 'rateBps' | 'durationMonths' | 'name'>;
   targets: LinkTarget[];
   code: string;
+  /** Tôi chưa đặt mã chung nên còn được đổi mã (mỗi người chỉ đổi một lần). */
+  codeEditable?: boolean;
+  /** Mã riêng cũ của ví này, khi tôi đã đặt mã chung: link cũ với mã đó vẫn chạy. */
+  previousCode?: string | null;
+  onCodeChanged?: () => void;
   stats: { clicks: number; signups: number; paid: number };
 }
 
 /** Bước 2 và 3: chọn trang (khi chương trình có nhiều trang) rồi sao chép link. Đổi chương trình thì gắn `key` mới để chọn lại từ đầu. */
-export function LinkCard({ program, targets, code, stats }: LinkCardProps) {
+export function LinkCard({ program, targets, code, codeEditable = false, previousCode = null, onCodeChanged, stats }: LinkCardProps) {
   const [key, setKey] = useState(targets[0]?.key ?? '');
+  const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState<'link' | 'code' | 'failed' | null>(null);
   const target = targets.find((t) => t.key === key) ?? targets[0];
   if (!target) return null;
@@ -157,9 +164,13 @@ export function LinkCard({ program, targets, code, stats }: LinkCardProps) {
         <div className="text-[14px] flex items-center gap-2 flex-wrap" style={{ color: T.ink2 }}>
           <span>Mã giới thiệu của bạn: <b style={{ color: T.ink }}>{code}</b></span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => copy(code, 'code')}>{copied === 'code' ? 'Đã sao chép' : 'Sao chép mã'}</button>
+          {codeEditable && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}><Pencil size={15} />Đổi mã</button>}
+          {codeEditable && <span className="muted text-[13px] basis-full">Bạn được đổi sang một mã dễ nhớ, dùng chung cho mọi link của mình. Chỉ đổi được một lần.</span>}
+          {previousCode && <span className="muted text-[13px] basis-full">Đây là mã chung của bạn, dùng cho mọi chương trình. Link cũ với mã {previousCode} vẫn chạy và vẫn tính hoa hồng.</span>}
           {program.scope === 'community' && <span className="muted text-[13px] basis-full">Thành viên đã ở trong hội nhập mã này ở trang Xếp hạng affiliate để chọn bạn làm người giới thiệu.</span>}
         </div>
       </div>
+      <ReferralCodeModal open={editing} currentCode={code} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onCodeChanged?.(); }} />
       <div className="grid grid-cols-3 gap-2 pt-4" style={{ borderTop: `1px solid ${T.line}` }}>
         {([[stats.clicks, 'Lượt bấm'], [stats.signups, 'Đăng ký'], [stats.paid, 'Trả phí']] as const).map(([v, l]) => <div key={l} className="text-center"><div className="font-bold text-[20px]">{v}</div><div className="muted text-[13px]">{l}</div></div>)}
       </div>

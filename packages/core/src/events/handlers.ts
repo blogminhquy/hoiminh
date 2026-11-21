@@ -1,5 +1,5 @@
 // Đăng ký handler nghiệp vụ cho event bus: entitlement, hoa hồng, thông báo, email, webhook gửi đi, tin nhắn chào.
-import { formatMoney, isPlanKey, planCycleSchema, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
+import { formatMoney, isPlanKey, planCycleSchema, refundRouteNote, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
 import { comments, communities, communityMembers, courses, orders, posts, products, spaces, users, workspaces } from '@hoiminh/db';
@@ -82,6 +82,16 @@ export function registerHandlers(app: AppContext): void {
     await dispatch(c, community.workspaceId, 'member.tier_changed', { communityId: p.communityId, userId: p.userId, fromTierId: p.fromTierId, toTierId: p.toTierId, reason: p.reason });
   });
 
+  for (const name of ['member.removed', 'member.banned'] as const) {
+    bus.on(name, async (p, ev) => {
+      const c = ctx(ev);
+      const community = await communityOf(c, p.communityId);
+      const user = await userOf(c, p.userId);
+      if (!community) return;
+      await dispatch(c, community.workspaceId, name, { communityId: p.communityId, userId: p.userId, memberId: p.memberId, email: user?.email ?? null, name: user?.name ?? null });
+    });
+  }
+
   bus.on('payment.succeeded', async (p, ev) => {
     const c = ctx(ev);
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
@@ -128,7 +138,7 @@ export function registerHandlers(app: AppContext): void {
     const c = ctx(ev);
     await reverseCommissionForPayment(c, p.paymentId);
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
-    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.refunded', category: 'payment', title: `Đã hoàn ${formatMoney(p.amountMinor)} cho ${(order?.metadata as { title?: string } | undefined)?.title ?? 'đơn hàng'}`, body: 'Tiền về theo phương thức đã trả trong 3–7 ngày làm việc' });
+    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.refunded', category: 'payment', title: `Đã hoàn ${formatMoney(p.amountMinor)} cho ${(order?.metadata as { title?: string } | undefined)?.title ?? 'đơn hàng'}`, body: refundRouteNote(p.route) });
     await dispatch(c, order?.workspaceId ?? null, 'payment.refunded', { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, amountMinor: p.amountMinor });
   });
 
@@ -220,9 +230,10 @@ export function registerHandlers(app: AppContext): void {
 
   bus.on('affiliate.withdrawal_requested', async (p, ev) => {
     const c = ctx(ev);
-    const program = await raw(c.db, sql`select payer_user_id, community_id, name from affiliate_programs where id = ${p.programId}`);
-    const pr = program[0] as { payer_user_id: string | null; community_id: string | null; name: string } | undefined;
+    const program = await raw(c.db, sql`select payer_user_id, community_id, workspace_id, name from affiliate_programs where id = ${p.programId}`);
+    const pr = program[0] as { payer_user_id: string | null; community_id: string | null; workspace_id: string | null; name: string } | undefined;
     if (pr?.payer_user_id) await notify(c, { userId: pr.payer_user_id, communityId: pr.community_id, kind: 'affiliate.withdrawal_requested', category: 'affiliate', title: `Yêu cầu rút ${formatMoney(p.amountMinor)} mới từ affiliate`, link: pr.community_id ? `/${(await communityOf(c, pr.community_id))?.slug}/cai-dat/cong-su/rut-tien` : '/he-thong/cong-su', actionLabel: 'Xử lý' });
+    await dispatch(c, pr?.workspace_id ?? null, 'affiliate.withdrawal_requested', { withdrawalId: p.withdrawalId, communityId: pr?.community_id ?? null, affiliateAccountId: p.affiliateAccountId, amountMinor: p.amountMinor });
   });
 
   bus.on('affiliate.withdrawal_paid', async (p, ev) => {

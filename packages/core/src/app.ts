@@ -9,6 +9,7 @@ import { LocalAuthProvider, SupabaseAuthProvider, type AuthProvider } from './au
 import { consoleLogger, type AppContext } from './context';
 import { createEventBus } from './events/bus';
 import { registerHandlers } from './events/handlers';
+import { registerOwnerEmailHandlers } from './events/owner-emails';
 import { createJobHandler } from './jobs/handlers';
 import { InMemoryQueue, type JobQueue } from './jobs/queue';
 import { loadInfra, mergeInfraEnv } from './lib/infra-settings';
@@ -76,6 +77,7 @@ export async function createApp(opts: CreateAppOptions): Promise<App> {
   const ctx: AppContext = { db, env, email, media, payments, events, queue, log, now: () => new Date(), infra, ...(opts.realtime ? { realtime: opts.realtime } : {}) };
   if (queue instanceof InMemoryQueue) queue.setHandler(createJobHandler(ctx));
   registerHandlers(ctx);
+  registerOwnerEmailHandlers(ctx);
   const auth: AuthProvider = env.AUTH_PROVIDER === 'supabase' && env.SUPABASE_URL
     ? new SupabaseAuthProvider({ url: env.SUPABASE_URL, anonKey: env.SUPABASE_ANON_KEY, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY, jwtSecret: env.SUPABASE_JWT_SECRET || env.AUTH_JWT_SECRET })
     : new LocalAuthProvider(db, env.AUTH_JWT_SECRET);

@@ -1,5 +1,198 @@
 # CHANGELOG
 
+## 1.46.1 - 2026-11-22
+
+Lời về hoàn tiền trên web, trong email và thông báo nay khớp với luật máy chủ đang chạy, theo yêu cầu của chủ dự án. Không đổi luật hoàn tiền, không có migration.
+
+### Sửa
+
+- **Hộp thoại "Yêu cầu hoàn tiền" ghi sai điều kiện.** Trang Gói và thanh toán ghi "chưa học quá nửa khóa" trong khi hệ thống chỉ cho hoàn khi xem chưa quá 20% nội dung. Nay ghi đúng: trong 7 ngày kể từ khi thanh toán, nếu là khóa học thì xem chưa quá 20%. Hộp thoại cũng nói rõ chuyện gì xảy ra sau khi bấm: đơn được ghi nhận hoàn ngay, quyền truy cập bị thu lại, tiền do người bán hoàn.
+- **Trang sản phẩm thiếu điều kiện tiến độ.** Sản phẩm chưa có cam kết riêng hiện "Hoàn tiền trong 7 ngày", bỏ sót điều kiện 20% của khóa học. Nay khóa học hiện đủ điều kiện; combo và sản phẩm số (không bị xét tiến độ) hiện "Hoàn tiền trong 7 ngày kể từ khi thanh toán".
+- **Email và thông báo hoàn tiền hứa "tiền về trong 3-7 ngày làm việc" cho mọi đơn.** Với đơn trả bằng chuyển khoản hoặc VNPAY, hệ thống không chuyển tiền được: chủ hội phải tự chuyển lại. Nay lời báo nói đúng tiền về bằng đường nào: cổng thanh toán tự hoàn về phương thức đã trả; hoặc chủ hội tự chuyển lại (kèm gợi ý nhắn chủ hội nếu chờ lâu); hoặc Hội Mình chuyển lại với đơn gói Hội Mình. Không còn hứa số ngày.
+
+### Kỹ thuật
+
+- Một nguồn cho luật và câu chữ ở `packages/contracts/src/commerce.ts`: `SELF_REFUND`, `selfRefundRule`, `selfRefundConditions`, `refundRouteNote`. Web, email và thông báo cùng lấy từ đây; test ở core kiểm `SELF_REFUND` khớp `BUSINESS.courseRefundDays` và `courseRefundMaxProgressPercent`.
+- Sự kiện nội bộ `payment.refunded` mang thêm `route` (`gateway`, `seller_transfer`, `platform_transfer`), tính trong `applyRefund` từ kết quả hoàn và người nhận tiền của đơn. Dữ liệu gửi ra webhook của chủ hội không đổi.
+- `templates.paymentRefunded` nhận thêm câu ghi chú. Cam kết mặc định khi tạo sản phẩm dùng chung `selfRefundRule('course')` (nội dung như cũ).
+- Chưa sửa: dòng quyền lợi "Hoàn tiền 7 ngày nếu xem chưa quá 20%" ở trang thanh toán (`CheckoutConfigure.tsx`) vẫn hiện cho mọi loại sản phẩm; tệp đó đang được thiết kế lại ở một PR khác.
+
+## 1.46.0 - 2026-11-22
+
+Thiết kế lại cả luồng thanh toán của một hội theo yêu cầu của chủ dự án: trang chọn gói, màn mã QR chuyển khoản, và màn cảm ơn chờ xác nhận sau khi bấm "Tôi đã chuyển khoản". Chủ hội nay nhận email khi có người báo đã chuyển khoản và khi có đơn đã thanh toán. Không có migration, không đổi cách tính tiền hay cách tạo đơn.
+
+### Thay đổi
+
+- **Trang thanh toán của hội xếp một cột, từ trên xuống.** Trước đây trang chia hai cột hẹp lệch nhau, ô chọn thời hạn chật và vỡ chữ, nhãn "Rẻ hơn" nổi đè lên viền. Nay mọi thứ nằm trong một cột rộng (khoảng 660px trên máy tính, hết bề ngang trên điện thoại): tên hội và tên gói, Chọn thời hạn, Quyền lợi của gói, Cách thanh toán, Mã giảm giá, Tóm tắt đơn, rồi nút thanh toán. Mỗi thời hạn (1, 3, 12 tháng) là một hàng rộng: tên và nhãn "Rẻ hơn" nằm gọn bên trái, tổng tiền in đậm và giá quy ra mỗi tháng bên phải. Mỗi cách thanh toán cũng là một hàng cùng kiểu. Trang mua sản phẩm lẻ dùng cùng bố cục.
+- **Điện thoại: tổng tiền và nút thanh toán ghim dưới đáy màn hình**, lúc nào cũng bấm được, cuộn hết trang thì thanh nằm lại cuối luồng nên không che dòng nào. Chữ lớn hơn (chữ thường từ 15px, tên lựa chọn và số tiền 17px), hàng bấm được cao từ 48px.
+- **Màn mã QR chuyển khoản xếp một cột.** Tóm tắt đơn gọn trong một khối, "Tổng thanh toán" và số tiền nằm trên cùng một hàng, hạn giữ chỗ viết kiểu "19:16 ngày 21/11". Có ba bước hướng dẫn ngắn, mã QR to (đủ quét từ màn hình máy tính), rồi từng hàng rộng: Ngân hàng, Chủ tài khoản, Số tài khoản, Số tiền, Nội dung chuyển khoản. Ba hàng sau có nút "Sao chép" (bấm xong đổi thành "Đã sao chép"; số tiền chép ra số trơn không dấu chấm). Hàng nội dung chuyển khoản được làm nổi, câu lưu ý giữ đúng nội dung thành một khối nhắc riêng.
+- **Chọn bằng bàn phím.** Hai nhóm lựa chọn (thời hạn, cách thanh toán) là nhóm radio đúng chuẩn: phím mũi tên chuyển và chọn hàng kế.
+
+### Thêm
+
+- **Nút "Lưu ảnh mã QR".** Người dùng điện thoại không tự quét được màn hình của mình, nên lưu ảnh mã về rồi chọn ảnh đó trong app ngân hàng. Nút chỉ hiện khi trình duyệt tải được ảnh về thật.
+- **Màn cảm ơn và chờ xác nhận.** Sau khi bấm "Tôi đã chuyển khoản", người mua thấy một màn riêng thay vì chỉ một nút đổi chữ: lời cảm ơn, vòng xoay chờ và dòng nói rõ đang chờ gì (chủ hội kiểm tra tài khoản và xác nhận, hoặc ngân hàng báo về), tóm tắt đơn kèm nội dung chuyển khoản, và thẻ chủ hội (ảnh, tên, tên định danh) với nút "Nhắn tin cho chủ hội" để gửi ảnh chụp giao dịch khi chờ lâu. Chủ hội tắt nhận tin nhắn riêng thì thay bằng link xem hồ sơ. Có mục "Xem lại thông tin chuyển khoản" để mở lại mã QR, và nút "Về trang hội". Trang tự chuyển sang màn "Đã nhận thanh toán" khi đơn được xác nhận, với nút vào thẳng thứ vừa mua.
+- **Email cho chủ hội khi có người báo đã chuyển khoản.** Ở đơn chủ hội tự xác nhận, người mua bấm "Tôi đã chuyển khoản" thì chủ hội nhận một email: ai mua, mua gì, số tiền, nội dung chuyển khoản cần đối chiếu, và nút mở trang Tiền của hội để xác nhận. Mỗi đơn chỉ gửi một lần.
+- **Email cho chủ hội khi có đơn đã thanh toán.** Đơn của hội được thanh toán xong (ngân hàng hoặc cổng báo về, hoặc chủ hội bấm "Đã nhận tiền") thì chủ hội nhận một email báo đơn mới. Trước đây chủ hội chỉ có thông báo trong ứng dụng.
+
+### Kỹ thuật
+
+- Web: `apps/web/src/pages/community/CheckoutParts.tsx` (khung một cột, `RadioRows`, `RadioRow`, `Totals`, `BankQrCard`), `CheckoutConfigure.tsx`, `CheckoutOrder.tsx` (mới, tách màn của một đơn khỏi `Checkout.tsx`). Không đổi tham số gọi `POST /v1/checkout` hay cách truyền `ref`.
+- Máy chủ: `GET /v1/orders/:id` trả thêm `targetType` và `seller` (hội và chủ hội của đơn, chỉ thông tin công khai trên hồ sơ: tên, tên định danh, ảnh, có nhận tin nhắn không; đơn mua gói Hội Mình thì `seller` là null). `markProcessing` cập nhật có điều kiện để hai lần bấm sát nhau chỉ báo chủ hội một lần.
+- Email: hai mẫu mới `owner_transfer_reported` và `owner_order_paid` trong `packages/email/src/templates.ts`, gửi qua `ctx.email` như các email khác (lỗi gửi chỉ ghi log). Email đơn đã thanh toán nghe sự kiện `payment.succeeded` ở `packages/core/src/events/owner-emails.ts`, đăng ký trong `app.ts`.
+- Test: `packages/core/src/test/owner-order-emails.test.ts`; E2E 03, 22, 24, 26 sửa theo vai trò radio và màn chờ mới.
+
+## 1.45.0 - 2026-11-22
+
+Thêm hai trang công khai Điều khoản sử dụng và Chính sách quyền riêng tư, theo báo lỗi của chủ dự án (mở `/dieu-khoan` và `/quyen-rieng-tu` thì hiện "Có lỗi xảy ra · Hội không tồn tại"). Chỉ sửa giao diện web và danh sách đường dẫn giữ chỗ, không có migration. Nội dung hai trang là BẢN NHÁP soạn theo cách sản phẩm đang chạy: chủ dự án (và luật sư nếu cần) đọc duyệt trước khi coi là chính thức.
+
+### Thêm
+
+- **Trang Điều khoản sử dụng (`/dieu-khoan`).** 15 phần viết bằng lời thường: ai là ai trên Hội Mình, tài khoản, tiền mua bán trong hội đi thẳng tới chủ hội (Hội Mình không giữ hộ, không thu phí giao dịch), hoàn tiền trong 7 ngày nếu xem chưa quá 20% nội dung, gói Hội Mình của chủ hội (trả trước theo kỳ, không tự trừ tiền, gia hạn, nâng gói, ngừng dùng), trách nhiệm của chủ hội, affiliate và hoa hồng, nội dung và hành vi bị cấm, báo cáo vi phạm và khóa tài khoản, luật áp dụng, liên hệ.
+- **Trang Chính sách quyền riêng tư (`/quyen-rieng-tu`).** 11 phần: dữ liệu đang thu, dùng để làm gì, ai xem được, bên thứ ba nhận dữ liệu, cookie và bộ nhớ trình duyệt kèm thời hạn từng cái, thời gian lưu và cách bảo vệ, xóa tài khoản, quyền của bạn và cách thực hiện bằng chức năng đang có.
+- **Cả hai trang** mở được khi chưa đăng nhập, có ngày cập nhật, mục lục bấm nhảy tới từng phần, các phần đánh số, và link sang trang còn lại ở cuối. Chữ thân bài 17px, giãn dòng 1.7, bề ngang phần chữ tối đa 720px, đọc gọn trên điện thoại.
+
+### Sửa
+
+- **Mở `/dieu-khoan` hoặc `/quyen-rieng-tu` thì hiện "Hội không tồn tại".** Hai địa chỉ này chưa có trang nên rơi vào trang của hội, và web đi tìm một hội có đường dẫn `dieu-khoan`. Nay là hai trang riêng.
+- **Hai link ở ô "Tôi đồng ý với Điều khoản và Chính sách quyền riêng tư" của trang đăng ký.** Trước đây bấm vào thì rời trang đăng ký (mất chữ đã gõ) và ô đồng ý bị đánh dấu theo. Nay hai link mở trang ở thẻ mới, không đụng tới ô đồng ý.
+- **Dòng "Điều khoản · Quyền riêng tư" ở chân khung đăng nhập, đăng ký** trước chỉ là chữ, nay là hai link.
+
+### Thay đổi
+
+- **Không hội nào đặt được đường dẫn `dieu-khoan` hay `quyen-rieng-tu`.** Hai tên này vào danh sách đường dẫn hệ thống giữ chỗ, áp dụng cả lúc tạo hội lẫn lúc đổi đường dẫn.
+
+### Kỹ thuật
+
+- Chữ của hai trang nằm trong tệp dữ liệu, tách khỏi giao diện: `apps/web/src/pages/public/legal/terms.ts`, `privacy.ts` và `contact.ts` (mảng các phần gồm đoạn văn, tiêu đề nhỏ, danh sách, ô lưu ý). `LegalDocument.tsx` dựng cả hai trang từ dữ liệu đó. Muốn sửa chữ thì sửa tệp dữ liệu và đổi ngày `updatedAt`.
+- Email hỗ trợ ở mục Liên hệ để trống (`LEGAL_CONTACT_EMAIL` trong `contact.ts`) vì trong repo chưa có địa chỉ nào được xác nhận là hộp thư hỗ trợ thật. Điền một dòng là hiện trên cả hai trang.
+- Route `/dieu-khoan` và `/quyen-rieng-tu` thêm vào nhóm trang công khai của `apps/web/src/app/router.tsx`; `RESERVED_SLUGS` trong `packages/config` thêm hai tên.
+- Test: `apps/web/src/pages/public/legal/content.test.ts` (neo không trùng, link trỏ tới trang có trong router, không có gạch ngang dài, không sót chữ giữ chỗ), `packages/config/src/reserved-slugs.test.ts`, `packages/core/src/test/reserved-slugs.test.ts` (tạo hội, đổi đường dẫn, dữ liệu mẫu), E2E `29-dieu-khoan-quyen-rieng-tu`.
+- Chưa kiểm được trên database thật xem có hội nào đang dùng hai đường dẫn này. Nếu có, hội đó phải đổi đường dẫn vì địa chỉ nay thuộc về trang pháp lý.
+
+## 1.44.2 - 2026-11-22
+
+Thông tin riêng của thành viên trong khung chat chỉ còn người quản lý hội thấy, theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Ai trò chuyện cũng xem được tiến độ học và người giới thiệu của người kia.** Bảng "Thông tin hội thoại" trong Tin nhắn vốn làm cho chủ hội xem thành viên của mình, nhưng máy chủ trả đủ thông tin cho bất kỳ ai đang trò chuyện. Vì vậy một thành viên thường mở cuộc trò chuyện với thành viên khác (hoặc với chủ hội) là thấy tình trạng thành viên, giá gói, khóa đang học kèm phần trăm tiến độ, và người đã giới thiệu người đó. Nay chỉ chủ hội và quản trị của hội thấy các thông tin này.
+- Người xem khác (thành viên thường, điều hành viên) chỉ còn thấy đúng những gì danh bạ thành viên của hội vốn đã cho mọi thành viên xem: vai trò, tên gói, ngày tham gia.
+
+### Kỹ thuật
+
+- `packages/core/src/services/messaging.ts`: `memberPanel` kiểm quyền `member.manage` của người xem trong hội của cuộc trò chuyện; không có quyền thì `status`, `tier.monthlyMinor`, `learning`, `referrer` là null. Giao diện vốn tự ẩn các dòng không có dữ liệu nên không phải sửa bố cục.
+- Test: `packages/core/src/test/messaging.test.ts` thêm 2 ca (chủ hội thấy đủ, thành viên thường và chiều ngược lại chỉ thấy phần công khai, hội thoại không gắn hội thì không có thông tin thành viên).
+
+## 1.44.1 - 2026-11-22
+
+Bảng "Thông tin hội thoại" trong Tin nhắn gọn lại, theo góp ý của chủ dự án. Chỉ sửa giao diện web, không có migration.
+
+### Thay đổi
+
+- **Bảng thông tin hội thoại chỉ còn một nút "Xem chi tiết hồ sơ".** Bỏ hàng bốn nút tròn (Ghim hội thoại, Xem hồ sơ, Quản lý thành viên, Lưu trữ hội thoại). Nút "Quản lý thành viên" bị bỏ hẳn vì không hợp với một khung trò chuyện.
+- **Ghim và lưu trữ hội thoại nằm ở menu ba chấm.** Menu ba chấm ở đầu khung chat nay có thêm "Ghim hội thoại" và "Lưu trữ hội thoại" (trước chỉ có ở menu ba chấm trên từng dòng của danh sách), nên đang mở một cuộc trò chuyện trên điện thoại vẫn ghim và lưu trữ được.
+
+### Kỹ thuật
+
+- `apps/web/src/pages/account/MessagesParts.tsx` (`InfoPanel` bỏ các prop ghim và lưu trữ), `MessagesMenus.tsx` (`ChatMenu` nhận thêm ghim và lưu trữ), `MessagesThread.tsx`; gỡ các lớp `.chat-quick` không còn dùng trong `packages/ui/src/styles.css`.
+- E2E `17-tin-nhan-kieu-zalo` kiểm bảng thông tin chỉ có nút hồ sơ và menu ba chấm có ghim, lưu trữ.
+
+## 1.44.0 - 2026-11-22
+
+Bấm chuông thì hiện bảng thông báo nổi ngay tại chỗ thay vì nhảy sang trang Thông báo, và thông báo chưa đọc luôn đứng đầu, theo yêu cầu của chủ dự án. Không có migration, không đổi API.
+
+### Thêm
+
+- **Bảng thông báo nổi ở nút chuông.** Bấm chuông ở đầu trang (khung hội, Khu học tập, khung chủ hội) thì bảng thông báo mở ngay tại chỗ, không rời trang đang xem. Máy tính: bảng thả dưới nút chuông, danh sách cuộn bên trong. Điện thoại: bảng trượt từ đáy lên, rộng hết màn hình, có nút đóng. Đóng bằng Esc, bấm ra ngoài, hoặc khi chuyển trang.
+- **Hai mục "Chưa đọc" và "Tất cả".** Còn thông báo chưa đọc thì bảng mở sẵn mục "Chưa đọc"; đọc hết rồi thì mở "Tất cả". Ở "Tất cả", cái chưa đọc đứng trước (có chấm, chữ đậm), cái đã đọc đứng sau và nhạt hơn. Ở "Chưa đọc" mà không còn gì thì hiện lời báo đã đọc hết kèm nút xem lại thông báo đã đọc.
+- **Đánh dấu đã đọc từng cái.** Mỗi thông báo chưa đọc có nút tròn "Đánh dấu đã đọc" để đọc mà không phải mở. Bấm vào thông báo thì đánh dấu đã đọc, đóng bảng và đi tới nơi thông báo nhắc tới. Nút "Đánh dấu tất cả đã đọc" chỉ bật khi còn cái chưa đọc.
+- **Nút "Cài đặt" trong bảng.** Dẫn thẳng tới phần cài đặt của trang Thông báo (`/thong-bao#cai-dat`): trang tự cuộn tới "Cài đặt nhanh" và "Theo cộng đồng", kể cả trên điện thoại nơi phần này nằm dưới danh sách. Trang Thông báo trên điện thoại cũng có nút "Cài đặt thông báo" ở đầu trang.
+
+### Thay đổi
+
+- **Chuông hiện số thông báo chưa đọc** thay cho chấm đỏ: 1 đến 9 hiện đúng số, nhiều hơn thì "9+". Đánh dấu đã đọc thì số trên chuông và danh sách đổi ngay lúc bấm, không chờ tải lại.
+- **Trang Thông báo xếp cái chưa đọc lên đầu** (khối "Chưa đọc"), phần đã đọc nhạt hơn và chia theo ngày như trước. Trang và bảng nổi dùng chung một kiểu dòng thông báo.
+
+### Sửa
+
+- **Nút hành động trong dòng thông báo ("Vào học", "Trả lời", "Xem ví") bị lệch.** Trước đây chữ dính sát mép trên của nút, phía dưới thừa khoảng trống, và nút đứng lệch lên trên so với dòng. Nay chữ nằm chính giữa nút, nút cao 36px và nằm giữa dòng theo chiều dọc, không xuống dòng. Trên điện thoại và trong bảng nổi (chỗ hẹp), nút nằm dưới dòng chữ, căn trái, cao 44px, để chữ không bị ép thành cột hẹp; trước đây trên điện thoại nút này bị ẩn hẳn.
+
+### Kỹ thuật
+
+- Nguyên nhân nút lệch: thẻ nút mang cả lớp `btn` lẫn `hide-mobile`. `.hide-mobile { display: initial }` khai báo sau `.btn` trong `styles.css` nên đè mất `display: inline-flex` của `.btn`; nút thành một khối thường, `align-items` và `justify-content` hết tác dụng nên chữ nằm ở mép trên của khung cao 36px. Thêm nữa hàng dùng `align-items: flex-start` nên nút đứng ở đầu dòng thay vì giữa dòng. Nay nút không mang `hide-mobile`, khối chữ và nút nằm trong `.notif-content` (hàng ngang khi rộng, cột khi hẹp).
+
+- `apps/web/src/components/NotificationBell.tsx` (chuông và bảng nổi), `apps/web/src/components/NotificationRow.tsx` (dòng thông báo dùng chung), thay ba link chuông ở `AppShell.tsx`, `LearnerShell.tsx`, `WorkspaceShell.tsx`.
+- `apps/web/src/lib/notifications.ts`: logic thuần (nhãn số "9+", đích của thông báo, ghép "chưa đọc" với "tất cả" và bỏ trùng, chia khối, cập nhật bộ nhớ đệm khi đánh dấu đã đọc), có test trong `notifications.test.ts`. `apps/web/src/lib/use-notifications.ts`: truy vấn và thao tác đánh dấu đã đọc dùng chung.
+- Thứ tự "chưa đọc trước" làm ở giao diện bằng hai danh sách sẵn có của API (`filter=unread` và `filter=all`); `listNotifications` ở máy chủ và phân trang cursor giữ nguyên.
+- Kiểu dáng thêm vào `packages/ui/src/styles.css` (các lớp `.notif-*`).
+- Test trình duyệt: `e2e/tests/29-bang-thong-bao.spec.ts` (mở bảng tại chỗ, số trên chuông, đánh dấu đã đọc, Esc và bấm ra ngoài, nút Cài đặt, bảng trượt trên điện thoại).
+
+## 1.43.0 - 2026-11-22
+
+Mỗi người tự chọn được một mã giới thiệu chung, dùng cho link của mọi chương trình mình làm affiliate, theo yêu cầu của chủ dự án. Có migration `0019_affiliate_user_codes` (thêm một bảng, không đổi dữ liệu cũ).
+
+### Thêm
+
+- **Đổi mã giới thiệu, một mã cho mọi nơi.** Ở trang Tài khoản, mục Affiliate, cạnh nút "Sao chép mã" có nút "Đổi mã". Bạn chọn một mã dễ nhớ (3 đến 20 ký tự, chữ không dấu và số, ví dụ `minhquy`) và mã đó dùng cho link Hội Mình lẫn link của mọi hội bạn làm affiliate. Mã không được trùng với mã của bất kỳ ai trên toàn nền tảng, không trùng tên định danh của người khác, và không dùng các tên dành cho hệ thống.
+- **Mỗi người chỉ đổi được một lần.** Bảng đổi mã bắt xác nhận trước khi lưu. Lưu xong thì nút "Đổi mã" biến mất. Mã không hợp lệ hoặc đã có người dùng thì chưa mất lượt.
+- **Link cũ không hỏng.** Link đã chia sẻ với mã cũ vẫn chạy và vẫn tính hoa hồng. Trang Affiliate ghi rõ mã cũ nào còn hiệu lực.
+- **Thành viên chưa từng lấy link vẫn dùng được mã chung ở hội mình đang tham gia.** Ví affiliate của hội đó tự mở khi có người đầu tiên đi qua link, như lúc tự mở trang Affiliate.
+
+### Thay đổi
+
+- **Trang Affiliate trong Tài khoản nay tên là "Affiliate của tôi".** Để khỏi lẫn với phần quản lý chương trình affiliate của hội.
+
+### Không đổi
+
+- Luật tính hoa hồng giữ nguyên. Link mở ở trang của một hội (trang giới thiệu, trang sản phẩm) chỉ tính cho chương trình của hội đó; link mở ở trang nền tảng (trang chủ, trang mở hội) chỉ tính cho chương trình nền tảng. Người vào một hội mà chưa có người giới thiệu nền tảng thì người giới thiệu nền tảng vẫn mặc định là chủ hội.
+
+### Kỹ thuật
+
+- Bảng `affiliate_user_codes` (mỗi người một dòng, mã duy nhất), có RLS như các bảng khác. Mã riêng của từng tài khoản affiliate (`affiliate_accounts.affiliate_code`) không đổi.
+- `packages/core/src/services/referral-codes.ts`: `setMyReferralCode`, `myReferralCode`, và `canonicalRefs` đổi mã chung thành mã riêng của đúng một chương trình ở cửa vào (`attachAttribution`, `accountForCodes`, `trackClick`, `recordLandingClick`), nên phần tính người giới thiệu và hoa hồng phía sau chạy như cũ.
+- Mã trong cookie `hm_ref` và các trường `ref` nay có dạng `mã.phạm-vi` (phạm vi là trang mà link được mở, web tự gắn lúc ghi nhớ); mã không có phạm vi (cookie cũ, mã gõ tay) vẫn được nhận. Trường `ref` nới giới hạn từ 300 lên 700 ký tự.
+- API: `GET` và `PUT /v1/me/referral-code`. Ví (`/v1/me/affiliate/:programId`) trả thêm `codeEditable`, `previousCode`.
+- Test: `packages/core/src/test/referral-code.test.ts` (15 ca), bổ sung `apps/web/src/lib/referral.test.ts` và `affiliate-link.test.ts`. Các test hoa hồng sẵn có không sửa và vẫn qua.
+
+## 1.42.0 - 2026-11-22
+
+Rà soát toàn bộ MCP, API key và webhook theo yêu cầu của chủ dự án ngày 21/11/2026: đối chiếu từng route REST với bảng quyền của API key và bộ lệnh MCP, bổ sung những chỗ còn thiếu để trợ lý AI thêm, sửa, xóa được ở bài viết, bình luận, thành viên, affiliate, sự kiện, webhook và cài đặt. Bộ lệnh MCP từ 100 lên 121 lệnh. Kèm theo đó sửa link mời vào hội (lỗi tìm ra khi rà): mã mời trên link trước đây không được đọc lại. Không có migration.
+
+### Thêm
+
+- **Sửa bình luận.** Trước đây bình luận chỉ tạo, ghim và xóa được. Nay có `PATCH /v1/comments/:id` và lệnh `update_comment` (tác giả hoặc người kiểm duyệt sửa nội dung; ảnh, lượt thích, các trả lời giữ nguyên).
+- **Thả cảm xúc qua API key.** Lệnh `toggle_reaction` thả, đổi, gỡ cảm xúc ở bài viết và bình luận dưới tên chủ hội.
+- **Hủy sự kiện và xóa bản ghi.** Lệnh `cancel_event` (`DELETE /v1/events/:id`) đưa buổi sang trạng thái đã hủy: biến khỏi lịch, ngừng nhắc, dữ liệu còn nguyên; `update_event` với `status: "scheduled"` mở lại. Lệnh `delete_event_recording` gỡ một bản ghi khỏi mục Xem lại.
+- **Quản lý từng affiliate.** Lệnh `list_affiliates` liệt kê affiliate của hội kèm mã, lượt bấm, số đơn, hoa hồng đang giữ, rút được, đã trả. Lệnh `update_affiliate` tạm khóa, mở lại hoặc đặt tỉ lệ hoa hồng riêng cho một affiliate. Lệnh `export_withdrawals_csv` xuất bảng đối soát.
+- **Thu hồi khóa học đã cấp tay.** Lệnh `revoke_course` là chiều ngược của `grant_course`; quyền có do mua hoặc do gói không bị đụng tới.
+- **Xuất thành viên ra CSV.** Lệnh `export_members_csv`.
+- **Sửa, gửi thử, đổi secret webhook.** Lệnh `update_webhook` (đổi địa chỉ, đổi sự kiện, tạm dừng, bật lại webhook đã tự dừng vì lỗi), `test_webhook` (gửi sự kiện `ping` qua đúng đường giao thật), `rotate_webhook_secret`.
+- **Ba sự kiện webhook mới.** `member.removed` (bị mời ra), `member.banned` (bị khóa), `affiliate.withdrawal_requested` (affiliate gửi yêu cầu rút, để trợ lý báo chủ hội xử lý ngay). Tổng cộng 15 sự kiện.
+- **Cài đặt hội.** Lệnh `get_community_about` đọc trang giới thiệu (gồm câu hỏi tham gia đang đặt, trước đây chỉ ghi được mà không đọc lại được), `update_about_media` đặt bộ ảnh và video giới thiệu.
+- **Tin nhắn và thông báo.** Lệnh `recall_message` (thu hồi tin đã gửi), `archive_conversation`, `mark_notifications_read`.
+- **Lời mời đang chờ và thu hồi lời mời.** Khung "Mời thành viên" hiện danh sách lời mời chưa có người nhận (email, vai trò, ngày hết hạn) kèm nút Thu hồi. Qua API và MCP có `list_invites` và `revoke_invite`.
+- **Việc lặt vặt còn thiếu lệnh.** `rotate_inbound_source` (đổi địa chỉ nguồn đồng bộ khi bị lộ), `delete_file` (bỏ tệp tải lên mà không dùng).
+
+### Sửa
+
+- **Link mời vào hội không có tác dụng.** Email mời chứa link `?invite=<mã>` nhưng không nơi nào đọc lại mã đó: người được mời vẫn phải trả lời câu hỏi và chờ duyệt như người lạ, mời với vai trò quản trị viên không trao quyền gì, và lời mời không bao giờ hết hạn hay được đánh dấu đã nhận. Nay người được mời mở link, đăng ký hoặc đăng nhập xong là vào thẳng hội: không chờ duyệt, không câu hỏi, vào được cả khi hội đã đóng cổng. Mời làm quản trị viên thì người đó nhận đúng vai trò quản trị (thành viên sẵn có được nâng lên). Lời mời gửi qua email dùng một lần trong 14 ngày và chỉ đúng email được mời, đã xác minh, mới nhận được; hết hạn, đã dùng, sai người hay đã thu hồi đều có lời báo rõ trên trang hội. Hội thu phí: được mời làm thành viên vẫn phải thanh toán.
+- **Không hủy được sự kiện.** Tầng dịch vụ nhận `status` khi sửa sự kiện nhưng hợp đồng API bỏ trường này đi, nên không có đường nào (web, REST, MCP) hủy được một buổi. Nay `updateEventSchema` nhận `status` là `scheduled` hoặc `cancelled`.
+
+## 1.41.3 - 2026-11-22
+
+Trang bán của khóa học hiện lại ảnh bìa, theo báo lỗi của chủ dự án (trang mở từ link affiliate chỉ thấy nền màu). Không có migration, không cần sửa dữ liệu.
+
+### Sửa
+
+- **Trang bán và thẻ cửa hàng của khóa học mất ảnh bìa.** Lúc khóa học được đăng lần đầu, hệ thống tạo sản phẩm cửa hàng nhưng không chép ảnh bìa của khóa học sang, nên trang bán (nơi link affiliate dẫn tới) chỉ hiện nền màu dù khóa học đã có ảnh. Nay sản phẩm tạo ra mang luôn ảnh bìa của khóa học. Sản phẩm đã tạo từ trước cũng hiện ảnh ngay: trang bán và cửa hàng lấy ảnh của khóa học khi sản phẩm chưa có ảnh riêng.
+- **Chữ tiêu đề đè lên ảnh bìa ở trang bán.** Có ảnh bìa thì trang bán không vẽ tiêu đề lên trên ảnh nữa, giống thẻ ở cửa hàng và trang khóa học. Tên sản phẩm vẫn nằm ngay bên dưới. Chưa có ảnh thì vẫn là nền màu kèm tiêu đề như trước.
+
+### Kỹ thuật
+
+- `packages/core/src/services/store.ts`: `createProduct` chép `courses.coverUrl` khi sản phẩm loại khóa học không tải ảnh riêng; `getProduct` và `listProducts` trả `coverUrl` của khóa học khi bản sao ở sản phẩm trống (hàm `coverOf`).
+- Test: `packages/core/src/test/file-cleanup.test.ts` thêm ca đăng khóa học bán lẻ lần đầu, khách chưa đăng nhập đọc trang bán, và sản phẩm cũ có bản sao ảnh trống.
+
 ## 1.41.2 - 2026-11-22
 
 Đăng ký hoặc đăng nhập từ trang của một hội thì xong là vào thẳng hội đó, theo yêu cầu của chủ dự án. Chỉ sửa giao diện web, không đổi máy chủ, không có migration.

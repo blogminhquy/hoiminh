@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultProgramId, earnLine, estimateCommission, filterTargets, ratePercent, type AffiliateProgram, type LinkTarget } from './affiliate-link';
+import { cleanCodeInput, defaultProgramId, earnLine, estimateCommission, filterTargets, ratePercent, type AffiliateProgram, type LinkTarget } from './affiliate-link';
 
 const program = (over: Partial<AffiliateProgram>): AffiliateProgram => ({ id: 'p', name: 'Hội A', scope: 'community', community: null, rateBps: 4000, durationMonths: null, enabled: true, canManage: false, hasAccount: false, ...over });
 const platform = program({ id: 'platform', name: 'Nền tảng Hội Mình', scope: 'platform', durationMonths: 12 });
@@ -55,5 +55,13 @@ describe('filterTargets', () => {
     expect(filterTargets(list, 'duong di').map((x) => x.label)).toEqual(['Khóa Đường Đi AI']);
     expect(filterTargets(list, 'KHỞI').map((x) => x.label)).toEqual(['Combo khởi nghiệp']);
     expect(filterTargets(list, 'khong co')).toEqual([]);
+  });
+});
+
+describe('cleanCodeInput', () => {
+  it('viết thường, bỏ dấu tiếng Việt, bỏ ký tự lạ, cắt còn 20 ký tự', () => {
+    expect(cleanCodeInput(' Minh Quý ')).toBe('minhquy');
+    expect(cleanCodeInput('Đặng-Thị_Hồng.Kim 99')).toBe('dangthihongkim99');
+    expect(cleanCodeInput('a'.repeat(30))).toHaveLength(20);
   });
 });
