@@ -42,6 +42,30 @@ export const requestWithdrawalSchema = z.object({
 export const markPaidSchema = z.object({ transferReference: z.string().trim().min(4).max(64), version: z.number().int() });
 export const rejectWithdrawalSchema = z.object({ reason: z.string().trim().min(3).max(300), version: z.number().int() });
 
+/** Số mã giới thiệu tối đa một người xem mang theo (cookie và các trường `ref`). */
+export const REF_CODES_MAX = 8;
+
+/**
+ * Các mã giới thiệu một người đang mang theo, mới bấm đứng trước. Một người có thể được nhiều affiliate giới thiệu
+ * tới nhiều hội khác nhau (và tới nền tảng), nên cookie và các trường `ref` chứa một DANH SÁCH mã cách nhau bằng dấu
+ * phẩy, không phải một mã. Mỗi hội chỉ nhận mã của chương trình hội đó; mã mới nhất của hội đó thắng (last click).
+ */
+export function refCodes(...parts: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  for (const part of parts) {
+    for (const raw of (part ?? '').split(',')) {
+      const code = raw.trim().toLowerCase();
+      if (code && code.length <= 32 && /^[a-z0-9_-]+$/.test(code) && !out.includes(code)) out.push(code);
+    }
+  }
+  return out.slice(0, REF_CODES_MAX);
+}
+
+/** Gộp các nguồn mã (mã trên link trước, rồi mã đã nhớ) thành một chuỗi để gửi đi; không có mã nào thì undefined. */
+export function joinRefs(...parts: Array<string | null | undefined>): string | undefined {
+  return refCodes(...parts).join(',') || undefined;
+}
+
 /** Thành viên tự đổi người giới thiệu: `code` nhận mã giới thiệu, cả link có `?ref=`, hoặc email của người giới thiệu. */
 export const setReferrerSchema = z.object({ code: z.string().trim().min(2).max(300) });
 

@@ -1,5 +1,5 @@
 // Cửa hàng, sản phẩm, checkout, đơn hàng, hoàn tiền của chủ hội.
-import { createCheckoutSchema, createProductSchema, storeQuerySchema, updateProductSchema } from '@hoiminh/contracts';
+import { createCheckoutSchema, createProductSchema, joinRefs, storeQuerySchema, updateProductSchema } from '@hoiminh/contracts';
 import { checkout, paymentsService, store } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
@@ -24,7 +24,7 @@ commerceRoutes.get('/products/:id/downloads', requireAuth, async (c) => c.json(a
 commerceRoutes.post('/checkout', requireAuth, rateLimit('write', { scope: 'checkout' }), async (c) => {
   const input = await parse(createCheckoutSchema, await body(c));
   const cookieRef = getCookie(c.req.header('cookie'), 'hm_ref');
-  return c.json(await checkout.createCheckout(c.get('ctx'), { ...input, ref: input.ref ?? cookieRef ?? undefined }), 201);
+  return c.json(await checkout.createCheckout(c.get('ctx'), { ...input, ref: joinRefs(input.ref, cookieRef) }), 201);
 });
 commerceRoutes.get('/orders/:id', requireAuth, async (c) => c.json(await checkout.orderStatus(c.get('ctx'), c.req.param('id'))));
 commerceRoutes.post('/orders/:id/processing', requireAuth, async (c) => c.json(await checkout.markProcessing(c.get('ctx'), c.req.param('id'))));

@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.37.0 - 2026-11-21
+
+Chốt cách tính link và cookie cho affiliate, tách rõ hai tầng: affiliate nền tảng và affiliate của từng hội. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Thay đổi
+
+- **Hai tầng affiliate tính riêng.** Link của hội nào thì tính hoa hồng cho hội đó. Tầng nền tảng tính cho dịch vụ của nền tảng (gói Hội Mình). Một người giới thiệu được nhiều người, ở nhiều hội khác nhau.
+- **Trong một hội thì tính lượt bấm cuối (last click), 30 ngày, cho tới lúc người đó vào hội.** Áp dụng cho cả người đã có tài khoản Hội Mình (đang ở hội khác). Đăng ký qua link của A rồi bấm link của B mới vào hội thì B được ghi nhận. Vào hội rồi thì người giới thiệu là cố định: người khác không giới thiệu tranh được nữa.
+- **Thành viên đang ở trong hội thì link không tính cho từng đơn hàng.** Thành viên chưa có người giới thiệu mà bấm thêm link của ai đó rồi mua thì đơn đó không tính hoa hồng. Họ tự chọn người giới thiệu ở thẻ "Người giới thiệu của bạn" (mã, link hoặc email). Bản 1.36.0 còn tính trường hợp này; nay bỏ.
+- **Tầng nền tảng ghi một lần rồi cố định.** Đăng ký tài khoản qua link nền tảng thì người chia sẻ link là người giới thiệu nền tảng; sau đó người khác giới thiệu không được tính nữa.
+- **Người vào một hội thì người giới thiệu nền tảng mặc định là chủ hội đó.** Áp dụng khi tài khoản chưa có người giới thiệu nền tảng. Về sau người này mua gói Hội Mình thì hoa hồng nền tảng về chủ hội đã đưa họ về.
+- **Cookie nhớ được nhiều mã.** Trước đây cookie chỉ nhớ một mã, nên bấm link của hội B là mất mã của hội A. Nay cookie nhớ tới 8 mã, mỗi hội (và nền tảng) tính mã mới nhất của chính mình. Một lượt đăng ký ghi được cả người giới thiệu nền tảng lẫn lượt bấm của từng hội.
+- Trang giới thiệu hội chỉ hiện dòng "Bạn được ... giới thiệu" khi lượt giới thiệu đó thật sự được tính cho hội này.
+
+### Sửa
+
+- **Đăng ký bằng Google làm rơi mã giới thiệu.** Tài khoản tạo qua Google không được ghi người giới thiệu dù có cookie. Nay được tính như đăng ký bằng email.
+- Mã giới thiệu của hội khác trên link không còn làm hiện sai tên người giới thiệu ở trang giới thiệu hội.
+
 ## 1.36.3 - 2026-11-21
 
 Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Bài học nhận thêm link Google Drive, phát ngay trong trang và chặn mở sang Drive. Theo yêu cầu của chủ dự án.
