@@ -3,7 +3,7 @@
 //   2. Danh sách chương trình gồm cả hội chưa bật, kèm lối đi bật cho người quản lý.
 //   3. Mỗi chương trình trả về các trang lấy link được: trang hội và từng sản phẩm đang bán.
 import { eq, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, courses, products } from '@hoiminh/db';
+import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliatePrograms, communities, courses, products } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as affiliate from '../services/affiliate';
 import { createTestApp, type TestApp } from './setup';
@@ -106,6 +106,59 @@ describe('affiliate: các trang lấy link được', () => {
       ['home', `${app.ctx.env.APP_URL}/?ref=${w.affiliateCode}`],
     ]);
     expect(w.link).toBe(`${app.ctx.env.APP_URL}/tao-hoi?ref=${w.affiliateCode}`);
+  });
+});
+
+describe('affiliate: đếm lượt bấm của link ?ref=', () => {
+  const HV_CODE = 'hv8k2';
+  const clicksOf = async () => (await app.ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.affiliateCode, HV_CODE) }))!.clickCount;
+  const visit = (visitorId: string, over: { ip?: string; userAgent?: string } = {}) => affiliate.recordLandingClick(app.anon(), HV_CODE, { visitorId, ip: over.ip ?? `10.0.0.${visitorId.length}`, userAgent: over.userAgent ?? `ua-${visitorId}`, landingUrl: `${app.ctx.env.APP_URL}/${SLUG}/cua-hang/x?ref=${HV_CODE}` });
+
+  it('khách mở link thì đếm một lượt, có ghi trang đã mở, và không ghi người giới thiệu', async () => {
+    const before = await clicksOf();
+    const attributions = (await app.ctx.db.select({ n: sql<number>`count(*)::int` }).from(affiliateAttributions))[0]!.n;
+    expect(await visit('khach-a')).toBe(true);
+    expect(await clicksOf()).toBe(before + 1);
+    const row = await app.ctx.db.query.affiliateClicks.findFirst({ where: eq(affiliateClicks.visitorId, 'khach-a') });
+    expect(row?.landingUrl).toContain(`/cua-hang/x?ref=${HV_CODE}`);
+    // Chỉ đếm: luật tính người giới thiệu (lúc đăng ký, lúc vào hội) không đổi.
+    expect((await app.ctx.db.select({ n: sql<number>`count(*)::int` }).from(affiliateAttributions))[0]!.n).toBe(attributions);
+  });
+
+  it('cùng người xem mở lại trong 30 phút không đếm thêm, kể cả khi mất mã khách nhưng cùng mạng và trình duyệt', async () => {
+    const before = await clicksOf();
+    expect(await visit('khach-b')).toBe(true);
+    expect(await visit('khach-b')).toBe(false);
+    expect(await visit('khach-b-moi', { ip: `10.0.0.${'khach-b'.length}`, userAgent: 'ua-khach-b' })).toBe(false);
+    expect(await clicksOf()).toBe(before + 1);
+    // Người khác cùng mạng nhưng khác trình duyệt vẫn được đếm.
+    expect(await visit('khach-c', { ip: `10.0.0.${'khach-b'.length}` })).toBe(true);
+    expect(await clicksOf()).toBe(before + 2);
+  });
+
+  it('quá 30 phút thì lượt mở lại được đếm', async () => {
+    const before = await clicksOf();
+    expect(await visit('khach-d')).toBe(true);
+    await app.ctx.db.update(affiliateClicks).set({ clickedAt: new Date(Date.now() - 31 * 60_000) }).where(eq(affiliateClicks.visitorId, 'khach-d'));
+    expect(await visit('khach-d')).toBe(true);
+    expect(await clicksOf()).toBe(before + 2);
+  });
+
+  it('không đếm: chính affiliate tự mở link của mình, mã lạ, chương trình đang tắt', async () => {
+    const before = await clicksOf();
+    expect(await affiliate.recordLandingClick(await app.as('hoangvu'), HV_CODE, { visitorId: 'chinh-chu' })).toBe(false);
+    expect(await affiliate.recordLandingClick(app.anon(), 'khong-co-ma-nay', { visitorId: 'khach-e' })).toBe(false);
+    expect(await affiliate.recordLandingClick(app.anon(), '  ', { visitorId: 'khach-e' })).toBe(false);
+    await app.ctx.db.update(affiliatePrograms).set({ status: 'paused' }).where(eq(affiliatePrograms.id, PROGRAM));
+    try {
+      expect(await visit('khach-f')).toBe(false);
+    } finally {
+      await app.ctx.db.update(affiliatePrograms).set({ status: 'active' }).where(eq(affiliatePrograms.id, PROGRAM));
+    }
+    expect(await clicksOf()).toBe(before);
+    // Thành viên khác đang đăng nhập mở link thì vẫn đếm; mã viết hoa cũng nhận.
+    expect(await affiliate.recordLandingClick(await app.as('cong'), HV_CODE.toUpperCase(), { visitorId: 'thanh-vien' })).toBe(true);
+    expect(await clicksOf()).toBe(before + 1);
   });
 });
 

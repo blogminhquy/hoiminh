@@ -383,7 +383,7 @@ export async function myWallet(ctx: Ctx, programId: string) {
 }
 
 // Danh sách chương trình của tôi và chương trình nền tảng nằm ở affiliate-links.ts.
-export { myPrograms, platformProgram } from './affiliate-links';
+export { myPrograms, platformProgram, recordLandingClick } from './affiliate-links';
 
 /** Xếp hạng affiliate từ snapshot (mục 200) + dòng "bạn" + cột phải. */
 export async function leaderboard(ctx: Ctx, communityId: string, period: 'month' | 'quarter' | 'all') {
