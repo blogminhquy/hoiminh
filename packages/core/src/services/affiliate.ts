@@ -13,7 +13,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { notify } from './notifications';
 import { communityHasFeature, requirePlanFeature } from './plans';
-import { linkTargets } from './affiliate-links';
+import { linkTargets, platformProgram } from './affiliate-links';
 
 /** Số dư ví từ sổ cái: credit + release + adjustment − hold − debit. */
 export async function walletBalance(ctx: Ctx, affiliateAccountId: string): Promise<{ available: number; credited: number; held: number; debited: number }> {
@@ -162,8 +162,10 @@ export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId
  * Gọi khi một người trở thành thành viên của hội (sự kiện member.joined).
  */
 export async function defaultPlatformReferrer(ctx: Ctx, p: { userId: string; communityId: string }): Promise<void> {
-  const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
-  if (!program || program.status !== 'active') return;
+  // Chưa có chương trình nền tảng (web thật không chạy dữ liệu mẫu) thì tạo luôn ở đây. Nếu chỉ tìm mà không tạo, người
+  // vào hội trước lúc có ai mở trang Affiliate sẽ không bao giờ được ghi chủ hội làm người giới thiệu nền tảng.
+  const program = await platformProgram(ctx);
+  if (program.status !== 'active') return;
   const has = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id)), columns: { id: true } });
   if (has) return;
   const [owner] = await ctx.db.select({ userId: workspaces.ownerUserId }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).where(eq(communities.id, p.communityId));

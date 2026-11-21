@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.41.1 - 2026-11-21
+
+Người vào hội được ghi chủ hội làm người giới thiệu nền tảng ngay cả khi hệ thống chưa có chương trình affiliate nền tảng. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Người vào hội sớm bị bỏ sót người giới thiệu nền tảng.** Luật của bản 1.37.0: người vào một hội mà tài khoản chưa có người giới thiệu nền tảng thì chủ hội đó là người giới thiệu nền tảng. Nhưng luật này bỏ qua khi hệ thống chưa có chương trình affiliate nền tảng, mà chương trình chỉ được tạo lúc có người mở trang Affiliate lần đầu (bản 1.40.0). Ai vào hội trước thời điểm đó thì không được ghi, và về sau cũng không được ghi lại. Nay chương trình được tạo ngay ở lần đầu có người vào một hội.
+- Chương trình nền tảng đang tạm dừng thì vẫn không ghi, như cũ.
+
 ## 1.41.0 - 2026-11-21
 
 Trang bán của sản phẩm mở cho mọi người, để link sản phẩm (của affiliate, của chủ hội đem đi quảng cáo) đưa người lạ tới đúng sản phẩm. Theo yêu cầu của chủ dự án. Không có migration.
