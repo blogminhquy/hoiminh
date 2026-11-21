@@ -99,7 +99,9 @@ export type UpdatePricingInput = z.infer<typeof updatePricingSchema>;
 export const joinCommunitySchema = z.object({
   answers: z.array(z.object({ questionId: idSchema, answer: z.string().max(500) })).max(3).default([]),
   /** Một mã giới thiệu hoặc danh sách mã cách nhau bằng dấu phẩy (xem refCodes). */
-  ref: z.string().max(300).optional(),
+  ref: z.string().max(700).optional(),
+  /** Mã mời trên link `?invite=` chủ hội gửi. Có mã hợp lệ thì vào thẳng, không chờ duyệt. */
+  invite: z.string().trim().min(1).max(64).optional(),
 });
 
 export const memberFilterSchema = z.object({
@@ -173,6 +175,11 @@ export const affiliateSettingsSchema = z.object({
   leaderboardVisibility: z.enum(['members', 'affiliates_only', 'hidden']).default('members'),
   leaderboardShowMoney: z.boolean().default(true),
 });
+/** Chủ hội chỉnh một affiliate: tạm khóa hoặc mở lại, đặt tỉ lệ hoa hồng riêng (`null` là quay về mức chung của chương trình). */
+export const updateAffiliateAccountSchema = z.object({
+  status: z.enum(['active', 'suspended']).optional(),
+  commissionRateBps: z.number().int().min(0).max(5000).nullable().optional(),
+}).refine((v) => v.status !== undefined || v.commissionRateBps !== undefined, { message: 'Chưa có gì để đổi' });
 
 export const joinQuestionSchema = z.object({
   id: idSchema.optional(),

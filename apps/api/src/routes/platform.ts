@@ -1,5 +1,5 @@
 // Gói nền tảng, API key, webhook gửi đi, tệp, hồ sơ công khai, sức khỏe.
-import { createApiKeySchema, createWebhookSchema } from '@hoiminh/contracts';
+import { createApiKeySchema, createWebhookSchema, updateWebhookSchema } from '@hoiminh/contracts';
 import { apiKeys, filesService, platformBilling, users, webhooksOut } from '@hoiminh/core';
 import { ProxiedMediaProvider, attachmentDisposition, maxBytesForKey, webpTarget } from '@hoiminh/media';
 import { z } from 'zod';
@@ -21,6 +21,9 @@ platformRoutes.delete('/workspaces/:id/api-keys/:keyId', requireAuth, async (c) 
 });
 platformRoutes.get('/workspaces/:id/webhooks', requireAuth, async (c) => c.json(await webhooksOut.listWebhooks(c.get('ctx'), c.req.param('id'))));
 platformRoutes.post('/workspaces/:id/webhooks', requireAuth, async (c) => c.json(await webhooksOut.createWebhook(c.get('ctx'), c.req.param('id'), await parse(createWebhookSchema.extend({ communityId: z.string().uuid().nullable().optional() }), await body(c))), 201));
+platformRoutes.patch('/workspaces/:id/webhooks/:webhookId', requireAuth, async (c) => c.json(await webhooksOut.updateWebhook(c.get('ctx'), c.req.param('id'), c.req.param('webhookId'), await parse(updateWebhookSchema, await body(c)))));
+platformRoutes.post('/workspaces/:id/webhooks/:webhookId/test', requireAuth, async (c) => c.json(await webhooksOut.sendTestEvent(c.get('ctx'), c.req.param('id'), c.req.param('webhookId')), 201));
+platformRoutes.post('/workspaces/:id/webhooks/:webhookId/rotate-secret', requireAuth, async (c) => c.json(await webhooksOut.rotateWebhookSecret(c.get('ctx'), c.req.param('id'), c.req.param('webhookId'))));
 platformRoutes.delete('/workspaces/:id/webhooks/:webhookId', requireAuth, async (c) => {
   await webhooksOut.deleteWebhook(c.get('ctx'), c.req.param('id'), c.req.param('webhookId'));
   return c.json({ ok: true });

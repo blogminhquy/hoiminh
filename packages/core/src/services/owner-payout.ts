@@ -4,6 +4,7 @@
 // Tiền mua gói Hội Mình không đi qua đây: vẫn về tài khoản của Hội Mình như trước.
 import { randomToken } from '@hoiminh/config';
 import { OWNER_GATEWAYS, VIETNAM_BANKS, formatMoney, type PaymentInstruction, type PayoutAccountInput } from '@hoiminh/contracts';
+import { templates, type EmailMessage } from '@hoiminh/email';
 import type { IncomingWebhook } from '@hoiminh/payments';
 import { normalizeReference } from '@hoiminh/payments';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
@@ -158,22 +159,81 @@ export async function confirmOwnerOrder(ctx: Ctx, communityId: string, orderId: 
   return { orderId: order.id, confirmed, alreadyPaid: !confirmed };
 }
 
-/** Người mua bấm "Tôi đã chuyển khoản" ở đơn trả thẳng chủ hội: báo chủ hội vào kiểm tra tài khoản và xác nhận. */
-export async function notifyOwnerOfTransfer(ctx: Ctx, order: typeof orders.$inferSelect, payment: typeof payments.$inferSelect): Promise<void> {
-  if (!order.communityId || !isOwnerPayee(payment)) return;
-  const row = await elevated(ctx, async () => {
+/** Tên món hàng của đơn (gói hoặc sản phẩm), ghi sẵn trong metadata lúc tạo đơn. */
+const orderTitle = (order: typeof orders.$inferSelect): string => String((order.metadata as { title?: unknown }).title ?? 'Đơn hàng');
+
+/**
+ * Chủ hội của một hội, kèm tên hội và cách xác nhận đơn chuyển khoản. "Chủ hội" là chủ không gian làm việc của hội
+ * (`workspaces.ownerUserId`): đúng người đang nhận thông báo "có người vừa chuyển khoản" và "có đơn đã thanh toán".
+ * Người mua không thuộc workspace của hội nên máy chủ đọc hộ bằng quyền bypass.
+ */
+async function ownerOf(ctx: Ctx, communityId: string) {
+  return elevated(ctx, async () => {
     const [r] = await ctx.db
-      .select({ ownerUserId: workspaces.ownerUserId, slug: communities.slug, mode: communityPayoutAccounts.confirmMode })
+      .select({ slug: communities.slug, communityName: communities.name, mode: communityPayoutAccounts.confirmMode, id: users.id, name: users.name, handle: users.handle, email: users.email, avatarUrl: users.avatarUrl, coverColor: users.coverColor, privacy: users.privacy })
       .from(communities)
       .innerJoin(workspaces, eq(workspaces.id, communities.workspaceId))
+      .innerJoin(users, eq(users.id, workspaces.ownerUserId))
       .leftJoin(communityPayoutAccounts, eq(communityPayoutAccounts.communityId, communities.id))
-      .where(eq(communities.id, order.communityId!));
+      .where(eq(communities.id, communityId));
     return r ?? null;
   });
+}
+
+/** Bên bán của một đơn, cho màn chờ xác nhận của người mua. */
+export interface OrderSeller {
+  communityId: string;
+  communityName: string;
+  communitySlug: string;
+  owner: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; /** Chủ hội có nhận tin nhắn từ thành viên khác không (cài đặt riêng tư của họ). */ acceptsMessages: boolean };
+}
+
+/**
+ * Hội và chủ hội bán đơn này, để người mua biết đang chờ ai và nhắn được cho người đó. Chỉ trả thông tin vốn công khai
+ * trên hồ sơ (tên, tên định danh, ảnh đại diện); không trả email hay số điện thoại.
+ */
+export async function orderSeller(ctx: Ctx, communityId: string): Promise<OrderSeller | null> {
+  const r = await ownerOf(ctx, communityId);
+  if (!r) return null;
+  return { communityId, communityName: r.communityName, communitySlug: r.slug, owner: { id: r.id, name: r.name, handle: r.handle, avatarUrl: r.avatarUrl, coverColor: r.coverColor, acceptsMessages: r.privacy.allowMessages } };
+}
+
+/** Gửi email cho chủ hội. Email là việc phụ: gửi lỗi chỉ ghi log, không làm hỏng thao tác của người mua hay việc xác nhận đơn. */
+async function emailOwner(ctx: Ctx, message: EmailMessage): Promise<void> {
+  try {
+    await ctx.email.send(message);
+  } catch (err) {
+    ctx.log.warn('email.owner_order_failed', { template: message.template, err: String(err) });
+  }
+}
+
+/**
+ * Người mua bấm "Tôi đã chuyển khoản" ở đơn trả thẳng chủ hội: báo chủ hội vào kiểm tra tài khoản và xác nhận, bằng
+ * thông báo trong ứng dụng và một email (chủ hội không mở ứng dụng thì vẫn biết có người đang chờ).
+ */
+export async function notifyOwnerOfTransfer(ctx: Ctx, order: typeof orders.$inferSelect, payment: typeof payments.$inferSelect): Promise<void> {
+  if (!order.communityId || !isOwnerPayee(payment)) return;
+  const owner = await ownerOf(ctx, order.communityId);
   // Tự xác nhận thì tiền về là đơn tự chuyển trạng thái, không cần gọi chủ hội cho từng đơn.
-  if (!row || row.mode === 'auto') return;
+  if (!owner || owner.mode === 'auto') return;
   const buyer = await ctx.db.query.users.findFirst({ where: eq(users.id, order.customerUserId), columns: { name: true } });
-  await elevated(ctx, () => notify(ctx, { userId: row.ownerUserId, communityId: order.communityId, kind: 'order.buyer_transferred', category: 'payment', title: `${buyer?.name ?? 'Người mua'} báo đã chuyển ${formatMoney(order.totalMinor)} · ${order.reference}`, body: 'Kiểm tra tài khoản rồi bấm "Đã nhận tiền" để mở quyền cho người mua', actorUserId: order.customerUserId, link: `/${row.slug}/tien`, actionLabel: 'Xác nhận' }));
+  const buyerName = buyer?.name ?? 'Người mua';
+  await elevated(ctx, () => notify(ctx, { userId: owner.id, communityId: order.communityId, kind: 'order.buyer_transferred', category: 'payment', title: `${buyerName} báo đã chuyển ${formatMoney(order.totalMinor)} · ${order.reference}`, body: 'Kiểm tra tài khoản rồi bấm "Đã nhận tiền" để mở quyền cho người mua', actorUserId: order.customerUserId, link: `/${owner.slug}/tien`, actionLabel: 'Xác nhận' }));
+  await emailOwner(ctx, templates.ownerTransferReported(owner.email, { ownerName: owner.name, buyerName, item: orderTitle(order), community: owner.communityName, amount: formatMoney(order.totalMinor), reference: order.reference, url: `${ctx.env.APP_URL}/${owner.slug}/tien` }));
+}
+
+/**
+ * Một đơn của hội vừa được thanh toán xong (ngân hàng hoặc cổng của chủ hội báo về, hoặc chủ hội bấm "Đã nhận tiền"):
+ * gửi chủ hội một email. Gọi từ sự kiện `payment.succeeded`, sự kiện này chỉ phát một lần cho mỗi đơn. Đơn mua gói
+ * Hội Mình không gắn với hội nào nên không gửi; chủ hội tự mua ở hội mình cũng không gửi, như thông báo trong ứng dụng.
+ */
+export async function emailOwnerOfPaidOrder(ctx: Ctx, orderId: string): Promise<void> {
+  const order = await ctx.db.query.orders.findFirst({ where: eq(orders.id, orderId) });
+  if (!order?.communityId || order.targetType === 'platform') return;
+  const owner = await ownerOf(ctx, order.communityId);
+  if (!owner || owner.id === order.customerUserId) return;
+  const buyer = await elevated(ctx, async () => (await ctx.db.query.users.findFirst({ where: eq(users.id, order.customerUserId), columns: { name: true } })) ?? null);
+  await emailOwner(ctx, templates.ownerOrderPaid(owner.email, { ownerName: owner.name, buyerName: buyer?.name ?? 'Người mua', item: orderTitle(order), community: owner.communityName, amount: formatMoney(order.totalMinor), reference: order.reference, url: `${ctx.env.APP_URL}/${owner.slug}/tien` }));
 }
 
 export interface OwnerWebhookOutcome { status: number; body: unknown; result: 'processed' | 'duplicate' | 'ignored' | 'unmatched' | 'not_found' }

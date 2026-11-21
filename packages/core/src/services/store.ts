@@ -1,7 +1,7 @@
 // Cửa hàng trong hội: sản phẩm course/bundle/digital, trang bán chuẩn theo trường cố định, tải tệp số bằng signed URL.
 import { toSlug, type CreateProductInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
-import { bundleItems, courseModules, courses, files, lessons, productPages, products, users } from '@hoiminh/db';
+import { affiliateUserCodes, bundleItems, courseModules, courses, files, lessons, productPages, products, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, invalid, notFound } from '../errors';
@@ -16,6 +16,14 @@ function discountPercent(price: number, compareAt: number | null): number | null
   return Math.round(((compareAt - price) / compareAt) * 100);
 }
 
+/**
+ * Ảnh bìa hiện ra ở cửa hàng và trang bán. Sản phẩm khóa học không có ảnh riêng thì dùng ảnh bìa của khóa học:
+ * `products.coverUrl` chỉ là bản sao, có thể trống (sản phẩm tạo trước bản sửa này) dù khóa học đã có ảnh.
+ */
+function coverOf(p: { coverUrl: string | null }, course: { coverUrl: string | null } | null | undefined): string | null {
+  return p.coverUrl ?? course?.coverUrl ?? null;
+}
+
 /** Danh sách sản phẩm với bộ lọc loại, tìm kiếm, sắp xếp, trạng thái sở hữu. */
 export async function listProducts(ctx: Ctx, communityId: string, q: { kind?: 'course' | 'bundle' | 'digital'; q?: string; sort?: 'newest' | 'bestselling' | 'price_asc' | 'price_desc' }) {
   const access = await resolveCommunityAccess(ctx, communityId);
@@ -25,13 +33,13 @@ export async function listProducts(ctx: Ctx, communityId: string, q: { kind?: 'c
   if (q.kind) conds.push(eq(products.kind, q.kind));
   if (q.q) conds.push(or(ilike(products.name, `%${q.q}%`), ilike(products.shortDescription, `%${q.q}%`))!);
   const order = q.sort === 'bestselling' ? desc(products.salesCount) : q.sort === 'price_asc' ? asc(products.priceMinor) : q.sort === 'price_desc' ? desc(products.priceMinor) : desc(products.createdAt);
-  const rows = await ctx.db.select({ p: products, course: { lessonCount: courses.lessonCount, totalDurationSeconds: courses.totalDurationSeconds } }).from(products).leftJoin(courses, eq(courses.id, products.courseId)).where(and(...conds)).orderBy(order);
+  const rows = await ctx.db.select({ p: products, course: { lessonCount: courses.lessonCount, totalDurationSeconds: courses.totalDurationSeconds, coverUrl: courses.coverUrl } }).from(products).leftJoin(courses, eq(courses.id, products.courseId)).where(and(...conds)).orderBy(order);
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   const counts = await ctx.db.select({ kind: products.kind, c: sql<number>`count(*)::int` }).from(products).where(and(eq(products.communityId, communityId), isNull(products.deletedAt), eq(products.status, 'published'))).groupBy(products.kind);
   const items = [];
   for (const r of rows) {
     const bundleCount = r.p.kind === 'bundle' ? (await ctx.db.select({ c: sql<number>`count(*)::int` }).from(bundleItems).where(eq(bundleItems.bundleProductId, r.p.id)))[0]?.c ?? 0 : 0;
-    items.push({ ...r.p, lessonCount: r.course?.lessonCount ?? null, totalDurationSeconds: r.course?.totalDurationSeconds ?? null, bundleCount, discountPercent: discountPercent(r.p.priceMinor, r.p.compareAtMinor), owned: await ownsProduct(ctx, userId, r.p.id) });
+    items.push({ ...r.p, coverUrl: coverOf(r.p, r.course), lessonCount: r.course?.lessonCount ?? null, totalDurationSeconds: r.course?.totalDurationSeconds ?? null, bundleCount, discountPercent: discountPercent(r.p.priceMinor, r.p.compareAtMinor), owned: await ownsProduct(ctx, userId, r.p.id) });
   }
   return { items, counts: Object.fromEntries(counts.map((c) => [c.kind, c.c])) as Record<string, number>, canManage: staff };
 }
@@ -56,12 +64,14 @@ export async function getProduct(ctx: Ctx, productId: string) {
     return mods.map((m, i) => ({ ...m, lessons: ls.filter((l) => l.moduleId === m.id).map((l) => ({ id: l.id, title: l.title, durationSeconds: l.durationSeconds, isPreview: l.isPreview || (course.previewFirstModule && i === 0), kind: l.kind })) }));
   })() : [];
   const affiliate = userId ? await raw(ctx.db, sql`select a.affiliate_code from affiliate_accounts a join affiliate_programs pr on pr.id = a.program_id where a.user_id = ${userId} and pr.community_id = ${p.communityId} and a.status = 'active' and pr.status = 'active' limit 1`) : null;
-  const code = (affiliate?.[0] as { affiliate_code: string } | undefined)?.affiliate_code ?? null;
+  const accountCode = (affiliate?.[0] as { affiliate_code: string } | undefined)?.affiliate_code ?? null;
+  // Link hiện cho người xem dùng mã chung của họ nếu đã đặt (một mã cho mọi chương trình).
+  const code = accountCode && userId ? ((await ctx.db.query.affiliateUserCodes.findFirst({ where: eq(affiliateUserCodes.userId, userId), columns: { code: true } }))?.code ?? accountCode) : accountCode;
   const community = await raw(ctx.db, sql`select slug, name from communities where id = ${p.communityId}`);
   const slug = (community[0] as { slug: string; name: string }).slug;
   const tierKey = access.tierId ? ((await raw(ctx.db, sql`select key from community_tiers where id = ${access.tierId}`))[0] as { key: string } | undefined)?.key ?? null : null;
   return {
-    ...p, page, course: course ? { id: course.id, lessonCount: course.lessonCount, totalDurationSeconds: course.totalDurationSeconds, accessMode: course.accessMode, updatedAt: course.updatedAt } : null, curriculum,
+    ...p, coverUrl: coverOf(p, course), page, course: course ? { id: course.id, lessonCount: course.lessonCount, totalDurationSeconds: course.totalDurationSeconds, accessMode: course.accessMode, updatedAt: course.updatedAt } : null, curriculum,
     bundleItems: items.map((i) => i.item), inBundles: inBundles.map((b) => ({ ...b.b, count: b.count, discountPercent: discountPercent(b.b.priceMinor, b.b.compareAtMinor) })),
     instructor: instructor ? { id: instructor.id, name: instructor.name, handle: instructor.handle, avatarUrl: instructor.avatarUrl, coverColor: instructor.coverColor, bio: instructor.bio } : null,
     discountPercent: discountPercent(p.priceMinor, p.compareAtMinor), owned: await ownsProduct(ctx, userId, p.id), viewerTier: tierKey,
@@ -77,9 +87,11 @@ export async function createProduct(ctx: Ctx, communityId: string, input: Create
   if (input.kind === 'bundle' && input.bundleItemProductIds.length < 2) throw invalid('Combo cần ít nhất 2 sản phẩm');
   if (input.kind === 'digital' && input.digitalFileIds.length === 0) throw invalid('Sản phẩm số cần ít nhất 1 tệp');
   const cover = input.coverFileId ? await ctx.db.query.files.findFirst({ where: eq(files.id, input.coverFileId) }) : null;
+  // Sản phẩm khóa học không tải ảnh riêng thì chép ảnh bìa của khóa học, như updateCourse vẫn chép ở các lần sửa sau.
+  const courseCover = !cover && input.kind === 'course' && input.courseId ? ((await ctx.db.query.courses.findFirst({ where: and(eq(courses.id, input.courseId), eq(courses.communityId, communityId)), columns: { coverUrl: true } }))?.coverUrl ?? null) : null;
   const slug = input.slug ?? `${toSlug(input.name)}-${Date.now().toString(36).slice(-3)}`;
   const created = await ctx.db.transaction(async (tx) => {
-    const [p] = await tx.insert(products).values({ workspaceId: access.workspaceId, communityId, kind: input.kind, name: input.name, slug, shortDescription: input.shortDescription, coverUrl: cover?.url ?? null, coverColor: input.coverColor ?? '#D4593A', courseId: input.courseId ?? null, digitalFileIds: input.digitalFileIds, priceMinor: input.priceMinor, compareAtMinor: input.compareAtMinor ?? null, currency: input.currency, status: input.status, launchDiscountEndsAt: input.launchDiscountEndsAt ? new Date(input.launchDiscountEndsAt) : null }).returning();
+    const [p] = await tx.insert(products).values({ workspaceId: access.workspaceId, communityId, kind: input.kind, name: input.name, slug, shortDescription: input.shortDescription, coverUrl: cover?.url ?? courseCover, coverColor: input.coverColor ?? '#D4593A', courseId: input.courseId ?? null, digitalFileIds: input.digitalFileIds, priceMinor: input.priceMinor, compareAtMinor: input.compareAtMinor ?? null, currency: input.currency, status: input.status, launchDiscountEndsAt: input.launchDiscountEndsAt ? new Date(input.launchDiscountEndsAt) : null }).returning();
     await tx.insert(productPages).values({ workspaceId: access.workspaceId, productId: p!.id, headline: input.page.headline || input.name, subheadline: input.page.subheadline, shortDescription: input.shortDescription, coverImageUrl: cover?.url ?? null, introVideoUrl: input.page.introVideoUrl ?? null, benefits: input.page.benefits, faq: input.page.faq, instructor: input.page.instructor ?? null, ctaText: input.page.ctaText, guarantee: input.page.guarantee, salesMode: input.page.salesMode, externalLandingUrl: input.page.externalLandingUrl ?? null });
     if (input.kind === 'bundle') await tx.insert(bundleItems).values(input.bundleItemProductIds.map((id, i) => ({ bundleProductId: p!.id, itemProductId: id, sortOrder: i })));
     return p!;

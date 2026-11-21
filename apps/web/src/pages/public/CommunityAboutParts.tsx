@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { videoInfo } from '@/lib/about-media';
 import { fmtCount } from '@/lib/format';
+import type { InviteInfo } from '@/lib/invite';
 
 export interface AboutPage {
   community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; description: string; category: string; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; introVideoUrl: string | null; aboutMedia?: AboutMediaItem[]; links: Array<{ label: string; url: string }>; status: string; /** Hội mở ('public'): người chưa vào hội cũng xem được bên trong. Bản API cũ không trả thì coi là hội kín. */ visibility?: 'private' | 'public'; pricingMode: string; doorsOpen: boolean; memberCount: number; paidMemberCount: number; tabs: Record<string, boolean>; customDomain: string | null };
@@ -16,6 +17,8 @@ export interface AboutPage {
   sampleMembers: Array<{ id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }>;
   joinQuestions: Array<{ id: string; question: string; required: boolean; sortOrder: number }>;
   referrer: { name: string } | null;
+  /** Có khi link mang mã mời (`?invite=`): lời mời còn dùng được không và trao vai trò gì. */
+  invite?: InviteInfo | null;
   stats: { members: number; online: number; courses: number; paid: number };
   viewer: { role: string; memberStatus: string | null; tierId: string | null } | null;
   pricing: { mode: string; doorsOpen: boolean; paymentsReady: boolean; premiumMonthlyMinor: number | null; premiumYearlyMinor: number | null; oneTimeMinor: number | null; /** Các kỳ hạn của gói Premium và khuyến mãi đang chạy. */ premiumTerms: TierTerm[]; promo: PricingPromo | null };

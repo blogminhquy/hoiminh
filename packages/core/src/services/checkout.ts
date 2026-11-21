@@ -15,7 +15,7 @@ import { FLAG, requireFlag } from './feature-flags';
 import { gatewayWebhookUrl, ownerGatewayAdapter, type GatewayRow } from '../lib/owner-gateway';
 import { paymentsFor } from '../lib/payment-accounts';
 import { METHOD_NAME, ownerPaymentMethods } from './owner-gateways';
-import { notifyOwnerOfTransfer, ownerBankInstruction, paymentsNotReadyError } from './owner-payout';
+import { notifyOwnerOfTransfer, orderSeller, ownerBankInstruction, paymentsNotReadyError } from './owner-payout';
 import { platformPaymentMethods } from './platform-methods';
 import { communityPlan, planTable } from './plans';
 
@@ -189,7 +189,10 @@ export async function orderStatus(ctx: Ctx, orderId: string) {
   const status = effectiveOrderStatus(o, ctx.now());
   // Đơn đã hết hạn thì thanh toán chưa xong của nó cũng hết hạn (giao diện dựa vào paymentStatus để bật/tắt nút).
   const paymentStatus = status === 'expired' && (p?.status === 'pending' || p?.status === 'processing') ? 'expired' : p?.status ?? null;
-  return { orderId: o.id, status, paidAt: o.paidAt, reference: o.reference, amountMinor: o.totalMinor, currency: o.currency, provider: p?.provider ?? null, paymentStatus, instruction: p?.instruction ?? null, title: meta.title ?? '', nextUrl, expiresAt: o.expiresAt };
+  // Hội và chủ hội bán đơn này: màn chờ xác nhận cho người mua biết đang chờ ai và nhắn được cho người đó.
+  // Đơn mua gói Hội Mình không gắn với hội nào (bên bán là Hội Mình) nên không có.
+  const seller = o.communityId && o.targetType !== 'platform' ? await orderSeller(ctx, o.communityId) : null;
+  return { orderId: o.id, status, paidAt: o.paidAt, reference: o.reference, amountMinor: o.totalMinor, currency: o.currency, provider: p?.provider ?? null, paymentStatus, instruction: p?.instruction ?? null, title: meta.title ?? '', nextUrl, expiresAt: o.expiresAt, targetType: o.targetType, seller };
 }
 
 /** Khách bấm "Tôi đã chuyển khoản": ghi nhận đang xử lý (không xác nhận tiền). */
@@ -202,9 +205,10 @@ export async function markProcessing(ctx: Ctx, orderId: string) {
   const p = await ctx.db.query.payments.findFirst({ where: and(eq(payments.orderId, orderId), eq(payments.customerUserId, userId)) });
   if (!p) throw notFound();
   if (p.status === 'pending') {
-    await ctx.db.update(payments).set({ status: 'processing', updatedAt: ctx.now() }).where(eq(payments.id, p.id));
+    // Cập nhật có điều kiện: hai lần bấm sát nhau chỉ một lần "thắng", nên chủ hội chỉ nhận một thông báo và một email cho mỗi đơn.
+    const claimed = await ctx.db.update(payments).set({ status: 'processing', updatedAt: ctx.now() }).where(and(eq(payments.id, p.id), eq(payments.status, 'pending'))).returning({ id: payments.id });
     // Đơn trả thẳng chủ hội, chủ hội tự bấm xác nhận: báo cho chủ hội biết có người vừa chuyển khoản.
-    await notifyOwnerOfTransfer(ctx, o, p);
+    if (claimed.length) await notifyOwnerOfTransfer(ctx, o, p);
   }
   return orderStatus(ctx, orderId);
 }

@@ -57,10 +57,11 @@ test('chủ hội cài MoMo và Stripe của mình, chọn mặc định; ngư�
   const buyer = await buyerCtx.newPage();
   await login(buyer, USERS.member2);
   await buyer.goto(`/${SLUG}/thanh-toan?tier=premium&cycle=monthly`);
-  const options = buyer.getByRole('radiogroup', { name: 'Cách thanh toán' }).getByRole('button');
+  const options = buyer.getByRole('radiogroup', { name: 'Cách thanh toán' }).getByRole('radio');
   await expect(options).toHaveCount(3);
   await expect(options.nth(0)).toContainText('Chuyển khoản QR');
   await expect(options.nth(1)).toContainText('MoMo');
+  await expect(options.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(options.nth(2)).toContainText('Thẻ Visa, Mastercard');
   await buyer.getByRole('button', { name: /^Thanh toán .* bằng MoMo$/ }).click();
   await payOnSimulator(buyer, 'Mở trang MoMo để thanh toán');

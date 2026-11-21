@@ -216,8 +216,15 @@ describe('Luồng 4: affiliate · hold → available → rút ≥ 500k → xem x
     const programId = await app.ids('program:kd');
     await expect(withdrawals.requestWithdrawal(hv, programId, 100_000)).rejects.toThrow(/tối thiểu/);
     const w = await affiliate.myWallet(hv, programId);
+    // Chủ hội đăng ký webhook để trợ lý biết ngay khi có yêu cầu rút cần xử lý.
+    const { createWebhook } = await import('../services/webhooks-out');
+    const { webhookDeliveries } = await import('@hoiminh/db');
+    const hook = await createWebhook(await app.as('minhquy'), await app.ids('workspace:minhquy'), { url: 'https://example.com/rut', events: ['affiliate.withdrawal_requested'] });
     const wd = await withdrawals.requestWithdrawal(hv, programId, w.availableMinor);
     expect(wd.status).toBe('requested');
+    const sent = await app.ctx.db.query.webhookDeliveries.findMany({ where: eq(webhookDeliveries.webhookId, hook.id) });
+    expect(sent.map((d) => d.eventName)).toEqual(['affiliate.withdrawal_requested']);
+    expect(sent[0]!.payload).toMatchObject({ withdrawalId: wd.id, amountMinor: w.availableMinor, communityId: await app.ids(KD) });
     await expect(withdrawals.requestWithdrawal(hv, programId, 500_000)).rejects.toThrow();
     const mq = await app.as('minhquy');
     const review = await withdrawals.reviewWithdrawal(mq, wd.id);

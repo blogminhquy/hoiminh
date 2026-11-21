@@ -174,4 +174,6 @@ export const RESERVED_SLUGS = new Set([
   'admin', 'he-thong', 'api', 'v1', 'kham-pha', 'dang-nhap', 'dang-ky', 'quen-mat-khau', 'dat-lai-mat-khau',
   'xac-minh-email', 'kich-hoat', 'vao', 'hoc', 'tao-hoi', 'tai-khoan', 'tin-nhan', 'thong-bao', 'u', 'r', 'thanh-toan', 'auth', 'assets',
   'static', 'hoiminh', 'www', 'app', 'mail', 'support', 'help',
+  // Hai trang pháp lý (Điều khoản sử dụng, Chính sách quyền riêng tư).
+  'dieu-khoan', 'quyen-rieng-tu',
 ]);
