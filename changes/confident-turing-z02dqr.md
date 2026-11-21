@@ -18,5 +18,5 @@ bump: patch
 
 - `apps/web/src/lib/join-intent.ts`: tham số `?thamgia=1` trên trang giới thiệu hội, link đăng ký và đăng nhập có ngữ cảnh hội, đích cất qua bước Google (chỉ nhận đường dẫn trong trang). `AboutRail` đọc tham số, gỡ nó khỏi địa chỉ rồi chạy `onJoin` một lần; khách chưa đăng nhập mở link có tham số thì không có gì xảy ra.
 - `PublicHeader` nhận thêm `join` (hội đang xem và nơi về sau đăng nhập); thiếu thì hai nút như cũ.
-- Test: `apps/web/src/lib/join-intent.test.ts` (5 ca); E2E `01-dang-ky-tham-gia` kiểm bảng câu hỏi tự mở sau đăng ký, đăng ký từ thanh đầu trang vào thẳng Bảng tin, và thành viên đăng nhập từ trang hội vào Bảng tin.
+- Test: `apps/web/src/lib/join-intent.test.ts` (5 ca); E2E `01-dang-ky-tham-gia` kiểm bảng câu hỏi tự mở sau đăng ký, đăng ký từ thanh đầu trang của một hội thu phí sang thẳng bước thanh toán của hội đó, và thành viên đăng nhập từ trang hội vào Bảng tin.
 - Phần Google chưa chạy thử được ở máy phát triển (đăng nhập Google chưa bật ở đó); phần cất và lấy đích có test đơn vị.

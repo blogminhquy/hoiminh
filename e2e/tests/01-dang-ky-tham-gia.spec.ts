@@ -34,10 +34,13 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   await expect(page.getByText('Lộ trình Funnel Money Model 2026').first()).toBeVisible();
 });
 
-test('bấm "Tham gia hội" trên thanh đầu trang của một hội, đăng ký xong vào thẳng Bảng tin của hội đó', async ({ page }) => {
-  await page.goto('/ngoai-ngu-vy');
+// Dùng một hội thu phí mà không bài test nào khác đụng tới: tới bước thanh toán là dừng, không thêm thành viên vào hội nào.
+// (Vào một hội miễn phí sẽ làm lệch số thành viên mà các bài về gói nền tảng đang kiểm.)
+test('bấm "Tham gia hội" trên thanh đầu trang của một hội, đăng ký xong vào thẳng hội đó chứ không về màn Tạo hội', async ({ page }) => {
+  await page.goto('/cong-su-mmo');
   await page.getByRole('link', { name: 'Tham gia hội' }).click();
-  await expect(page).toHaveURL(/\/dang-ky\?hoi=ngoai-ngu-vy/);
+  await expect(page).toHaveURL(/\/dang-ky\?hoi=cong-su-mmo/);
+  await expect(page.getByText(/Bạn đang đăng ký để tham gia/)).toBeVisible();
 
   await page.getByPlaceholder('Nguyễn Minh Quý').fill('Người Mới E2E');
   await page.getByPlaceholder('ban@email.com').fill(uniqueEmail('header'));
@@ -48,8 +51,8 @@ test('bấm "Tham gia hội" trên thanh đầu trang của một hội, đăng 
   await page.getByLabel('Số thứ 1').click();
   await page.keyboard.type('482913');
 
-  // Hội miễn phí, không có câu hỏi: không dừng ở trang giới thiệu, không rơi về màn Tạo hội.
-  await expect(page).toHaveURL(/\/ngoai-ngu-vy\/bang-tin/, { timeout: 20_000 });
+  // Hội thu phí: trang giới thiệu tự làm tiếp việc của nút Tham gia, tức sang bước thanh toán của chính hội đó.
+  await expect(page).toHaveURL(/\/cong-su-mmo\/thanh-toan/, { timeout: 20_000 });
 });
 
 test('thành viên bấm "Đăng nhập" trên thanh đầu trang của hội thì vào Bảng tin của hội đó', async ({ page }) => {
