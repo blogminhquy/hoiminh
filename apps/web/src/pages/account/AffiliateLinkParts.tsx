@@ -167,7 +167,7 @@ export function LinkCard({ program, targets, code, codeEditable = false, previou
           {codeEditable && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}><Pencil size={15} />Đổi mã</button>}
           {codeEditable && <span className="muted text-[13px] basis-full">Bạn được đổi sang một mã dễ nhớ, dùng chung cho mọi link của mình. Chỉ đổi được một lần.</span>}
           {previousCode && <span className="muted text-[13px] basis-full">Đây là mã chung của bạn, dùng cho mọi chương trình. Link cũ với mã {previousCode} vẫn chạy và vẫn tính hoa hồng.</span>}
-          {program.scope === 'community' && <span className="muted text-[13px] basis-full">Thành viên đã ở trong hội nhập mã này ở mục Affiliate của hội, phần Người giới thiệu của bạn, để chọn bạn làm người giới thiệu.</span>}
+          {program.scope === 'community' && <span className="muted text-[13px] basis-full">Thành viên đã ở trong hội nhập mã này ở mục Affiliate của hội để chọn bạn làm người giới thiệu.</span>}
         </div>
       </div>
       <ReferralCodeModal open={editing} currentCode={code} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onCodeChanged?.(); }} />
