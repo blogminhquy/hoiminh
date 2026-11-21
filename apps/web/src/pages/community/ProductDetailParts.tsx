@@ -27,7 +27,8 @@ export function Benefits({ items }: { items: string[] }) {
   );
 }
 
-export function Curriculum({ p, slug }: { p: Product; slug: string }) {
+/** `lessonBase`: nơi mở bài học. Trong hội là `/<hội>`; người ngoài của hội kín học ở Khu học tập `/hoc`. */
+export function Curriculum({ p, lessonBase }: { p: Product; lessonBase: string }) {
   const [open, setOpen] = useState<Record<string, boolean>>(() => (p.curriculum[0] ? { [p.curriculum[0].id]: true } : {}));
   const [all, setAll] = useState(false);
   if (!p.curriculum.length) return null;
@@ -45,7 +46,7 @@ export function Curriculum({ p, slug }: { p: Product; slug: string }) {
               {isOpen && m.lessons.map((l, li) => (
                 <div key={l.id} className="flex items-center gap-3 text-[14px]" style={{ padding: '9px 12px' }}>
                   <span style={{ color: l.isPreview || p.owned ? T.teal : T.ink3 }}>{l.isPreview || p.owned ? <Play size={16} /> : <Lock size={16} />}</span>
-                  {l.isPreview || p.owned ? <Link to={`/${slug}/bai/${l.id}`} className="flex-grow" style={{ color: T.ink }}>{i + 1}.{li + 1} {l.title}</Link> : <span className="flex-grow">{i + 1}.{li + 1} {l.title}</span>}
+                  {l.isPreview || p.owned ? <Link to={`${lessonBase}/bai/${l.id}`} className="flex-grow" style={{ color: T.ink }}>{i + 1}.{li + 1} {l.title}</Link> : <span className="flex-grow">{i + 1}.{li + 1} {l.title}</span>}
                   {l.isPreview && !p.owned && <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 20 }}>Xem thử</span>}
                   <span className="muted text-[12px] w-11 text-right">{l.kind === 'task' ? 'Bài tập' : fmtDuration(l.durationSeconds)}</span>
                 </div>
@@ -106,7 +107,8 @@ export function DigitalDownloads({ productId }: { productId: string }) {
   );
 }
 
-export function PriceRail({ p, slug, premium, pricingMode }: { p: Product; slug: string; premium: PremiumPricing | null; pricingMode: string }) {
+/** `outsider`: người ngoài của hội kín. Họ không vào được bên trong hội, nên học và xem thử ở Khu học tập `/hoc`. */
+export function PriceRail({ p, slug, premium, pricingMode, outsider = false }: { p: Product; slug: string; premium: PremiumPricing | null; pricingMode: string; outsider?: boolean }) {
   const [copied, setCopied] = useState(false);
   const external = p.page?.salesMode === 'external_landing' && p.page.externalLandingUrl;
   const buyTo = `/${slug}/thanh-toan?product=${p.id}`;
@@ -117,13 +119,13 @@ export function PriceRail({ p, slug, premium, pricingMode }: { p: Product; slug:
     <aside className="rail flex flex-col gap-3.5">
       <div className="card p-5 flex flex-col gap-3.5">
         {p.owned ? (
-          <><div className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Bạn đã sở hữu</div>{p.course && <Link to={`/${slug}/khoa-hoc/${p.course.id}`} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>Vào học</Link>}{p.kind === 'digital' && <DigitalDownloads productId={p.id} />}</>
+          <><div className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.teal }}><Check size={16} />Bạn đã sở hữu</div>{p.course && <Link to={outsider ? '/hoc' : `/${slug}/khoa-hoc/${p.course.id}`} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>Vào học</Link>}{p.kind === 'digital' && <DigitalDownloads productId={p.id} />}</>
         ) : (
           <>
             <div className="flex items-baseline gap-2.5 flex-wrap"><span className="serif text-[30px] font-extrabold">{money(p.priceMinor)}</span>{p.compareAtMinor ? <span className="muted line-through text-[14px]">{money(p.compareAtMinor)}</span> : null}{p.discountPercent > 0 && <span className="tag" style={{ background: T.ink, color: T.surface }}>-{p.discountPercent}%</span>}</div>
             {p.launchDiscountEndsAt && new Date(p.launchDiscountEndsAt) > new Date() && <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: T.accentText }}><Clock size={14} />Ưu đãi ra mắt còn {Math.max(1, Math.ceil((new Date(p.launchDiscountEndsAt).getTime() - Date.now()) / 86_400_000))} ngày</div>}
             {external ? <a href={p.page?.externalLandingUrl ?? '#'} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>{p.page?.ctaText ?? 'Mua ngay'}</a> : <Link to={buyTo} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 12 }}>{p.page?.ctaText ?? 'Mua ngay'}</Link>}
-            {firstPreview && <Link to={`/${slug}/bai/${firstPreview.id}`} className="btn btn-ghost" style={{ height: 44, borderRadius: 12 }}><Play size={16} />Xem thử bài miễn phí</Link>}
+            {firstPreview && <Link to={`${outsider ? '/hoc' : `/${slug}`}/bai/${firstPreview.id}`} className="btn btn-ghost" style={{ height: 44, borderRadius: 12 }}><Play size={16} />Xem thử bài miễn phí</Link>}
           </>
         )}
         <div className="flex flex-col gap-2 text-[13px] pt-3" style={{ color: T.ink2, borderTop: `1px solid ${T.line}` }}>

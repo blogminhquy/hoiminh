@@ -1,6 +1,6 @@
 // Khách xem hội mở (chưa là thành viên): dải báo "đang xem với tư cách khách" ở đầu mọi trang và hộp mời tham gia
 // hiện ra khi khách bấm một nút cần là thành viên (thả tim, bình luận, bình chọn, đăng ký sự kiện).
-import { Modal, T } from '@hoiminh/ui';
+import { CommunityMark, Modal, T } from '@hoiminh/ui';
 import { Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Shell } from '@/lib/community';
@@ -15,6 +15,21 @@ export function GuestBanner({ shell }: { shell: Shell }) {
         <div className="text-[14px]" style={{ color: T.ink2 }}>Tham gia để đăng bài, bình luận và học cùng mọi người.</div>
       </div>
       <Link to={`/${shell.community.slug}`} className="btn btn-primary flex-shrink-0">Tham gia hội</Link>
+    </div>
+  );
+}
+
+/** Dải ở đầu trang bán khi người xem là người ngoài của một hội kín: sản phẩm này của hội nào, và lối sang trang giới thiệu hội. */
+export function SaleGuestBanner({ shell }: { shell: Shell }) {
+  const c = shell.community;
+  return (
+    <div className="card flex items-center gap-3 flex-wrap mb-5" style={{ padding: '12px 16px' }}>
+      <CommunityMark mark={c.logoMark} color={c.logoColor} url={c.logoUrl} size={40} />
+      <div className="flex-grow min-w-0" style={{ flexBasis: 200 }}>
+        <div className="muted text-[13px]">Sản phẩm của hội</div>
+        <div className="font-semibold text-[15px] truncate" style={{ color: T.ink }}>{c.name}</div>
+      </div>
+      <Link to={`/${c.slug}`} className="btn btn-ghost flex-shrink-0">Xem giới thiệu hội</Link>
     </div>
   );
 }

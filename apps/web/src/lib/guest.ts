@@ -22,3 +22,16 @@ export function guestHome(slug: string, tabs: Record<string, boolean>): string {
   if (tabs.members !== false) return `/${slug}/thanh-vien`;
   return `/${slug}`;
 }
+
+/** Trang bán của một sản phẩm (`/<hội>/cua-hang/<sản phẩm>`), không tính trang tạo mới và trang sửa. */
+const SALE_PAGE = /^cua-hang\/(?!moi\/?$)[^/]+\/?$/;
+
+/**
+ * Đường dẫn này có phải trang bán của một sản phẩm không. Trang bán là trang để bán hàng nên ai cũng mở được, kể cả
+ * người chưa đăng nhập và kể cả khi hội đang là hội kín: link sản phẩm của affiliate phải đưa người lạ tới đúng sản
+ * phẩm. Người ngoài mua lẻ được mà không cần vào hội; mọi trang khác của hội kín vẫn đóng.
+ */
+export function isSalePage(pathname: string, slug: string): boolean {
+  const base = `/${slug}/`;
+  return pathname.startsWith(base) && SALE_PAGE.test(pathname.slice(base.length));
+}

@@ -153,7 +153,6 @@ export function LinkCard({ program, targets, code, stats }: LinkCardProps) {
           {canShare && <button type="button" className="btn btn-ghost btn-lg" onClick={share}><Share2 size={18} />Chia sẻ</button>}
         </div>
         {copied === 'failed' && <div className="text-[14px]" style={{ color: T.accentText }}>Trình duyệt không cho sao chép tự động. Bạn nhấn giữ vào link ở trên để sao chép.</div>}
-        {target.kind === 'product' && <div className="text-[14px]" style={{ color: T.ink2 }}>Trang sản phẩm chỉ mở cho người đã đăng nhập. Người chưa có tài khoản sẽ đăng ký trước, rồi được đưa thẳng tới sản phẩm này. Mã của bạn vẫn được ghi nhớ.</div>}
         {!target.commission && <div className="text-[14px]" style={{ color: T.goldText }}>Chủ hội đã tắt hoa hồng bán lẻ cho sản phẩm này. Người vào hội qua link này vẫn được tính cho bạn.</div>}
         <div className="text-[14px] flex items-center gap-2 flex-wrap" style={{ color: T.ink2 }}>
           <span>Mã giới thiệu của bạn: <b style={{ color: T.ink }}>{code}</b></span>
