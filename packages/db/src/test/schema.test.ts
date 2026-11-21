@@ -44,6 +44,17 @@ describe('schema + seed', () => {
     expect(p.map((x) => x.policyname)).toContain('tenant_isolation');
   });
 
+  it('migration tạo sẵn các cờ tính năng mặc định, không cần dữ liệu mẫu (thiếu dòng cờ là cờ tắt)', async () => {
+    // Chạy trước bài "seed chạy hai lần": lúc này database chỉ có migration, giống database thật mới dựng.
+    const list = await rows<{ key: string; enabled: boolean }>(sql`select key, enabled from feature_flags`);
+    const on = new Map(list.map((r) => [r.key, r.enabled]));
+    // Ba cờ mà thiếu dòng thì chặn tính năng đang bán: mua sản phẩm lẻ, bảng xếp hạng affiliate, MCP.
+    expect(on.get('store')).toBe(true);
+    expect(on.get('affiliate_leaderboard')).toBe(true);
+    expect(on.get('mcp')).toBe(true);
+    for (const key of ['realtime_chat', 'go_live', 'gamification', 'paypal', 'install_gate']) expect(on.get(key), key).toBe(false);
+  });
+
   it('migration 0004 thêm cột enqueued_at bằng IF NOT EXISTS (cột từng được thêm tay trên Supabase ở migration trước)', async () => {
     const { readFileSync } = await import('node:fs');
     const sqlText = readFileSync(new URL('../../migrations/0004_background_jobs.sql', import.meta.url), 'utf8');
