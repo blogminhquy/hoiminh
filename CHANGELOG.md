@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.36.1 - 2026-11-21
+
+### Thêm
+
+- **Chọn người giới thiệu bằng email.** Thẻ "Người giới thiệu của bạn" nay nhận ba thứ: mã giới thiệu, link giới thiệu, hoặc email đăng nhập của người đã mời mình. Email phải là của một thành viên đang ở trong hội. Người đó chưa từng lấy link affiliate thì được mở tài khoản affiliate luôn, để lượt giới thiệu vẫn được tính và hoa hồng vẫn vào ví của họ. Theo yêu cầu của chủ dự án. Không có migration.
+
 ## 1.36.0 - 2026-11-21
 
 Affiliate theo luật "người giới thiệu cố định", và sửa hai lỗi chủ dự án báo: bấm thông báo thành viên mới ra "Hội không tồn tại", bấm thẻ khóa học ra "Bài học không tồn tại". Theo yêu cầu của chủ dự án.

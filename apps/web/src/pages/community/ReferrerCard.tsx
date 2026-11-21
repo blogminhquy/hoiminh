@@ -1,5 +1,5 @@
 // Thẻ "Người giới thiệu của bạn" trên trang Xếp hạng affiliate: thành viên xem ai đang nhận hoa hồng từ các lần
-// thanh toán của mình và tự đổi sang người khác bằng mã hoặc link giới thiệu. Chỉ thành viên tự đổi được;
+// thanh toán của mình và tự đổi sang người khác bằng mã giới thiệu, link giới thiệu hoặc email của người đó. Chỉ thành viên tự đổi được;
 // bấm link của affiliate khác không làm đổi người giới thiệu.
 import type { MyReferrer } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,12 +37,12 @@ export function ReferrerCard({ communityId }: { communityId: string }) {
           </div>
         </>
       ) : (
-        <div className="text-[14px] leading-[1.6]" style={{ color: T.ink2 }}>Bạn chưa có người giới thiệu. Nếu ai đó đã mời bạn vào hội, nhập mã của họ để họ được nhận hoa hồng.</div>
+        <div className="text-[14px] leading-[1.6]" style={{ color: T.ink2 }}>Bạn chưa có người giới thiệu. Nếu ai đó đã mời bạn vào hội, nhập mã, link giới thiệu hoặc email của họ để họ được nhận hoa hồng.</div>
       )}
-      {d.enabled && !editing && <Button size="sm" className="self-start" onClick={() => { save.reset(); setEditing(true); }}>{r ? 'Đổi người giới thiệu' : 'Nhập mã giới thiệu'}</Button>}
+      {d.enabled && !editing && <Button size="sm" className="self-start" onClick={() => { save.reset(); setEditing(true); }}>{r ? 'Đổi người giới thiệu' : 'Nhập người giới thiệu'}</Button>}
       {d.enabled && editing && (
         <form className="flex flex-col gap-2 pt-2.5" style={{ borderTop: `1px solid ${T.line}` }} onSubmit={(e) => { e.preventDefault(); if (code.trim()) save.mutate(); }}>
-          <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="Dán mã hoặc link giới thiệu" aria-label="Mã hoặc link giới thiệu" style={{ fontSize: 16 }} />
+          <Input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="Mã, link hoặc email người giới thiệu" aria-label="Mã, link hoặc email người giới thiệu" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ fontSize: 16 }} />
           {save.isError && <div className="text-[14px]" style={{ color: T.accentText }}>{errorMessage(save.error)}</div>}
           <div className="muted text-[13px] leading-[1.5]">Chỉ bạn tự đổi được. Sau khi đổi, hoa hồng các lần thanh toán sau tính cho người mới.</div>
           <div className="flex gap-2">

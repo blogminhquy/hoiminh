@@ -4,7 +4,7 @@
 //   2. Hội đổi đường dẫn thì đường dẫn cũ vẫn dẫn về hội (thông báo cũ từng ra "Hội không tồn tại").
 //   3. Xóa bài học thì tiến độ không còn trỏ tới bài đã xóa (thẻ khóa học từng ra "Bài học không tồn tại").
 import { and, eq } from 'drizzle-orm';
-import { affiliateAccounts, affiliateCommissions, affiliateLinks, auditLogs, communityMembers, communitySlugAliases, courseProgress, lessons, notifications, orders } from '@hoiminh/db';
+import { affiliateAccounts, affiliateCommissions, affiliateLinks, auditLogs, communityMembers, communitySlugAliases, courseProgress, lessons, notifications, orders, users } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import * as affiliate from '../services/affiliate';
@@ -19,12 +19,14 @@ let app: TestApp;
 let KD = '';
 let HV = '';
 let HK = '';
+let PROGRAM = '';
 
 beforeAll(async () => {
   app = await createTestApp();
   KD = await app.ids('community:kd');
   HV = await app.ids('affiliate:kd:hoangvu');
   HK = await app.ids('affiliate:kd:hongkim');
+  PROGRAM = await app.ids('program:kd');
 }, 180_000);
 afterAll(async () => {
   await app.close();
@@ -90,6 +92,38 @@ describe('affiliate: người giới thiệu cố định', () => {
     const outsider: Ctx = { ...app.system(), actor: { type: 'user', userId: await app.ids('user:thaovy'), isSuperAdmin: false, email: 'vy.english@gmail.com' } };
     await expect(affiliate.setMyReferrer(outsider, KD, { code: 'hv8k2' })).rejects.toThrow(/Tham gia hội/);
     await expect(affiliate.myReferrer(outsider, KD)).rejects.toThrow(/Tham gia hội/);
+  });
+
+  it('nhập email của một thành viên trong hội cũng được tính, kể cả khi người đó chưa lấy link affiliate', async () => {
+    const lan = await app.as('thulan');
+    // Công đã có tài khoản affiliate (mã ct4e8): email viết hoa, thừa khoảng trắng vẫn nhận.
+    const viaEmail = await affiliate.setMyReferrer(lan, KD, { code: '  CongTran@Gmail.com ' });
+    expect(viaEmail.referrer).toMatchObject({ code: 'ct4e8', active: true });
+    expect((await memberOf('thulan'))?.referredByAffiliateId).toBe(await app.ids('affiliate:kd:cong'));
+    // member1 là thành viên nhưng chưa từng lấy link: được mở tài khoản affiliate, rồi mới gắn làm người giới thiệu.
+    const m1 = (await app.ctx.db.query.users.findFirst({ where: eq(users.id, await app.ids('user:member1')) }))!;
+    const accOf = () => app.ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.userId, m1.id), eq(affiliateAccounts.programId, PROGRAM)) });
+    expect(await accOf()).toBeUndefined();
+    const opened = await affiliate.setMyReferrer(lan, KD, { code: m1.email });
+    const acc = (await accOf())!;
+    expect(opened.referrer).toMatchObject({ name: m1.name, code: acc.affiliateCode, active: true });
+    expect((await memberOf('thulan'))?.referredByAffiliateId).toBe(acc.id);
+    // Đơn sau đó tính cho người vừa chọn.
+    const session = await checkout.createCheckout(lan, { target: { type: 'product', productId: await app.ids('product:prompts') }, provider: 'sepay', ref: 'hv8k2' });
+    expect(await affiliateOfOrder(session.orderId)).toBe(acc.id);
+  });
+
+  it('email của chính mình, email lạ, email của người ngoài hội đều bị từ chối và không mở tài khoản thừa', async () => {
+    const lan = await app.as('thulan');
+    const before = (await memberOf('thulan'))?.referredByAffiliateId;
+    const m2 = (await app.ctx.db.query.users.findFirst({ where: eq(users.id, await app.ids('user:member2')) }))!;
+    const m2ctx = await app.as('member2');
+    await expect(affiliate.setMyReferrer(m2ctx, KD, { code: m2.email })).rejects.toThrow(/tự chọn mình/);
+    expect(await app.ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.userId, m2.id), eq(affiliateAccounts.programId, PROGRAM)) })).toBeUndefined();
+    await expect(affiliate.setMyReferrer(lan, KD, { code: 'khong-co-ai@example.com' })).rejects.toThrow(/Không có thành viên nào trong hội dùng email này/);
+    // Thảo Vy có tài khoản Hội Mình nhưng không ở trong hội này.
+    await expect(affiliate.setMyReferrer(lan, KD, { code: 'vy.english@gmail.com' })).rejects.toThrow(/Không có thành viên nào trong hội dùng email này/);
+    expect((await memberOf('thulan'))?.referredByAffiliateId).toBe(before);
   });
 
   it('người giới thiệu bị khóa tài khoản affiliate: không ai nhận hoa hồng thay', async () => {

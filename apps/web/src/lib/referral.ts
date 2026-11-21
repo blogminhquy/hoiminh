@@ -26,7 +26,7 @@ export function currentRef(params?: URLSearchParams | null): string | null {
   return params?.get('ref')?.trim() || readCookie(COOKIE);
 }
 
-/** Lấy mã từ thứ người dùng dán vào: mã trần ("hv8k2") hoặc cả link có `?ref=`. */
+/** Chuẩn hóa thứ người dùng dán vào: link có `?ref=` thì lấy mã trong link; mã trần ("hv8k2") hoặc email thì bỏ khoảng trắng và viết thường. */
 export function refCodeOf(input: string): string {
   const text = input.trim();
   const fromLink = /[?&]ref=([^&#\s]+)/i.exec(text)?.[1];

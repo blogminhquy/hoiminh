@@ -5,6 +5,9 @@ describe('refCodeOf', () => {
   it('nhận mã trần, bỏ khoảng trắng và viết thường', () => {
     expect(refCodeOf('  HV8K2 ')).toBe('hv8k2');
   });
+  it('email giữ nguyên, chỉ bỏ khoảng trắng và viết thường', () => {
+    expect(refCodeOf(' HoangVu@Gmail.com ')).toBe('hoangvu@gmail.com');
+  });
   it('nhận cả link có ?ref= hoặc &ref=', () => {
     expect(refCodeOf('https://hoiminh.com/javiser?ref=hv8k2')).toBe('hv8k2');
     expect(refCodeOf('hoiminh.com/javiser/cua-hang/khoa-a?utm=zalo&ref=Lan9x#mua')).toBe('lan9x');
