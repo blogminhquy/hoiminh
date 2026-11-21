@@ -89,8 +89,9 @@ export const templates = {
     make('welcome_member', to, `Chào mừng bạn đến với ${community}`, `Chào mừng ${name}`, `<p>Bạn đã là thành viên của <strong>${h(community)}</strong>. Bắt đầu ở Bảng tin, học module 1 miễn phí và đặt câu hỏi ở Hỏi đáp.</p>`, { label: 'Vào hội', url }),
   paymentSucceeded: (to: string, name: string, item: string, amount: string, url: string) =>
     make('payment_succeeded', to, `Đã nhận thanh toán ${amount} · ${item}`, 'Thanh toán thành công', `<p>Chào ${h(name)}, chúng tôi đã nhận <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong>. Quyền truy cập đã được mở.</p>`, { label: 'Vào học ngay', url }),
-  paymentRefunded: (to: string, name: string, item: string, amount: string) =>
-    make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được hoàn. Tiền về theo phương thức bạn đã trả trong 3-7 ngày làm việc.</p>`),
+  /** `note`: tiền hoàn về bằng đường nào (cổng tự hoàn, hay người bán tự chuyển lại), xem refundRouteNote ở @hoiminh/contracts. */
+  paymentRefunded: (to: string, name: string, item: string, amount: string, note: string) =>
+    make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được ghi nhận hoàn tiền.</p><p>${h(note)}</p>`),
   /**
    * Báo chủ hội: người mua vừa bấm "Tôi đã chuyển khoản" ở đơn chủ hội tự xác nhận. Chủ hội phải tự kiểm tra tài khoản
    * (tiền về thẳng chủ hội, Hội Mình không thấy) rồi bấm xác nhận thì người mua mới được mở quyền.

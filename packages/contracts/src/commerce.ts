@@ -4,6 +4,41 @@ import { amountMinorSchema, billingCycleSchema, currencySchema, idSchema, paymen
 import { bankCodeSchema } from './affiliate';
 import { paidPlanKeySchema, planCycleSchema } from './plans';
 
+/**
+ * Luật hoàn tiền mà người mua TỰ BẤM được cho sản phẩm mua lẻ trong Cửa hàng: trong `days` ngày kể từ lúc thanh toán;
+ * nếu sản phẩm là một khóa học thì phải xem chưa quá `maxCourseProgressPercent` phần trăm nội dung. Máy chủ chặn theo
+ * BUSINESS.courseRefundDays và BUSINESS.courseRefundMaxProgressPercent (`requestRefund`); test ở packages/core kiểm hai
+ * nơi khớp nhau. Mọi câu chữ về hoàn tiền trên web lấy từ đây, để lời hứa không lệch khỏi luật đang chạy (trước đây
+ * có chỗ ghi "chưa học quá nửa khóa", có chỗ thiếu điều kiện tiến độ).
+ */
+export const SELF_REFUND = { days: 7, maxCourseProgressPercent: 20 } as const;
+
+/** Một câu cam kết hoàn tiền mặc định cho trang sản phẩm. Điều kiện tiến độ chỉ áp dụng cho khóa học. */
+export function selfRefundRule(kind: 'course' | 'bundle' | 'digital'): string {
+  return kind === 'course'
+    ? `Hoàn tiền trong ${SELF_REFUND.days} ngày nếu bạn xem chưa quá ${SELF_REFUND.maxCourseProgressPercent}% nội dung.`
+    : `Hoàn tiền trong ${SELF_REFUND.days} ngày kể từ khi thanh toán.`;
+}
+
+/** Điều kiện hiện ở hộp thoại "Yêu cầu hoàn tiền", lúc chưa biết đơn có phải khóa học hay không. */
+export function selfRefundConditions(): string {
+  return `Áp dụng trong ${SELF_REFUND.days} ngày kể từ khi thanh toán. Nếu là khóa học, bạn phải xem chưa quá ${SELF_REFUND.maxCourseProgressPercent}% nội dung.`;
+}
+
+/**
+ * Tiền hoàn về bằng đường nào: `gateway` là cổng thanh toán tự hoàn về phương thức đã trả; `seller_transfer` là chủ
+ * hội tự chuyển lại (đơn trả thẳng chủ hội bằng chuyển khoản hoặc VNPAY, là các cách không có lệnh hoàn tự động);
+ * `platform_transfer` là Hội Mình tự chuyển lại (đơn gói Hội Mình trả bằng chuyển khoản).
+ */
+export type RefundRoute = 'gateway' | 'seller_transfer' | 'platform_transfer';
+
+/** Câu báo cho người mua biết tiền hoàn về thế nào. Không hứa số ngày: việc đó tùy người chuyển, cổng và ngân hàng. */
+export function refundRouteNote(route: RefundRoute): string {
+  if (route === 'seller_transfer') return 'Đơn này bạn đã trả thẳng cho chủ hội, nên chủ hội sẽ tự chuyển lại tiền cho bạn. Chờ lâu chưa thấy thì bạn nhắn chủ hội trong mục Tin nhắn.';
+  if (route === 'platform_transfer') return 'Hội Mình sẽ chuyển khoản lại số tiền này cho bạn.';
+  return 'Tiền được hoàn về đúng phương thức bạn đã trả. Thời gian tiền về tùy cổng thanh toán và ngân hàng của bạn.';
+}
+
 export const productKindSchema = z.enum(['course', 'bundle', 'digital']);
 export type ProductKind = z.infer<typeof productKindSchema>;
 export const salesModeSchema = z.enum(['native', 'external_landing']);
@@ -31,7 +66,7 @@ export const createProductSchema = z.object({
       faq: z.array(z.object({ q: z.string().max(200), a: z.string().max(1000) })).max(12).default([]),
       instructor: z.object({ name: z.string().max(80), bio: z.string().max(500) }).nullable().optional(),
       ctaText: ctaTextSchema.default('Mua ngay'),
-      guarantee: z.string().max(300).default('Hoàn tiền trong 7 ngày nếu bạn xem chưa quá 20% nội dung.'),
+      guarantee: z.string().max(300).default(selfRefundRule('course')),
       salesMode: salesModeSchema.default('native'),
       externalLandingUrl: z.string().url().nullable().optional(),
     })
