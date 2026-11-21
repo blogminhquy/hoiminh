@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.40.1 - 2026-11-21
+
+Ô "Lượt bấm" ở trang Affiliate đếm được link dạng `?ref=`. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Lượt bấm gần như luôn bằng 0.** Trước đây chỉ link dạng `/r/<mã>` mới ghi lượt bấm, trong khi mọi link trang Affiliate đưa ra (trang hội, trang sản phẩm, trang mở hội) đều là dạng `?ref=<mã>`. Nay mở link nào có `?ref=` cũng được đếm một lượt.
+- Không đếm trùng: cùng một người xem mở lại hoặc tải lại trang trong 30 phút chỉ tính một lượt. Chính affiliate tự mở link của mình thì không tính. Mã không tồn tại, tài khoản affiliate hoặc chương trình đang tắt thì không tính.
+- Cách tính người giới thiệu và hoa hồng không đổi: phần sửa này chỉ đếm lượt bấm.
+
 ## 1.40.0 - 2026-11-21
 
 Trang Tài khoản → Affiliate lấy được link giới thiệu của nền tảng, của từng hội và của từng sản phẩm. Theo yêu cầu của chủ dự án, sau khi web thật không lấy được link nào. Không có migration.
