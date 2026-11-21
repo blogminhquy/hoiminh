@@ -86,6 +86,12 @@ export function refCodeOf(input: string): string {
   return code.trim().toLowerCase();
 }
 
+/** Thứ người dùng dán vào là một email (không phải mã hay link có `?ref=`): trả về email viết thường, không thì null. */
+export function refEmailOf(input: string): string | null {
+  const text = input.trim().toLowerCase();
+  return !/[?&]ref=/.test(text) && /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(text) ? text : null;
+}
+
 /**
  * Người giới thiệu của một người trong một hội. Luật "người giới thiệu cố định" (chủ dự án đặt ngày 21/11/2026):
  *   1. Đã có người giới thiệu thì luôn là người đó. Bấm link của affiliate khác hay cookie mới đều không đổi được,
@@ -134,17 +140,34 @@ export async function myReferrer(ctx: Ctx, communityId: string) {
 }
 
 /**
- * Thành viên tự đổi người giới thiệu bằng mã (hoặc link) của người mới. Đây là cách duy nhất để đổi người nhận hoa
- * hồng từ các lần thanh toán sau của thành viên này. Đơn đã tạo trước đó giữ người giới thiệu cũ.
+ * Thành viên tự đổi người giới thiệu bằng một trong ba thứ của người mới: mã giới thiệu, link giới thiệu, hoặc email
+ * đăng nhập. Đây là cách duy nhất để đổi người nhận hoa hồng từ các lần thanh toán sau của thành viên này. Đơn đã
+ * tạo trước đó giữ người giới thiệu cũ.
+ * Nhập email thì người đó phải đang là thành viên của hội; họ chưa từng lấy link affiliate thì được mở tài khoản
+ * affiliate luôn (tài khoản affiliate của hội vốn tự mở không cần duyệt), để lượt giới thiệu vẫn được tính.
  */
 export async function setMyReferrer(ctx: Ctx, communityId: string, input: { code: string }) {
   const { userId, member } = await myMembership(ctx, communityId);
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, communityId) });
   if (!program || program.status !== 'active') throw invalidState('Hội này chưa bật chương trình affiliate');
-  const code = refCodeOf(input.code);
-  const acc = code ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.programId, program.id)) }) : null;
-  if (!acc || acc.status !== 'active') throw notFound('Không tìm thấy mã giới thiệu này trong hội');
-  if (acc.userId === userId && !program.allowSelfReferral) throw invalid('Bạn không thể tự chọn mình làm người giới thiệu');
+  const selfReferral = () => invalid('Bạn không thể tự chọn mình làm người giới thiệu');
+  const email = refEmailOf(input.code);
+  let acc: typeof affiliateAccounts.$inferSelect | null | undefined;
+  if (email) {
+    const [target] = await ctx.db.select({ userId: users.id }).from(users)
+      .innerJoin(communityMembers, and(eq(communityMembers.userId, users.id), eq(communityMembers.communityId, communityId), inArray(communityMembers.status, ['active', 'cancelling'])))
+      .where(sql`lower(${users.email}) = ${email}`).limit(1);
+    if (!target) throw notFound('Không có thành viên nào trong hội dùng email này');
+    // Kiểm tra trước khi mở tài khoản affiliate, để nhập email của chính mình không tạo ra tài khoản thừa.
+    if (target.userId === userId && !program.allowSelfReferral) throw selfReferral();
+    acc = await ensureAccount(ctx, target.userId, program.id);
+    if (acc.status !== 'active') throw notFound('Tài khoản affiliate của thành viên này đang bị khóa');
+  } else {
+    const code = refCodeOf(input.code);
+    acc = code ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.programId, program.id)) }) : null;
+    if (!acc || acc.status !== 'active') throw notFound('Không tìm thấy mã giới thiệu này trong hội');
+  }
+  if (acc.userId === userId && !program.allowSelfReferral) throw selfReferral();
   if (member.referredByAffiliateId !== acc.id) {
     await ctx.db.update(communityMembers).set({ referredByAffiliateId: acc.id, updatedAt: ctx.now() }).where(eq(communityMembers.id, member.id));
     await audit(ctx, { action: 'member.change_referrer', resourceType: 'community_member', resourceId: member.id, communityId, metadata: { from: member.referredByAffiliateId, to: acc.id } });

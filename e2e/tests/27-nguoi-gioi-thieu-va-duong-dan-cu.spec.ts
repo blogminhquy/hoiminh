@@ -3,13 +3,13 @@
 import { expect, test } from '@playwright/test';
 import { USERS, apiJson, apiToken, login } from '../helpers';
 
-test('thành viên nhập mã giới thiệu trên trang Xếp hạng, mã lạ bị từ chối', async ({ page }) => {
+test('thành viên nhập người giới thiệu bằng mã, link hoặc email trên trang Xếp hạng, mã lạ bị từ chối', async ({ page }) => {
   await login(page, USERS.member2);
   await page.goto('/minhquy/xep-hang');
   const card = page.locator('.card', { hasText: 'Người giới thiệu của bạn' });
   await expect(card).toBeVisible();
-  await card.getByRole('button', { name: /Nhập mã giới thiệu|Đổi người giới thiệu/ }).click();
-  const input = card.getByLabel('Mã hoặc link giới thiệu');
+  await card.getByRole('button', { name: /Nhập người giới thiệu|Đổi người giới thiệu/ }).click();
+  const input = card.getByLabel('Mã, link hoặc email người giới thiệu');
   await input.fill('ma-khong-co');
   await card.getByRole('button', { name: 'Lưu' }).click();
   await expect(card.getByText('Không tìm thấy mã giới thiệu này trong hội')).toBeVisible();
@@ -18,6 +18,14 @@ test('thành viên nhập mã giới thiệu trên trang Xếp hạng, mã lạ 
   await card.getByRole('button', { name: 'Lưu' }).click();
   await expect(card.getByText('Hoàng Vũ')).toBeVisible();
   await expect(card.getByText(/mã hv8k2/)).toBeVisible();
+  // Email của một thành viên khác trong hội cũng nhận (ở đây là Công, mã ct4e8).
+  await card.getByRole('button', { name: 'Đổi người giới thiệu' }).click();
+  await input.fill('khong-co-ai@example.com');
+  await card.getByRole('button', { name: 'Lưu' }).click();
+  await expect(card.getByText('Không có thành viên nào trong hội dùng email này')).toBeVisible();
+  await input.fill(' CongTran@gmail.com ');
+  await card.getByRole('button', { name: 'Lưu' }).click();
+  await expect(card.getByText(/mã ct4e8/)).toBeVisible();
   await expect(card.getByRole('button', { name: 'Đổi người giới thiệu' })).toBeVisible();
 });
 

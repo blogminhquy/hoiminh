@@ -42,7 +42,7 @@ export const requestWithdrawalSchema = z.object({
 export const markPaidSchema = z.object({ transferReference: z.string().trim().min(4).max(64), version: z.number().int() });
 export const rejectWithdrawalSchema = z.object({ reason: z.string().trim().min(3).max(300), version: z.number().int() });
 
-/** Thành viên tự đổi người giới thiệu: nhận mã trần hoặc cả link có `?ref=` dán vào. */
+/** Thành viên tự đổi người giới thiệu: `code` nhận mã giới thiệu, cả link có `?ref=`, hoặc email của người giới thiệu. */
 export const setReferrerSchema = z.object({ code: z.string().trim().min(2).max(300) });
 
 /** Người giới thiệu của tôi trong một hội. `enabled`: hội đang bật affiliate; `active`: tài khoản affiliate của người đó còn hoạt động. */
