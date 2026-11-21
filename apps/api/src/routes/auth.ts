@@ -64,7 +64,7 @@ authRoutes.post('/google/callback', async (c) => {
   const { accessToken, name } = await parse(z.object({ accessToken: z.string().min(10), name: z.string().optional() }), await body(c));
   const identity = await provider.userFromToken(accessToken);
   if (!identity) throw new AppError('unauthorized', 'Token Google không hợp lệ');
-  return respondSession(c, await auth.loginWithIdentity(c.get('ctx'), provider, { ...identity, name }));
+  return respondSession(c, await auth.loginWithIdentity(c.get('ctx'), provider, { ...identity, name }, { ref: getCookie(c.req.header('cookie'), 'hm_ref') }));
 });
 
 authRoutes.post('/verify-email', async (c) => {

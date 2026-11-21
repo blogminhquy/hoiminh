@@ -1,6 +1,7 @@
 // Mã giới thiệu (affiliate) đi theo người xem. Link có `?ref=` ở bất kỳ trang nào (hội, sản phẩm, đăng ký) đều được
-// ghi nhớ 30 ngày, lượt bấm sau đè lượt bấm trước (last click). Đây chỉ là lượt bấm của người CHƯA có người giới
-// thiệu: thành viên đã có người giới thiệu thì máy chủ luôn tính cho người đó, mã ghi nhớ ở đây không đổi được.
+// ghi nhớ 30 ngày, lượt bấm sau đè lượt bấm trước (last click). Mã này chỉ được tính tại lúc ĐĂNG KÝ TÀI KHOẢN MỚI:
+// máy chủ ghi người giới thiệu cho tài khoản vừa tạo. Tài khoản đã có rồi thì mã ghi nhớ ở đây không đổi được gì,
+// kể cả lúc mua hàng; muốn có hoặc đổi người giới thiệu thì thành viên tự chọn ở trang Xếp hạng affiliate.
 const COOKIE = 'hm_ref';
 const DAYS = 30;
 

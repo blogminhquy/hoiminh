@@ -7,6 +7,7 @@ import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
+import { resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { releaseFiles } from './files';
 import { paymentsReady } from './owner-payout';
@@ -102,9 +103,15 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     ctx.db.query.communityJoinQuestions.findMany({ where: eq(communityJoinQuestions.communityId, c.id), orderBy: asc(communityJoinQuestions.sortOrder) }),
   ]);
   const access = ctx.actor.type === 'user' ? await resolveCommunityAccess(ctx, c.id) : null;
+  // Dòng "Bạn được ... giới thiệu": chỉ hiện khi lượt giới thiệu đó thật sự được tính. Khách chưa có tài khoản thì
+  // theo mã trên link (sẽ được ghi lúc đăng ký). Người đã đăng nhập thì theo người giới thiệu của chính tài khoản đó,
+  // vì tài khoản đã có rồi thì bấm link affiliate không được tính.
   let referrer: { name: string } | null = null;
-  if (ref) {
-    const r = await raw(ctx.db, sql`select u.name from affiliate_accounts a join users u on u.id = a.user_id where a.affiliate_code = ${ref} limit 1`);
+  if (ctx.actor.type === 'user') {
+    const mine = await resolveReferrer(ctx, { communityId: c.id, userId: ctx.actor.userId });
+    if (mine.program?.status === 'active' && mine.account) referrer = (await ctx.db.query.users.findFirst({ where: eq(users.id, mine.account.userId), columns: { name: true } })) ?? null;
+  } else if (ref) {
+    const r = await raw(ctx.db, sql`select u.name from affiliate_accounts a join affiliate_programs p on p.id = a.program_id join users u on u.id = a.user_id where a.affiliate_code = ${ref} and a.status = 'active' and p.community_id = ${c.id} and p.status = 'active' limit 1`);
     referrer = (r[0] as { name: string } | undefined) ?? null;
   }
   const onlineSince = new Date(ctx.now().getTime() - 15 * 60_000);

@@ -1,4 +1,4 @@
-// Affiliate Engine hai tầng: click → attribution 30 ngày → người giới thiệu cố định của thành viên → conversion → hoa hồng pending → available sau hold → ví (sổ cái bất biến).
+// Affiliate Engine hai tầng: click (cookie 30 ngày, lượt bấm cuối) → ghi người giới thiệu lúc đăng ký tài khoản → người giới thiệu cố định của thành viên → conversion → hoa hồng pending → available sau hold → ví (sổ cái bất biến).
 import { BUSINESS, sha256Hex, randomCode } from '@hoiminh/config';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users } from '@hoiminh/db';
@@ -63,7 +63,10 @@ export async function trackClick(ctx: Ctx, code: string, meta: { visitorId: stri
   return { affiliateAccountId: acc.id, programId: program.id, destinationUrl: link?.destinationUrl ?? ctx.env.APP_URL, cookieDays: program.cookieDays, communityId: program.communityId };
 }
 
-/** Gắn attribution của visitor vào user vừa đăng ký (last click wins). */
+/**
+ * Ghi người giới thiệu cho tài khoản VỪA ĐĂNG KÝ, theo mã trên link hoặc trong cookie 30 ngày (lượt bấm cuối thắng).
+ * Đây là chỗ duy nhất cookie affiliate được tính; tài khoản đã có thì không qua đây nữa (xem resolveReferrer).
+ */
 export async function attachAttribution(ctx: Ctx, userId: string, visitorId: string | null, ref: string | null): Promise<void> {
   if (ref) {
     const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, ref), eq(affiliateAccounts.status, 'active')) });
@@ -94,14 +97,17 @@ export function refEmailOf(input: string): string | null {
 
 /**
  * Người giới thiệu của một người trong một hội. Luật "người giới thiệu cố định" (chủ dự án đặt ngày 21/11/2026):
- *   1. Đã có người giới thiệu thì luôn là người đó. Bấm link của affiliate khác hay cookie mới đều không đổi được,
- *      chỉ chính thành viên tự đổi (setMyReferrer). Người giới thiệu đang bị khóa thì không ai nhận hoa hồng thay.
- *   2. Chưa có thì tính lượt bấm cuối (last click): mã đi kèm lần này, không có thì lượt bấm gần nhất còn hạn.
- * Người giới thiệu cố định ghi ở community_members.referred_by_affiliate_id; người mua lẻ chưa vào hội thì lấy theo
- * đơn đã tính hoa hồng gần nhất của họ. `locked` là true khi kết quả đến từ luật 1.
+ *   1. Đã có người giới thiệu thì luôn là người đó: ghi ở community_members.referred_by_affiliate_id; người mua lẻ
+ *      chưa vào hội thì lấy theo đơn đã tính hoa hồng gần nhất của họ. Người giới thiệu đang bị khóa thì không ai
+ *      nhận hoa hồng thay.
+ *   2. Chưa có thì lấy người giới thiệu ghi lúc ĐĂNG KÝ TÀI KHOẢN: link affiliate (cookie 30 ngày, lượt bấm cuối
+ *      thắng) chỉ được tính tại đúng lúc đó (attachAttribution), và giữ mãi với tài khoản, không hết hạn.
+ * Tài khoản đã có rồi mà bấm link affiliate thì không được tính, kể cả khi mua hàng hay vào hội ngay sau đó: cookie
+ * tính cho lượt đăng ký, không tính cho từng đơn hàng. Muốn có hoặc đổi người giới thiệu thì thành viên tự chọn
+ * (setMyReferrer). `locked` là true khi kết quả đến từ luật 1.
  * Hàm không xét chương trình đang bật hay tắt: nơi gọi tự quyết.
  */
-export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId: string; ref?: string | null }): Promise<{ program: typeof affiliatePrograms.$inferSelect | null; account: typeof affiliateAccounts.$inferSelect | null; locked: boolean }> {
+export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId: string }): Promise<{ program: typeof affiliatePrograms.$inferSelect | null; account: typeof affiliateAccounts.$inferSelect | null; locked: boolean }> {
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, p.communityId) });
   if (!program) return { program: null, account: null, locked: false };
   const usable = (acc: typeof affiliateAccounts.$inferSelect | null | undefined) => (acc && acc.programId === program.id && acc.status === 'active' && (acc.userId !== p.userId || program.allowSelfReferral) ? acc : null);
@@ -114,11 +120,10 @@ export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId
   // Tài khoản affiliate đã bị xóa hẳn (người đó xóa tài khoản) thì coi như chưa có người giới thiệu.
   const fixed = fixedId ? await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, fixedId) }) : null;
   if (fixed) return { program, account: usable(fixed), locked: true };
-  const byRef = p.ref ? usable(await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, p.ref), eq(affiliateAccounts.programId, program.id)) })) : null;
-  if (byRef) return { program, account: byRef, locked: false };
-  const attr = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id), sql`${affiliateAttributions.expiresAt} > now()`), orderBy: desc(affiliateAttributions.attributedAt), columns: { affiliateAccountId: true } });
-  const byClick = attr ? usable(await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, attr.affiliateAccountId) })) : null;
-  return { program, account: byClick, locked: false };
+  // Dòng attribution có user_id chỉ sinh ra lúc đăng ký tài khoản, nên đây chính là người giới thiệu lúc đăng ký.
+  const atSignup = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id)), orderBy: desc(affiliateAttributions.attributedAt), columns: { affiliateAccountId: true } });
+  const bySignup = atSignup ? usable(await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, atSignup.affiliateAccountId) })) : null;
+  return { program, account: bySignup, locked: false };
 }
 
 /** Thành viên đang còn trong hội (đang hoạt động hoặc đã hẹn hủy): chỉ họ xem và đổi được người giới thiệu của mình. */
