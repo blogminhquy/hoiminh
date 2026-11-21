@@ -1,8 +1,8 @@
 // Mảnh màn Tin nhắn (kiểu Zalo): dòng hội thoại có menu ghim/lưu trữ, bong bóng tin kèm hàng giờ gửi và thao tác bên dưới,
-// và bảng "Thông tin hội thoại" bên phải (thao tác nhanh, thông tin thành viên, ảnh, tệp, link đã gửi).
+// và bảng "Thông tin hội thoại" bên phải (xem hồ sơ, thông tin thành viên, ảnh, tệp, link đã gửi).
 import { MESSAGE_REACTIONS, type MessageReaction } from '@hoiminh/contracts';
 import { Avatar, T, money } from '@hoiminh/ui';
-import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, Link2, MoreHorizontal, Pin, PinOff, Quote, Settings, Sparkles, Undo2, User, Users, X } from 'lucide-react';
+import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, Link2, MoreHorizontal, Pin, PinOff, Quote, Sparkles, Undo2, User, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { fileSizeLabel, linkParts, reactionSummary } from '@/lib/chat';
@@ -156,10 +156,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <details className="chat-sec" open><summary>{title}<ChevronDown size={18} /></summary><div className="chat-sec-body">{children}</div></details>;
 }
 
-export interface InfoPanelProps { other: Person; panel: Panel | null; community: { slug: string; name: string } | null; pinned: boolean; archived: boolean; images: string[]; files: Array<MessageFile & { id: string }>; links: string[]; onPin: () => void; onArchive: () => void; onDownload: (messageId: string) => void; onClose: () => void }
+export interface InfoPanelProps { other: Person; panel: Panel | null; community: { slug: string; name: string } | null; images: string[]; files: Array<MessageFile & { id: string }>; links: string[]; onDownload: (messageId: string) => void; onClose: () => void }
 
-/** Bảng "Thông tin hội thoại": hàng thao tác nhanh, thông tin thành viên, ảnh và link đã gửi trong hội thoại. */
-export function InfoPanel({ other, panel, community, pinned, archived, images, files, links, onPin, onArchive, onDownload, onClose }: InfoPanelProps) {
+/**
+ * Bảng "Thông tin hội thoại": người đang trò chuyện, thông tin thành viên, ảnh và link đã gửi trong hội thoại.
+ * Chỉ có một nút "Xem chi tiết hồ sơ". Ghim và lưu trữ hội thoại nằm ở menu ba chấm (đầu khung chat và trên từng dòng
+ * của danh sách), không lặp lại ở đây; nút "Quản lý thành viên" đã bỏ theo yêu cầu của chủ dự án.
+ */
+export function InfoPanel({ other, panel, community, images, files, links, onDownload, onClose }: InfoPanelProps) {
   const [allImages, setAllImages] = useState(false);
   const shown = allImages ? images : images.slice(0, 9);
   return (
@@ -174,12 +178,7 @@ export function InfoPanel({ other, panel, community, pinned, archived, images, f
           <div className="font-bold text-[17px] mt-1" style={{ overflowWrap: 'anywhere' }}>{other.name}</div>
           <div className="muted text-[14px]">@{other.handle}</div>
           {panel?.tier && <span className="tag" style={{ background: T.goldSoft, color: T.goldText }}>{panel.tier.name}{panel.tier.monthlyMinor ? ` · ${money(panel.tier.monthlyMinor)}/tháng` : ''}</span>}
-          <div className="chat-quick">
-            <button type="button" onClick={onPin}><i>{pinned ? <PinOff size={20} /> : <Pin size={20} />}</i>{pinned ? 'Bỏ ghim hội thoại' : 'Ghim hội thoại'}</button>
-            <Link to={`/u/${other.handle}`}><i><User size={20} /></i>Xem hồ sơ</Link>
-            {panel && community && <Link to={`/${community.slug}/thanh-vien?q=${encodeURIComponent(other.handle)}`}><i><Settings size={20} /></i>Quản lý thành viên</Link>}
-            <button type="button" onClick={onArchive}><i>{archived ? <ArchiveRestore size={20} /> : <Archive size={20} />}</i>{archived ? 'Bỏ lưu trữ' : 'Lưu trữ hội thoại'}</button>
-          </div>
+          <Link to={`/u/${other.handle}`} className="btn btn-ghost w-full mt-3.5" style={{ maxWidth: 260 }}><User size={18} />Xem chi tiết hồ sơ</Link>
         </div>
         {panel && (
           <Section title="Thông tin thành viên">

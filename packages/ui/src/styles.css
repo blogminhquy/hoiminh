@@ -593,10 +593,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-replying .chat-quote { margin-bottom: 0; }
 
 /* Bảng thông tin hội thoại: hàng thao tác nhanh (nút tròn), các mục gập mở được, lưới ảnh, danh sách link. */
-.chat-quick { display: flex; justify-content: center; gap: 4px; width: 100%; margin-top: 14px; }
-.chat-quick > * { flex: 1 1 0; min-width: 0; max-width: 88px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 14px; line-height: 1.3; color: var(--ink2); text-align: center; }
-.chat-quick i { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--bg); color: var(--ink); }
-.chat-quick > *:hover i { background: var(--primary-soft); color: var(--primary-text); }
 .chat-sec { border-top: 6px solid var(--bg); }
 .chat-sec summary { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 16px; font-weight: 700; font-size: 15px; cursor: pointer; list-style: none; }
 .chat-sec summary::-webkit-details-marker { display: none; }

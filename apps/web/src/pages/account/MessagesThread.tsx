@@ -155,7 +155,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
             </div>
           </div>
           <button type="button" className={`chat-icon${info ? ' on' : ''}`} aria-label="Thông tin hội thoại" aria-pressed={info} title="Thông tin hội thoại" onClick={() => onInfo(!info)}><PanelRight size={20} /></button>
-          <ChatMenu other={other} blockedByMe={d.blocked.byMe} onBlock={onBlock} onReport={() => setReporting(true)} />
+          <ChatMenu other={other} blockedByMe={d.blocked.byMe} pinned={d.pinned} archived={d.archived} onPin={() => pin.mutate(!d.pinned)} onArchive={() => archive.mutate(!d.archived)} onBlock={onBlock} onReport={() => setReporting(true)} />
         </header>
         <div className="chat-scroll" ref={scroller} onScroll={onScroll}>
           {d.items.length === 0 && <div className="chat-empty">Chưa có tin nhắn nào. Gửi lời chào tới {firstName} nhé.</div>}
@@ -204,7 +204,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
           )}
         </div>
       </section>
-      {info && <InfoPanel other={other} panel={d.panel} community={d.community} pinned={d.pinned} archived={d.archived} images={images} files={files} links={links} onPin={() => pin.mutate(!d.pinned)} onArchive={() => archive.mutate(!d.archived)} onDownload={(mid) => void download(mid)} onClose={() => onInfo(false)} />}
+      {info && <InfoPanel other={other} panel={d.panel} community={d.community} images={images} files={files} links={links} onDownload={(mid) => void download(mid)} onClose={() => onInfo(false)} />}
       <ReportDialog other={other} conversationId={id} open={reporting} onClose={() => setReporting(false)} />
     </>
   );
