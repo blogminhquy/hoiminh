@@ -1,12 +1,13 @@
 // Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/affiliate, khám phá.
 import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
-import { ABOUT_MEDIA_MAX, applyPromo, legacyPricesOf, normalizeTerms, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
+import { ABOUT_MEDIA_MAX, WELCOME_DM_DEFAULT_TEMPLATE, WELCOME_DM_TEMPLATE_MAX, applyPromo, legacyPricesOf, normalizeTerms, normalizeWelcomeTemplate, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { affiliatePrograms, communities, communityJoinQuestions, communitySlugAliases, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
+import { accountForCodes, resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { releaseFiles } from './files';
 import { paymentsReady } from './owner-payout';
@@ -48,7 +49,7 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     await tx.insert(communityTiers).values({ communityId: c!.id, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần'], isDefault: false, isActive: false, sortOrder: 2 });
     for (const [i, [name, slug, perm, color]] of DEFAULT_SPACES.entries()) await tx.insert(spaces).values({ communityId: c!.id, name, slug, postPermission: perm, colorKey: color, sortOrder: i });
     for (const [key, enabled] of [['welcome_dm', true], ['instant_approval', true], ['links', true], ['webhook', false], ['meta_pixel', false]] as const) {
-      await tx.insert(communityPlugins).values({ communityId: c!.id, pluginKey: key, enabled, config: key === 'welcome_dm' ? { senderUserId: userId, template: 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true } : {} });
+      await tx.insert(communityPlugins).values({ communityId: c!.id, pluginKey: key, enabled, config: key === 'welcome_dm' ? { senderUserId: userId, template: WELCOME_DM_DEFAULT_TEMPLATE, delayMinutes: 2, includeStartLink: true } : {} });
     }
     await tx.insert(affiliatePrograms).values({ scopeType: 'community', communityId: c!.id, workspaceId: ws.id, name: `Affiliate ${input.name}`, status: 'paused', commissionRateBps: 4000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: ws.ownerUserId });
     await tx.insert(communityMembers).values({ communityId: c!.id, userId: ws.ownerUserId, role: 'owner', status: 'active', tierId: premium!.id, level: 1 });
@@ -102,10 +103,17 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
     ctx.db.query.communityJoinQuestions.findMany({ where: eq(communityJoinQuestions.communityId, c.id), orderBy: asc(communityJoinQuestions.sortOrder) }),
   ]);
   const access = ctx.actor.type === 'user' ? await resolveCommunityAccess(ctx, c.id) : null;
+  // Dòng "Bạn được ... giới thiệu": chỉ hiện khi lượt giới thiệu đó thật sự được tính cho hội này. Khách chưa có tài
+  // khoản thì theo mã của hội này trong các mã đang mang theo. Người đã đăng nhập thì theo đúng luật của resolveReferrer
+  // (thành viên đang ở trong hội mà chưa có người giới thiệu thì link không được tính, nên không hiện).
   let referrer: { name: string } | null = null;
-  if (ref) {
-    const r = await raw(ctx.db, sql`select u.name from affiliate_accounts a join users u on u.id = a.user_id where a.affiliate_code = ${ref} limit 1`);
-    referrer = (r[0] as { name: string } | undefined) ?? null;
+  if (ctx.actor.type === 'user') {
+    const mine = await resolveReferrer(ctx, { communityId: c.id, userId: ctx.actor.userId, ref });
+    if (mine.program?.status === 'active' && mine.account) referrer = (await ctx.db.query.users.findFirst({ where: eq(users.id, mine.account.userId), columns: { name: true } })) ?? null;
+  } else if (ref) {
+    const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, c.id), columns: { id: true, status: true } });
+    const acc = program?.status === 'active' ? await accountForCodes(ctx, program.id, ref) : null;
+    if (acc) referrer = (await ctx.db.query.users.findFirst({ where: eq(users.id, acc.userId), columns: { name: true } })) ?? null;
   }
   const onlineSince = new Date(ctx.now().getTime() - 15 * 60_000);
   const [online] = await ctx.db.select({ c: sql<number>`count(*)::int` }).from(communityMembers).where(and(eq(communityMembers.communityId, c.id), gte(communityMembers.lastActiveAt, onlineSince)));
@@ -245,12 +253,20 @@ export async function getCommunityById(ctx: Ctx, id: string) {
 /** Plugins (Tiện ích). */
 export async function listPlugins(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
-  return ctx.db.query.communityPlugins.findMany({ where: eq(communityPlugins.communityId, communityId) });
+  const rows = await ctx.db.query.communityPlugins.findMany({ where: eq(communityPlugins.communityId, communityId) });
+  return rows.map((r) => (r.pluginKey === 'welcome_dm' ? { ...r, config: withEnglishVariables(r.config) } : r));
+}
+/** Mẫu tin nhắn chào lưu bằng tên biến tiếng Việt cũ thì đổi sang tên mới. Đổi xong mà vượt giới hạn độ dài thì giữ nguyên (tên cũ vẫn chạy). */
+function withEnglishVariables<T extends Record<string, unknown>>(config: T): T {
+  if (typeof config.template !== 'string') return config;
+  const template = normalizeWelcomeTemplate(config.template);
+  return template.length <= WELCOME_DM_TEMPLATE_MAX ? { ...config, template } : config;
 }
 export async function updatePlugin(ctx: Ctx, communityId: string, pluginKey: string, input: { enabled: boolean; config: Record<string, unknown> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   const existing = await ctx.db.query.communityPlugins.findFirst({ where: and(eq(communityPlugins.communityId, communityId), eq(communityPlugins.pluginKey, pluginKey)) });
-  const config = { ...(existing?.config ?? {}), ...input.config };
+  const merged = { ...(existing?.config ?? {}), ...input.config };
+  const config = pluginKey === 'welcome_dm' ? withEnglishVariables(merged) : merged;
   const [row] = await ctx.db.insert(communityPlugins).values({ communityId, pluginKey, enabled: input.enabled, config, updatedAt: ctx.now() }).onConflictDoUpdate({ target: [communityPlugins.communityId, communityPlugins.pluginKey], set: { enabled: input.enabled, config, updatedAt: ctx.now() } }).returning();
   await audit(ctx, { action: 'plugin.update', resourceType: 'community_plugin', resourceId: pluginKey, communityId, metadata: { enabled: input.enabled } });
   return row!;
