@@ -3,7 +3,7 @@
 // nhiều hội khác nhau và tới nền tảng: mỗi hội chỉ tính mã của hội đó, mã mới nhất của hội đó thắng (last click).
 // Máy chủ tính các mã này ở hai lúc: lúc đăng ký tài khoản mới (cả nền tảng lẫn hội), và lúc một tài khoản đã có vào
 // một hội mình chưa ở (chỉ mã của hội đó). Thành viên đang ở trong hội rồi thì mã ở đây không đổi được gì, kể cả lúc
-// mua hàng; muốn có hoặc đổi người giới thiệu thì tự chọn ở trang Xếp hạng affiliate.
+// mua hàng; muốn có hoặc đổi người giới thiệu thì tự chọn ở trang Affiliate của hội (phần Người giới thiệu của bạn).
 import { REF_PLATFORM_SCOPE, joinRefs, refCodes, refScopeOf, scopeRefs } from '@hoiminh/contracts';
 import { api } from './api';
 

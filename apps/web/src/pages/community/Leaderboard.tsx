@@ -1,119 +1,166 @@
-// Xếp hạng affiliate (affiliateMain): chip kỳ, bục top 3, bảng hạng; rail link của bạn + số liệu, người giới thiệu của bạn, cách tính, tổng affiliate kỳ này.
-import { useQuery } from '@tanstack/react-query';
-import { Avatar, Chip, Prog, T, money } from '@hoiminh/ui';
-import { Check, Clock, Copy, Link as LinkIcon, ShieldCheck, UserCheck, Users, Wallet } from 'lucide-react';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+// Trang Affiliate của thành viên trong một hội (/:slug/xep-hang, giữ địa chỉ cũ của trang Xếp hạng affiliate vì link
+// đã chia sẻ và thông báo đang dẫn tới đó). Gom về một chỗ: tab "Link của tôi" (lấy link, số liệu, tóm tắt ví) và tab
+// "Xếp hạng" (bảng xếp hạng của hội); tab đang mở nằm trên địa chỉ (?tab=link, ?tab=xep-hang). Cột phải: người giới
+// thiệu của bạn, cách tính, tổng affiliate của tháng. Phần chủ hội quản lý chương trình nằm ở trang khác (/:slug/cong-su).
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CommunityMark, Prog, T, Tag, WalletBox, money } from '@hoiminh/ui';
+import { Clock, Link as LinkIcon, ShieldCheck, UserCheck, Users, Wallet as WalletIcon } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
-import { ApiError, api } from '@/lib/api';
-import { useShell } from '@/lib/community';
-import { timeAgo } from '@/lib/format';
+import { ratePercent, type LinkTarget } from '@/lib/affiliate-link';
+import { AFFILIATE_TAB_LABEL, affiliateHeadline, affiliateTabs, currentAffiliateTab, leaderboardAudience, type AffiliateTab } from '@/lib/affiliate-nav';
+import { api } from '@/lib/api';
+import { useShell, type Shell } from '@/lib/community';
+import { LinkCard } from '@/pages/account/AffiliateLinkParts';
+import { RankBoard, type Board, type Period } from './AffiliateRank';
 import { ReferrerCard } from './ReferrerCard';
 
-interface Row { rank: number; user: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }; referrals: number; paid: number; revenueMinor: number | null; commissionMinor: number | null; rankDelta: number; isMe: boolean }
-interface Board { items: Row[]; computedAt: string | null; period: string; program: { commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; showMoney: boolean; enabled: boolean }; me: { affiliateCode: string; link: string; clicks: number; signups: number; paid: number; rank: number | null } | null; stats: { activeAffiliates: number; referredRevenueShare: number } }
-type Period = 'month' | 'quarter' | 'all';
+/** Ví của tôi trong chương trình của hội này (GET /v1/me/affiliate/:programId). Gọi API này là mở tài khoản affiliate. */
+interface Wallet { programId: string; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; codeEditable: boolean; previousCode: string | null; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; clicks: number; signups: number; paid: number }
 
-const now = new Date();
-const PERIODS: Array<[Period, string]> = [['month', `Tháng ${now.getMonth() + 1}`], ['quarter', `Quý ${Math.floor(now.getMonth() / 3) + 1}`], ['all', 'Từ đầu']];
-
-function Podium({ r, first, showMoney, order = '' }: { r: Row; first?: boolean; showMoney: boolean; order?: string }) {
+/** Hội chưa bật affiliate (hoặc gói của hội không có): nói rõ vì sao chưa có link và đưa lối đi tiếp. */
+function ProgramOff({ name, slug, canManage, canConfigure, walletProgramId }: { name: string; slug: string; canManage: boolean; canConfigure: boolean; walletProgramId: string | null }) {
   return (
-    <div className={`card flex-1 p-5 flex flex-col items-center gap-2 text-center${first ? ' card-invert' : ''} ${order}`}>
-      <div className="w-8 h-8 rounded-full flex items-center justify-center font-extrabold serif" style={{ background: first ? T.gold : T.bg, color: first ? T.ink : T.ink2 }}>{r.rank}</div>
-      <Avatar name={r.user.name} src={r.user.avatarUrl} color={r.user.coverColor ?? T.ink} size={56} />
-      <div className="font-bold text-[16px]">{r.user.name}</div>
-      <div className="text-[13px]" style={{ color: first ? T.sideText : T.ink2 }}>{r.referrals} người giới thiệu · {r.paid} trả phí</div>
-      {showMoney && r.commissionMinor !== null && <><div className="serif text-[22px] font-extrabold pt-1">{money(r.commissionMinor)}</div><div className="text-[12px]" style={{ color: first ? T.sideText : T.ink3 }}>hoa hồng kỳ này</div></>}
+    <div className="card flex flex-col gap-2.5" style={{ padding: '18px 20px', background: T.goldSoft, borderColor: 'transparent' }}>
+      <div className="font-semibold text-[16px]">{name} chưa bật affiliate</div>
+      <div className="text-[14px]" style={{ color: T.ink2 }}>
+        {canManage
+          ? 'Bạn quản lý hội này. Bật chương trình và chọn mức hoa hồng, thành viên sẽ thấy mục Affiliate trên thanh bên và lấy được link giới thiệu ngay tại trang này.'
+          : 'Chủ hội chưa bật chương trình affiliate nên hội này chưa có link giới thiệu. Bạn có thể nhắn chủ hội đề nghị bật.'}
+        {walletProgramId && ' Hoa hồng bạn đã có vẫn xem và rút được trong ví.'}
+      </div>
+      {(canManage || walletProgramId) && (
+        <div className="flex gap-2 flex-wrap">
+          {canManage && <Link to={canConfigure ? `/${slug}/cai-dat/cong-su` : `/${slug}/cong-su`} className="btn btn-dark">{canConfigure ? 'Bật affiliate cho hội' : 'Mở trang quản lý affiliate'}</Link>}
+          {walletProgramId && <Link to={`/tai-khoan/cong-su/${walletProgramId}`} className="btn btn-ghost">Xem ví và rút tiền</Link>}
+        </div>
+      )}
     </div>
   );
 }
 
-function Trend({ d }: { d: number }) {
-  const label = d === 0 ? '—' : d > 0 ? `+${d}` : String(d);
-  return <span className="text-[12px] font-semibold" style={{ color: d > 0 ? T.teal : d === 0 ? T.ink3 : T.accentText }}>{label}</span>;
+/**
+ * Tab "Link của tôi": lấy link (LinkCard dùng chung với khu Tài khoản), rồi tóm tắt ví và lối sang trang ví đầy đủ.
+ * LinkCard đánh số bước từ 2 (ở khu Tài khoản bước 1 là chọn chương trình), nên ở đây bước 1 nói rõ đang giới thiệu
+ * hội nào và đưa lối sang link của hội khác hoặc của nền tảng.
+ */
+function MyLink({ w, community }: { w: Wallet; community: Shell['community'] }) {
+  const qc = useQueryClient();
+  // Mã giới thiệu chung dùng cho mọi chương trình: đổi xong thì link ở mọi ví, bảng xếp hạng và trang sản phẩm đổi theo.
+  const codeChanged = () => { void qc.invalidateQueries({ queryKey: ['wallet'] }); void qc.invalidateQueries({ queryKey: ['leaderboard'] }); void qc.invalidateQueries({ queryKey: ['product'] }); };
+  return (
+    <>
+      {w.enabled && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[14px] font-bold flex-shrink-0" style={{ background: T.ink, color: T.surface }}>1</span>
+            <span className="font-semibold text-[16px]">Bạn đang giới thiệu hội này</span>
+          </div>
+          <div className="card flex items-center gap-3" style={{ padding: '12px 14px', minHeight: 64 }}>
+            <CommunityMark mark={community.logoMark} color={community.logoColor} url={community.logoUrl} size={40} />
+            <span className="flex-grow min-w-0 flex flex-col">
+              <span className="font-semibold text-[15px] leading-snug" style={{ overflowWrap: 'anywhere' }}>{community.name}</span>
+              <span className="muted text-[13px]">Mời người vào hội, mua sản phẩm</span>
+            </span>
+            <Tag tone="teal">{ratePercent(w.commissionRateBps)}</Tag>
+          </div>
+          <Link to="/tai-khoan/cong-su" className="self-start inline-flex items-center min-h-[44px] text-[14px] font-semibold" style={{ color: T.primaryText }}>Lấy link của hội khác hoặc của nền tảng Hội Mình</Link>
+        </section>
+      )}
+      {w.enabled && <LinkCard key={w.programId} program={{ scope: 'community', rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} codeEditable={w.codeEditable} previousCode={w.previousCode} onCodeChanged={codeChanged} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
+      <div className="pt-1">
+        <h2 className="m-0 text-[18px] font-bold">Ví hoa hồng của bạn</h2>
+        <div className="muted text-[14px]">Hoa hồng từ hội này về một ví riêng. {w.payerName} chuyển khoản khi bạn gửi yêu cầu rút.</div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <WalletBox label="Đang giữ" value={money(w.pendingMinor)} hint={`chờ hết ${w.holdDays} ngày đối soát`} />
+        <WalletBox label="Có thể rút" value={money(w.availableMinor)} hint={`rút từ ${money(w.minWithdrawalMinor)}`} strong />
+      </div>
+      <Link to={`/tai-khoan/cong-su/${w.programId}`} className="btn btn-ghost w-full sm:w-auto sm:self-start"><WalletIcon size={18} />Xem ví và rút tiền</Link>
+    </>
+  );
 }
 
 export default function Page() {
   const shell = useShell();
-
+  const [params, setParams] = useSearchParams();
   const [period, setPeriod] = useState<Period>('month');
-  const [copied, setCopied] = useState(false);
-  const q = useQuery({ queryKey: ['leaderboard', shell.community.id, period], queryFn: () => api.get<Board>(`/v1/communities/${shell.community.id}/leaderboard?period=${period}`), retry: false });
-  const denied = q.isError && q.error instanceof ApiError && q.error.status === 403;
-  const copy = (link: string) => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
-  const cols = '56px 2fr 1fr 1fr 1.2fr 1.2fr 80px';
+  const c = shell.community;
+  const aff = shell.affiliate ?? null;
+  const running = Boolean(aff?.enabled);
+  const canManage = shell.viewer.permissions.includes('affiliates.manage');
+  const param = params.get('tab');
+
+  // Ví chỉ tải khi người xem mở tab "Link của tôi": gọi API ví là mở tài khoản affiliate cho họ.
+  const wantsLink = currentAffiliateTab(param, affiliateTabs(shell)) === 'link';
+  const wallet = useQuery({ queryKey: ['wallet', aff?.programId], queryFn: () => api.get<Wallet>(`/v1/me/affiliate/${aff!.programId}`), enabled: wantsLink && Boolean(aff) });
+  // Bảng xếp hạng "chỉ cho affiliate": vừa có tài khoản affiliate (ví vừa tải xong) là tab Xếp hạng hiện ra, không chờ tải lại khung hội.
+  const tabs = affiliateTabs(shell, wallet.isSuccess);
+  const tab = currentAffiliateTab(param, tabs);
+  const board = useQuery({ queryKey: ['leaderboard', c.id, period], queryFn: () => api.get<Board>(`/v1/communities/${c.id}/leaderboard?period=${period}`), enabled: tab === 'xep-hang', retry: false });
+  const open = (t: AffiliateTab) => setParams({ tab: t });
+  // Địa chỉ trỏ vào tab người xem không có (bảng xếp hạng đang tắt, link cũ): sửa địa chỉ theo tab đang mở thật, để
+  // khi tab kia hiện ra sau đó (vừa có tài khoản affiliate) trang không tự nhảy sang.
+  useEffect(() => { if (param && tab && param !== tab) setParams({ tab }, { replace: true }); }, [param, tab, setParams]);
+
+  // Cách tính: số ngày giữ và mức rút tối thiểu lấy từ dữ liệu của tab đang mở.
+  const rules = tab === 'link' ? wallet.data : board.data?.program;
+  const how: Array<[ReactNode, string]> = aff && rules ? [
+    [<WalletIcon size={16} key="w" className="flex-shrink-0" />, `Hoa hồng ${ratePercent(aff.rateBps)} mỗi kỳ thanh toán`],
+    [<Clock size={16} key="c" className="flex-shrink-0" />, `Giữ ${rules.holdDays} ngày, rồi gửi yêu cầu rút từ ${money(rules.minWithdrawalMinor)}`],
+    [<WalletIcon size={16} key="w2" className="flex-shrink-0" />, 'Chủ hội chuyển khoản trong 3 ngày làm việc'],
+    [<ShieldCheck size={16} key="s" className="flex-shrink-0" />, 'Không tính tự giới thiệu và hoàn tiền'],
+    [<LinkIcon size={16} key="l" className="flex-shrink-0" />, 'Link của bạn tính cho người mới vào hội trong 30 ngày sau lượt bấm cuối'],
+    [<UserCheck size={16} key="r" className="flex-shrink-0" />, 'Hoa hồng luôn về người giới thiệu của thành viên, trừ khi thành viên tự đổi'],
+    [<Users size={16} key="u" className="flex-shrink-0" />, 'Xếp hạng theo hoa hồng đã duyệt trong kỳ'],
+  ] : [];
+
   return (
     <div className="two-col">
-      <div className="main flex flex-col gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="serif m-0 text-[28px] font-extrabold page-title">Xếp hạng affiliate</h1>
-          <div className="flex gap-2 md:ml-3">{PERIODS.map(([k, l]) => <Chip key={k} on={period === k} onClick={() => setPeriod(k)}>{l}</Chip>)}</div>
-          <span className="flex-grow" />
-          {q.data?.computedAt && <span className="muted text-[13px]">Cập nhật {timeAgo(q.data.computedAt)}</span>}
+      <div className="main">
+        <div className="flex items-start gap-x-3 gap-y-2 flex-wrap">
+          <div className="flex-grow min-w-0 flex flex-col gap-1" style={{ flexBasis: 320 }}>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="serif m-0 text-[28px] font-extrabold page-title">Affiliate</h1>
+              {running && aff && <Tag tone="gold">Hoa hồng {ratePercent(aff.rateBps)}</Tag>}
+            </div>
+            <div className="text-[14px]" style={{ color: T.ink2 }}>{running && aff ? affiliateHeadline(aff, c.name) : `Link giới thiệu và bảng xếp hạng affiliate của ${c.name}.`}</div>
+          </div>
+          {canManage && running && <Link to={`/${c.slug}/cong-su`} className="btn btn-ghost">Quản lý chương trình</Link>}
         </div>
-        {denied ? (
-          <div className="card p-8 text-center flex flex-col items-center gap-2"><div className="font-semibold">{q.error instanceof ApiError ? q.error.message : 'Bảng xếp hạng chưa mở'}</div><div className="muted text-[13px]">Vào Tài khoản · Affiliate để lấy link giới thiệu của bạn.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm mt-1">Ví affiliate</Link></div>
-        ) : (
-          <QueryState q={q} rows={4} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có xếp hạng kỳ này', hint: 'Bảng cập nhật 10 phút một lần khi có hoa hồng phát sinh' }}>
-            {(d) => {
-              const [a, b, c] = d.items;
-              const rest = d.items.slice(3);
-              return (
-                <>
-                  <div className="flex gap-4 flex-col sm:flex-row sm:items-end">
-                    {/* Máy tính: bục 2-1-3. Điện thoại xếp dọc nên phải theo đúng thứ hạng 1-2-3. */}
-                    {b && <Podium r={b} order="order-2 sm:order-1" showMoney={d.program.showMoney} />}
-                    {a && <Podium r={a} first order="order-1 sm:order-2" showMoney={d.program.showMoney} />}
-                    {c && <Podium r={c} order="order-3" showMoney={d.program.showMoney} />}
-                  </div>
-                  {rest.length > 0 && (
-                    <div className="card overflow-hidden table-scroll">
-                      <div className="grid gap-3 px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 640 }}><span className="th">Hạng</span><span className="th">Affiliate</span><span className="th">Giới thiệu</span><span className="th">Trả phí</span><span className="th">Doanh thu</span><span className="th">Hoa hồng</span><span className="th">So kỳ trước</span></div>
-                      {rest.map((r) => (
-                        <div key={r.user.id} className="grid gap-3 items-center px-5 py-3" style={{ gridTemplateColumns: cols, minWidth: 640, borderTop: `1px solid ${T.line}`, background: r.isMe ? T.goldSoft : undefined }}>
-                          <span className="font-bold" style={{ color: T.ink2 }}>{r.rank}</span>
-                          <div className="flex items-center gap-2.5 min-w-0"><Avatar name={r.user.name} src={r.user.avatarUrl} color={r.user.coverColor ?? T.ink} size={32} /><div className="min-w-0"><div className="font-semibold truncate">{r.user.name}{r.isMe && <span className="muted font-medium"> (bạn)</span>}</div><div className="muted text-[12px]">@{r.user.handle}</div></div></div>
-                          <span>{r.referrals}</span><span>{r.paid}</span>
-                          <span>{r.revenueMinor === null ? '—' : money(r.revenueMinor)}</span>
-                          <span className="font-semibold">{r.commissionMinor === null ? '—' : money(r.commissionMinor)}</span>
-                          <Trend d={r.rankDelta} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-            }}
-          </QueryState>
-        )}
-      </div>
-      <aside className="rail flex flex-col gap-4">
-        <div className="card p-[18px] flex flex-col gap-2.5">
-          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: T.primaryText }}><LinkIcon size={16} />Link của bạn</div>
-          {q.data?.me ? (
-            <>
-              <div className="input text-[13px]" style={{ height: 40, color: T.ink }}><span className="flex-grow truncate">{q.data.me.link.replace(/^https?:\/\//, '')}</span><button type="button" aria-label="Sao chép" onClick={() => copy(q.data?.me?.link ?? '')} style={{ color: copied ? T.teal : T.ink3 }}>{copied ? <Check size={16} /> : <Copy size={16} />}</button></div>
-              <div className="flex gap-2"><button type="button" className="btn btn-dark flex-1" onClick={() => copy(q.data?.me?.link ?? '')}>{copied ? 'Đã sao chép' : 'Sao chép link'}</button><Link to="/tai-khoan/cong-su" className="btn btn-ghost">Ví và rút tiền</Link></div>
-              <div className="grid grid-cols-3 gap-2 pt-2.5" style={{ borderTop: `1px solid ${T.line}` }}>{[[q.data.me.clicks, 'Lượt bấm'], [q.data.me.signups, 'Đăng ký'], [q.data.me.paid, 'Trả phí']].map(([v, l]) => <div key={String(l)} className="text-center"><div className="font-bold text-[18px]">{v}</div><div className="muted text-[12px]">{l}</div></div>)}</div>
-            </>
-          ) : (
-            <><div className="muted text-[13px]">Bạn chưa là affiliate của hội này.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm self-start">Lấy link affiliate</Link></>
-          )}
-        </div>
-        <ReferrerCard communityId={shell.community.id} />
-        {q.data && (
-          <div className="card p-4 flex flex-col gap-2.5">
-            <div className="font-semibold">Cách tính</div>
-            {[[<Wallet size={16} key="w" />, `Hoa hồng ${q.data.program.commissionRateBps / 100}% mỗi kỳ thanh toán`], [<Clock size={16} key="c" />, `Giữ ${q.data.program.holdDays} ngày, rồi gửi yêu cầu rút từ ${money(q.data.program.minWithdrawalMinor)}`], [<Wallet size={16} key="w2" />, 'Chủ hội chuyển khoản trong 3 ngày làm việc'], [<ShieldCheck size={16} key="s" />, 'Không tính tự giới thiệu và hoàn tiền'], [<LinkIcon size={16} key="l" className="flex-shrink-0" />, 'Link của bạn tính cho người mới vào hội trong 30 ngày sau lượt bấm cuối'], [<UserCheck size={16} key="r" className="flex-shrink-0" />, 'Hoa hồng luôn về người giới thiệu của thành viên, trừ khi thành viên tự đổi'], [<Users size={16} key="u" />, 'Xếp hạng theo hoa hồng đã duyệt trong kỳ']].map(([ic, t], i) => <div key={i} className="flex items-center gap-2.5 text-[13px]" style={{ color: T.ink2 }}>{ic}{t}</div>)}
+        {!running && <ProgramOff name={c.name} slug={c.slug} canManage={canManage} canConfigure={shell.viewer.permissions.includes('settings.manage')} walletProgramId={aff?.hasAccount ? aff.programId : null} />}
+        {tabs.length > 1 && (
+          <div className="seg w-full sm:w-auto sm:self-start" role="tablist" aria-label="Các phần của trang Affiliate">
+            {tabs.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : undefined} onClick={() => open(t)}>{AFFILIATE_TAB_LABEL[t]}</button>)}
           </div>
         )}
-        {q.data && (
+        {tab === 'link' && <QueryState q={wallet} rows={3}>{(w) => <MyLink w={w} community={c} />}</QueryState>}
+        {tab === 'xep-hang' && (
+          <RankBoard
+            q={board}
+            period={period}
+            onPeriod={setPeriod}
+            note={canManage && leaderboardAudience(shell) === 'managers' ? <div className="text-[14px] rounded-[10px] px-3.5 py-2.5" style={{ background: T.goldSoft, color: T.goldText }}>Chỉ người quản lý hội thấy bảng này. Bảng xếp hạng đang tắt với thành viên.</div> : undefined}
+            fallback={tabs.includes('link') ? <button type="button" className="btn btn-dark" onClick={() => open('link')}>Mở link của tôi</button> : undefined}
+          />
+        )}
+      </div>
+      <aside className="rail">
+        <ReferrerCard communityId={c.id} />
+        {how.length > 0 && (
+          <div className="card p-4 flex flex-col gap-2.5">
+            <div className="font-semibold">Cách tính</div>
+            {how.map(([icon, text], i) => <div key={i} className="flex items-start gap-2.5 text-[13px] leading-[1.5]" style={{ color: T.ink2 }}><span className="pt-0.5">{icon}</span>{text}</div>)}
+          </div>
+        )}
+        {tab === 'xep-hang' && board.data && (
           <div className="card p-4 flex flex-col gap-2">
-            <div className="font-semibold">Tổng affiliate kỳ này</div>
-            <div className="flex items-baseline gap-2"><span className="serif text-[26px] font-extrabold">{q.data.stats.activeAffiliates}</span><span className="muted text-[13px]">affiliate có phát sinh</span></div>
-            <Prog value={Math.round(q.data.stats.referredRevenueShare * 100)} />
-            <div className="muted text-[12px]">{Math.round(q.data.stats.referredRevenueShare * 100)}% doanh thu kỳ này đến từ giới thiệu</div>
+            <div className="font-semibold">Tổng affiliate tháng này</div>
+            <div className="flex items-baseline gap-2"><span className="serif text-[26px] font-extrabold">{board.data.stats.activeAffiliates}</span><span className="muted text-[13px]">affiliate có phát sinh</span></div>
+            {/* Máy chủ trả sẵn số phần trăm (0 đến 100), không phải tỷ lệ 0 đến 1. */}
+            <Prog value={board.data.stats.referredRevenueShare} />
+            <div className="muted text-[12px]">{board.data.stats.referredRevenueShare}% doanh thu tháng này đến từ giới thiệu</div>
           </div>
         )}
       </aside>
