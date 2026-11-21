@@ -1,4 +1,6 @@
 // Event bus nội bộ có kiểu: module nghiệp vụ chỉ phát sự kiện, handler khác lắng nghe (mục 18, 34E).
+import type { RefundRoute } from '@hoiminh/contracts';
+
 export interface DomainEvents {
   'member.joined': { communityId: string; userId: string; memberId: string; source: string; referredByAffiliateId: string | null };
   'member.tier_changed': { communityId: string; userId: string; memberId: string; fromTierId: string | null; toTierId: string | null; reason: string };
@@ -6,7 +8,7 @@ export interface DomainEvents {
   'member.removed': { communityId: string; userId: string; memberId: string };
   'payment.succeeded': { paymentId: string; orderId: string; userId: string; workspaceId: string | null; communityId: string | null; amountMinor: number; currency: string; provider: string; targetType: 'tier' | 'product' | 'platform'; targetId: string; affiliateAccountId: string | null };
   'payment.failed': { paymentId: string; orderId: string; userId: string; reason: string };
-  'payment.refunded': { paymentId: string; orderId: string; userId: string; communityId: string | null; amountMinor: number; refundId: string };
+  'payment.refunded': { paymentId: string; orderId: string; userId: string; communityId: string | null; amountMinor: number; refundId: string; /** Tiền hoàn về bằng đường nào, để lời báo cho người mua nói đúng. */ route: RefundRoute };
   'subscription.cancelled': { subscriptionId: string; userId: string; communityId: string | null; periodEnd: string };
   'subscription.expired': { subscriptionId: string; userId: string; communityId: string | null };
   'lesson.completed': { userId: string; lessonId: string; courseId: string; communityId: string | null; percent: number };

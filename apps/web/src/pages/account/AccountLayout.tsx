@@ -49,7 +49,7 @@ export default function Page() {
     { label: 'Cộng đồng của tôi', to: '/admin', on: false },
     { label: 'Khu học tập', to: '/hoc', on: false },
     { label: 'Hồ sơ', to: '/tai-khoan/ho-so', on: pathname === '/tai-khoan/ho-so' && !isAccount },
-    { label: 'Affiliate', to: '/tai-khoan/cong-su', on: pathname.startsWith('/tai-khoan/cong-su') },
+    { label: 'Affiliate của tôi', to: '/tai-khoan/cong-su', on: pathname.startsWith('/tai-khoan/cong-su') },
     { label: 'Tài khoản', to: '/tai-khoan/ho-so#tai-khoan', on: isAccount },
     { label: 'Thông báo', to: '/thong-bao', on: false },
     { label: 'Tin nhắn', to: '/tin-nhan', on: false },

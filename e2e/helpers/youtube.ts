@@ -1,5 +1,8 @@
 // YouTube giả cho e2e: máy chạy thử không ra được YouTube, và bài kiểm tra cần biết chắc trang đã gọi lệnh gì.
 // Thay ba thứ: tệp IFrame Player API, trang nhúng (có sẵn link sang YouTube và dải "Video khác" để thử bấm), ảnh bìa.
+// Chọn chất lượng như YouTube thật: bỏ qua lệnh `setPlaybackQuality*` (đã là lệnh rỗng với trình phát nhúng), tự chọn mức
+// cao nhất vừa cỡ khung. Khung to ra thì lên mức ngay; khung nhỏ lại thì phát nốt phần đã tải, chỉ hạ mức khi nạp lại video.
+// `dprAware`: tính cỡ khung theo điểm ảnh thật (nhân devicePixelRatio).
 import type { Page } from '@playwright/test';
 
 export interface FakeYouTubeLog {
@@ -7,27 +10,56 @@ export interface FakeYouTubeLog {
   created: number;
   iframeClicks: number;
   options: { host?: string; videoId: string; playerVars: Record<string, string | number> } | null;
+  /** Mức đang phát và cạnh ngắn (px) của vùng video mà YouTube giả đo được trong khung. */
+  quality: string;
+  frameShort: number;
 }
 
 /** Tệp thay cho https://www.youtube.com/iframe_api. Video giả chạy theo đồng hồ thật, dài `__ytDuration` giây. */
 const FAKE_API = `(() => {
-  const log = (window.__yt = { calls: [], created: 0, iframeClicks: 0, options: null });
+  const LEVELS = ['hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
+  const HEIGHTS = { hd1080: 1080, hd720: 720, large: 480, medium: 360, small: 240, tiny: 144 };
+  const log = (window.__yt = { calls: [], created: 0, iframeClicks: 0, options: null, frameShort: 0 });
   window.addEventListener('message', (e) => { if (e.data === 'fake-yt-click') log.iframeClicks += 1; });
   class Player {
     constructor(el, opts) {
       log.created += 1;
       log.options = { host: opts.host, videoId: opts.videoId, playerVars: opts.playerVars };
-      this.opts = opts; this.state = -1; this.t = 0; this.at = 0; this.rate = 1; this.muted = false; this.quality = 'hd720';
+      this.opts = opts; this.state = -1; this.t = 0; this.at = 0; this.rate = 1; this.muted = false; this.quality = '';
       this.duration = window.__ytDuration ?? 120;
       const f = document.createElement('iframe');
       f.src = (opts.host || 'https://www.youtube.com') + '/embed/' + opts.videoId + '?' + new URLSearchParams(opts.playerVars).toString();
       f.width = opts.width; f.height = opts.height; f.allow = 'autoplay; encrypted-media';
       el.replaceWith(f);
       this.iframe = f;
+      log.player = this;
       log.fire = (state) => this._set(state);
+      this._requality(true);
+      new ResizeObserver(() => this._requality(false)).observe(f);
       setTimeout(() => opts.events.onReady?.({ target: this }), 30);
     }
-    _set(state) { this.state = state; setTimeout(() => this.opts.events.onStateChange?.({ data: state }), 0); }
+    _set(state) {
+      const first = state === 1 && !this.began;
+      // Lượt phát đầu: YouTube chọn mức theo cỡ khung lúc đó.
+      if (first) { this._requality(true); this.began = true; }
+      this.state = state;
+      setTimeout(() => {
+        this.opts.events.onStateChange?.({ data: state });
+        if (first) this.opts.events.onPlaybackQualityChange?.({ data: this.quality });
+      }, 0);
+    }
+    _short() {
+      const f = this.iframe;
+      return Math.min(f.clientHeight, (f.clientWidth * 9) / 16) * (window.__ytDprAware ? window.devicePixelRatio : 1);
+    }
+    _requality(flush) {
+      const short = this._short();
+      log.frameShort = short;
+      const next = LEVELS.find((l) => HEIGHTS[l] <= short) || 'tiny';
+      if (next === this.quality || (!flush && HEIGHTS[next] < HEIGHTS[this.quality])) return;
+      this.quality = next;
+      if (this.began) setTimeout(() => this.opts.events.onPlaybackQualityChange?.({ data: next }), 0);
+    }
     _now() { return this.state === 1 ? Math.min(this.duration, this.t + ((performance.now() - this.at) / 1000) * this.rate) : this.t; }
     _mark() { this.t = this._now(); this.at = performance.now(); }
     playVideo() { log.calls.push('playVideo'); if (window.__ytBlockSound && !this.muted) return; this._mark(); this._set(1); }
@@ -42,10 +74,20 @@ const FAKE_API = `(() => {
     setVolume(v) { log.calls.push('volume:' + v); }
     setPlaybackRate(r) { log.calls.push('rate:' + r); this._mark(); this.rate = r; this.opts.events.onPlaybackRateChange?.({ data: r }); }
     getAvailablePlaybackRates() { return [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]; }
-    getAvailableQualityLevels() { return this.state === -1 ? [] : ['hd1080', 'hd720', 'large', 'medium', 'small', 'tiny', 'auto']; }
+    getPlaybackRate() { return this.rate; }
+    loadVideoById(o) {
+      log.calls.push('load:' + Math.round(o.startSeconds || 0));
+      this.t = o.startSeconds || 0; this.at = performance.now();
+      // Nạp lại thì YouTube thật đưa tốc độ về 1x.
+      if (this.rate !== 1) { this.rate = 1; this.opts.events.onPlaybackRateChange?.({ data: 1 }); }
+      this._requality(true);
+      this._set(3);
+      setTimeout(() => { this._mark(); this._set(1); }, 60);
+    }
+    getAvailableQualityLevels() { return this.state === -1 ? [] : [...LEVELS, 'auto']; }
     getPlaybackQuality() { return this.quality; }
-    setPlaybackQuality() {}
-    setPlaybackQualityRange(min, max) { log.calls.push('quality:' + min + ':' + max); this.quality = min === 'auto' ? 'hd720' : min; setTimeout(() => this.opts.events.onPlaybackQualityChange?.({ data: this.quality }), 0); }
+    setPlaybackQuality(q) { log.calls.push('setPlaybackQuality:' + q); }
+    setPlaybackQualityRange(min, max) { log.calls.push('quality:' + min + ':' + max); }
     getIframe() { return this.iframe; }
     destroy() { log.calls.push('destroy'); this.iframe.remove(); }
   }
@@ -69,21 +111,22 @@ const FAKE_EMBED = `<!doctype html><html><head><meta charset="utf-8"><style>
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 
 /** Gắn YouTube giả vào trang. Gọi trước khi mở bài học. */
-export async function mockYouTube(page: Page, opts: { duration?: number; blockSound?: boolean } = {}): Promise<void> {
-  await page.addInitScript(({ duration, blockSound }) => {
-    const w = window as unknown as { __ytDuration?: number; __ytBlockSound?: boolean };
+export async function mockYouTube(page: Page, opts: { duration?: number; blockSound?: boolean; dprAware?: boolean } = {}): Promise<void> {
+  await page.addInitScript(({ duration, blockSound, dprAware }) => {
+    const w = window as unknown as { __ytDuration?: number; __ytBlockSound?: boolean; __ytDprAware?: boolean };
     w.__ytDuration = duration;
     w.__ytBlockSound = blockSound;
-  }, { duration: opts.duration ?? 120, blockSound: opts.blockSound ?? false });
+    w.__ytDprAware = dprAware;
+  }, { duration: opts.duration ?? 120, blockSound: opts.blockSound ?? false, dprAware: opts.dprAware ?? false });
   await page.route('https://www.youtube.com/iframe_api', (route) => route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: FAKE_API }));
   await page.route(/^https:\/\/www\.youtube(-nocookie)?\.com\/embed\//, (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: FAKE_EMBED }));
   await page.route('https://i.ytimg.com/**', (route) => route.fulfill({ contentType: 'image/png', body: PIXEL }));
 }
 
-/** Nhật ký của YouTube giả: các lệnh trang đã gọi, tham số nhúng, số lượt bấm lọt vào trong khung. */
+/** Nhật ký của YouTube giả: các lệnh trang đã gọi, tham số nhúng, số lượt bấm lọt vào trong khung, mức đang phát. */
 export function youtubeLog(page: Page): Promise<FakeYouTubeLog> {
   return page.evaluate(() => {
-    const log = (window as unknown as { __yt: FakeYouTubeLog }).__yt;
-    return { calls: [...log.calls], created: log.created, iframeClicks: log.iframeClicks, options: log.options };
+    const log = (window as unknown as { __yt: FakeYouTubeLog & { player?: { quality: string } } }).__yt;
+    return { calls: [...log.calls], created: log.created, iframeClicks: log.iframeClicks, options: log.options, quality: log.player?.quality ?? '', frameShort: log.frameShort };
   });
 }

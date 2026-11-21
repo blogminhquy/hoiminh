@@ -25,7 +25,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2.5"><Avatar name="Điền Phạm Ngọc" color={T.teal} size={32} /><div><div className="text-[13px] font-semibold">Điền Phạm Ngọc</div><div className="text-[12px]" style={{ color: T.sideMuted }}>Thành viên Kinh Doanh Online Cùng AI</div></div></div>
           </div>
         </div>
-        <div className="text-[12px]" style={{ color: T.sideMuted }}>© 2026 Hội Mình · Điều khoản · Quyền riêng tư</div>
+        <div className="text-[12px]" style={{ color: T.sideMuted }}>© 2026 Hội Mình · <Link to="/dieu-khoan" target="_blank" rel="noreferrer" className="underline underline-offset-2" style={{ color: 'inherit' }}>Điều khoản</Link> · <Link to="/quyen-rieng-tu" target="_blank" rel="noreferrer" className="underline underline-offset-2" style={{ color: 'inherit' }}>Quyền riêng tư</Link></div>
       </aside>
       <div className="flex-grow flex items-center justify-center p-6 md:p-10">
         <div className="w-full flex flex-col gap-5" style={{ maxWidth: 440 }}>

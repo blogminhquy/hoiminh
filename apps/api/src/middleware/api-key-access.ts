@@ -45,6 +45,7 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   [`GET ${C}/revenue`, ['revenue:read', 'affiliates:read']],
   [`GET ${C}/pricing`, ['communities:write']],
   [`PUT ${C}/pricing`, ['billing:manage']],
+  [`GET ${C}/orders`, ['revenue:read']],
   [`GET ${C}/orders/pending`, ['billing:manage']],
   [`GET ${C}/orders/:orderId`, ['revenue:read', 'billing:manage']],
   [`POST ${C}/orders/:orderId/confirm-received`, ['billing:manage']],

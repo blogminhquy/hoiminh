@@ -1,5 +1,5 @@
-// Affiliate (/:slug/cong-su): việc hằng ngày với affiliate là trả hoa hồng, nên trang này mở thẳng hàng đợi yêu cầu rút
-// (4 ô ví, PayoutQueue, lịch sử, xuất đối soát). Mức hoa hồng là việc đặt một lần, nằm ở Cài đặt, mục Affiliate.
+// Quản lý affiliate (/:slug/cong-su): việc hằng ngày với affiliate là trả hoa hồng, nên trang này mở thẳng hàng đợi yêu cầu rút
+// (4 ô ví, PayoutQueue, lịch sử, xuất đối soát). Mức hoa hồng là việc đặt một lần, nằm ở Cài đặt hội, mục Affiliate.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { WalletBox, money } from '@hoiminh/ui';
 import { Navigate } from 'react-router-dom';
@@ -21,7 +21,7 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4" style={{ maxWidth: 1080 }}>
       <div className="flex items-center gap-4 flex-wrap">
-        <div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate</h1><div className="muted text-[15px]">Yêu cầu rút hoa hồng: bạn chuyển khoản, hệ thống ghi sổ</div></div>
+        <div><h1 className="serif m-0 text-[28px] font-extrabold">Quản lý affiliate</h1><div className="muted text-[15px]">Yêu cầu rút hoa hồng: bạn chuyển khoản, hệ thống ghi sổ</div></div>
         <span className="flex-grow" />
         <AffiliateTabs slug={shell.community.slug} active="payouts" awaiting={q.data?.stats.awaitingCount} affiliates={q.data?.stats.activeAffiliates} />
       </div>

@@ -1,9 +1,10 @@
 // Khung Khu học tập (V2, mục 153): dành cho người mua lẻ, có thể không thuộc hội nào.
 // Cố tình KHÔNG dùng thanh bên hội như AppShell, người ở đây không có bảng tin, sự kiện hay cửa hàng để vào.
 import { Avatar, Logo, T } from '@hoiminh/ui';
-import { Bell, GraduationCap, MessageCircle, Receipt } from 'lucide-react';
+import { GraduationCap, MessageCircle, Receipt } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { NotificationBell } from '@/components/NotificationBell';
 import { LoadingBlock } from '@/components/QueryState';
 import { useAuth, useBadges } from '@/lib/auth';
 import { AppShell } from './AppShell';
@@ -51,7 +52,7 @@ export function LearnerShell() {
           <span className="flex-grow" />
           <div className="flex items-center gap-2">
             <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><MessageCircle size={20} />{badges.data?.unreadMessages ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}</Link>
-            <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><Bell size={20} />{badges.data?.unreadNotifications ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}</Link>
+            <NotificationBell />
             <Link to="/tai-khoan/ho-so" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.side} size={40} /></Link>
           </div>
         </header>

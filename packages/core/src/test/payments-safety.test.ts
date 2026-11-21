@@ -88,6 +88,9 @@ describe('Hoàn tiền', () => {
     await expect(paymentsSvc.adminRefund(vy, order!.id, 'thử')).rejects.toThrow();
     const done = await paymentsSvc.adminRefund(await app.as('admin'), order!.id, 'super admin hoàn');
     expect(done.alreadyRefunded).toBe(false);
+    // Đơn gói trả bằng chuyển khoản vào tài khoản Hội Mình: người chuyển lại tiền là Hội Mình, không phải chủ hội.
+    const mail = app.emails.filter((m) => m.to === 'vy.english@gmail.com' && m.template === 'payment_refunded').at(-1)!;
+    expect(mail.html).toContain('Hội Mình sẽ chuyển khoản lại');
   });
 });
 

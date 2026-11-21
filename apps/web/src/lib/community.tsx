@@ -6,11 +6,20 @@ import { api } from './api';
 
 export interface ShellPlan { key: PlanKey; name: string; memberCap: number | null; features: PlanFeature[]; endsAt: string | null; needsPlan: boolean; full: boolean; isFreeSlot: boolean }
 
+/**
+ * Affiliate của hội với người xem (chỉ thành viên mới nhận). `enabled`: chương trình đang bật và gói của hội có
+ * affiliate. `rateBps`: mức hoa hồng của người xem (mức riêng nếu có, không thì mức chung). `hasAccount`: người xem đã
+ * có tài khoản affiliate trong hội này. `leaderboardVisibility`: chủ hội cho ai xem bảng xếp hạng.
+ */
+export interface ShellAffiliate { programId: string; enabled: boolean; rateBps: number; durationMonths: number | null; hasAccount: boolean; leaderboardVisibility: 'members' | 'affiliates_only' | 'hidden' }
+
 export interface Shell {
   community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; logoMark: string; logoColor: string; logoUrl: string | null; coverColor: string; coverUrl: string | null; coverTagline: string; tabs: Record<string, boolean>; status: string; /** Hội kín: chỉ thành viên xem được bên trong. Hội mở: ai cũng xem được, chỉ thành viên mới đăng bài, bình luận, học. */ visibility: 'private' | 'public'; pricingMode: string; doorsOpen: boolean; /** Hội đã cài ít nhất một cách nhận tiền chưa: chưa thì các nút mua bị khóa. */ paymentsReady: boolean; /** Các cách người mua chọn được (chỉ cách chủ hội đã cài và đang bật). */ paymentMethods: PaymentProvider[]; /** Cách chọn sẵn ở bước thanh toán. */ defaultPaymentMethod: PaymentProvider | null; /** Chuyển khoản QR: chủ hội bấm xác nhận hay tự xác nhận qua SePay (null khi tắt). */ bankConfirmMode: 'manual' | 'auto' | null; customDomain: string | null; memberCount: number; requireSpace: boolean; enabledProviders: string[] };
   /** Gói đang có hiệu lực của hội. Chỉ người quản lý hội mới nhận được, thành viên thường là null. */
   plan: ShellPlan | null;
   viewer: { role: string; memberId: string | null; memberStatus: string | null; tier: { key: string; name: string } | null; permissions: string[]; /** Vào xem được bên trong hội: thành viên, hoặc bất kỳ ai khi hội mở. */ canView: boolean; isMember: boolean };
+  /** Affiliate của hội với người xem. null khi người xem chưa là thành viên hoặc hội chưa có chương trình affiliate. */
+  affiliate: ShellAffiliate | null;
   stats: { members: number; online: number; admins: number; upcomingEvents: number };
   coursePercent: number | null;
   upcomingEvents: Array<{ id: string; title: string; startsAt: string; endsAt: string; kind: string; meetingProvider: string | null; location: string | null }>;
