@@ -10,6 +10,7 @@ import { conflict, forbidden, invalid, invalidState, notFound } from '../errors'
 import { decodeCursor, paginate } from '../lib/pagination';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { normalizeTagName } from '../lib/inbound-payload';
+import { resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { tagsByEmail } from './automation';
 import { getCommunityBySlug } from './communities';
@@ -32,21 +33,20 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     const p = await raw(ctx.db, sql`select enabled from community_plugins where community_id = ${c.id} and plugin_key = 'instant_approval'`);
     return (p[0] as { enabled: boolean } | undefined)?.enabled ?? true;
   });
-  let affiliateId: string | null = null;
-  if (input.ref) {
-    const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.affiliateCode, input.ref) });
-    if (acc && acc.userId !== userId) affiliateId = acc.id;
-  }
+  // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới thì tính mã đi kèm, rồi
+  // lượt bấm cuối còn hạn, và chỉ nhận mã của chính chương trình hội này khi chương trình đang bật.
+  const keptAffiliateId = existing?.referredByAffiliateId ?? null;
+  let affiliateId = keptAffiliateId;
   if (!affiliateId) {
-    const attr = await raw(ctx.db, sql`select a.affiliate_account_id from affiliate_attributions a join affiliate_programs p on p.id = a.program_id where a.user_id = ${userId} and p.community_id = ${c.id} and a.expires_at > now() order by a.attributed_at desc limit 1`);
-    affiliateId = (attr[0] as { affiliate_account_id: string } | undefined)?.affiliate_account_id ?? null;
+    const referrer = await resolveReferrer(ctx, { communityId: c.id, userId, ref: input.ref });
+    if (referrer.program?.status === 'active') affiliateId = referrer.account?.id ?? null;
   }
   // Hội đã chạm trần thành viên của gói: người mới vẫn gửi yêu cầu được và nằm ở hàng chờ duyệt, không ai bị từ chối.
   const plan = await communityPlan(ctx, c.id);
   if (plan.needsPlan) throw invalidState('Hội chưa mở');
   const waitlisted = plan.full;
   const status: MemberStatus = instant && !waitlisted ? 'active' : 'pending';
-  const values = { communityId: c.id, userId, role: 'member' as const, status, tierId: tier?.id ?? null, referredByAffiliateId: affiliateId, source: affiliateId ? ('affiliate' as const) : ('direct' as const), joinedAt: ctx.now(), lastActiveAt: ctx.now(), churnedAt: null, updatedAt: ctx.now() };
+  const values = { communityId: c.id, userId, role: 'member' as const, status, tierId: tier?.id ?? null, referredByAffiliateId: affiliateId, source: existing?.source ?? (affiliateId ? ('affiliate' as const) : ('direct' as const)), joinedAt: ctx.now(), lastActiveAt: ctx.now(), churnedAt: null, updatedAt: ctx.now() };
   const [member] = existing
     ? await ctx.db.update(communityMembers).set(values).where(eq(communityMembers.id, existing.id)).returning()
     : await ctx.db.insert(communityMembers).values(values).returning();
@@ -57,7 +57,7 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
   if (status === 'active') {
     await ctx.db.update(communities).set({ memberCount: sql`${communities.memberCount} + 1` }).where(eq(communities.id, c.id));
     if (tier) await ctx.db.insert(entitlements).values({ userId, workspaceId: c.workspaceId, communityId: c.id, resourceType: 'tier', resourceId: tier.id, sourceType: 'free_tier', sourceId: member!.id });
-    if (affiliateId) await ctx.db.update(affiliateAccounts).set({ signupCount: sql`${affiliateAccounts.signupCount} + 1` }).where(eq(affiliateAccounts.id, affiliateId));
+    if (affiliateId && !keptAffiliateId) await ctx.db.update(affiliateAccounts).set({ signupCount: sql`${affiliateAccounts.signupCount} + 1` }).where(eq(affiliateAccounts.id, affiliateId));
     await ctx.events.emit('member.joined', { communityId: c.id, userId, memberId: member!.id, source: values.source, referredByAffiliateId: affiliateId });
   }
   return { member: member!, alreadyMember: false, waitlisted };
