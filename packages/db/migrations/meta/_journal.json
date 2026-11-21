@@ -141,6 +141,13 @@
       "when": 1795285954034,
       "tag": "0019_affiliate_user_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795290795896,
+      "tag": "0020_feature_flags_mac_dinh",
+      "breakpoints": true
     }
   ]
 }
