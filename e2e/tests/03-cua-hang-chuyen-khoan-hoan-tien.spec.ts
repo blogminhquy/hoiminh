@@ -11,7 +11,8 @@ test('mua khóa học trong Cửa hàng bằng chuyển khoản tới chủ hộ
 
   await expect(page).toHaveURL(/\/minhquy\/thanh-toan\?product=/);
   // Đơn của hội chỉ trả bằng chuyển khoản tới tài khoản của chủ hội: không còn MoMo, VNPAY, PayPal ở đây.
-  await expect(page.getByRole('button', { name: 'MoMo' })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'Cách thanh toán' }).getByRole('radio')).toHaveText([/Chuyển khoản QR/]);
+  await expect(page.getByRole('radio', { name: /MoMo/ })).toHaveCount(0);
   await page.getByRole('button', { name: /Lấy mã QR chuyển khoản/ }).click();
   await expect(page).toHaveURL(/\/thanh-toan\/[0-9a-f-]{36}/);
   const { reference, amountMinor } = await readOrder(page);

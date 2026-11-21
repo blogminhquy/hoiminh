@@ -15,7 +15,7 @@ export default function Page() {
   if (typeof window !== 'undefined' && window.matchMedia(WIDE).matches) return <Navigate to={groups[0]!.tabs[0]!.to} replace />;
   return (
     <>
-      <div><h1 className="serif m-0 text-[28px] font-extrabold">Cài đặt</h1><div className="muted text-[15px] truncate">{shell.community.name}</div></div>
+      <div><h1 className="serif m-0 text-[28px] font-extrabold">Cài đặt hội</h1><div className="muted text-[15px] truncate">{shell.community.name}</div></div>
       <nav className="card px-3 py-1 me-list" aria-label="Nhóm cài đặt">
         {groups.map((g) => (
           <Link key={g.key} to={g.tabs[0]!.to} className="me-row">

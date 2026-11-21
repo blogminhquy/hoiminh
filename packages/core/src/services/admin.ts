@@ -1,6 +1,6 @@
 // Quản trị hệ thống: tổng quan, hội, người dùng, cổng thanh toán, đối soát (ghép thủ công), nhật ký và webhook.
 import { decryptJson, encryptJson, isLocalEnv, providersWithDefaultSecrets } from '@hoiminh/config';
-import { PAYMENT_PROVIDERS, type PaymentProvider } from '@hoiminh/contracts';
+import { PAYMENT_PROVIDERS, type DateRangeQuery, type PaymentProvider } from '@hoiminh/contracts';
 import { and, desc, eq, ilike, isNull, ne, or, sql } from 'drizzle-orm';
 import { auditLogs, communities, emailLogs, orders, payments, providerAccounts, reconciliationItems, users, webhookEvents, workspaces } from '@hoiminh/db';
 import { emailProviderLabel, sendImmediately, templates } from '@hoiminh/email';
@@ -8,6 +8,7 @@ import { actorUserId, type Ctx } from '../context';
 import { raw } from '../lib/db';
 import { isOwnerPayee } from '../lib/payee';
 import { envWithProviderAccounts, paymentsFor } from '../lib/payment-accounts';
+import { inSpan, resolvePeriod } from '../lib/period';
 import { invalidState, notFound } from '../errors';
 import { requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
@@ -69,29 +70,37 @@ export async function sendTestEmail(ctx: Ctx) {
   return { to: me.email, provider: emailProviderLabel(ctx.email), from: ctx.env.EMAIL_FROM, ...result };
 }
 
-/** Tổng quan hệ thống: người dùng, hội, GMV, doanh thu nền tảng, lỗi thanh toán, việc cần xử lý, hội mới. */
-export async function overview(ctx: Ctx, days = 30) {
+/**
+ * Tổng quan hệ thống: người dùng, hội, GMV, doanh thu nền tảng, lỗi thanh toán, việc cần xử lý, hội mới.
+ * Số liệu "trong kỳ" theo khoảng ngày lịch giờ Việt Nam, tính cả hai đầu (`from`, `to`); chỉ có `to` là từ trước
+ * đến nay; `days` cũ là N ngày gần nhất tính cả hôm nay. Khối Cần xử lý không theo kỳ.
+ */
+export async function overview(ctx: Ctx, q: DateRangeQuery = {}) {
   requireSuperAdmin(ctx);
+  const period = resolvePeriod(q, ctx.now());
+  const created = inSpan(sql`created_at`, period);
+  const paid = inSpan(sql`paid_at`, period);
   const r = await raw(ctx.db, sql`
     select
       (select count(*)::int from users where status <> 'deleted') as users_total,
-      (select count(*)::int from users where created_at > now() - make_interval(days => ${days})) as users_new,
+      (select count(*)::int from users where ${created}) as users_new,
       (select count(*)::int from communities where status = 'active' and deleted_at is null) as communities_active,
-      (select count(*)::int from communities where created_at > now() - make_interval(days => ${days})) as communities_new,
-      (select coalesce(sum(total_minor),0)::bigint from orders where status = 'paid' and target_type <> 'platform' and paid_at > now() - make_interval(days => ${days})) as gmv,
-      (select coalesce(sum(total_minor),0)::bigint from orders where status = 'paid' and target_type = 'platform' and paid_at > now() - make_interval(days => ${days})) as platform_revenue,
-      (select count(*)::int from payments where status = 'failed' and created_at > now() - make_interval(days => ${days})) as failed_payments,
-      (select count(*)::int from payments where created_at > now() - make_interval(days => ${days})) as total_payments,
+      (select count(*)::int from communities where ${created}) as communities_new,
+      (select coalesce(sum(total_minor),0)::bigint from orders where status = 'paid' and target_type <> 'platform' and ${paid}) as gmv,
+      (select coalesce(sum(total_minor),0)::bigint from orders where status = 'paid' and target_type = 'platform' and ${paid}) as platform_revenue,
+      (select count(*)::int from payments where status = 'failed' and ${created}) as failed_payments,
+      (select count(*)::int from payments where ${created}) as total_payments,
       (select count(*)::int from reconciliation_items where status not in ('matched')) as unmatched,
       (select count(*)::int from webhook_events where processing_status = 'failed' and created_at > now() - interval '1 day') as webhook_failures,
       (select count(*)::int from communities where locked_reason is not null and status = 'active') as reported,
       (select count(*)::int from platform_subscriptions where status = 'active' and current_period_end > now() and current_period_end < now() + interval '7 days') as plans_ending`);
   const row = r[0] as Record<string, string | number>;
-  const daily = await raw(ctx.db, sql`select to_char(paid_at, 'YYYY-MM-DD') as d, sum(total_minor)::bigint as v from orders where status = 'paid' and paid_at > now() - make_interval(days => ${days}) group by 1 order by 1`);
-  const byProvider = await raw(ctx.db, sql`select provider, sum(amount_minor)::bigint as v from payments where status = 'succeeded' and paid_at > now() - make_interval(days => ${days}) group by provider`);
+  // Gom theo ngày lịch giờ Việt Nam, khớp với ranh giới của kỳ.
+  const daily = await raw(ctx.db, sql`select to_char(paid_at at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') as d, sum(total_minor)::bigint as v from orders where status = 'paid' and ${paid} group by 1 order by 1`);
+  const byProvider = await raw(ctx.db, sql`select provider, sum(amount_minor)::bigint as v from payments where status = 'succeeded' and ${paid} group by provider`);
   const overviewPlans = await planTable(ctx);
   const recent = await ctx.db.select({ c: communities, owner: { name: users.name } }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).innerJoin(users, eq(users.id, workspaces.ownerUserId)).where(isNull(communities.deletedAt)).orderBy(desc(communities.createdAt)).limit(5);
-  return { config: await configWarnings(ctx), infra: infraStatus(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), plansEnding: Number(row.plans_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => { const p = planOfCommunity(x.c, overviewPlans, ctx.now()); return { ...x.c, ownerName: x.owner.name, planName: p.needsPlan ? 'Chưa có gói' : p.name, planKey: p.key }; }) };
+  return { range: { from: period.from, to: period.to, days: period.days }, config: await configWarnings(ctx), infra: infraStatus(ctx), totals: { users: Number(row.users_total), usersNew: Number(row.users_new), communities: Number(row.communities_active), communitiesNew: Number(row.communities_new), gmvMinor: Number(row.gmv), platformRevenueMinor: Number(row.platform_revenue), failedPayments: Number(row.failed_payments), totalPayments: Number(row.total_payments) }, todo: { unmatched: Number(row.unmatched), webhookFailures: Number(row.webhook_failures), reported: Number(row.reported), plansEnding: Number(row.plans_ending) }, daily: (daily as Array<{ d: string; v: string }>).map((x) => ({ date: x.d, amountMinor: Number(x.v) })), byProvider: (byProvider as Array<{ provider: string; v: string }>).map((x) => ({ provider: x.provider, amountMinor: Number(x.v) })), recentCommunities: recent.map((x) => { const p = planOfCommunity(x.c, overviewPlans, ctx.now()); return { ...x.c, ownerName: x.owner.name, planName: p.needsPlan ? 'Chưa có gói' : p.name, planKey: p.key }; }) };
 }
 
 /** Danh sách hội toàn hệ thống với bộ lọc và GMV 30 ngày. */

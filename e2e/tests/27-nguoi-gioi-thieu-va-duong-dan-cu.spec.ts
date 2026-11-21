@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { USERS, apiJson, apiToken, login } from '../helpers';
 
-test('thành viên nhập người giới thiệu bằng mã, link hoặc email trên trang Xếp hạng, mã lạ bị từ chối', async ({ page }) => {
+test('thành viên nhập người giới thiệu bằng mã, link hoặc email trên trang Affiliate của hội, mã lạ bị từ chối', async ({ page }) => {
   await login(page, USERS.member2);
   await page.goto('/minhquy/xep-hang');
   const card = page.locator('.card', { hasText: 'Người giới thiệu của bạn' });

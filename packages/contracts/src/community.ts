@@ -99,7 +99,7 @@ export type UpdatePricingInput = z.infer<typeof updatePricingSchema>;
 export const joinCommunitySchema = z.object({
   answers: z.array(z.object({ questionId: idSchema, answer: z.string().max(500) })).max(3).default([]),
   /** Một mã giới thiệu hoặc danh sách mã cách nhau bằng dấu phẩy (xem refCodes). */
-  ref: z.string().max(300).optional(),
+  ref: z.string().max(700).optional(),
   /** Mã mời trên link `?invite=` chủ hội gửi. Có mã hợp lệ thì vào thẳng, không chờ duyệt. */
   invite: z.string().trim().min(1).max(64).optional(),
 });

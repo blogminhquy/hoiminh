@@ -2,7 +2,6 @@
 // nhất) → ghi người giới thiệu lúc đăng ký tài khoản, hoặc lúc một tài khoản đã có vào một hội → người giới thiệu cố
 // định của thành viên trong hội đó → conversion → hoa hồng pending → available sau hold → ví (sổ cái bất biến).
 import { BUSINESS, sha256Hex, randomCode } from '@hoiminh/config';
-import { refCodes } from '@hoiminh/contracts';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -14,6 +13,7 @@ import { audit } from './audit';
 import { notify } from './notifications';
 import { communityHasFeature, requirePlanFeature } from './plans';
 import { linkTargets, platformProgram } from './affiliate-links';
+import { canonicalRefs, codeTaken, displayCode, personalCodeOf } from './referral-codes';
 
 /** Số dư ví từ sổ cái: credit + release + adjustment − hold − debit. */
 export async function walletBalance(ctx: Ctx, affiliateAccountId: string): Promise<{ available: number; credited: number; held: number; debited: number }> {
@@ -42,8 +42,8 @@ export async function ensureAccount(ctx: Ctx, userId: string, programId: string)
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId), columns: { handle: true } });
   let code = `${(user?.handle ?? 'hm').replace(/-/g, '').slice(0, 6)}${randomCode(3).toLowerCase()}`;
   for (let i = 0; i < 5; i++) {
-    const taken = await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.affiliateCode, code), columns: { id: true } });
-    if (!taken) break;
+    // Không trùng mã riêng của tài khoản nào, và không trùng mã chung ai đó đã tự chọn.
+    if (!(await codeTaken(ctx, code))) break;
     code = `${code.slice(0, 6)}${randomCode(3).toLowerCase()}`;
   }
   const [acc] = await ctx.db.insert(affiliateAccounts).values({ userId, programId, affiliateCode: code, status: 'active', approvedAt: ctx.now() }).returning();
@@ -54,7 +54,9 @@ export async function ensureAccount(ctx: Ctx, userId: string, programId: string)
 
 /** Ghi click (từ ?ref= hoặc /r/:code) và trả về id cookie attribution. */
 export async function trackClick(ctx: Ctx, code: string, meta: { visitorId: string; ip?: string; userAgent?: string; landingUrl?: string; referrer?: string }) {
-  const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.status, 'active')) });
+  // Link `/r/<mã chung>` không nằm ở trang của hội nào nên tính cho chương trình nền tảng (xem canonicalRefs).
+  const [own] = await canonicalRefs(ctx, code);
+  const acc = own ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, own), eq(affiliateAccounts.status, 'active')) }) : null;
   if (!acc) return null;
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, acc.programId) });
   if (!program || program.status !== 'active') return null;
@@ -78,7 +80,8 @@ export async function trackClick(ctx: Ctx, code: string, meta: { visitorId: stri
  */
 export async function attachAttribution(ctx: Ctx, userId: string, visitorId: string | null, ref: string | null): Promise<void> {
   const done = new Set<string>();
-  for (const code of refCodes(ref)) {
+  // Mã chung được đổi thành mã riêng của đúng chương trình mà link được mở (trang hội hay trang nền tảng).
+  for (const code of await canonicalRefs(ctx, ref)) {
     const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.status, 'active')) });
     if (!acc || acc.userId === userId || done.has(acc.programId)) continue;
     const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, acc.programId) });
@@ -93,7 +96,7 @@ export async function attachAttribution(ctx: Ctx, userId: string, visitorId: str
 
 /** Tài khoản affiliate đang hoạt động của một chương trình ứng với mã mới nhất trong danh sách (mã chương trình khác bị bỏ qua). */
 export async function accountForCodes(ctx: Ctx, programId: string, ref: string | null | undefined): Promise<typeof affiliateAccounts.$inferSelect | null> {
-  const codes = refCodes(ref);
+  const codes = await canonicalRefs(ctx, ref, { programId });
   if (!codes.length) return null;
   const rows = await ctx.db.query.affiliateAccounts.findMany({ where: and(inArray(affiliateAccounts.affiliateCode, codes), eq(affiliateAccounts.programId, programId), eq(affiliateAccounts.status, 'active')) });
   return codes.map((c) => rows.find((r) => r.affiliateCode === c)).find(Boolean) ?? null;
@@ -189,9 +192,9 @@ export async function myReferrer(ctx: Ctx, communityId: string) {
   const { member } = await myMembership(ctx, communityId);
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, communityId), columns: { status: true } });
   const [row] = member.referredByAffiliateId
-    ? await ctx.db.select({ code: affiliateAccounts.affiliateCode, status: affiliateAccounts.status, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor }).from(affiliateAccounts).innerJoin(users, eq(users.id, affiliateAccounts.userId)).where(eq(affiliateAccounts.id, member.referredByAffiliateId))
+    ? await ctx.db.select({ userId: affiliateAccounts.userId, code: affiliateAccounts.affiliateCode, status: affiliateAccounts.status, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor }).from(affiliateAccounts).innerJoin(users, eq(users.id, affiliateAccounts.userId)).where(eq(affiliateAccounts.id, member.referredByAffiliateId))
     : [];
-  return { enabled: program?.status === 'active', referrer: row ? { name: row.name, handle: row.handle, avatarUrl: row.avatarUrl, coverColor: row.coverColor, code: row.code, active: row.status === 'active' } : null };
+  return { enabled: program?.status === 'active', referrer: row ? { name: row.name, handle: row.handle, avatarUrl: row.avatarUrl, coverColor: row.coverColor, code: await displayCode(ctx, row.userId, row.code), active: row.status === 'active' } : null };
 }
 
 /**
@@ -218,9 +221,9 @@ export async function setMyReferrer(ctx: Ctx, communityId: string, input: { code
     acc = await ensureAccount(ctx, target.userId, program.id);
     if (acc.status !== 'active') throw notFound('Tài khoản affiliate của thành viên này đang bị khóa');
   } else {
-    const code = refCodeOf(input.code);
-    acc = code ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, code), eq(affiliateAccounts.programId, program.id)) }) : null;
-    if (!acc || acc.status !== 'active') throw notFound('Không tìm thấy mã giới thiệu này trong hội');
+    // Nhận cả mã riêng của hội này lẫn mã chung của một người làm affiliate được ở hội này.
+    acc = await accountForCodes(ctx, program.id, refCodeOf(input.code));
+    if (!acc) throw notFound('Không tìm thấy mã giới thiệu này trong hội');
   }
   if (acc.userId === userId && !program.allowSelfReferral) throw selfReferral();
   if (member.referredByAffiliateId !== acc.id) {
@@ -414,8 +417,13 @@ export async function myWallet(ctx: Ctx, programId: string) {
   const payer = program.payerUserId ? await ctx.db.query.users.findFirst({ where: eq(users.id, program.payerUserId), columns: { name: true } }) : null;
   const profile = await raw(ctx.db, sql`select masked_account, bank_code from affiliate_payout_profiles where affiliate_account_id = ${acc.id}`);
   const pr = profile[0] as { masked_account: string; bank_code: string } | undefined;
+  // Link và mã hiện ra dùng mã chung nếu tôi đã đặt (một mã cho mọi chương trình); chưa đặt thì là mã riêng của ví này.
+  // Mã riêng vẫn chạy song song nên link đã chia sẻ trước đó không hỏng (`previousCode` để giao diện nói rõ điều này).
+  const personal = await personalCodeOf(ctx, userId);
+  const code = personal ?? acc.affiliateCode;
+  const targets = await linkTargets(ctx, program, code);
   return {
-    programId, programName: program.name, scope: program.scopeType, enabled: program.status === 'active', commissionDurationMonths: program.commissionDurationMonths, targets: await linkTargets(ctx, program, acc.affiliateCode), communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: acc.affiliateCode, link: link?.destinationUrl ?? '',
+    programId, programName: program.name, scope: program.scopeType, enabled: program.status === 'active', commissionDurationMonths: program.commissionDurationMonths, targets, communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: code, codeEditable: personal === null, previousCode: personal ? acc.affiliateCode : null, link: targets[0]?.url ?? link?.destinationUrl ?? '',
     commissionRateBps: acc.commissionRateBps ?? program.commissionRateBps, holdDays: program.holdDays, minWithdrawalMinor: program.minWithdrawalMinor,
     pendingMinor: Number(s.pending), availableMinor: Math.max(0, bal.available), requestedMinor: Number(s.requested), paidMinor: Number(s.paid), clicks: acc.clickCount, signups: acc.signupCount, paid: acc.paidCount,
     maskedAccount: pr?.masked_account ?? null, bankCode: pr?.bank_code ?? null,
@@ -444,7 +452,8 @@ export async function leaderboard(ctx: Ctx, communityId: string, period: 'month'
   const items = (rows as Array<Record<string, unknown>>).map((r) => ({ rank: Number(r.rank), affiliateAccountId: String(r.affiliate_account_id), user: { id: String(r.user_id), name: String(r.name), handle: String(r.handle), avatarUrl: (r.avatar_url as string | null) ?? null, coverColor: (r.cover_color as string | null) ?? null }, referrals: Number(r.referrals_count), paid: Number(r.paid_count), revenueMinor: showMoney ? Number(r.revenue_cents) : null, commissionMinor: showMoney ? Number(r.commission_cents) : null, rankDelta: Number(r.rank_delta), isMe: r.user_id === userId }));
   const computedAt = (rows[0] as { computed_at?: string } | undefined)?.computed_at ?? null;
   const stats = await programStats(ctx, program.id);
-  const me = myAcc ? { affiliateCode: myAcc.affiliateCode, link: (await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, myAcc.id) }))?.destinationUrl ?? '', clicks: myAcc.clickCount, signups: myAcc.signupCount, paid: myAcc.paidCount, rank: items.find((i) => i.isMe)?.rank ?? null } : null;
+  const myCode = myAcc && userId ? await displayCode(ctx, userId, myAcc.affiliateCode) : '';
+  const me = myAcc ? { affiliateCode: myCode, link: ((await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, myAcc.id) }))?.destinationUrl ?? '').replace(/([?&]ref=)[^&#]*/, `$1${myCode}`), clicks: myAcc.clickCount, signups: myAcc.signupCount, paid: myAcc.paidCount, rank: items.find((i) => i.isMe)?.rank ?? null } : null;
   return { items, computedAt, period, program: { id: program.id, commissionRateBps: program.commissionRateBps, holdDays: program.holdDays, minWithdrawalMinor: program.minWithdrawalMinor, showMoney, enabled: program.status === 'active' }, me, stats: { activeAffiliates: stats.activeAffiliates, referredRevenueShare: stats.referredRevenueShare } };
 }
 

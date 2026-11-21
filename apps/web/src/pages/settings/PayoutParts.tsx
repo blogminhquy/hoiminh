@@ -1,4 +1,4 @@
-// Mảnh dùng chung của phần Nhận tiền (Cài đặt, Nhận tiền và trang Tiền): kiểu dữ liệu, truy vấn, danh sách đơn chờ
+// Mảnh dùng chung của phần Nhận tiền (Cài đặt, Nhận tiền và trang Quản lý đơn hàng): kiểu dữ liệu, truy vấn, danh sách đơn chờ
 // chủ hội xác nhận với nút "Đã nhận tiền". Tiền bán hàng của hội về thẳng tài khoản của chủ hội, không qua Hội Mình.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, T, money } from '@hoiminh/ui';
@@ -42,6 +42,7 @@ export function PendingOrders({ communityId, orders, mode }: { communityId: stri
       void qc.invalidateQueries({ queryKey: payoutSetupKey(communityId) });
       void qc.invalidateQueries({ queryKey: ['payout-settings', communityId] });
       void qc.invalidateQueries({ queryKey: ['revenue', communityId] });
+      void qc.invalidateQueries({ queryKey: ['orders', communityId] });
     },
   });
   const isDone = (id: string) => done.some((d) => d.orderId === id);

@@ -3,8 +3,8 @@
 // nhiều hội khác nhau và tới nền tảng: mỗi hội chỉ tính mã của hội đó, mã mới nhất của hội đó thắng (last click).
 // Máy chủ tính các mã này ở hai lúc: lúc đăng ký tài khoản mới (cả nền tảng lẫn hội), và lúc một tài khoản đã có vào
 // một hội mình chưa ở (chỉ mã của hội đó). Thành viên đang ở trong hội rồi thì mã ở đây không đổi được gì, kể cả lúc
-// mua hàng; muốn có hoặc đổi người giới thiệu thì tự chọn ở trang Xếp hạng affiliate.
-import { joinRefs, refCodes } from '@hoiminh/contracts';
+// mua hàng; muốn có hoặc đổi người giới thiệu thì tự chọn ở trang Affiliate của hội (phần Người giới thiệu của bạn).
+import { REF_PLATFORM_SCOPE, joinRefs, refCodes, refScopeOf, scopeRefs } from '@hoiminh/contracts';
 import { api } from './api';
 
 const COOKIE = 'hm_ref';
@@ -20,9 +20,20 @@ export function readCookie(name: string): string | null {
   }
 }
 
+/**
+ * Mã đọc từ `?ref=` của trang đang mở, kèm phạm vi là trang đó (`mã.phạm-vi`, xem refScopeOf). Một người có thể dùng
+ * MỘT mã chung cho mọi chương trình, nên máy chủ cần biết link được mở ở trang nào: trang của một hội thì tính cho
+ * chương trình hội đó, trang khác thì tính cho nền tảng. Mã đã có phạm vi (được trang trước chuyển tiếp) thì giữ nguyên.
+ */
+export function scopedRef(raw: string | null | undefined): string | undefined {
+  let scope = REF_PLATFORM_SCOPE;
+  try { scope = refScopeOf(window.location.pathname, new URLSearchParams(window.location.search).get('hoi')); } catch { /* không có window (test, SSR): coi như trang nền tảng */ }
+  return scopeRefs(raw, scope);
+}
+
 /** Ghi nhớ mã giới thiệu vừa bấm: lên đầu danh sách, các mã đã nhớ giữ lại phía sau. Chuỗi rỗng hoặc null thì bỏ qua. */
 export function rememberRef(code: string | null | undefined): void {
-  const fresh = joinRefs(code);
+  const fresh = scopedRef(code);
   if (!fresh) return;
   const all = joinRefs(fresh, readCookie(COOKIE)) ?? fresh;
   try { document.cookie = `${COOKIE}=${encodeURIComponent(all)}; path=/; max-age=${DAYS * 86400}; samesite=lax`; } catch { /* trình duyệt chặn cookie: mã vẫn đi theo link */ }
@@ -36,7 +47,7 @@ const REPORTED = 'hm_ref_reported';
  * chủ còn lọc lần nữa theo người xem. Lỗi mạng thì bỏ qua: đếm lượt bấm không được phép làm hỏng trang.
  */
 export function reportRefClick(ref: string | null | undefined): void {
-  const code = refCodes(ref)[0];
+  const code = refCodes(scopedRef(ref))[0];
   if (!code) return;
   try {
     const done = (sessionStorage.getItem(REPORTED) ?? '').split(',');
@@ -48,7 +59,7 @@ export function reportRefClick(ref: string | null | undefined): void {
 
 /** Các mã giới thiệu người xem đang mang theo, cách nhau bằng dấu phẩy: mã trên link trước, rồi tới các mã đã nhớ. */
 export function currentRef(params?: URLSearchParams | null): string | null {
-  return joinRefs(params?.get('ref'), readCookie(COOKIE)) ?? null;
+  return joinRefs(scopedRef(params?.get('ref')), readCookie(COOKIE)) ?? null;
 }
 
 /** Chuẩn hóa thứ người dùng dán vào: link có `?ref=` thì lấy mã trong link; mã trần ("hv8k2") hoặc email thì bỏ khoảng trắng và viết thường. */

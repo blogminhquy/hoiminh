@@ -39,14 +39,14 @@ export default function Page() {
   return (
     <div className="settings-page">
       {/* .account-nav: danh mục bên trái chỉ hiện trên máy tính, điện thoại dùng danh sách ở /cai-dat. */}
-      <nav className="settings-nav account-nav" aria-label="Cài đặt">
+      <nav className="settings-nav account-nav" aria-label="Cài đặt hội">
         {groups.map((g) => <Link key={g.key} to={g.tabs[0]!.to} aria-current={active?.key === g.key ? 'page' : undefined} className={`settings-nav-item flex items-center gap-2${active?.key === g.key ? ' on' : ''}`}><span className="flex-grow">{g.label}</span>{g.tabs.every((t) => t.locked) && <Lock size={15} aria-label="Có ở gói cao hơn" />}</Link>)}
         <div className="h-px my-2" style={{ background: T.line }} />
         {shell.viewer.role === 'owner' && <Link to={`/admin/goi?hoi=${shell.community.slug}`} className="settings-nav-item flex items-center gap-2"><span className="flex-grow">Gói của hội</span><span className="text-[13px]" style={{ color: T.ink3 }}>{shell.plan?.needsPlan ? 'Chưa có' : shell.plan?.name}</span></Link>}
         <Link to={base} className="settings-nav-item flex items-center gap-2"><span className="flex-grow">Xem trang giới thiệu</span><ExternalLink size={16} /></Link>
       </nav>
       <div className="settings-main" style={{ maxWidth: 880 }}>
-        {!atHome && <Link to={`${base}/cai-dat`} className="account-back items-center gap-1 font-semibold text-[15px] self-start"><ChevronLeft size={20} />Cài đặt</Link>}
+        {!atHome && <Link to={`${base}/cai-dat`} className="account-back items-center gap-1 font-semibold text-[15px] self-start"><ChevronLeft size={20} />Cài đặt hội</Link>}
         {active && active.tabs.length > 1 && (
           <nav className="chip-row" aria-label={active.label}>
             {active.tabs.map((t) => <NavLink key={t.to} to={t.to} className={({ isActive }) => `chip${isActive ? ' on' : ''}`}>{t.locked && <Lock size={14} aria-label="Có ở gói cao hơn" />}{t.label}</NavLink>)}

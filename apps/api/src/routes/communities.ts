@@ -8,6 +8,7 @@ import { body, csv, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
 import { readCookie } from '../lib/session-cookie';
 import { rateLimit } from '../middleware/rate-limit';
+import { dateRangeQuerySchema, ordersQuerySchema, revenueQuerySchema } from '@hoiminh/contracts';
 
 export const communityRoutes = router();
 
@@ -56,8 +57,9 @@ communityRoutes.post('/:id/archive', requireAuth, async (c) => {
   await communities.archiveCommunity(c.get('ctx'), c.req.param('id'));
   return c.json({ ok: true });
 });
-communityRoutes.get('/:id/overview', requireAuth, async (c) => c.json(await revenue.settingsOverview(c.get('ctx'), c.req.param('id'), { days: query(c).days ? Number(query(c).days) : undefined })));
-communityRoutes.get('/:id/revenue', requireAuth, async (c) => c.json(await revenue.revenue(c.get('ctx'), c.req.param('id'), { days: query(c).days ? Number(query(c).days) : undefined })));
+// Số liệu theo kỳ: `?from=YYYY-MM-DD&to=YYYY-MM-DD` (ngày giờ Việt Nam, tính cả hai đầu), chỉ `?to=` là từ trước đến nay, `?days=N` là tham số cũ vẫn chạy.
+communityRoutes.get('/:id/overview', requireAuth, async (c) => c.json(await revenue.settingsOverview(c.get('ctx'), c.req.param('id'), await parse(dateRangeQuerySchema, query(c)))));
+communityRoutes.get('/:id/revenue', requireAuth, async (c) => c.json(await revenue.revenue(c.get('ctx'), c.req.param('id'), await parse(revenueQuerySchema, query(c)))));
 /** Nhận tiền của chủ hội: tài khoản ngân hàng, cách xác nhận đơn, đơn chờ xác nhận. */
 communityRoutes.get('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.payoutSetup(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/payout-account', requireAuth, async (c) => c.json(await ownerPayout.savePayoutAccount(c.get('ctx'), c.req.param('id'), await parse(payoutAccountInputSchema, await body(c)))));
@@ -66,6 +68,8 @@ communityRoutes.post('/:id/payout-account/rotate-webhook', requireAuth, async (c
 communityRoutes.put('/:id/payment-gateways/:provider', requireAuth, rateLimit('write', { scope: 'payment-gateway' }), async (c) => c.json(await ownerGateways.saveGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')), await parse(ownerGatewayInputSchema, await body(c)))));
 communityRoutes.delete('/:id/payment-gateways/:provider', requireAuth, async (c) => c.json(await ownerGateways.removeGateway(c.get('ctx'), c.req.param('id'), await parse(ownerGatewaySchema, c.req.param('provider')))));
 communityRoutes.patch('/:id/payment-methods', requireAuth, async (c) => c.json(await ownerGateways.updatePaymentMethods(c.get('ctx'), c.req.param('id'), await parse(paymentMethodsUpdateSchema, await body(c)))));
+/** Quản lý đơn hàng: mọi đơn của hội, lọc theo khoảng ngày đặt, trạng thái, affiliate, ô tìm; phân trang bằng con trỏ. */
+communityRoutes.get('/:id/orders', requireAuth, async (c) => c.json(await revenue.listOrders(c.get('ctx'), c.req.param('id'), await parse(ordersQuerySchema, query(c)))));
 /** Đơn chuyển khoản chờ chủ hội xác nhận (không kèm tài khoản nhận tiền): cho API key và MCP. */
 communityRoutes.get('/:id/orders/pending', requireAuth, async (c) => c.json(await ownerPayout.pendingOwnerOrders(c.get('ctx'), c.req.param('id'))));
 /** Một đơn của hội cho chủ hội tra cứu (đường `/v1/orders/:id` chỉ dành cho chính người mua). */

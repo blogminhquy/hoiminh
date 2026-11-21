@@ -1,5 +1,5 @@
 // Đăng ký handler nghiệp vụ cho event bus: entitlement, hoa hồng, thông báo, email, webhook gửi đi, tin nhắn chào.
-import { formatMoney, isPlanKey, planCycleSchema, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
+import { formatMoney, isPlanKey, planCycleSchema, refundRouteNote, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
 import { comments, communities, communityMembers, courses, orders, posts, products, spaces, users, workspaces } from '@hoiminh/db';
@@ -138,7 +138,7 @@ export function registerHandlers(app: AppContext): void {
     const c = ctx(ev);
     await reverseCommissionForPayment(c, p.paymentId);
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
-    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.refunded', category: 'payment', title: `Đã hoàn ${formatMoney(p.amountMinor)} cho ${(order?.metadata as { title?: string } | undefined)?.title ?? 'đơn hàng'}`, body: 'Tiền về theo phương thức đã trả trong 3–7 ngày làm việc' });
+    await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.refunded', category: 'payment', title: `Đã hoàn ${formatMoney(p.amountMinor)} cho ${(order?.metadata as { title?: string } | undefined)?.title ?? 'đơn hàng'}`, body: refundRouteNote(p.route) });
     await dispatch(c, order?.workspaceId ?? null, 'payment.refunded', { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, amountMinor: p.amountMinor });
   });
 

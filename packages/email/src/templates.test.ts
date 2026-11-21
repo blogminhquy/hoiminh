@@ -34,6 +34,8 @@ describe('email', () => {
       templates.planReminder('a@b.vn', evil, evil, evil, 3, 'https://hoiminh.com/x'),
       templates.withdrawalRejected('a@b.vn', evil, '1đ', evil),
       templates.invite('a@b.vn', evil, evil, 'https://hoiminh.com/x'),
+      templates.ownerTransferReported('a@b.vn', { ownerName: evil, buyerName: evil, item: evil, community: evil, amount: '1đ', reference: 'HM ABCDE', url: 'https://hoiminh.com/x/tien' }),
+      templates.ownerOrderPaid('a@b.vn', { ownerName: evil, buyerName: evil, item: evil, community: evil, amount: '1đ', reference: 'HM ABCDE', url: 'https://hoiminh.com/x/tien' }),
     ];
     for (const m of all) {
       expect(m.html).not.toContain('<a href="https://lua-dao.example"');
