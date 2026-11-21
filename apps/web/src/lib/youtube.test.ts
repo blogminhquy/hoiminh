@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { YT_PLAYER_VARS, formatClock, isVerticalVideoUrl, nearEnd, qualityLabel, qualityOptions, speedLabel, speedOptions, youtubeErrorMessage, youtubePoster } from './youtube';
+import { QUALITY_AUTO, YT_PLAYER_VARS, formatClock, frameScale, isVerticalVideoUrl, learnGain, nearEnd, qualityHeight, qualityLabel, qualityOptions, qualityTarget, speedLabel, speedOptions, youtubeErrorMessage, youtubePoster } from './youtube';
 
 describe('trình phát YouTube của bài học', () => {
   it('tắt điều khiển, phím tắt, toàn màn hình của YouTube và không gợi ý video kênh khác', () => {
@@ -37,6 +37,56 @@ describe('trình phát YouTube của bài học', () => {
     expect(qualityOptions(['hd1080', 'hd720', 'large', 'medium', 'auto'])).toEqual(['auto', 'hd1080', 'hd720', 'large', 'medium']);
     expect(qualityOptions(['hd720', 'hd720', 'unknown'])).toEqual(['auto', 'hd720']);
     expect(qualityOptions([])).toEqual(['auto']);
+  });
+
+  it('mục Chất lượng: bỏ mức trên 4K và mức lạ, vì trang không xin được các mức đó', () => {
+    expect(qualityOptions(['highres', 'hd2880', 'hd2160', 'hd1440', 'hd1080', 'hd4320'])).toEqual(['auto', 'hd2160', 'hd1440', 'hd1080']);
+    expect(qualityHeight('hd1080')).toBe(1080);
+    expect(qualityHeight('tiny')).toBe(144);
+    expect(qualityHeight(QUALITY_AUTO)).toBe(0);
+  });
+
+  it('mức muốn phát tới: chọn tay là đúng mức đó; "Tự động" theo điểm ảnh thật của vùng video, thấp nhất 720p, cao nhất 4K', () => {
+    expect(qualityTarget('hd1080', 340, 1)).toBe(1080);
+    expect(qualityTarget('medium', 1080, 2)).toBe(360);
+    // Laptop: video cao 340px. YouTube tự chọn thì chỉ 360p; "Tự động" của trang cho tới 720p.
+    expect(qualityTarget(QUALITY_AUTO, 340, 1)).toBe(720);
+    // Điện thoại: video cao 211px, mật độ điểm ảnh 3 (633 điểm ảnh thật) vẫn được 720p.
+    expect(qualityTarget(QUALITY_AUTO, 211, 3)).toBe(720);
+    // Toàn màn hình 1080px trên màn hình mật độ 2: 2160 điểm ảnh thật.
+    expect(qualityTarget(QUALITY_AUTO, 1080, 2)).toBe(2160);
+    expect(qualityTarget(QUALITY_AUTO, 2000, 2)).toBe(2160);
+    expect(qualityTarget('highres', 500, 1)).toBe(2160);
+  });
+
+  it('cỡ khung YouTube: phóng để YouTube thấy khung đúng cỡ của mức muốn có, dư 2% cho làm tròn', () => {
+    // Trình phát cao 340px, chọn 1080p: khung YouTube dựng cao 1101px rồi thu về 340px.
+    expect(340 * frameScale(1080, 340)).toBeCloseTo(1101.6, 1);
+    // "Tự động" không bao giờ thu khung nhỏ hơn cỡ đang hiện.
+    expect(frameScale(720, 1080)).toBe(1);
+    // Chọn tay 360p ở toàn màn hình: dựng khung nhỏ rồi phóng lên, YouTube chỉ thấy khung 367px.
+    expect(1080 * frameScale(360, 1080, 1, true)).toBeCloseTo(367.2, 1);
+    // YouTube đã nhân cỡ khung với mật độ điểm ảnh 2: khung chỉ cần một nửa.
+    expect(340 * frameScale(1080, 340, 2)).toBeCloseTo(550.8, 1);
+    // Chưa đo được trình phát: giữ nguyên cỡ.
+    expect(frameScale(1080, 0)).toBe(1);
+  });
+
+  it('học hệ số: YouTube phát vượt cả khung lớn nhất trang đưa thì tính theo điểm ảnh thật', () => {
+    const levels = ['hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
+    // Khung 734px mà YouTube phát 1080p trên màn hình mật độ 2: YouTube đã nhân cỡ khung lên 2 lần.
+    expect(learnGain(1, 'hd1080', 734, levels, 2)).toBe(2);
+    // Phát trong cỡ khung: không kết luận gì.
+    expect(learnGain(1, 'hd720', 734, levels, 2)).toBe(1);
+    // Màn hình mật độ 1: không có gì để học.
+    expect(learnGain(1, 'hd1080', 734, levels, 1)).toBe(1);
+    // Video không có mức nào vừa khung: YouTube buộc phải phát mức thấp nhất nó có, không phải bằng chứng.
+    expect(learnGain(1, 'hd1080', 734, ['hd1080'], 2)).toBe(1);
+    // Khung quá nhỏ hoặc mức vượt dưới 720p: chưa đủ chắc để kết luận.
+    expect(learnGain(1, 'hd720', 245, levels, 3)).toBe(1);
+    expect(learnGain(1, 'large', 367, levels, 3)).toBe(1);
+    // Đã học rồi thì giữ nguyên.
+    expect(learnGain(2, 'hd1080', 400, levels, 2)).toBe(2);
   });
 
   it('dừng ngay trước giây cuối để YouTube không bật màn hình gợi ý', () => {
