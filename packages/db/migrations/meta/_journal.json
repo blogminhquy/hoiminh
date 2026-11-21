@@ -127,6 +127,13 @@
       "when": 1795252191916,
       "tag": "0017_plan_cycle_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795254482776,
+      "tag": "0018_community_visibility",
+      "breakpoints": true
     }
   ]
 }

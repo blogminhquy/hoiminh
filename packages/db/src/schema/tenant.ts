@@ -6,6 +6,8 @@ import { users } from './users';
 export type WorkspaceStatus = 'trial' | 'active' | 'past_due' | 'locked' | 'archived';
 export type WorkspaceRole = 'owner' | 'admin' | 'editor';
 export type CommunityStatus = 'draft' | 'active' | 'archived' | 'locked';
+/** Hội kín: chỉ thành viên xem được bên trong. Hội mở: ai cũng xem được, chỉ thành viên mới đăng bài, bình luận, học. */
+export type CommunityVisibility = 'private' | 'public';
 export type PricingMode = 'free' | 'freemium' | 'subscription' | 'one_time';
 export type MemberStatus = 'active' | 'cancelling' | 'churned' | 'banned' | 'pending';
 export type MemberRole = 'owner' | 'admin' | 'moderator' | 'member';
@@ -80,6 +82,8 @@ export const communities = pgTable(
     /** Khuyến mãi giá gói thành viên do chủ hội đặt: giảm theo phần trăm, có thể kèm ngày hết. null là không có. */
     pricingPromo: jsonb('pricing_promo').$type<{ percentOff: number; endsAt: string | null } | null>(),
     discoverable: boolean('discoverable').notNull().default(true),
+    /** Hội kín ('private', mặc định) hay hội mở ('public'): người chưa vào hội có xem được bảng tin, khóa học, sự kiện, thành viên không. */
+    visibility: text('visibility').$type<CommunityVisibility>().notNull().default('private'),
     customDomain: text('custom_domain'),
     customDomainVerifiedAt: ts('custom_domain_verified_at'),
     enabledProviders: jsonb('enabled_providers').$type<string[]>().notNull().default(['sepay', 'momo', 'vnpay']),

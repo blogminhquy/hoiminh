@@ -28,7 +28,8 @@ async function canPostInSpace(ctx: Ctx, access: CommunityAccess, space: typeof s
 /** Bảng tin: bài ghim trước, rồi mới nhất; kèm ảnh, bình chọn, đã thích. */
 export async function feed(ctx: Ctx, communityId: string, q: { spaceId?: string; cursor?: string; limit?: number }) {
   const access = await resolveCommunityAccess(ctx, communityId);
-  if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để xem bảng tin');
+  // Hội mở thì người ngoài cũng đọc được bảng tin (access.canView); đăng bài, thả tim, bình chọn vẫn chỉ dành cho thành viên.
+  if (!access.canView) throw forbidden('Tham gia hội để xem bảng tin');
   const limit = q.limit ?? 20;
   const conds = [eq(posts.communityId, communityId), isNull(posts.deletedAt)];
   // Bài chờ duyệt chỉ tác giả và người kiểm duyệt thấy.
@@ -150,7 +151,7 @@ export async function getPost(ctx: Ctx, postId: string) {
   const row = await ctx.db.select({ p: posts, author: { ...authorCols, bio: users.bio }, space: { id: spaces.id, name: spaces.name, colorKey: spaces.colorKey }, community: { id: communities.id, name: communities.name, slug: communities.slug } }).from(posts).innerJoin(users, eq(users.id, posts.authorUserId)).innerJoin(spaces, eq(spaces.id, posts.spaceId)).innerJoin(communities, eq(communities.id, posts.communityId)).where(and(eq(posts.id, postId), isNull(posts.deletedAt))).then((r) => r[0]);
   if (!row) throw notFound('Bài viết không tồn tại');
   const access = await resolveCommunityAccess(ctx, row.p.communityId);
-  if (!access.permissions.has('community.read')) throw forbidden('Tham gia hội để đọc bài');
+  if (!access.canView) throw forbidden('Tham gia hội để đọc bài');
   if (row.p.moderationStatus === 'pending' && !access.permissions.has('post.moderate') && !(ctx.actor.type === 'user' && ctx.actor.userId === row.p.authorUserId)) throw notFound('Bài viết không tồn tại');
   const [images, liked, pollMap, member, related, authorPosts] = await Promise.all([
     ctx.db.query.postImages.findMany({ where: eq(postImages.postId, postId), orderBy: asc(postImages.sortOrder) }),

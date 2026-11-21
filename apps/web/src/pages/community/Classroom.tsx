@@ -10,7 +10,7 @@ import { DrivePlayer } from '@/components/DrivePlayer';
 import { QueryState } from '@/components/QueryState';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { api } from '@/lib/api';
-import { isPremium, useOptionalShell } from '@/lib/community';
+import { isPremium, useJoinGate, useOptionalShell } from '@/lib/community';
 import { useLearningLinks } from '@/layouts/LearnerShell';
 import { Markdown } from '@/lib/markdown';
 import { isVerticalVideoUrl } from '@/lib/youtube';
@@ -47,6 +47,8 @@ function Curriculum({ d, lessonHref, className = '' }: { d: LessonDto; lessonHre
 }
 
 function LockedPlayer({ d, slug, courseHref }: { d: LessonDto; slug: string; courseHref: string }) {
+  // Khách xem hội mở: bài khóa vì chưa là thành viên, lối mở là tham gia hội.
+  const { guest } = useJoinGate();
   const store = d.course.accessMode === 'store_only' || d.lockReason === 'store';
   const to = store ? (d.course.product ? `/${slug}/cua-hang/${d.course.product.slug}` : `/${slug}/cua-hang`) : `/${slug}/thanh-toan?tier=premium&cycle=monthly`;
   const remaining = d.course.modules.flatMap((m) => m.lessons).filter((l) => l.locked).length;
@@ -56,7 +58,7 @@ function LockedPlayer({ d, slug, courseHref }: { d: LessonDto; slug: string; cou
         <span className="w-12 h-12 rounded-full inline-flex items-center justify-center" style={{ background: T.goldSoft, color: T.goldText }}><Lock size={22} /></span>
         <div className="serif text-[20px] font-extrabold leading-[1.3]">{d.sequentialLocked ? 'Học xong bài trước để mở bài này' : d.dripLocked ? 'Bài này mở theo lịch' : store ? 'Bài này nằm trong khóa bán lẻ' : 'Bài này nằm trong gói Premium'}</div>
         <div className="text-[14px]" style={{ color: T.ink2 }}>{d.sequentialLocked ? 'Khóa này yêu cầu học theo thứ tự. Bấm "Đánh dấu hoàn thành" ở bài trước rồi quay lại.' : d.dripLocked ? `Bài sẽ mở sau khi bạn học được một thời gian trong khóa.` : `Mở khóa ${remaining} bài còn lại, tài nguyên, Q&A hằng tuần${store ? '' : ' và quyền làm affiliate'}.`}</div>
-        {!d.dripLocked && !d.sequentialLocked && <div className="flex gap-2 pt-1 flex-wrap justify-center"><Link to={to} className="btn btn-primary">{store ? 'Mua khóa học' : 'Nâng cấp Premium'}</Link><Link to={courseHref} className="btn btn-ghost">Xem quyền lợi</Link></div>}
+        {!d.dripLocked && !d.sequentialLocked && <div className="flex gap-2 pt-1 flex-wrap justify-center"><Link to={guest && !store ? `/${slug}` : to} className="btn btn-primary">{store ? 'Mua khóa học' : guest ? 'Tham gia hội' : 'Nâng cấp Premium'}</Link><Link to={courseHref} className="btn btn-ghost">Xem quyền lợi</Link></div>}
         <span className="muted text-[12px]">Hủy bất cứ lúc nào · thanh toán bằng chuyển khoản, MoMo, VNPAY</span>
       </div>
     </div>
@@ -73,6 +75,7 @@ export default function Page() {
   const slug = shell?.community.slug ?? q.data?.course.communitySlug ?? '';
   const links = useLearningLinks(slug);
   const [listOpen, setListOpen] = useState(false);
+  const gate = useJoinGate();
   const complete = useMutation({
     mutationFn: () => api.post<{ percent: number; nextLessonId: string | null }>(`/v1/lessons/${lessonId}/complete`, {}),
     onSuccess: (r) => { void qc.invalidateQueries({ queryKey: ['lesson'] }); void qc.invalidateQueries({ queryKey: ['courses'] }); void qc.invalidateQueries({ queryKey: ['library'] }); if (r.nextLessonId) navigate(links.lesson(r.nextLessonId)); },
@@ -111,7 +114,7 @@ export default function Page() {
                   {!d.locked && (
                     <div className="hidden md:flex gap-2 flex-wrap">
                       {d.next && <Link to={links.lesson(d.next.id)} className="btn btn-ghost">Bài tiếp theo <ChevronRight size={16} /></Link>}
-                      <Button variant="primary" loading={complete.isPending} disabled={d.done} onClick={() => complete.mutate()}><Check size={18} />{d.done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</Button>
+                      <Button variant="primary" loading={complete.isPending} disabled={d.done} onClick={() => (gate.guest ? gate.askJoin() : complete.mutate())}><Check size={18} />{d.done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</Button>
                     </div>
                   )}
                 </div>
@@ -126,7 +129,7 @@ export default function Page() {
                   {listOpen && <Curriculum d={d} lessonHref={links.lesson} className="flex" />}
                 </div>
                 {d.resources.length > 0 && <div className="flex gap-2.5 flex-wrap">{d.resources.map((r) => <a key={r.id} href={r.url} target="_blank" rel="noreferrer" className="chip"><FileText size={16} />{r.name}</a>)}</div>}
-                {!d.locked && <CommentThread targetType="lesson" targetId={d.lesson.id} title={(n) => <>Thảo luận bài học <span className="muted font-medium">· {n}</span></>} placeholder="Đặt câu hỏi về bài này…" />}
+                {!d.locked && !gate.guest && <CommentThread targetType="lesson" targetId={d.lesson.id} title={(n) => <>Thảo luận bài học <span className="muted font-medium">· {n}</span></>} placeholder="Đặt câu hỏi về bài này…" />}
                 {d.prev && !d.locked && <Link to={links.lesson(d.prev.id)} className="text-[13px] inline-flex items-center gap-1" style={{ color: T.ink3 }}><ChevronLeft size={14} />Bài trước: {d.prev.title}</Link>}
                 {d.locked && free && <div className="card px-5 py-4 flex items-center gap-3.5 text-[13px]" style={{ color: T.ink2 }}><span className="flex-grow">Bạn đã học xong các bài miễn phí. Có câu hỏi về nội dung thì đăng ở Bảng tin, chủ hội trả lời trong 24 giờ.</span><Link to={`/${slug}/bang-tin`} className="btn btn-ghost btn-sm">Đến Hỏi đáp</Link></div>}
               </div>
@@ -139,7 +142,7 @@ export default function Page() {
                     d.next ? <Link to={links.lesson(d.next.id)} className="btn btn-primary btn-lg w-full">Bài tiếp theo <ChevronRight size={18} /></Link>
                       : <Link to={links.course(d.course.id)} className="btn btn-ghost btn-lg w-full"><Check size={18} />Đã hoàn thành, về khóa học</Link>
                   ) : (
-                    <Button variant="primary" size="lg" block loading={complete.isPending} onClick={() => complete.mutate()}><Check size={18} />{d.next ? 'Xong bài, sang bài tiếp' : 'Đánh dấu hoàn thành'}</Button>
+                    <Button variant="primary" size="lg" block loading={complete.isPending} onClick={() => (gate.guest ? gate.askJoin() : complete.mutate())}><Check size={18} />{d.next ? 'Xong bài, sang bài tiếp' : 'Đánh dấu hoàn thành'}</Button>
                   )}
                 </div>
               </>

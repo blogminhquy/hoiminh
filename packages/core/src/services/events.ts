@@ -33,7 +33,7 @@ export function effectiveEventStatus(e: { status: EventStatus; startsAt: Date; e
 /** Danh sách sự kiện: sắp tới / của tôi / đã qua, kèm trạng thái đăng ký và lịch tháng. */
 export async function listEvents(ctx: Ctx, communityId: string, q: { filter?: 'upcoming' | 'mine' | 'past'; limit?: number; month?: string }) {
   const access = await resolveCommunityAccess(ctx, communityId);
-  if (!access.permissions.has('community.read')) throw forbidden();
+  if (!access.canView) throw forbidden();
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   const now = ctx.now();
   const conds = [eq(events.communityId, communityId), sql`${events.status} <> 'cancelled'`];
@@ -53,7 +53,8 @@ export async function listEvents(ctx: Ctx, communityId: string, q: { filter?: 'u
   const monthDays = await ctx.db.select({ d: sql<string>`to_char(${events.startsAt} at time zone 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD')` }).from(events).where(and(eq(events.communityId, communityId), gte(events.startsAt, monthStart), lt(events.startsAt, monthEnd)));
   return {
     items: rows.map((r) => ({ ...r.e, status: effectiveEventStatus(r.e, now), live: r.e.startsAt <= now && r.e.endsAt >= now, registered: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled'), hosts: r.e.hostUserIds.map((id) => hosts.find((h) => h.id === id)).filter(Boolean), meetingUrl: regs.some((g) => g.eventId === r.e.id && g.status !== 'cancelled') || access.permissions.has('event.manage') ? r.e.meetingUrl : null })),
-    pastCount: pastCount?.c ?? 0, recordings, calendarDays: [...new Set(monthDays.map((d) => d.d))], canManage: access.permissions.has('event.manage'),
+    // Bản ghi là nội dung của thành viên: người ngoài xem hội mở không nhận.
+    pastCount: pastCount?.c ?? 0, recordings: access.permissions.has('community.read') ? recordings : [], calendarDays: [...new Set(monthDays.map((d) => d.d))], canManage: access.permissions.has('event.manage'),
   };
 }
 
@@ -118,7 +119,9 @@ export async function getEvent(ctx: Ctx, eventId: string) {
   if (!e) throw notFound('Sự kiện không tồn tại');
   const access = await resolveCommunityAccess(ctx, e.communityId);
   const isPublic = e.access === 'public';
-  if (!isPublic && !access.permissions.has('community.read')) throw forbidden('Tham gia hội để xem sự kiện');
+  // Hội mở: người ngoài xem được trang sự kiện, nhưng bản ghi của sự kiện nội bộ thì chỉ thành viên thấy.
+  const isMember = access.permissions.has('community.read');
+  if (!isPublic && !access.canView) throw forbidden('Tham gia hội để xem sự kiện');
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   const manage = access.permissions.has('event.manage');
   const [reg, questions, attendees, series, recordings, hosts] = await Promise.all([
@@ -136,7 +139,7 @@ export async function getEvent(ctx: Ctx, eventId: string) {
   const now = ctx.now();
   // Đăng ký xong là thấy link ngay, để người ta lưu vào lịch trước. Chủ hội luôn thấy.
   const showLink = Boolean((registered || manage) && e.meetingUrl);
-  return { ...e, status: effectiveEventStatus(e, now), meetingUrl: showLink ? e.meetingUrl : null, live: e.startsAt <= now && e.endsAt >= now, registered, premiumLocked, questions: questions.map((r) => ({ ...r.q, user: r.user, voted: myVotes.has(r.q.id) })), attendees: attendees.map((a) => a.user), attendeesVisible: manage || tierKey === 'premium' || tierKey === 'vip', series, recordings, hosts, canManage: manage };
+  return { ...e, status: effectiveEventStatus(e, now), meetingUrl: showLink ? e.meetingUrl : null, live: e.startsAt <= now && e.endsAt >= now, registered, premiumLocked, questions: questions.map((r) => ({ ...r.q, user: r.user, voted: myVotes.has(r.q.id) })), attendees: attendees.map((a) => a.user), attendeesVisible: manage || tierKey === 'premium' || tierKey === 'vip', series, recordings: isPublic || isMember ? recordings : [], hosts, canManage: manage };
 }
 
 /** Đăng ký / hủy đăng ký. */
