@@ -54,6 +54,8 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   // Affiliate
   [`GET ${C}/affiliate`, ['affiliates:manage']],
   [`PUT ${C}/affiliate`, ['affiliates:manage']],
+  [`GET ${C}/affiliate/accounts`, ['affiliates:manage']],
+  [`PATCH ${C}/affiliate/accounts/:accountId`, ['affiliates:manage']],
   [`GET ${C}/affiliate/payouts`, ['affiliates:manage']],
   [`GET ${C}/affiliate/payouts/export.csv`, ['affiliates:manage']],
   ['POST /v1/withdrawals/:id/review', ['affiliates:manage']],
@@ -68,7 +70,10 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   [`PATCH ${C}/members/:memberId`, ['members:write', 'entitlements:write']],
   [`POST ${C}/members/:memberId/actions`, ['members:write']],
   [`POST ${C}/members/:memberId/grant-course`, ['members:write', 'entitlements:write']],
+  [`POST ${C}/members/:memberId/revoke-course`, ['members:write', 'entitlements:write']],
+  [`GET ${C}/invites`, ['members:write']],
   [`POST ${C}/invites`, ['members:write']],
+  [`DELETE ${C}/invites/:inviteId`, ['members:write']],
 
   // Bảng tin
   // `posts:write` cũng đọc được bảng tin: đăng bài phải tra chuyên mục, và chuyên mục nằm trong phản hồi của bảng tin.
@@ -77,9 +82,11 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   ['GET /v1/comments', ['communities:read']],
   [`POST ${C}/posts`, ['posts:write']],
   ['POST /v1/comments', ['posts:write']],
+  ['POST /v1/reactions/toggle', ['posts:write']],
   ['PATCH /v1/posts/:id', ['posts:moderate']],
   ['DELETE /v1/posts/:id', ['posts:moderate']],
   ['POST /v1/posts/:id/moderate', ['posts:moderate']],
+  ['PATCH /v1/comments/:id', ['posts:moderate']],
   ['POST /v1/comments/:id/pin', ['posts:moderate']],
   ['DELETE /v1/comments/:id', ['posts:moderate']],
 
@@ -109,7 +116,9 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   ['GET /v1/events/:id', ['communities:read']],
   [`POST ${C}/events`, ['events:write']],
   ['PATCH /v1/events/:id', ['events:write']],
+  ['DELETE /v1/events/:id', ['events:write']],
   ['POST /v1/events/:id/recordings', ['events:write']],
+  ['DELETE /v1/recordings/:id', ['events:write']],
   ['GET /v1/events/:id/attendees', ['events:write']],
 
   // Cửa hàng
@@ -130,10 +139,16 @@ const RULES: ReadonlyArray<readonly [string, Need]> = [
   ['GET /v1/me/conversations/:id/messages', ['messages:read', 'messages:write']],
   ['GET /v1/me/notifications', ['messages:read', 'messages:write']],
   ['POST /v1/me/messages', ['messages:write']],
+  ['POST /v1/me/messages/:id/recall', ['messages:write']],
+  ['POST /v1/me/conversations/:id/archive', ['messages:write']],
+  ['POST /v1/me/notifications/read', ['messages:write']],
 
   // Webhook gửi đi
   ['GET /v1/workspaces/:id/webhooks', ['webhooks:manage']],
   ['POST /v1/workspaces/:id/webhooks', ['webhooks:manage']],
+  ['PATCH /v1/workspaces/:id/webhooks/:webhookId', ['webhooks:manage']],
+  ['POST /v1/workspaces/:id/webhooks/:webhookId/test', ['webhooks:manage']],
+  ['POST /v1/workspaces/:id/webhooks/:webhookId/rotate-secret', ['webhooks:manage']],
   ['DELETE /v1/workspaces/:id/webhooks/:webhookId', ['webhooks:manage']],
 
   // Tải tệp lên (ảnh bài viết, bìa khóa học, tệp sản phẩm số): key nào có quyền ghi nội dung thì tải được

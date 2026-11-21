@@ -148,6 +148,8 @@ describe('MCP từ xa: POST /mcp', () => {
     }
     expect(all.find((t) => t.name === 'create_post').inputSchema.required).toEqual(expect.arrayContaining(['communityId', 'contentMd']));
     expect(all.find((t) => t.name === 'delete_post').annotations).toMatchObject({ destructiveHint: true, readOnlyHint: false });
+    // Mời thành viên gửi email ra ngoài và có thể trao quyền quản trị: trợ lý phải hỏi lại chủ hội.
+    expect(all.find((t) => t.name === 'invite_members').annotations).toMatchObject({ destructiveHint: true });
     expect(all.find((t) => t.name === 'list_members').annotations).toMatchObject({ readOnlyHint: true });
     const few = (await rpc(readKey, 'tools/list')).result.tools.map((t: Loose) => t.name) as string[];
     expect(few).toEqual(toolsFor(['communities:read', 'members:read']).map((t) => t.name));
@@ -216,6 +218,11 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect(await tool('get_feed_settings', { communityId })).toBeTruthy();
     expect(await tool('list_plugins', { communityId })).toBeTruthy();
     await tool('set_join_questions', { communityId, questions: [{ question: 'Bạn biết hội qua đâu?', required: true }] });
+    const about = await tool('get_community_about', { slug: 'minhquy' });
+    expect(about.joinQuestions.map((q: Loose) => q.question)).toEqual(['Bạn biết hội qua đâu?']);
+    expect((await tool('update_about_media', { communityId, items: [{ kind: 'video', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] })).items).toHaveLength(1);
+    expect((await tool('get_community_about', { slug: 'minhquy' })).community.aboutMedia).toHaveLength(1);
+    expect((await tool('update_about_media', { communityId, items: [] })).items).toHaveLength(0);
   });
 
   it('bảng tin: đăng bài theo tên chuyên mục, thông báo, bình luận, ghim, xóa', async () => {
@@ -230,8 +237,15 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     await tool('update_post', { postId: post.id, pinned: true, title: 'Bài từ Javis (đã sửa)' });
     const comment = await tool('create_comment', { targetType: 'post', targetId: post.id, contentMd: 'Bình luận của chủ hội.' });
     await tool('pin_comment', { commentId: comment.id, pinned: true });
-    expect((await tool('list_comments', { targetType: 'post', targetId: post.id })).items.length).toBe(1);
+    expect((await tool('update_comment', { commentId: comment.id, contentMd: 'Bình luận đã sửa.' })).contentMd).toBe('Bình luận đã sửa.');
+    const listed = await tool('list_comments', { targetType: 'post', targetId: post.id });
+    expect(listed.items.length).toBe(1);
+    expect(listed.items[0]).toMatchObject({ contentMd: 'Bình luận đã sửa.', pinned: true });
+    expect(await tool('toggle_reaction', { targetType: 'comment', targetId: comment.id })).toMatchObject({ liked: true, likeCount: 1 });
+    expect(await tool('toggle_reaction', { targetType: 'post', targetId: post.id, reaction: 'love' })).toMatchObject({ liked: true, reaction: 'love' });
+    expect(await tool('toggle_reaction', { targetType: 'post', targetId: post.id, reaction: 'love' })).toMatchObject({ liked: false });
     await tool('delete_comment', { commentId: comment.id });
+    await expect(tool('update_comment', { commentId: comment.id, contentMd: 'Sửa bình luận đã xóa.' })).rejects.toThrow(/not_found/);
     await tool('delete_post', { postId: ann.id });
     await expect(tool('get_post', { postId: ann.id })).rejects.toThrow(/not_found/);
   });
@@ -243,8 +257,34 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect((await tool('get_member', { communityId, memberId: m.id })).member.id).toBe(m.id);
     await tool('update_member', { communityId, memberId: m.id, tierKey: 'premium' });
     expect(await tool('invite_members', { communityId, emails: ['khach.moi@example.com'] })).toBeTruthy();
+    // Lời mời làm quản trị viên: thấy ở danh sách đang chờ, link dùng được, sai người thì bị từ chối, thu hồi thì link chết.
+    const sent = await tool('invite_members', { communityId, emails: ['moi.quan.tri@example.com'], role: 'admin' });
+    const waiting = (await tool('list_invites', { communityId })).items;
+    const inv = waiting.find((i: Loose) => i.email === 'moi.quan.tri@example.com');
+    expect(inv).toMatchObject({ role: 'admin', expired: false, url: sent[0].url });
+    expect(waiting.some((i: Loose) => i.email === 'khach.moi@example.com' && i.role === 'member')).toBe(true);
+    const inviteToken = new URL(inv.url).searchParams.get('invite')!;
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`)).data.invite).toEqual({ state: 'valid', role: 'admin', message: null });
+    const cong = (await http('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'congtran@gmail.com', password: 'hoiminh123' }) })).data.accessToken as string;
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`, { auth: cong })).data.invite.state).toBe('wrong_email');
+    const stolen = await http('/v1/communities/by-slug/minhquy/join', { method: 'POST', auth: cong, body: JSON.stringify({ invite: inviteToken }) });
+    expect(stolen.status).toBeGreaterThanOrEqual(400);
+    expect(stolen.data.message).toContain('địa chỉ email khác');
+    expect((await tool('list_members', { communityId, q: 'congtran' })).items[0].role).toBe('member');
+    await expect(tool('invite_members', { communityId, emails: [], role: 'admin' })).rejects.toThrow(/validation_error/);
+    await tool('revoke_invite', { communityId, inviteId: inv.id });
+    expect((await tool('list_invites', { communityId })).items.some((i: Loose) => i.id === inv.id)).toBe(false);
+    expect((await http(`/v1/communities/by-slug/minhquy?invite=${inviteToken}`)).data.invite.state).toBe('not_found');
+    await expect(tool('revoke_invite', { communityId, inviteId: inv.id })).rejects.toThrow(/not_found/);
     const courses = await tool('list_courses', { communityId });
     await tool('grant_course', { communityId, memberId: m.id, courseId: courses.items[0].id });
+    expect(await tool('revoke_course', { communityId, memberId: m.id, courseId: courses.items[0].id })).toEqual({ revoked: 1 });
+    await expect(tool('revoke_course', { communityId, memberId: m.id, courseId: courses.items[0].id })).rejects.toThrow(/invalid_state/);
+    // CSV không phải JSON nên đọc thẳng chữ trả về.
+    const csv = (await rpc(fullKey, 'tools/call', { name: 'export_members_csv', arguments: { communityId } })).result;
+    expect(csv.isError).toBeFalsy();
+    expect(csv.content[0].text.split('\n').length).toBeGreaterThan(2);
+    expect(csv.content[0].text).toContain('@');
   });
 
   it('khóa học: tạo khóa, chương, bài, sắp xếp, xuất bản, xóa', async () => {
@@ -273,8 +313,17 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect((await tool('get_event', { eventId })).title).toBe('Live hỏi đáp (đổi tên)');
     expect(await tool('list_event_attendees', { eventId })).toBeTruthy();
     expect((await tool('list_events', { communityId })).items.length).toBeGreaterThan(0);
-    await tool('add_event_recording', { eventId, videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'Bản ghi' });
-    expect(await tool('list_recordings', { communityId })).toBeTruthy();
+    const rec = await tool('add_event_recording', { eventId, videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'Bản ghi' });
+    expect((await tool('list_recordings', { communityId })).some((r: Loose) => r.id === rec.id)).toBe(true);
+    await tool('delete_event_recording', { recordingId: rec.id });
+    expect((await tool('list_recordings', { communityId })).some((r: Loose) => r.id === rec.id)).toBe(false);
+    // Hủy buổi: biến khỏi lịch nhưng còn dữ liệu, mở lại được.
+    const ev2 = (await tool('create_event', { communityId, title: 'Buổi sẽ bị hủy', startsAt: start.toISOString(), endsAt: new Date(start.getTime() + 3_600_000).toISOString() })).event;
+    await tool('cancel_event', { eventId: ev2.id });
+    expect((await tool('list_events', { communityId })).items.some((e: Loose) => e.id === ev2.id)).toBe(false);
+    expect((await tool('get_event', { eventId: ev2.id })).status).toBe('cancelled');
+    await tool('update_event', { eventId: ev2.id, status: 'scheduled' });
+    expect((await tool('list_events', { communityId })).items.some((e: Loose) => e.id === ev2.id)).toBe(true);
 
     // Sản phẩm số cần tệp: xin địa chỉ, gửi tệp tới đó, xác nhận, rồi mới tạo sản phẩm.
     const up = await tool('create_upload_url', { fileName: 'bo-prompt.pdf', mimeType: 'application/pdf', sizeBytes: 12, purpose: 'digital_product', communityId });
@@ -282,6 +331,10 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     const put = await hono.request(new URL(up.upload.url).pathname + new URL(up.upload.url).search, { method: up.upload.method ?? 'PUT', headers: { 'Content-Type': 'application/pdf', ...(up.upload.headers ?? {}) }, body: '%PDF-1.4 thu' });
     expect(put.status).toBe(200);
     await tool('complete_upload', { fileId: up.fileId });
+    // Tệp tải lên rồi không dùng thì bỏ được; tệp không có thì báo not_found.
+    const spare = await tool('create_upload_url', { fileName: 'thua.pdf', mimeType: 'application/pdf', sizeBytes: 12, purpose: 'digital_product', communityId });
+    await tool('delete_file', { fileId: spare.fileId });
+    await expect(tool('delete_file', { fileId: spare.fileId })).rejects.toThrow(/not_found/);
     await expect(tool('create_product', { communityId, kind: 'digital', name: 'Thiếu tệp', priceMinor: 99_000 })).rejects.toThrow(/cần ít nhất 1 tệp/);
     const product = await tool('create_product', { communityId, kind: 'digital', name: 'Bộ prompt bán hàng', priceMinor: 99_000, digitalFileIds: [up.fileId] });
     await tool('update_product', { productId: product.id, priceMinor: 129_000 });
@@ -307,6 +360,8 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect((await tool('get_affiliate_program', { communityId })).program).toBeTruthy();
     expect(await tool('get_affiliate_leaderboard', { communityId, period: 'all' })).toBeTruthy();
     expect(await tool('list_withdrawals', { communityId })).toBeTruthy();
+    const payoutsCsv = (await rpc(fullKey, 'tools/call', { name: 'export_withdrawals_csv', arguments: { communityId } })).result;
+    expect(payoutsCsv.isError).toBeFalsy();
     // Đơn chờ xác nhận không được lộ tài khoản nhận tiền hay địa chỉ webhook báo có.
     expect(JSON.stringify(await tool('list_pending_orders', { communityId }))).not.toMatch(/webhook|accountNumber/i);
   });
@@ -316,6 +371,9 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     const source = await tool('create_inbound_source', { communityId, name: 'Landing Webcake' });
     expect(source.url).toContain('/webhooks/in/');
     await tool('update_inbound_source', { communityId, sourceId: source.id, status: 'paused' });
+    const rotated = await tool('rotate_inbound_source', { communityId, sourceId: source.id });
+    expect(rotated.url).toContain('/webhooks/in/');
+    expect(rotated.url).not.toBe(source.url);
     expect((await tool('list_inbound_sources', { communityId })).some((s: Loose) => s.id === source.id)).toBe(true);
     expect(await tool('list_inbound_events', { communityId, sourceId: source.id })).toBeTruthy();
     const options = await tool('get_automation_options', { communityId });
@@ -342,9 +400,30 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     expect((await tool('list_conversations')).items.length).toBeGreaterThan(0);
     expect(await tool('list_messages', { conversationId: sent.conversationId })).toBeTruthy();
     expect(await tool('list_notifications', { limit: 5 })).toBeTruthy();
+    await tool('mark_notifications_read');
+    expect((await tool('list_notifications', { filter: 'unread' })).items).toHaveLength(0);
+    await tool('archive_conversation', { conversationId: sent.conversationId });
+    expect((await tool('list_conversations', { filter: 'archived' })).items.map((c: Loose) => c.id)).toContain(sent.conversationId);
+    await tool('archive_conversation', { conversationId: sent.conversationId, archived: false });
+    await tool('recall_message', { messageId: sent.id });
+    expect((await tool('list_messages', { conversationId: sent.conversationId })).items.find((x: Loose) => x.id === sent.id).body).toBe('');
+
     const hook = await tool('create_webhook', { url: 'https://example.com/hook', events: ['member.joined'] });
     expect(hook.secret).toBeTruthy();
     expect((await tool('list_webhooks')).some((w: Loose) => w.id === hook.id)).toBe(true);
+    // Sửa: đổi địa chỉ và sự kiện, tạm dừng rồi bật lại.
+    expect(await tool('update_webhook', { webhookId: hook.id, url: 'https://example.com/hook-moi', events: ['member.joined', 'member.banned'], description: 'Javis' })).toMatchObject({ url: 'https://example.com/hook-moi', events: ['member.joined', 'member.banned'], status: 'active' });
+    expect((await tool('update_webhook', { webhookId: hook.id, status: 'paused' })).status).toBe('paused');
+    await expect(tool('test_webhook', { webhookId: hook.id })).rejects.toThrow(/invalid_state/);
+    expect(await tool('update_webhook', { webhookId: hook.id, status: 'active' })).toMatchObject({ status: 'active', url: 'https://example.com/hook-moi', failureCount: 0 });
+    // Gửi thử: một lượt giao `ping` vào hàng đợi, thấy được ở danh sách gần đây.
+    const ping = await tool('test_webhook', { webhookId: hook.id });
+    expect((await tool('list_webhooks')).find((w: Loose) => w.id === hook.id).recent.map((d: Loose) => d.id)).toContain(ping.deliveryId);
+    // Đổi secret: secret mới khác secret cũ.
+    const rotatedSecret = await tool('rotate_webhook_secret', { webhookId: hook.id });
+    expect(rotatedSecret.secret).toMatch(/^whsec_/);
+    expect(rotatedSecret.secret).not.toBe(hook.secret);
+    await expect(tool('update_webhook', { webhookId: crypto.randomUUID(), status: 'paused' })).rejects.toThrow(/not_found/);
     await tool('delete_webhook', { webhookId: hook.id });
   });
 
@@ -371,9 +450,25 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
     const aff = (await tool('get_affiliate_program', { communityId })).program;
     await tool('update_affiliate_program', { communityId, enabled: aff.status === 'active', commissionRateBps: aff.commissionRateBps, holdDays: aff.holdDays, minWithdrawalMinor: aff.minWithdrawalMinor });
     const m = (await tool('list_members', { communityId, role: 'member', limit: 5 })).items[0];
+    const banHook = await tool('create_webhook', { url: 'https://example.com/thanh-vien', events: ['member.banned', 'member.removed'] });
     await tool('member_action', { communityId, memberId: m.id, action: 'ban' });
     expect((await tool('list_members', { communityId, status: 'banned' })).items.map((x: Loose) => x.id)).toContain(m.id);
+    const banned = (await app.ctx.db.query.webhookDeliveries.findMany()).filter((d) => d.webhookId === banHook.id);
+    expect(banned.map((d) => d.eventName)).toEqual(['member.banned']);
+    expect(banned[0]!.payload).toMatchObject({ communityId, memberId: m.id, userId: m.userId });
+    await tool('delete_webhook', { webhookId: banHook.id });
     await tool('member_action', { communityId, memberId: m.id, action: 'unban' });
+
+    // Từng affiliate: đặt tỉ lệ riêng, tạm khóa, mở lại.
+    const affiliates = await tool('list_affiliates', { communityId });
+    expect(affiliates.programRateBps).toBe(aff.commissionRateBps);
+    expect(affiliates.items.length).toBeGreaterThan(0);
+    const one = affiliates.items[0];
+    expect(await tool('update_affiliate', { communityId, accountId: one.id, commissionRateBps: 4000, status: 'suspended' })).toMatchObject({ status: 'suspended', commissionRateBps: 4000, effectiveRateBps: 4000 });
+    expect((await tool('list_affiliates', { communityId })).items.find((a: Loose) => a.id === one.id)).toMatchObject({ status: 'suspended', effectiveRateBps: 4000 });
+    expect(await tool('update_affiliate', { communityId, accountId: one.id, commissionRateBps: null, status: 'active' })).toMatchObject({ status: 'active', commissionRateBps: null, effectiveRateBps: aff.commissionRateBps });
+    await expect(tool('update_affiliate', { communityId, accountId: one.id })).rejects.toThrow(/validation_error/);
+    await expect(tool('update_affiliate', { communityId, accountId: crypto.randomUUID(), status: 'suspended' })).rejects.toThrow(/not_found/);
     const pricing = await tool('get_pricing', { communityId });
     const saved = await tool('update_pricing', { communityId, pricingMode: pricing.pricingMode, doorsOpen: pricing.doorsOpen, tiers: pricing.tiers.map((t: Loose) => ({ id: t.id, key: t.key, name: t.name, description: t.description ?? '', benefits: t.benefits ?? [], isDefault: t.isDefault, isActive: t.isActive, monthlyMinor: t.monthlyMinor, yearlyMinor: t.yearlyMinor, oneTimeMinor: t.oneTimeMinor })) });
     expect(saved).toBeTruthy();
@@ -415,6 +510,6 @@ describe('MCP: chạy thật các lệnh trên database mẫu', () => {
 
   it('mọi lệnh đều có khai báo MCP hợp lệ', () => {
     for (const t of TOOLS) expect(describeTool(t).inputSchema.type).toBe('object');
-    expect(TOOLS.length).toBeGreaterThan(70);
+    expect(TOOLS.length).toBeGreaterThan(110);
   });
 });

@@ -1,5 +1,5 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateAffiliateAccountSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
@@ -17,7 +17,7 @@ communityRoutes.get('/discover', async (c) => {
   return c.json(await communities.discover(c.get('ctx'), { category: q.category, search: q.q, limit: q.limit ? Number(q.limit) : undefined }));
 });
 communityRoutes.post('/', requireAuth, async (c) => c.json(await communities.createCommunity(c.get('ctx'), await parse(createCommunitySchema, await body(c))), 201));
-communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), joinRefs(query(c).ref) ?? null)));
+communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), joinRefs(query(c).ref) ?? null, query(c).invite?.slice(0, 64) || null)));
 communityRoutes.get('/by-slug/:slug/shell', async (c) => c.json(await shell.communityShell(c.get('ctx'), c.req.param('slug'))));
 communityRoutes.post('/by-slug/:slug/join', requireAuth, async (c) => {
   const input = await parse(joinCommunitySchema, await body(c));
@@ -84,6 +84,8 @@ communityRoutes.put('/:id/providers', requireAuth, async (c) => {
 // Affiliate: cấu hình, xếp hạng, hàng đợi rút
 communityRoutes.get('/:id/affiliate', requireAuth, async (c) => c.json(await affiliate.programSettings(c.get('ctx'), c.req.param('id'))));
 communityRoutes.put('/:id/affiliate', requireAuth, async (c) => c.json(await affiliate.updateProgram(c.get('ctx'), c.req.param('id'), await parse(affiliateSettingsSchema, await body(c)))));
+communityRoutes.get('/:id/affiliate/accounts', requireAuth, async (c) => c.json(await affiliate.listProgramAccounts(c.get('ctx'), c.req.param('id'))));
+communityRoutes.patch('/:id/affiliate/accounts/:accountId', requireAuth, async (c) => c.json(await affiliate.updateProgramAccount(c.get('ctx'), c.req.param('id'), c.req.param('accountId'), await parse(updateAffiliateAccountSchema, await body(c)))));
 communityRoutes.get('/:id/leaderboard', async (c) => {
   const { period } = await parse(leaderboardQuerySchema, query(c));
   return c.json(await affiliate.leaderboard(c.get('ctx'), c.req.param('id'), period));

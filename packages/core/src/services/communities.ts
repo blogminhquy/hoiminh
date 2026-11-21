@@ -10,6 +10,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { accountForCodes, resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { releaseFiles } from './files';
+import { invitePreview } from './invites';
 import { paymentsReady } from './owner-payout';
 import { ownerHasFreeCommunity, requirePlanFeature } from './plans';
 import { ensureWorkspace } from './workspaces';
@@ -93,7 +94,7 @@ export async function getCommunityBySlug(ctx: Ctx, slug: string) {
 }
 
 /** Dữ liệu trang giới thiệu hội (đích của link hội): công khai, kèm trạng thái của người xem nếu đã đăng nhập. */
-export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
+export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null, inviteToken?: string | null) {
   const c = await getCommunityBySlug(ctx, slug);
   const [tiers, owner, courseList, members, questions] = await Promise.all([
     ctx.db.query.communityTiers.findMany({ where: and(eq(communityTiers.communityId, c.id), eq(communityTiers.isActive, true)), orderBy: asc(communityTiers.sortOrder) }),
@@ -121,6 +122,8 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
   return {
     community: c, tiers, owner: owner ? { id: owner.id, name: owner.name, handle: owner.handle, avatarUrl: owner.avatarUrl, coverColor: owner.coverColor, bio: owner.bio } : null,
     courses: courseList, sampleMembers: members.map((m) => m.u), joinQuestions: questions, referrer,
+    // Link có mã mời (`?invite=`): lời mời còn dùng được không và trao vai trò gì, để trang hiện đúng nút và lời giải thích.
+    invite: inviteToken ? await invitePreview(ctx, c.id, inviteToken) : null,
     stats: { members: c.memberCount, online: online?.c ?? 0, courses: courseList.length, paid: c.paidMemberCount },
     viewer: access ? { role: access.role, memberStatus: access.memberStatus, tierId: access.tierId } : null,
     pricing: { mode: c.pricingMode, doorsOpen: c.doorsOpen, paymentsReady: await paymentsReady(ctx, c.id), premiumMonthlyMinor: premium?.monthlyMinor ?? null, premiumYearlyMinor: premium?.yearlyMinor ?? null, oneTimeMinor: premium?.oneTimeMinor ?? null, premiumTerms: premium ? tierTerms(premium) : [], promo: activePromo(c.pricingPromo, ctx.now()) },
