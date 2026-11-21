@@ -4,7 +4,7 @@
 // hoiminh-jobs (apps/jobs) để việc nặng không làm chậm người đang dùng.
 import { createWorkerApp, pickSharedEnv, type WorkerBindings } from '@hoiminh/core';
 import { WorkerEntrypoint } from 'cloudflare:workers';
-import { createHonoApp } from './app';
+import { fetchWithSharedHono } from './app';
 
 /** Durable Object giữ WebSocket thời gian thực của từng người dùng (binding REALTIME). */
 export { RealtimeHub } from './realtime-hub';
@@ -23,7 +23,7 @@ export class SharedEnv extends WorkerEntrypoint<WorkerBindings> {
 export default {
   async fetch(request: Request, env: WorkerBindings, ctx: ExecutionContext): Promise<Response> {
     const app = await createWorkerApp(env);
-    const res = await createHonoApp(app).fetch(request, env, ctx);
+    const res = await fetchWithSharedHono(app, request, env, ctx);
     ctx.waitUntil(app.close().catch(() => undefined));
     return res;
   },

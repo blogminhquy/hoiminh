@@ -7,7 +7,7 @@ import type { Ctx } from '../context';
 import { forbidden, invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { audit } from './audit';
-import { canAccessCourse } from './entitlements';
+import { canAccessCourse, resolveCourseAccess } from './entitlements';
 import { releaseFiles } from './files';
 import { assertCommunityHasPlan } from './plans';
 
@@ -21,10 +21,12 @@ export async function listCourses(ctx: Ctx, communityId: string) {
   if (!staff) conds.push(eq(courses.status, 'published'));
   const rows = await ctx.db.query.courses.findMany({ where: and(...conds), orderBy: [asc(courses.sortOrder), desc(courses.createdAt)] });
   const progress = userId && rows.length ? await ctx.db.query.courseProgress.findMany({ where: and(eq(courseProgress.userId, userId), inArray(courseProgress.courseId, rows.map((c) => c.id))) }) : [];
+  // Quyền của cả danh sách trong một lượt, thay vì hỏi database riêng cho từng khóa.
+  const decisions = await resolveCourseAccess(ctx, userId, rows.filter((c) => c.status !== 'draft'), { isStaff: staff });
   const items = [];
   for (const c of rows) {
     const p = progress.find((x) => x.courseId === c.id);
-    const decision = c.status === 'draft' ? { allowed: staff, reason: 'locked' as const } : await canAccessCourse(ctx, userId, c.id, { isStaff: staff });
+    const decision = c.status === 'draft' ? { allowed: staff, reason: 'locked' as const } : decisions.get(c.id)!;
     items.push({ ...c, percent: p?.percent ?? 0, completedLessons: p?.completedLessons ?? 0, lastLessonId: p?.lastLessonId ?? null, lastAccessedAt: p?.lastAccessedAt ?? null, locked: !decision.allowed, lockReason: decision.reason, completed: p?.percent === 100 });
   }
   const continueItem = items.filter((i) => i.percent > 0 && i.percent < 100 && i.lastAccessedAt).sort((a, b) => (b.lastAccessedAt?.getTime() ?? 0) - (a.lastAccessedAt?.getTime() ?? 0))[0] ?? null;
@@ -40,7 +42,7 @@ export async function getCourse(ctx: Ctx, courseId: string) {
   const staff = access?.permissions.has('course.manage') ?? false;
   if (c.status === 'draft' && !staff) throw notFound('Khóa học không tồn tại');
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
-  const decision = await canAccessCourse(ctx, userId, courseId, { isStaff: staff });
+  const decision = await canAccessCourse(ctx, userId, courseId, { isStaff: staff, course: c });
   const [modules, lessonRows, progress, doneRows, owner, discussions, productRow] = await Promise.all([
     ctx.db.query.courseModules.findMany({ where: eq(courseModules.courseId, courseId), orderBy: asc(courseModules.sortOrder) }),
     ctx.db.query.lessons.findMany({ where: eq(lessons.courseId, courseId), orderBy: [asc(lessons.sortOrder)] }),
@@ -126,7 +128,7 @@ export async function completeLesson(ctx: Ctx, lessonId: string) {
   const course = await ctx.db.query.courses.findFirst({ where: eq(courses.id, l.courseId) });
   if (!course) throw notFound();
   const access = course.communityId ? await resolveCommunityAccess(ctx, course.communityId) : null;
-  const decision = await canAccessCourse(ctx, userId, l.courseId, { isStaff: access?.permissions.has('course.manage'), lessonIsPreview: l.isPreview });
+  const decision = await canAccessCourse(ctx, userId, l.courseId, { isStaff: access?.permissions.has('course.manage'), lessonIsPreview: l.isPreview, course });
   if (!decision.allowed) throw forbidden('Bài này chưa mở với bạn');
   await ctx.db.insert(lessonProgress).values({ lessonId, courseId: l.courseId, userId, completed: true, completedAt: ctx.now() }).onConflictDoUpdate({ target: [lessonProgress.lessonId, lessonProgress.userId], set: { completed: true, completedAt: ctx.now(), updatedAt: ctx.now() } });
   const [agg] = await ctx.db.select({ done: sql<number>`count(*)::int` }).from(lessonProgress).where(and(eq(lessonProgress.courseId, l.courseId), eq(lessonProgress.userId, userId), eq(lessonProgress.completed, true)));
