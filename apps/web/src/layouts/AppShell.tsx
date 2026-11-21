@@ -333,7 +333,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
     return (
       <ShellProvider value={data}>
         <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>
-          <PublicHeader cta="join" />
+          <PublicHeader cta="join" join={{ slug: data.community.slug, loginNext: location.pathname + location.search }} />
           <div className="flex justify-center px-4 md:px-16 pt-6 pb-12">
             <div className="w-full" style={{ maxWidth: 1120 }}>
               <SaleGuestBanner shell={data} />
