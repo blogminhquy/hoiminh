@@ -4,7 +4,7 @@
 import { BUSINESS, sha256Hex, randomCode } from '@hoiminh/config';
 import { refCodes } from '@hoiminh/contracts';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users } from '@hoiminh/db';
+import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, invalid, invalidState, notFound } from '../errors';
@@ -70,8 +70,10 @@ export async function trackClick(ctx: Ctx, code: string, meta: { visitorId: stri
  * Ghi người giới thiệu cho tài khoản VỪA ĐĂNG KÝ. `ref` là danh sách mã người đó mang theo (link vừa bấm và cookie 30
  * ngày, mới bấm đứng trước). Mỗi chương trình (nền tảng, từng hội) ghi một dòng theo mã mới nhất của chương trình đó,
  * nên một lượt đăng ký ghi nhận được cả người giới thiệu nền tảng lẫn người giới thiệu của từng hội.
- * Dòng ghi ở đây đi theo tài khoản mãi. Affiliate NỀN TẢNG chỉ được tính ở đây: tài khoản đã có thì link nền tảng
- * không được tính nữa. Affiliate của HỘI còn được tính lúc một tài khoản đã có vào hội đó (xem resolveReferrer).
+ * Affiliate NỀN TẢNG: dòng ghi ở đây đi theo tài khoản mãi, tài khoản đã có thì link nền tảng không được tính nữa
+ * (chưa có dòng nào thì mặc định là chủ của hội đầu tiên người đó vào, xem defaultPlatformReferrer).
+ * Affiliate của HỘI: dòng ghi ở đây là một lượt bấm, có hạn 30 ngày, và lượt bấm mới hơn lúc vào hội sẽ thắng
+ * (xem resolveReferrer).
  */
 export async function attachAttribution(ctx: Ctx, userId: string, visitorId: string | null, ref: string | null): Promise<void> {
   const done = new Set<string>();
@@ -112,16 +114,18 @@ export function refEmailOf(input: string): string | null {
 }
 
 /**
- * Người giới thiệu của một người trong MỘT HỘI (affiliate tầng hội; tầng nền tảng tính riêng ở
- * createCommissionForPayment theo dòng ghi lúc đăng ký). Chủ dự án chốt ngày 21/11/2026:
+ * Người giới thiệu của một người trong MỘT HỘI (affiliate tầng hội; tầng nền tảng tính riêng, xem
+ * defaultPlatformReferrer và createCommissionForPayment). Chủ dự án chốt ngày 21/11/2026:
  *   1. Đã có người giới thiệu trong hội này thì luôn là người đó, người khác không giới thiệu tranh được: ghi ở
  *      community_members.referred_by_affiliate_id; người mua lẻ chưa vào hội thì lấy theo đơn đã tính hoa hồng gần
  *      nhất của họ ở hội này. Người giới thiệu đang bị khóa thì không ai nhận hoa hồng thay.
- *   2. Người đăng ký tài khoản qua link của hội này: người giới thiệu ghi lúc đăng ký, giữ mãi, không hết hạn.
- *   3. Người CHƯA Ở TRONG HỘI (kể cả đã có tài khoản Hội Mình, đang ở hội khác): mã của hội này mà họ đang mang
- *      theo (`ref`: link vừa bấm và cookie 30 ngày, mã mới nhất của hội này thắng).
- * Thành viên đang ở trong hội mà chưa có người giới thiệu thì bấm link không được tính: link trả công cho việc đưa
- * người mới vào hội, không tính cho từng đơn hàng. Họ tự chọn người giới thiệu bằng setMyReferrer.
+ *   2. Người CHƯA Ở TRONG HỘI thì tính LƯỢT BẤM CUỐI (last click) trong 30 ngày, dù đã có tài khoản Hội Mình hay
+ *      chưa: trước hết là mã của hội này trong các mã họ đang mang theo (`ref`: link vừa bấm và cookie, mã mới nhất
+ *      của hội này thắng); không mang mã nào của hội này thì lấy lượt bấm đã ghi lúc đăng ký tài khoản, nếu còn
+ *      trong hạn 30 ngày. Vì vậy đăng ký qua link của A rồi bấm link của B mới vào hội thì B được ghi nhận.
+ * Thành viên đang ở trong hội mà chưa có người giới thiệu thì bấm thêm link không được tính: link trả công cho việc
+ * đưa người mới vào hội, không tính cho từng đơn hàng. Với họ chỉ còn lượt bấm đã ghi lúc đăng ký (nếu còn hạn), hoặc
+ * tự chọn người giới thiệu bằng setMyReferrer.
  * `locked` là true khi kết quả đến từ bước 1. Hàm không xét chương trình đang bật hay tắt: nơi gọi tự quyết.
  */
 export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId: string; ref?: string | null }): Promise<{ program: typeof affiliatePrograms.$inferSelect | null; account: typeof affiliateAccounts.$inferSelect | null; locked: boolean }> {
@@ -137,13 +141,36 @@ export async function resolveReferrer(ctx: Ctx, p: { communityId: string; userId
   // Tài khoản affiliate đã bị xóa hẳn (người đó xóa tài khoản) thì coi như chưa có người giới thiệu.
   const fixed = fixedId ? await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, fixedId) }) : null;
   if (fixed) return { program, account: usable(fixed), locked: true };
-  // Dòng attribution có user_id chỉ sinh ra lúc đăng ký tài khoản, nên đây chính là người giới thiệu lúc đăng ký.
-  const atSignup = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id)), orderBy: desc(affiliateAttributions.attributedAt), columns: { affiliateAccountId: true } });
-  const bySignup = atSignup ? usable(await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, atSignup.affiliateAccountId) })) : null;
-  if (bySignup) return { program, account: bySignup, locked: false };
+  // Mã đang mang theo chỉ tính cho người chưa ở trong hội: thành viên bấm thêm link rồi mua thì không được tính.
   const inside = member?.status === 'active' || member?.status === 'cancelling';
   const byLink = inside ? null : usable(await accountForCodes(ctx, program.id, p.ref));
-  return { program, account: byLink, locked: false };
+  if (byLink) return { program, account: byLink, locked: false };
+  // Dòng attribution có user_id chỉ sinh ra lúc đăng ký tài khoản: đây là lượt bấm lúc đăng ký, còn hạn thì vẫn tính
+  // (kể cả khi người đó vào hội từ một máy khác, không còn cookie; và cả với thành viên vào hội lúc chương trình còn
+  // tắt nên chưa được gắn người giới thiệu).
+  const atSignup = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id), sql`${affiliateAttributions.expiresAt} > now()`), orderBy: desc(affiliateAttributions.attributedAt), columns: { affiliateAccountId: true } });
+  const bySignup = atSignup ? usable(await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, atSignup.affiliateAccountId) })) : null;
+  return { program, account: bySignup, locked: false };
+}
+
+/**
+ * Mặc định của affiliate tầng NỀN TẢNG: người vào một hội mà tài khoản chưa có người giới thiệu nền tảng thì người
+ * giới thiệu nền tảng là CHỦ của hội đó (chủ hội là người đưa họ về Hội Mình). Về sau người này mua gói Hội Mình thì
+ * hoa hồng nền tảng về chủ hội đó. Người đã có người giới thiệu nền tảng (đăng ký qua link nền tảng, hoặc đã vào
+ * một hội khác trước đó) thì giữ nguyên: tầng nền tảng ghi một lần rồi cố định, người khác giới thiệu sau không được.
+ * Gọi khi một người trở thành thành viên của hội (sự kiện member.joined).
+ */
+export async function defaultPlatformReferrer(ctx: Ctx, p: { userId: string; communityId: string }): Promise<void> {
+  const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
+  if (!program || program.status !== 'active') return;
+  const has = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id)), columns: { id: true } });
+  if (has) return;
+  const [owner] = await ctx.db.select({ userId: workspaces.ownerUserId }).from(communities).innerJoin(workspaces, eq(workspaces.id, communities.workspaceId)).where(eq(communities.id, p.communityId));
+  if (!owner || owner.userId === p.userId) return;
+  const acc = await ensureAccount(ctx, owner.userId, program.id);
+  if (acc.status !== 'active') return;
+  await ctx.db.insert(affiliateAttributions).values({ affiliateAccountId: acc.id, programId: program.id, userId: p.userId, expiresAt: new Date(ctx.now().getTime() + program.cookieDays * 86_400_000) });
+  await ctx.db.update(affiliateAccounts).set({ signupCount: sql`${affiliateAccounts.signupCount} + 1` }).where(eq(affiliateAccounts.id, acc.id));
 }
 
 /** Thành viên đang còn trong hội (đang hoạt động hoặc đã hẹn hủy): chỉ họ xem và đổi được người giới thiệu của mình. */

@@ -34,8 +34,8 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     return (p[0] as { enabled: boolean } | undefined)?.enabled ?? true;
   });
   // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới vào hội (kể cả đã có tài
-  // khoản Hội Mình từ trước) thì lấy người giới thiệu ghi lúc đăng ký, rồi tới mã của hội này họ đang mang theo
-  // (link vừa bấm và cookie 30 ngày). Chỉ nhận mã của chính chương trình hội này và khi chương trình đang bật.
+  // khoản Hội Mình từ trước) thì tính lượt bấm cuối: mã của hội này họ đang mang theo (link vừa bấm và cookie 30
+  // ngày), không có thì lượt bấm lúc đăng ký còn hạn. Chỉ nhận mã của chương trình hội này và khi chương trình đang bật.
   const keptAffiliateId = existing?.referredByAffiliateId ?? null;
   let affiliateId = keptAffiliateId;
   if (!affiliateId) {
