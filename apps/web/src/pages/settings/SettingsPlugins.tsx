@@ -1,4 +1,5 @@
 // Cài đặt · Tiện ích (pluginsMain): danh sách tiện ích bật/tắt; Tin nhắn chào có khung cấu hình mẫu + độ trễ; mục "Sắp ra mắt".
+import { WELCOME_DM_DEFAULT_TEMPLATE, WELCOME_DM_TEMPLATE_MAX, WELCOME_DM_VARIABLES } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Select, T, Textarea, Toggle } from '@hoiminh/ui';
 import { Check, ExternalLink, Globe, Link as LinkIcon, MessageCircle, Sparkles, Video } from 'lucide-react';
@@ -17,18 +18,17 @@ const DEFS: Array<{ key: Key; icon: ReactNode; bg: string; name: string; desc: s
   { key: 'meta_pixel', icon: <Globe size={20} />, bg: '#3E5C7A', name: 'Pixel Facebook', desc: 'Đo đăng ký và thanh toán để chạy quảng cáo' },
 ];
 const SOON = [{ icon: <Video size={20} />, bg: '#5C3E7A', name: 'Video chào', desc: 'Phát một video ở lần đầu thành viên vào' }, { icon: <Sparkles size={20} />, bg: '#5C7A3E', name: 'Zapier và Make', desc: 'Nối với 5.000 ứng dụng khác' }];
-const DEFAULT_TEMPLATE = 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.';
 
 function WelcomeConfig({ p, onSave, saving }: { p: Plugin; onSave: (config: Record<string, unknown>) => void; saving: boolean }) {
   const { user } = useAuth();
   const cfg = p.config as { template?: string; delayMinutes?: number };
-  const [template, setTemplate] = useState(cfg.template ?? DEFAULT_TEMPLATE);
+  const [template, setTemplate] = useState(cfg.template ?? WELCOME_DM_DEFAULT_TEMPLATE);
   const [delay, setDelay] = useState(cfg.delayMinutes ?? 2);
   return (
     <div className="px-4 py-3.5 rounded-[10px] flex flex-col gap-2.5" style={{ background: T.bg }}>
       <div className="flex gap-3 items-center text-[13px] flex-wrap"><span className="muted">Người gửi</span><span className="inline-flex items-center gap-1.5"><Avatar name={user?.name} src={user?.avatarUrl} size={22} />{user?.name}</span><span className="muted md:ml-3">Gửi sau</span><Select value={delay} onChange={(e) => setDelay(Number(e.target.value))} style={{ height: 26, fontSize: 12, width: 110 }}>{[0, 2, 5, 15, 60].map((m) => <option key={m} value={m}>{m === 0 ? 'Ngay' : `${m} phút`}</option>)}</Select></div>
-      <Textarea rows={3} value={template} maxLength={1000} onChange={(e) => setTemplate(e.target.value)} style={{ background: T.surface }} />
-      <div className="flex items-center gap-2 flex-wrap"><span className="muted text-[12px] flex-grow">Biến có thể dùng: {'{{tên}}'} · {'{{cộng đồng}}'} · {'{{link bắt đầu}}'}</span><Button size="sm" variant="dark" loading={saving} onClick={() => onSave({ template, delayMinutes: delay, includeStartLink: true, senderUserId: user?.id })}>Lưu mẫu</Button></div>
+      <Textarea rows={3} value={template} maxLength={WELCOME_DM_TEMPLATE_MAX} onChange={(e) => setTemplate(e.target.value)} style={{ background: T.surface }} />
+      <div className="flex items-center gap-2 flex-wrap"><span className="muted text-[12px] flex-grow">Biến có thể dùng: {WELCOME_DM_VARIABLES.map((v) => `{{${v}}}`).join(' · ')}</span><Button size="sm" variant="dark" loading={saving} onClick={() => onSave({ template, delayMinutes: delay, includeStartLink: true, senderUserId: user?.id })}>Lưu mẫu</Button></div>
     </div>
   );
 }

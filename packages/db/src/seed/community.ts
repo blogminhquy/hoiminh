@@ -151,7 +151,7 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
   }
 
   const plugins: Array<[string, boolean, Record<string, unknown>]> = [
-    ['welcome_dm', true, { senderUserId: s.owner.id, template: 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true }],
+    ['welcome_dm', true, { senderUserId: s.owner.id, template: 'Chào {{full_name}}, chào mừng bạn đến với {{community_name}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true }],
     ['instant_approval', true, {}], ['links', true, {}], ['webhook', false, {}], ['meta_pixel', s.key === 'kd', { pixelId: s.key === 'kd' ? '1234567890' : '' }],
   ];
   for (const [pluginKey, enabled, config] of plugins) {

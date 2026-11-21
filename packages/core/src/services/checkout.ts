@@ -110,8 +110,9 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const discount = applyCoupon(r.amountMinor, coupon);
   const total = r.amountMinor - discount;
 
-  // Affiliate: người giới thiệu cố định của thành viên đứng trước; chưa có thì mới tính mã đi kèm rồi lượt bấm cuối
-  // còn hạn (xem resolveReferrer). Không tự giới thiệu.
+  // Affiliate của hội: người giới thiệu cố định của thành viên; người chưa ở trong hội thì tính lượt bấm cuối (mã của
+  // hội này họ đang mang theo, không có thì lượt bấm lúc đăng ký còn hạn), xem resolveReferrer. Thành viên đang ở
+  // trong hội thì mã trên link lúc thanh toán không được tính: link không tính cho từng đơn hàng. Không tự giới thiệu.
   let affiliateId: string | null = null;
   let referredBy: string | null = null;
   if (r.communityId) {
