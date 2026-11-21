@@ -30,7 +30,8 @@ export const createEventSchema = z.object({
   broadcastEmail: z.boolean().default(false),
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
-export const updateEventSchema = createEventSchema.partial();
+/** `status`: `cancelled` là hủy buổi (ẩn khỏi lịch, ngừng nhắc), `scheduled` là mở lại buổi đã hủy. */
+export const updateEventSchema = createEventSchema.partial().extend({ status: z.enum(['scheduled', 'cancelled']).optional() });
 
 export const eventQuestionSchema = z.object({ question: z.string().trim().min(3).max(500) });
 export const eventRecordingSchema = z.object({
