@@ -106,6 +106,20 @@ export const communities = pgTable(
   (t) => [uniqueIndex('communities_slug_uq').on(t.slug), index('communities_workspace_idx').on(t.workspaceId), index('communities_discover_idx').on(t.discoverable, t.status)],
 );
 
+/**
+ * Đường dẫn cũ của hội. Đổi đường dẫn thì đường dẫn cũ nằm lại đây, để link đã lưu và đã chia sẻ
+ * (thông báo, link mời, link affiliate) vẫn dẫn về đúng hội thay vì báo "Hội không tồn tại".
+ */
+export const communitySlugAliases = pgTable(
+  'community_slug_aliases',
+  {
+    slug: text('slug').primaryKey(),
+    communityId: uuid('community_id').notNull().references(() => communities.id, { onDelete: 'cascade' }),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('community_slug_aliases_community_idx').on(t.communityId)],
+);
+
 export const communityTiers = pgTable(
   'community_tiers',
   {

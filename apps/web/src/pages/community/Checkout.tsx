@@ -10,6 +10,7 @@ import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useShellQuery } from '@/lib/community';
 import { fmtDateTime } from '@/lib/format';
+import { movedSlugPath } from '@/lib/referral';
 import { CheckoutConfigure } from './CheckoutConfigure';
 import { BankQrCard, CheckoutFrame, ProviderOption, Waiting, providerMeta, type Instruction } from './CheckoutParts';
 
@@ -82,5 +83,7 @@ export default function Page() {
   if (orderId) return <OrderView orderId={orderId} />;
   if (shell.isLoading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
   if (shell.isError || !shell.data) return <CheckoutFrame backTo="/"><ErrorBox message={errorMessage(shell.error)} /></CheckoutFrame>;
+  const moved = movedSlugPath(location, slug, shell.data.community.slug);
+  if (moved) return <Navigate to={moved} replace />;
   return <CheckoutConfigure shell={shell.data} tierKey={sp.get('tier')} productId={sp.get('product')} initialCycle={sp.get('cycle')} initialMonths={sp.get('months')} ref={sp.get('ref')} />;
 }

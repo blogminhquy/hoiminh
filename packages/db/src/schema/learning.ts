@@ -116,7 +116,8 @@ export const courseProgress = pgTable(
     completedLessons: integer('completed_lessons').notNull().default(0),
     totalLessons: integer('total_lessons').notNull().default(0),
     percent: integer('percent').notNull().default(0),
-    lastLessonId: uuid('last_lesson_id'),
+    /** Bài đang học dở. Bài bị xóa thì tự về null, để nút "Học tiếp" không dẫn vào bài không còn. */
+    lastLessonId: uuid('last_lesson_id').references(() => lessons.id, { onDelete: 'set null' }),
     lastAccessedAt: ts('last_accessed_at'),
     completedAt: ts('completed_at'),
     startedAt: ts('started_at').notNull().defaultNow(),

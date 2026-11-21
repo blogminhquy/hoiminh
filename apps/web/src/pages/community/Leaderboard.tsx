@@ -1,13 +1,14 @@
-// Xếp hạng affiliate (affiliateMain): chip kỳ, bục top 3, bảng hạng; rail link của bạn + số liệu, cách tính, tổng affiliate kỳ này.
+// Xếp hạng affiliate (affiliateMain): chip kỳ, bục top 3, bảng hạng; rail link của bạn + số liệu, người giới thiệu của bạn, cách tính, tổng affiliate kỳ này.
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, Chip, Prog, T, money } from '@hoiminh/ui';
-import { Check, Clock, Copy, Link as LinkIcon, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { Check, Clock, Copy, Link as LinkIcon, ShieldCheck, UserCheck, Users, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { ApiError, api } from '@/lib/api';
 import { useShell } from '@/lib/community';
 import { timeAgo } from '@/lib/format';
+import { ReferrerCard } from './ReferrerCard';
 
 interface Row { rank: number; user: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }; referrals: number; paid: number; revenueMinor: number | null; commissionMinor: number | null; rankDelta: number; isMe: boolean }
 interface Board { items: Row[]; computedAt: string | null; period: string; program: { commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; showMoney: boolean; enabled: boolean }; me: { affiliateCode: string; link: string; clicks: number; signups: number; paid: number; rank: number | null } | null; stats: { activeAffiliates: number; referredRevenueShare: number } }
@@ -100,10 +101,11 @@ export default function Page() {
             <><div className="muted text-[13px]">Bạn chưa là affiliate của hội này.</div><Link to="/tai-khoan/cong-su" className="btn btn-dark btn-sm self-start">Lấy link affiliate</Link></>
           )}
         </div>
+        <ReferrerCard communityId={shell.community.id} />
         {q.data && (
           <div className="card p-4 flex flex-col gap-2.5">
             <div className="font-semibold">Cách tính</div>
-            {[[<Wallet size={16} key="w" />, `Hoa hồng ${q.data.program.commissionRateBps / 100}% mỗi kỳ thanh toán`], [<Clock size={16} key="c" />, `Giữ ${q.data.program.holdDays} ngày, rồi gửi yêu cầu rút từ ${money(q.data.program.minWithdrawalMinor)}`], [<Wallet size={16} key="w2" />, 'Chủ hội chuyển khoản trong 3 ngày làm việc'], [<ShieldCheck size={16} key="s" />, 'Không tính tự giới thiệu và hoàn tiền'], [<Users size={16} key="u" />, 'Xếp hạng theo hoa hồng đã duyệt trong kỳ']].map(([ic, t], i) => <div key={i} className="flex items-center gap-2.5 text-[13px]" style={{ color: T.ink2 }}>{ic}{t}</div>)}
+            {[[<Wallet size={16} key="w" />, `Hoa hồng ${q.data.program.commissionRateBps / 100}% mỗi kỳ thanh toán`], [<Clock size={16} key="c" />, `Giữ ${q.data.program.holdDays} ngày, rồi gửi yêu cầu rút từ ${money(q.data.program.minWithdrawalMinor)}`], [<Wallet size={16} key="w2" />, 'Chủ hội chuyển khoản trong 3 ngày làm việc'], [<ShieldCheck size={16} key="s" />, 'Không tính tự giới thiệu và hoàn tiền'], [<UserCheck size={16} key="r" className="flex-shrink-0" />, 'Hoa hồng luôn về người giới thiệu của thành viên, trừ khi thành viên tự đổi'], [<Users size={16} key="u" />, 'Xếp hạng theo hoa hồng đã duyệt trong kỳ']].map(([ic, t], i) => <div key={i} className="flex items-center gap-2.5 text-[13px]" style={{ color: T.ink2 }}>{ic}{t}</div>)}
           </div>
         )}
         {q.data && (
