@@ -97,7 +97,7 @@ export default function Page() {
           <h2 className="serif m-0 mb-1.5 text-[30px] font-extrabold">Đăng nhập</h2>
           <div className="muted">Chưa có tài khoản? <Link to={`/dang-ky${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-semibold">Đăng ký miễn phí</Link></div>
         </div>
-        <GoogleButton />
+        <GoogleButton next={next} />
         <OrDivider />
         <AuthInput label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ban@email.com" />
         <AuthInput label="Mật khẩu" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••" />

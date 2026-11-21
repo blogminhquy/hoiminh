@@ -2,12 +2,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, CommunityMark, Modal, money, T } from '@hoiminh/ui';
 import { ExternalLink, Eye, Globe, Lock, Sparkles, Tag, Users } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { fmtCount } from '@/lib/format';
 import { guestHome } from '@/lib/guest';
+import { JOIN_PARAM, signupPathFor } from '@/lib/join-intent';
 import { checkoutQuery, modeChoices, promoEndLabel } from '@/lib/membership';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
@@ -40,8 +41,9 @@ function JoinQuestionsModal({ d, open, onClose, onSubmit, saving, error }: { d: 
 
 export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string | null }) {
   const c = d.community;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const qc = useQueryClient();
   const member = isViewerMember(d);
   const pending = d.viewer?.memberStatus === 'pending';
@@ -68,7 +70,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
 
   const onJoin = () => {
     if (member) { rememberCommunitySlug(c.slug); navigate(`/${c.slug}/bang-tin`); return; }
-    if (!user) { navigate(`/dang-ky?hoi=${encodeURIComponent(c.slug)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
+    if (!user) { navigate(signupPathFor(c.slug, ref)); return; }
     if (paid) { navigate(`/${c.slug}/thanh-toan?${checkoutQuery(entry)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
     if (d.joinQuestions.length) { setAsking(true); return; }
     join.mutate([]);
@@ -79,6 +81,22 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const promoEnd = promoEndLabel(d.pricing.promo);
   // Hội thu phí mà chủ hội chưa cài nhận tiền: chưa có tài khoản nào để chuyển khoản tới, nên khóa nút tham gia.
   const payLocked = paid && !member && !d.pricing.paymentsReady;
+
+  // Vừa đăng ký hoặc đăng nhập xong từ trang của hội này (?thamgia=1): vào thẳng hội, không bắt bấm "Tham gia" lần nữa.
+  // Chạy đúng việc của nút: thành viên và hội miễn phí vào Bảng tin, hội có câu hỏi mở bảng câu hỏi, hội thu phí sang thanh toán.
+  // Gỡ tham số ngay để tải lại trang hay bấm Quay lại không tự tham gia lần nữa. Chưa đăng nhập thì không làm gì.
+  const wantsJoin = params.get(JOIN_PARAM) === '1';
+  const joinFired = useRef(false);
+  useEffect(() => {
+    if (!wantsJoin || authLoading || joinFired.current) return;
+    joinFired.current = true;
+    const rest = new URLSearchParams(params);
+    rest.delete(JOIN_PARAM);
+    setParams(rest, { replace: true });
+    if (!user || pending || (!member && (!c.doorsOpen || payLocked))) return;
+    onJoin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsJoin, authLoading, user]);
   const label = member ? 'Vào hội' : pending ? 'Đang chờ duyệt' : !c.doorsOpen ? 'Hội đã đóng cổng' : payLocked ? 'Hội chưa mở thanh toán' : paid ? `Tham gia · ${priceMain}` : 'Tham gia miễn phí';
   const others = Math.max(0, d.stats.members - d.sampleMembers.length);
 

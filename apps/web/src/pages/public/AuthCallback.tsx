@@ -1,4 +1,5 @@
-// Đích quay về sau Google (Supabase): đọc #access_token= trong hash, đổi lấy phiên Hội Mình rồi vào hội của người đó (chưa có hội thì vào /admin).
+// Đích quay về sau Google (Supabase): đọc #access_token= trong hash, đổi lấy phiên Hội Mình rồi về nơi người đó đang định tới
+// (đăng ký hoặc đăng nhập từ trang của một hội thì vào hội đó); không có thì vào hội của họ, chưa có hội thì vào /admin.
 import type { AuthSession } from '@hoiminh/contracts';
 import { Button, T } from '@hoiminh/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -6,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthShell } from '@/layouts/AuthShell';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { takeAfterAuth } from '@/lib/join-intent';
 import { landingAfterAuth } from './Login';
 
 function tokenFromHash(hash: string): string | null {
@@ -32,7 +34,7 @@ export default function Page() {
       .then(async (session) => {
         setSession(session);
         window.history.replaceState(null, '', window.location.pathname);
-        navigate(await landingAfterAuth(), { replace: true });
+        navigate(await landingAfterAuth(takeAfterAuth()), { replace: true });
       })
       .catch((err: unknown) => setError(errorMessage(err)));
   }, [navigate, setSession]);
