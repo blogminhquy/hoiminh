@@ -2,20 +2,23 @@
 
 ## 1.37.0 - 2026-11-21
 
-Hai bổ sung cho luật affiliate "người giới thiệu cố định" của bản 1.36.0, theo yêu cầu của chủ dự án. Không có migration.
+Chốt cách tính cookie cho luật affiliate "người giới thiệu cố định" của bản 1.36.0, theo yêu cầu của chủ dự án. Không có migration.
 
 ### Thay đổi
 
 - **Link affiliate chỉ tính lúc đăng ký tài khoản mới, không tính cho từng đơn hàng.** Mã trên link được ghi nhớ 30 ngày, lượt bấm sau đè lượt bấm trước (last click). Đúng lúc một người đăng ký tài khoản (bằng email hay bằng Google), người giới thiệu được ghi vào tài khoản đó và giữ mãi, không hết hạn. Tài khoản đã có rồi mà bấm link affiliate thì không được tính, kể cả khi mua hàng hay vào hội ngay sau đó. Bản 1.36.0 còn tính mã trên link lúc tham gia hội và lúc thanh toán cho người chưa có người giới thiệu; nay bỏ.
+- Tài khoản đã có muốn ghi nhận người đã mời mình thì tự chọn ở thẻ "Người giới thiệu của bạn" bằng mã, link hoặc email (bản 1.36.1).
 - Trang giới thiệu hội chỉ hiện dòng "Bạn được ... giới thiệu" khi lượt giới thiệu đó thật sự được tính: khách chưa có tài khoản thì theo mã trên link, người đã đăng nhập thì theo người giới thiệu của chính tài khoản đó.
-
-### Thêm
-
-- **Chọn người giới thiệu bằng email.** Thẻ "Người giới thiệu của bạn" nay nhận ba thứ: mã giới thiệu, link giới thiệu, hoặc email đăng nhập của người đã mời mình. Email phải là của một thành viên đang ở trong hội. Người đó chưa từng lấy link affiliate thì được mở tài khoản affiliate luôn, để lượt giới thiệu vẫn được tính và hoa hồng vẫn vào ví của họ. Đây cũng là cách để tài khoản đã có (không được tính qua link nữa) ghi nhận người đã mời mình.
 
 ### Sửa
 
 - **Đăng ký bằng Google làm rơi mã giới thiệu.** Tài khoản tạo qua Google không được ghi người giới thiệu dù có cookie. Nay được tính như đăng ký bằng email.
+
+## 1.36.1 - 2026-11-21
+
+### Thêm
+
+- **Chọn người giới thiệu bằng email.** Thẻ "Người giới thiệu của bạn" nay nhận ba thứ: mã giới thiệu, link giới thiệu, hoặc email đăng nhập của người đã mời mình. Email phải là của một thành viên đang ở trong hội. Người đó chưa từng lấy link affiliate thì được mở tài khoản affiliate luôn, để lượt giới thiệu vẫn được tính và hoa hồng vẫn vào ví của họ. Theo yêu cầu của chủ dự án. Không có migration.
 
 ## 1.36.0 - 2026-11-21
 
