@@ -1,6 +1,6 @@
 // Gói của từng hội (kế hoạch 11/11/2026): tra bảng gói, gói đang có hiệu lực của một hội, trần thành viên, tính năng trả phí.
 // Mọi chỗ cần hỏi "hội này được làm gì" đều đi qua đây, để luật chỉ nằm một nơi.
-import { PLAN_DEFAULTS, PLAN_FEATURES, PLAN_FEATURE_LABEL, effectivePlanKey, isPlanKey, lowestPlanWith, nextPlanFor, type PlanDef, type PlanFeature, type PlanKey } from '@hoiminh/contracts';
+import { NO_PRICES, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_FEATURES, PLAN_FEATURE_LABEL, effectivePlanKey, isPlanKey, lowestPlanWith, nextPlanFor, type PlanDef, type PlanFeature, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { communities, workspaces, type plans } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -9,13 +9,27 @@ import { AppError, notFound } from '../errors';
 type CommunityRow = typeof communities.$inferSelect;
 type PlanRow = typeof plans.$inferSelect;
 
+const amount = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : 0);
+
+/**
+ * Giá từng kỳ của một dòng bảng plans. Dòng có trước khi có `cycle_prices` chỉ bán 3 tháng (3 lần giá tháng) và
+ * 1 năm (cột `yearly_minor`), đúng như lúc đó; 1 tháng và 6 tháng là 0 cho tới khi quản trị nhập giá.
+ */
+function pricesOf(row: PlanRow): PlanPrices {
+  const saved = row.cyclePrices;
+  if (!saved) return { monthly: 0, quarterly: amount(row.monthlyMinor * 3), semiannual: 0, yearly: amount(row.yearlyMinor) };
+  const out = { ...NO_PRICES };
+  for (const c of PLAN_CYCLES) out[c] = amount(saved[c]);
+  return out;
+}
+
 /** Một dòng bảng plans thành định nghĩa gói. Thiếu trần trong `quotas` thì lấy trần mặc định của gói đó. */
 function toDef(row: PlanRow, fallback: PlanDef): PlanDef {
   const cap = Object.prototype.hasOwnProperty.call(row.quotas, 'members') ? row.quotas.members ?? null : fallback.memberCap;
   return {
     key: fallback.key,
     name: row.name || fallback.name,
-    monthlyMinor: fallback.key === 'free' ? 0 : row.monthlyMinor,
+    prices: fallback.key === 'free' ? { ...NO_PRICES } : pricesOf(row),
     memberCap: cap,
     features: PLAN_FEATURES.filter((f) => row.features.includes(f)),
   };
@@ -26,7 +40,7 @@ export async function planTable(ctx: Ctx): Promise<PlanDef[]> {
   const rows = await ctx.db.query.plans.findMany();
   return PLAN_DEFAULTS.map((d) => {
     const row = rows.find((r) => r.key === d.key);
-    return row ? toDef(row, d) : { ...d, features: [...d.features] };
+    return row ? toDef(row, d) : { ...d, prices: { ...d.prices }, features: [...d.features] };
   });
 }
 

@@ -37,10 +37,11 @@ Cách đọc: mỗi mục ghi rõ trạng thái.
 
 [ĐÃ CHỐT] Hội thứ hai trở đi phải trả ngay khi tạo, không có 14 ngày dùng thử.
 
-[ĐÃ CHỐT] Chỉ bán hai chu kỳ: 3 tháng và 1 năm.
-          Không bán 1 tháng, không bán 6 tháng.
-
-[ĐÃ CHỐT] Giá 1 năm bằng 10 tháng. Giá 3 tháng bằng 3 lần giá tháng.
+[ĐÃ CHỐT, SỬA NGÀY 21/11/2026] Bán bốn kỳ: 1 tháng, 3 tháng, 6 tháng, 1 năm.
+          Quản trị nhập giá riêng cho từng kỳ của từng gói ở Hệ thống, Gói nền tảng.
+          Kỳ nào để giá 0 thì không bán và không hiện ở trang mua gói.
+          (Bản 11/11/2026: chỉ bán 3 tháng và 1 năm, giá 1 năm bằng 10 tháng, giá 3 tháng bằng 3 lần giá tháng.
+          Lúc cập nhật, 3 tháng và 1 năm giữ giá đó; 1 tháng và 6 tháng để 0 cho tới khi nhập giá.)
 
 [ĐÃ CHỐT] Không có dùng thử ở bất kỳ đâu, vì đã có gói Miễn phí.
           Người mới đăng ký chỉ dùng gói Miễn phí, không được dùng thử gói Chuyên nghiệp.

@@ -8,21 +8,21 @@ import type { SeedCommunity } from './community';
 import { daysFrom, sid } from './ids';
 import type { SeedUser } from './users';
 
-/** Bốn gói Hội Mình (kế hoạch 11/11/2026), kỳ trả tiền của các hội đang dùng gói trả phí, và các cấu hình nền tảng. */
+/** Bốn gói Hội Mình (kế hoạch 11/11/2026; giá từng kỳ ở `cyclePrices`, 0 là không bán kỳ đó), kỳ trả tiền của các hội đang dùng gói trả phí, và các cấu hình nền tảng. */
 export async function seedPlatform(db: Database, base: Date, U: Record<string, SeedUser>, main: SeedCommunity, others: SeedCommunity[]): Promise<void> {
   const allFeatures = ['automation', 'custom_domain', 'affiliate', 'api'];
   await db
     .insert(plans)
     .values([
-      { key: 'free', name: 'Miễn phí', description: 'Dùng vĩnh viễn, bán hàng và thu tiền được.', monthlyMinor: 0, yearlyMinor: 0, trialDays: 0, quotas: { members: 100 }, features: [], sortOrder: 0 },
-      { key: 'starter', name: 'Khởi đầu', description: 'Cho hội đang lớn.', monthlyMinor: 99_000, yearlyMinor: 990_000, trialDays: 0, quotas: { members: 500 }, features: [], sortOrder: 1 },
-      { key: 'pro', name: 'Chuyên nghiệp', description: 'Có tự động hóa, tên miền riêng, affiliate, API.', monthlyMinor: 299_000, yearlyMinor: 2_990_000, trialDays: 0, quotas: { members: 5_000 }, features: allFeatures, sortOrder: 2 },
-      { key: 'unlimited', name: 'Không giới hạn', description: 'Không giới hạn thành viên, có mọi thứ của Chuyên nghiệp.', monthlyMinor: 799_000, yearlyMinor: 7_990_000, trialDays: 0, quotas: { members: null }, features: allFeatures, sortOrder: 3 },
+      { key: 'free', name: 'Miễn phí', description: 'Dùng vĩnh viễn, bán hàng và thu tiền được.', monthlyMinor: 0, yearlyMinor: 0, cyclePrices: { monthly: 0, quarterly: 0, semiannual: 0, yearly: 0 }, trialDays: 0, quotas: { members: 100 }, features: [], sortOrder: 0 },
+      { key: 'starter', name: 'Khởi đầu', description: 'Cho hội đang lớn.', monthlyMinor: 0, yearlyMinor: 990_000, cyclePrices: { monthly: 0, quarterly: 297_000, semiannual: 0, yearly: 990_000 }, trialDays: 0, quotas: { members: 500 }, features: [], sortOrder: 1 },
+      { key: 'pro', name: 'Chuyên nghiệp', description: 'Có tự động hóa, tên miền riêng, affiliate, API.', monthlyMinor: 0, yearlyMinor: 2_990_000, cyclePrices: { monthly: 0, quarterly: 897_000, semiannual: 0, yearly: 2_990_000 }, trialDays: 0, quotas: { members: 5_000 }, features: allFeatures, sortOrder: 2 },
+      { key: 'unlimited', name: 'Không giới hạn', description: 'Không giới hạn thành viên, có mọi thứ của Chuyên nghiệp.', monthlyMinor: 0, yearlyMinor: 7_990_000, cyclePrices: { monthly: 0, quarterly: 2_397_000, semiannual: 0, yearly: 7_990_000 }, trialDays: 0, quotas: { members: null }, features: allFeatures, sortOrder: 3 },
     ])
     .onConflictDoNothing();
   for (const c of [main, ...others]) {
     if (!c.plan) continue;
-    const days = c.plan.cycle === 'quarterly' ? 90 : 365;
+    const days = { monthly: 30, quarterly: 90, semiannual: 180, yearly: 365 }[c.plan.cycle];
     await db.insert(platformSubscriptions).values({ id: await sid(`platsub:${c.id}`), workspaceId: c.workspaceId, communityId: c.id, planKey: c.plan.key, status: 'active', billingCycle: c.plan.cycle, currentPeriodStart: daysFrom(base, c.plan.daysLeft - days), currentPeriodEnd: daysFrom(base, c.plan.daysLeft), provider: 'sepay' }).onConflictDoNothing();
   }
   await db

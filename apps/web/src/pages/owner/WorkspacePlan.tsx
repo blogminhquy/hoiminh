@@ -1,9 +1,10 @@
 // Gói cho hội (/admin/goi?hoi=<slug>): mỗi gói dùng cho một hội. Trang chọn gói có thanh thành viên so với trần,
-// hai tab chu kỳ (3 tháng, 1 năm), bốn thẻ gói và bảng so sánh. Bấm một gói thì sang màn nâng gói
+// các tab kỳ hạn (1 tháng, 3 tháng, 6 tháng, 1 năm: chỉ hiện kỳ quản trị đang bán, tức giá lớn hơn 0), các thẻ gói
+// bán kỳ đang chọn và bảng so sánh. Bấm một gói thì sang màn nâng gói
 // (/admin/goi?hoi=<slug>&goi=<khóa gói>&ky=<chu kỳ>): số ngày mua, số ngày tặng từ gói cũ, ngày hết hạn, rồi
 // khung chọn cách trả → POST /v1/checkout → /thanh-toan/:orderId. Không có dùng thử.
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { isPlanKey, planCycleSchema, type PaymentProvider, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
+import { isPlanKey, pickCycle, planCycleSchema, planCyclesOf, soldCycles, type PaymentProvider, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
 import { Button, Modal, OptionCard, T, Tag } from '@hoiminh/ui';
 import { Check, ChevronLeft, Lock, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -11,7 +12,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
-import { CYCLES, capView, compareRows, cycleLabel, num, planBadge, tierCards, upgradeSummary, type HoiPlan, type TierCard } from '@/lib/platform-plan';
+import { capView, compareRows, cycleHint, cycleLabel, cycleSaving, num, planBadge, tierCards, upgradeSummary, type HoiPlan, type TierCard } from '@/lib/platform-plan';
 import { WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 
 type Provider = PaymentProvider;
@@ -29,13 +30,16 @@ export const planStatusQuery = (communityId: string) => ({ queryKey: ['community
 
 const TONE = { gold: 'gold', accent: 'accent', teal: 'teal', muted: 'neutral' } as const;
 
-function CycleTabs({ cycle, onPick, yearNote }: { cycle: PlanCycle; onPick: (c: PlanCycle) => void; yearNote?: boolean }) {
+const capitalize = (t: string) => t.charAt(0).toLocaleUpperCase('vi') + t.slice(1);
+
+/** Các tab kỳ hạn đang bán. `note` là lời mời của kỳ dài nhất ("Tặng 2 tháng"), ghi cạnh dãy tab. */
+function CycleTabs({ cycles, cycle, onPick, note }: { cycles: PlanCycle[]; cycle: PlanCycle; onPick: (c: PlanCycle) => void; note?: string }) {
   return (
     <div className="seg" role="tablist" aria-label="Chu kỳ thanh toán">
-      {CYCLES.map((c) => (
+      {cycles.map((c) => (
         <button key={c} type="button" role="tab" aria-selected={cycle === c} className={cycle === c ? 'on' : undefined} onClick={() => onPick(c)}>{cycleLabel(c)}</button>
       ))}
-      {yearNote && <Tag tone="gold" className="seg-note">Tặng 2 tháng</Tag>}
+      {note && <Tag tone="gold" className="seg-note">{capitalize(note)}</Tag>}
     </div>
   );
 }
@@ -131,16 +135,21 @@ function Compare({ plans }: { plans: PlanDef[] }) {
   );
 }
 
-/** Chọn gói: thanh thành viên, hai tab chu kỳ, bốn thẻ gói, ghi chú luật, bảng so sánh. */
-function Choose({ s, cycle, setCycle, linkTo }: { s: PlanStatus; cycle: PlanCycle; setCycle: (c: PlanCycle) => void; linkTo: (key: PlanKey) => string }) {
+/** Chọn gói: thanh thành viên, các tab kỳ hạn đang bán, các thẻ gói bán kỳ đang chọn, ghi chú luật, bảng so sánh. */
+function Choose({ s, cycles, cycle, setCycle, linkTo }: { s: PlanStatus; cycles: PlanCycle[]; cycle: PlanCycle; setCycle: (c: PlanCycle) => void; linkTo: (key: PlanKey) => string }) {
   const cards = tierCards(s.plans, s.plan, s.community.memberCount, cycle, new Date());
+  const longest = cycles.at(-1);
   return (
     <>
       <HoiHeader s={s} />
-      <div className="flex flex-col items-center gap-2.5 pt-2">
-        <CycleTabs cycle={cycle} onPick={setCycle} yearNote />
-        <span className="text-[14px] text-center" style={{ color: T.ink3 }}>{cycle === 'yearly' ? 'Trả 1 năm chỉ tính tiền 10 tháng.' : 'Trả 3 tháng một lần. Chọn 1 năm để được tặng 2 tháng.'}</span>
-      </div>
+      {cycles.length > 0
+        ? (
+          <div className="flex flex-col items-center gap-2.5 pt-2">
+            <CycleTabs cycles={cycles} cycle={cycle} onPick={setCycle} note={longest ? cycleSaving(s.plans, longest) : ''} />
+            <span className="text-[14px] text-center" style={{ color: T.ink3 }}>{cycleHint(s.plans, cycle)}</span>
+          </div>
+        )
+        : <div className="text-[15px] rounded-[12px] px-4 py-3" style={{ background: T.goldSoft, color: T.goldText }}>Hội Mình hiện chưa mở bán gói trả phí. Bạn quay lại sau nhé.</div>}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start">
         {cards.map((t) => <Tier key={t.key} t={t} to={linkTo(t.key)} canBuy={s.canBuy} />)}
       </div>
@@ -222,7 +231,7 @@ function Upgrade({ s, target, cycle, setCycle, backTo, linkTo, autoPay }: { s: P
       </div>
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         <div className="card flex flex-col gap-4 p-5 md:p-6 w-full lg:flex-[1.3_1_0] min-w-0">
-          <div className="self-start"><CycleTabs cycle={cycle} onPick={setCycle} /></div>
+          <div className="self-start"><CycleTabs cycles={planCyclesOf(target)} cycle={cycle} onPick={setCycle} /></div>
           <div className="flex flex-col">
             <Row label={u.buyLabel} value={u.buyDays} />
             {u.carryLabel && <Row label={u.carryLabel} hint={u.carryHint} value={u.carryDays} tone={T.tealText} />}
@@ -281,13 +290,18 @@ function PlanOf({ communityId, owned }: { communityId: string; owned: WorkspaceH
   return (
     <QueryState q={q} rows={4}>
       {(s) => {
-        // Chu kỳ mặc định: chu kỳ đang trả, chưa trả lần nào thì 1 năm (rẻ hơn mỗi tháng).
-        const cycle: PlanCycle = cycleParam.success ? cycleParam.data : s.cycle ?? 'yearly';
+        // Chỉ các kỳ quản trị đang bán (giá lớn hơn 0) mới hiện. Kỳ mặc định: kỳ trên địa chỉ, rồi kỳ đang trả, chưa trả
+        // lần nào thì 1 năm (rẻ hơn mỗi tháng); kỳ đó không còn bán thì lấy kỳ dài nhất đang bán.
+        const wanted = [cycleParam.success ? cycleParam.data : null, s.cycle, 'yearly' as const];
+        const cycles = soldCycles(s.plans);
+        const cycle: PlanCycle = pickCycle(cycles, ...wanted) ?? 'yearly';
         const picked = params.get('goi') ?? '';
-        const target = isPlanKey(picked) && picked !== 'free' ? s.plans.find((p) => p.key === picked) ?? null : null;
+        const found = isPlanKey(picked) && picked !== 'free' ? s.plans.find((p) => p.key === picked) ?? null : null;
+        // Gói không bán kỳ nào (mọi giá đều 0) thì không có màn mua: quay về danh sách gói.
+        const targetCycle = found ? pickCycle(planCyclesOf(found), ...wanted) : null;
         const base = `/admin/goi?hoi=${s.community.slug}`;
-        const linkTo = (key: PlanKey) => `${base}&goi=${key}&ky=${cycle}`;
-        if (target) return <Upgrade s={s} target={target} cycle={cycle} setCycle={(c) => set({ ky: c })} backTo={`${base}&ky=${cycle}`} linkTo={linkTo} autoPay={params.get('tra') === '1' && s.canBuy} />;
+        const linkTo = (key: PlanKey) => `${base}&goi=${key}&ky=${targetCycle ?? cycle}`;
+        if (found && targetCycle) return <Upgrade s={s} target={found} cycle={targetCycle} setCycle={(c) => set({ ky: c })} backTo={`${base}&ky=${targetCycle}`} linkTo={linkTo} autoPay={params.get('tra') === '1' && s.canBuy} />;
         return (
           <>
             <div className="flex flex-col gap-2">
@@ -302,7 +316,7 @@ function PlanOf({ communityId, owned }: { communityId: string; owned: WorkspaceH
                 ))}
               </div>
             )}
-            <Choose s={s} cycle={cycle} setCycle={(c) => set({ ky: c })} linkTo={linkTo} />
+            <Choose s={s} cycles={cycles} cycle={cycle} setCycle={(c) => set({ ky: c })} linkTo={linkTo} />
           </>
         );
       }}

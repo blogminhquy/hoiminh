@@ -6,7 +6,8 @@ import { users } from './users';
 
 /**
  * Bảng gói (kế hoạch 11/11/2026): bốn gói `free`, `starter`, `pro`, `unlimited`, mỗi gói cho một hội.
- * Quản trị chỉ nhập `monthlyMinor`; giá 3 tháng = 3 lần, giá 1 năm = 10 lần (cột `yearlyMinor` giữ bản sao của 10 lần).
+ * Giá từng kỳ (1 tháng, 3 tháng, 6 tháng, 1 năm) do quản trị nhập và nằm ở `cyclePrices`; 0 là không bán kỳ đó.
+ * `monthlyMinor` và `yearlyMinor` là hai cột cũ, giữ bản sao giá 1 tháng và 1 năm để không phải xóa dữ liệu.
  * `quotas.members` là trần thành viên (null = không giới hạn); `features` là các tính năng trả phí được bật.
  */
 export const plans = pgTable('plans', {
@@ -15,6 +16,8 @@ export const plans = pgTable('plans', {
   description: text('description').notNull().default(''),
   monthlyMinor: money('monthly_minor').notNull(),
   yearlyMinor: money('yearly_minor').notNull(),
+  /** Giá từng kỳ, đồng. null ở dòng có trước ngày 21/11/2026: khi đó 3 tháng = 3 lần `monthlyMinor`, 1 năm = `yearlyMinor`. */
+  cyclePrices: jsonb('cycle_prices').$type<{ monthly: number; quarterly: number; semiannual: number; yearly: number }>(),
   /** Không còn dùng thử (luôn 0); cột giữ lại để không phải xóa dữ liệu. */
   trialDays: integer('trial_days').notNull().default(0),
   quotas: jsonb('quotas').$type<Record<string, number | null>>().notNull().default({}),
@@ -37,7 +40,7 @@ export const platformSubscriptions = pgTable(
     communityId: uuid('community_id').notNull().references(() => communities.id, { onDelete: 'cascade' }),
     planKey: text('plan_key').notNull().references(() => plans.key),
     status: text('status').$type<'active' | 'expired' | 'cancelled'>().notNull().default('active'),
-    billingCycle: text('billing_cycle').$type<'quarterly' | 'yearly'>().notNull().default('quarterly'),
+    billingCycle: text('billing_cycle').$type<'monthly' | 'quarterly' | 'semiannual' | 'yearly'>().notNull().default('quarterly'),
     currentPeriodStart: ts('current_period_start').notNull(),
     currentPeriodEnd: ts('current_period_end').notNull(),
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
