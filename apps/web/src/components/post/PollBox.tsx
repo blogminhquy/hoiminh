@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, T } from '@hoiminh/ui';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { useJoinGate } from '@/lib/community';
 
 export interface Poll {
   id: string;
@@ -16,6 +17,7 @@ export interface Poll {
 
 export function PollBox({ poll, disabled }: { poll: Poll; disabled?: boolean }) {
   const qc = useQueryClient();
+  const gate = useJoinGate();
   const [picked, setPicked] = useState<string[]>(poll.myVotes);
   const closed = poll.closesAt ? new Date(poll.closesAt) < new Date() : false;
   const voted = poll.myVotes.length > 0;
@@ -42,7 +44,7 @@ export function PollBox({ poll, disabled }: { poll: Poll; disabled?: boolean }) 
       })}
       <div className="flex items-center gap-2 pt-1">
         <span className="muted text-[12px] flex-grow">{poll.totalVotes} bình chọn{closed ? ' · đã đóng' : poll.closesAt ? ` · đóng ${new Date(poll.closesAt).toLocaleDateString('vi-VN')}` : ''}</span>
-        {!closed && !disabled && <Button size="sm" variant="dark" loading={m.isPending} disabled={!picked.length} onClick={() => m.mutate()}>{voted ? 'Đổi bình chọn' : 'Bình chọn'}</Button>}
+        {!closed && !disabled && <Button size="sm" variant="dark" loading={m.isPending} disabled={!picked.length} onClick={() => (gate.guest ? gate.askJoin() : m.mutate())}>{voted ? 'Đổi bình chọn' : 'Bình chọn'}</Button>}
       </div>
     </div>
   );

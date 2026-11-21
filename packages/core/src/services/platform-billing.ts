@@ -1,7 +1,8 @@
-// Gói Hội Mình (kế hoạch 11/11/2026): bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm, không dùng thử.
+// Gói Hội Mình (kế hoạch 11/11/2026, sửa 21/11/2026): bốn gói, mỗi gói cho một hội, bốn kỳ 1 tháng, 3 tháng, 6 tháng
+// và 1 năm với giá riêng từng kỳ (0 là không bán kỳ đó), không dùng thử.
 // Mua, gia hạn, nâng gói (tặng ngày còn lại), nhắc hạn 7/3/1 ngày, hết hạn thì hội về gói Miễn phí, không xóa dữ liệu.
 import { BUSINESS } from '@hoiminh/config';
-import { PLAN_CYCLE, PLAN_DEFAULTS, PLAN_KEYS, planDaysLeft, planPerMonth, planQuote, planRank, effectivePlanKey, type PlanCycle, type PlanDef, type PlanKey, type SavePlansInput } from '@hoiminh/contracts';
+import { NO_PRICES, PLAN_CYCLE, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_KEYS, planCyclesOf, planDaysLeft, planPerMonth, planQuote, planRank, effectivePlanKey, type PlanCycle, type PlanDef, type PlanKey, type SavePlansInput } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { communities, platformSubscriptions, plans, users, workspaces } from '@hoiminh/db';
@@ -111,39 +112,48 @@ export async function runPlatformBillingCron(ctx: Ctx): Promise<{ reminded: numb
 }
 
 /**
- * Super admin lưu bảng gói: giá mỗi tháng, trần thành viên, tính năng của từng gói. Giá 3 tháng và 1 năm tự tính
- * (3 lần và 10 lần giá tháng). Tên gói, số gói và hai chu kỳ là luật cố định, không sửa ở đây.
+ * Super admin lưu bảng gói: giá từng kỳ (1 tháng, 3 tháng, 6 tháng, 1 năm), trần thành viên, tính năng của từng gói.
+ * Giá kỳ nào bằng 0 thì gói không bán kỳ đó. Tên gói, số gói và bốn kỳ là luật cố định, không sửa ở đây.
  */
 export async function savePlans(ctx: Ctx, input: SavePlansInput): Promise<PlanDef[]> {
   requireSuperAdmin(ctx);
   const current = await planTable(ctx);
   const next = current.map((p) => {
     const patch = input.plans.find((x) => x.key === p.key);
-    return patch ? { ...p, monthlyMinor: patch.monthlyMinor, memberCap: patch.memberCap, features: [...patch.features] } : p;
+    return patch ? { ...p, prices: { ...NO_PRICES, ...patch.prices }, memberCap: patch.memberCap, features: [...patch.features] } : p;
   });
   for (const p of next) {
+    for (const c of PLAN_CYCLES) if (!Number.isInteger(p.prices[c]) || p.prices[c] < 0) throw invalid(`Giá ${PLAN_CYCLE[c].label} của gói ${p.name} phải là số nguyên từ 0 trở lên (0 là không bán kỳ đó)`);
     if (p.key === 'free') {
-      if (p.monthlyMinor !== 0) throw invalid('Gói Miễn phí luôn có giá 0đ');
+      if (PLAN_CYCLES.some((c) => p.prices[c] !== 0)) throw invalid('Gói Miễn phí luôn có giá 0đ');
       if (p.memberCap === null) throw invalid('Gói Miễn phí cần có trần thành viên');
-    } else if (!Number.isInteger(p.monthlyMinor) || p.monthlyMinor <= 0) throw invalid(`Giá mỗi tháng của gói ${p.name} phải là số nguyên lớn hơn 0`);
+    }
     if (p.memberCap !== null && (!Number.isInteger(p.memberCap) || p.memberCap < 1)) throw invalid(`Trần thành viên của gói ${p.name} phải từ 1 trở lên, hoặc để trống nếu không giới hạn`);
+    // Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn: gần như chắc chắn là gõ thiếu một số 0.
+    const sold = planCyclesOf(p);
+    for (let i = 1; i < sold.length; i++) {
+      const short = sold[i - 1]!, long = sold[i]!;
+      if (p.prices[long] < p.prices[short]) throw invalid(`Gói ${p.name}: giá ${PLAN_CYCLE[long].label} không được thấp hơn giá ${PLAN_CYCLE[short].label}`);
+    }
   }
-  // Gói cao hơn không được rẻ hơn hay chứa ít người hơn gói thấp hơn, nếu không "nâng gói" mất nghĩa.
+  // Gói cao hơn không được rẻ hơn (ở kỳ mà cả hai cùng bán) hay chứa ít người hơn gói thấp hơn, nếu không "nâng gói" mất nghĩa.
   for (let i = 1; i < next.length; i++) {
     const lo = next[i - 1]!, hi = next[i]!;
-    if (hi.monthlyMinor < lo.monthlyMinor) throw invalid(`Gói ${hi.name} không được rẻ hơn gói ${lo.name}`);
+    for (const c of PLAN_CYCLES) {
+      if (lo.key !== 'free' && hi.prices[c] > 0 && lo.prices[c] > 0 && hi.prices[c] < lo.prices[c]) throw invalid(`Gói ${hi.name} không được rẻ hơn gói ${lo.name} ở kỳ ${PLAN_CYCLE[c].label}`);
+    }
     if (lo.memberCap === null ? hi.memberCap !== null : hi.memberCap !== null && hi.memberCap < lo.memberCap) throw invalid(`Trần thành viên của gói ${hi.name} không được thấp hơn gói ${lo.name}`);
   }
   for (const p of next) {
     const def = PLAN_DEFAULTS.find((d) => d.key === p.key)!;
-    const values = { name: def.name, monthlyMinor: p.monthlyMinor, yearlyMinor: p.monthlyMinor * PLAN_CYCLE.yearly.priceMonths, trialDays: 0, quotas: { members: p.memberCap }, features: p.features, paymentMode: 'gateway' as const, isActive: true, sortOrder: planRank(p.key), updatedAt: ctx.now() };
+    const values = { name: def.name, monthlyMinor: p.prices.monthly, yearlyMinor: p.prices.yearly, cyclePrices: { ...p.prices }, trialDays: 0, quotas: { members: p.memberCap }, features: p.features, paymentMode: 'gateway' as const, isActive: true, sortOrder: planRank(p.key), updatedAt: ctx.now() };
     await ctx.db.insert(plans).values({ key: p.key, ...values }).onConflictDoUpdate({ target: plans.key, set: values });
   }
-  await audit(ctx, { action: 'plan.save', resourceType: 'plan', resourceId: 'all', metadata: { plans: next.map((p) => ({ key: p.key, monthlyMinor: p.monthlyMinor, memberCap: p.memberCap, features: p.features })) } });
+  await audit(ctx, { action: 'plan.save', resourceType: 'plan', resourceId: 'all', metadata: { plans: next.map((p) => ({ key: p.key, prices: p.prices, memberCap: p.memberCap, features: p.features })) } });
   return planTable(ctx);
 }
 
-/** Số liệu gói cho màn quản trị: bảng bốn gói kèm số hội đang dùng từng gói và doanh thu quy ra tháng. */
+/** Số liệu gói cho màn quản trị: bảng bốn gói kèm số hội đang dùng từng gói theo từng kỳ và doanh thu quy ra tháng. */
 export async function planStats(ctx: Ctx) {
   requireSuperAdmin(ctx);
   const table = await planTable(ctx);
@@ -153,18 +163,17 @@ export async function planStats(ctx: Ctx) {
     where s.status = 'active' and s.current_period_end > ${ctx.now().toISOString()}::timestamptz and c.deleted_at is null
     group by s.plan_key, s.billing_cycle`);
   const [total] = await raw<{ n: number }>(ctx.db, sql`select count(*)::int as n from communities where deleted_at is null`);
-  const count = (key: PlanKey, cycle: PlanCycle) => Number(rows.find((r) => r.plan_key === key && r.billing_cycle === cycle)?.n ?? 0);
-  const paidKeys = PLAN_KEYS.filter((k) => k !== 'free');
-  const paidTotal = paidKeys.reduce((n, k) => n + count(k, 'quarterly') + count(k, 'yearly'), 0);
+  const count = (key: PlanKey, cycle: PlanCycle) => (key === 'free' ? 0 : Number(rows.find((r) => r.plan_key === key && r.billing_cycle === cycle)?.n ?? 0));
+  const sum = (key: PlanKey) => PLAN_CYCLES.reduce((n, c) => n + count(key, c), 0);
+  const paidTotal = PLAN_KEYS.reduce((n, k) => n + sum(k), 0);
   const plansOut = table.map((p) => {
-    const quarterly = p.key === 'free' ? 0 : count(p.key, 'quarterly');
-    const yearly = p.key === 'free' ? 0 : count(p.key, 'yearly');
+    const cycleCounts = Object.fromEntries(PLAN_CYCLES.map((c) => [c, count(p.key, c)])) as Record<PlanCycle, number>;
     return {
       ...p,
-      communities: p.key === 'free' ? Math.max(Number(total?.n ?? 0) - paidTotal, 0) : quarterly + yearly,
-      quarterlyCount: quarterly,
-      yearlyCount: yearly,
-      mrrMinor: quarterly * planPerMonth(p.monthlyMinor, 'quarterly') + yearly * planPerMonth(p.monthlyMinor, 'yearly'),
+      communities: p.key === 'free' ? Math.max(Number(total?.n ?? 0) - paidTotal, 0) : sum(p.key),
+      cycleCounts,
+      // Quy ra tháng theo giá đang niêm yết của kỳ hội đang trả. Kỳ đã ngừng bán (giá 0) thì không tính được nên bằng 0.
+      mrrMinor: PLAN_CYCLES.reduce((n, c) => n + cycleCounts[c] * planPerMonth(p, c), 0),
     };
   });
   return { plans: plansOut, paidCommunities: paidTotal, totalCommunities: Number(total?.n ?? 0), mrrMinor: plansOut.reduce((n, p) => n + p.mrrMinor, 0) };

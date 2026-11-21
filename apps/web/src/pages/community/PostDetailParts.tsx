@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
 import { api, errorMessage } from '@/lib/api';
+import { useJoinGate } from '@/lib/community';
 import { fmtDate } from '@/lib/format';
 
 export interface PostAuthor extends UserLite { id: string; bio: string | null; level: number; joinedAt: string | null; postCount: number; tierId: string | null }
@@ -15,6 +16,7 @@ export function AuthorCard({ author, communityId }: { author: PostAuthor; commun
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [following, setFollowing] = useState(false);
+  const gate = useJoinGate();
   const send = useMutation({
     mutationFn: () => api.post('/v1/me/messages', { recipientUserId: author.id, communityId, body: body.trim() }),
     onSuccess: () => { setOpen(false); navigate('/tin-nhan'); },
@@ -31,7 +33,7 @@ export function AuthorCard({ author, communityId }: { author: PostAuthor; commun
       {author.bio && <div className="text-[13px]" style={{ color: T.ink2 }}>{author.bio}</div>}
       <div className="flex gap-2">
         <Button size="sm" className="flex-1" icon={<UserPlus size={14} />} onClick={() => setFollowing((v) => !v)} aria-pressed={following}>{following ? 'Đang theo dõi' : 'Theo dõi'}</Button>
-        <Button size="sm" variant="dark" className="flex-1" icon={<MessageCircle size={14} />} onClick={() => setOpen(true)}>Nhắn tin</Button>
+        <Button size="sm" variant="dark" className="flex-1" icon={<MessageCircle size={14} />} onClick={() => (gate.guest ? gate.askJoin() : setOpen(true))}>Nhắn tin</Button>
       </div>
       <Modal open={open} onClose={() => setOpen(false)} title={`Nhắn tin cho ${author.name}`} width={520}>
         <div className="p-5 flex flex-col gap-3">

@@ -3,9 +3,9 @@
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
 // Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, LayoutDashboard, Lock, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
+import { Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
@@ -15,10 +15,12 @@ import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
-import { canManage, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
+import { canManage, isGuest, JoinGateProvider, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
+import { guestCanOpen, guestHome } from '@/lib/guest';
 import { movedSlugPath } from '@/lib/referral';
 import { useSidebarCollapsed } from '@/lib/sidebar';
 import { CommunitySwitcher } from './CommunitySwitcher';
+import { GuestBanner, JoinPrompt } from './GuestBits';
 import { SidebarToggle } from './SidebarToggle';
 import { OwnerCommandPalette } from './OwnerCommand';
 import { PublicHeader } from './PublicHeader';
@@ -44,7 +46,9 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
   const perms = shell.viewer.permissions;
   const manage = canManage(shell);
   const tabs = shell.community.tabs;
-  const canPost = tabs.feed !== false;
+  // Khách xem hội mở: chỉ các mục xem được, mục đầu là trang giới thiệu, nút cuối là "Tham gia hội".
+  const guest = isGuest(shell);
+  const canPost = tabs.feed !== false && !guest;
   const invite = <button type="button" className="btn w-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} title={collapsed ? 'Mời thành viên' : undefined} aria-label={collapsed ? 'Mời thành viên' : undefined} onClick={onInvite}><Plus size={18} /><span className="nav-label">Mời thành viên</span></button>;
   // Hội tắt Bảng tin thì không có nút Viết bài: nút Mời thành viên lên chỗ ghim.
   const inviteInFoot = pinInvite || !canPost;
@@ -52,14 +56,14 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
     <>
       <div className="side-scroll flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="flex flex-col gap-0.5 pt-3">
-        {manage ? <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
+        {guest ? <NavItem collapsed={collapsed} to={`/${s}`} end icon={<Info size={20} />} label="Giới thiệu hội" /> : manage ? <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<LayoutDashboard size={20} />} label="Bàn điều khiển" /> : <NavItem collapsed={collapsed} to={`/${s}/hom-nay`} icon={<Sun size={20} />} label="Hôm nay" />}
       </div>
       <div className="nav-group">Hội</div>
       <div className="flex flex-col gap-0.5">
         {tabs.feed !== false && <NavItem collapsed={collapsed} to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
         {tabs.events !== false && <NavItem collapsed={collapsed} to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
         {tabs.members !== false && <NavItem collapsed={collapsed} to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
-        {tabs.affiliate !== false && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng affiliate" />}
+        {tabs.affiliate !== false && !guest && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng affiliate" />}
       </div>
       {(tabs.courses !== false || tabs.store !== false) && (
         <>
@@ -81,11 +85,11 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
           </div>
         </>
       )}
-      {!inviteInFoot && <div className="pt-4 pb-1">{invite}</div>}
+      {!inviteInFoot && !guest && <div className="pt-4 pb-1">{invite}</div>}
       </div>
       <div className="flex flex-col gap-2 pt-3 flex-shrink-0">
         {canPost && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full" title={collapsed ? 'Viết bài' : undefined} aria-label={collapsed ? 'Viết bài' : undefined}><Pencil size={18} /><span className="nav-label">Viết bài</span></Link>}
-        {inviteInFoot && invite}
+        {guest ? <Link to={`/${s}`} className="btn btn-gold w-full" title={collapsed ? 'Tham gia hội' : undefined} aria-label={collapsed ? 'Tham gia hội' : undefined}><Plus size={18} /><span className="nav-label">Tham gia hội</span></Link> : inviteInFoot && invite}
       </div>
     </>
   );
@@ -166,6 +170,9 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
   const [switching, setSwitching] = useState(false);
   const slug = shell.community.slug;
   const manage = canManage(shell);
+  const location = useLocation();
+  // Khách xem hội mở: tên hội dẫn về trang mở đầu của khách; chưa đăng nhập thì chỗ tin nhắn, thông báo là nút Đăng nhập.
+  const home = isGuest(shell) ? guestHome(slug, shell.community.tabs) : `/${slug}/hom-nay`;
   const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
   const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
   const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
@@ -174,17 +181,24 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
       <header className="app-header flex items-center gap-2 md:gap-4 px-4 md:px-8 flex-shrink-0" style={{ height: 64, borderBottom: `1px solid ${T.line}`, background: T.surface }}>
         {/* Điện thoại: nút mở menu, rồi tên hội (tối đa hai dòng để hiện đủ chữ). Chuyển hội nằm trong menu. */}
         <button type="button" aria-label="Mở menu" aria-haspopup="dialog" onClick={onMenu} className="md:hidden w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={iconBtn}><Menu size={22} /></button>
-        <Link to={`/${slug}/hom-nay`} className="flex md:hidden items-center min-w-0 flex-1">
+        <Link to={home} className="flex md:hidden items-center min-w-0 flex-1">
           <span className="font-bold text-[15px] leading-[1.25] line-clamp-2" style={{ color: T.ink, overflowWrap: 'anywhere' }}>{shell.community.name}</span>
         </Link>
         {/* Máy tính: logo và tên hội đứng đầu header, cạnh ô tìm, bấm vào để chuyển hội. */}
         <div className="relative min-w-0 hidden md:flex">
-          <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${shell.community.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="flex items-center gap-2.5 min-w-0 text-left min-h-[44px]">
-            <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={36} radius={10} />
-            <span className="font-bold text-[17px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
-            <ChevronsUpDown size={18} className="flex-shrink-0" style={{ color: T.ink3 }} />
-          </button>
-          {switching && <CommunitySwitcher current={slug} onClose={() => setSwitching(false)} />}
+          {user ? (
+            <button type="button" aria-haspopup="menu" aria-expanded={switching} aria-label={`${shell.community.name}, chuyển hội`} onClick={() => setSwitching((v) => !v)} className="flex items-center gap-2.5 min-w-0 text-left min-h-[44px]">
+              <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={36} radius={10} />
+              <span className="font-bold text-[17px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+              <ChevronsUpDown size={18} className="flex-shrink-0" style={{ color: T.ink3 }} />
+            </button>
+          ) : (
+            <Link to={home} className="flex items-center gap-2.5 min-w-0 min-h-[44px]">
+              <CommunityMark mark={shell.community.logoMark} color={shell.community.logoColor} url={shell.community.logoUrl} size={36} radius={10} />
+              <span className="font-bold text-[17px] truncate" style={{ color: T.ink }}>{shell.community.name}</span>
+            </Link>
+          )}
+          {user && switching && <CommunitySwitcher current={slug} onClose={() => setSwitching(false)} />}
         </div>
         {/* Người quản lý có ô lệnh (làm việc, đi tới, cài đặt, tìm); thành viên giữ ô tìm trong bảng tin. */}
         {/* Hệ số co 100: khi header hẹp, ô tìm co trước (tới 180px), tên hội giữ đủ chữ lâu nhất có thể rồi mới cắt. */}
@@ -201,9 +215,13 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
           {manage
             ? <span className="md:hidden"><CommandButton compact onOpen={onCommand} /></span>
             : <button type="button" aria-label="Tìm kiếm" aria-expanded={searching} onClick={() => setSearching((v) => !v)} className="md:hidden relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}>{searching ? <X size={20} /> : <Search size={20} />}</button>}
-          <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
-          <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
-          <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
+          {user ? (
+            <>
+              <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
+              <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
+              <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
+            </>
+          ) : <span className="hide-mobile"><Link to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} className="btn btn-ghost">Đăng nhập</Link></span>}
         </div>
       </header>
       {searching && (
@@ -234,7 +252,9 @@ export function inOpenChat(pathname: string, search: string): boolean {
 }
 
 function MobileTabs({ shell }: { shell: Shell }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const { user } = useAuth();
+  const guest = isGuest(shell);
   const slug = shell.community.slug;
   const t = shell.community.tabs;
   const active = mobileSection(pathname, slug);
@@ -245,11 +265,12 @@ function MobileTabs({ shell }: { shell: Shell }) {
   );
   return (
     <nav className="mobile-tabs" aria-label="Điều hướng chính">
-      {canManage(shell) ? item('today', `/${slug}/hom-nay`, <LayoutDashboard size={22} />, 'Quản lý') : item('today', `/${slug}/hom-nay`, <Sun size={22} />, 'Hôm nay')}
+      {guest ? item('about', `/${slug}`, <Info size={22} />, 'Giới thiệu') : canManage(shell) ? item('today', `/${slug}/hom-nay`, <LayoutDashboard size={22} />, 'Quản lý') : item('today', `/${slug}/hom-nay`, <Sun size={22} />, 'Hôm nay')}
       {(t.courses !== false || t.store !== false) && item('learn', learnTo, <BookOpen size={22} />, 'Học')}
-      {t.feed !== false && <Link to={`/${slug}/bang-tin/moi`} aria-label="Viết bài mới" className="mobile-tab-plus"><Plus size={26} /></Link>}
+      {/* Khách xem hội mở: nút giữa là "Tham gia hội" (về trang giới thiệu) thay cho nút viết bài. */}
+      {guest ? <Link to={`/${slug}`} aria-label="Tham gia hội" className="mobile-tab-plus"><Plus size={26} /></Link> : t.feed !== false && <Link to={`/${slug}/bang-tin/moi`} aria-label="Viết bài mới" className="mobile-tab-plus"><Plus size={26} /></Link>}
       {item('community', communityTo, <Users size={22} />, 'Hội')}
-      {item('me', '/tai-khoan', <User size={22} />, 'Tôi')}
+      {user ? item('me', '/tai-khoan', <User size={22} />, 'Tôi') : item('login', `/dang-nhap?next=${encodeURIComponent(pathname + search)}`, <LogIn size={22} />, 'Đăng nhập')}
     </nav>
   );
 }
@@ -264,13 +285,18 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const [invite, setInvite] = useState(false);
   const [command, setCommand] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const [joinAsk, setJoinAsk] = useState(false);
+  const guestMode = Boolean(params.slug && shell.data && isGuest(shell.data));
+  const joinGate = useMemo(() => ({ guest: guestMode, askJoin: () => setJoinAsk(true) }), [guestMode]);
   const toggleCommand = useCallback(() => setCommand((v) => !v), []);
   useCommandHotkey(toggleCommand, Boolean(shell.data && canManage(shell.data)));
   useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(shell.data.community.slug); }, [params.slug, shell.data]);
   const communityId = shell.data?.community.id;
   useEffect(() => { if (communityId && user) void api.post(`/v1/communities/${communityId}/touch`).catch(() => null); }, [user, communityId]);
-  if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  const toLogin = <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
+  // Người chưa đăng nhập chỉ vào được trang trong hội khi hội đó mở (xét ở dưới, sau khi có khung hội). Mọi trường hợp khác về trang đăng nhập.
+  if (!user && !params.slug) return toLogin;
   if (!slug) {
     // Trang trong hội thì phải có hội. Còn Tài khoản, Tin nhắn, Thông báo, hồ sơ người khác là của
     // riêng người dùng — người chưa vào hội nào (vừa đăng ký, hoặc quản trị hệ thống) vẫn phải mở được.
@@ -285,19 +311,29 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
     );
   }
   if (shell.isLoading) return <div className="p-8"><LoadingBlock /></div>;
-  if (shell.isError) return <div className="p-8"><ErrorBox message={errorMessage(shell.error)} onRetry={() => void shell.refetch()} /></div>;
+  if (shell.isError) return user ? <div className="p-8"><ErrorBox message={errorMessage(shell.error)} onRetry={() => void shell.refetch()} /></div> : toLogin;
   const data = shell.data!;
   // Hội đã đổi đường dẫn: link cũ (thông báo, link đã lưu) chuyển sang đường dẫn mới, giữ nguyên trang đang mở.
   const moved = movedSlugPath(location, params.slug, data.community.slug);
   if (moved) return <Navigate to={moved} replace />;
-  if (requireMember && !data.viewer.isMember && params.slug) return <Navigate to={`/${slug}`} replace />;
+  // Hội mở: người chưa là thành viên (kể cả chưa đăng nhập) vào xem được các trang chỉ đọc. Hội kín thì như cũ:
+  // chưa đăng nhập về trang đăng nhập, đã đăng nhập mà chưa vào hội về trang giới thiệu.
+  const guest = isGuest(data);
+  const openGuest = guest && Boolean(params.slug) && data.community.visibility === 'public' && data.viewer.canView;
+  if (!user && !openGuest) return toLogin;
+  if (requireMember && guest && params.slug) {
+    if (!openGuest) return <Navigate to={`/${slug}`} replace />;
+    if (!guestCanOpen(location.pathname, data.community.slug)) return <Navigate to={guestHome(data.community.slug, data.community.tabs)} replace />;
+  }
   return (
     <ShellProvider value={data}>
+    <JoinGateProvider value={joinGate}>
       <div className="flex min-h-screen" style={{ background: T.bg }}>
         <Sidebar shell={data} onInvite={() => setInvite(true)} />
         <div className="flex-grow flex flex-col min-w-0">
           <Header shell={data} onCommand={() => setCommand(true)} onMenu={() => setDrawer(true)} />
           <div className="app-content flex-grow" style={{ padding: '28px 32px' }}>
+            {openGuest && <GuestBanner shell={data} />}
             <Outlet />
           </div>
         </div>
@@ -307,8 +343,10 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
         {drawer && <MobileDrawer shell={data} onInvite={() => setInvite(true)} onClose={() => setDrawer(false)} />}
         {canManage(data) && <OwnerCommandPalette shell={data} open={command} onClose={() => setCommand(false)} />}
         <InviteModal open={invite} onClose={() => setInvite(false)} communityId={data.community.id} slug={data.community.slug} canInvite={data.viewer.permissions.includes('member.manage')} />
-        <PushPrompt />
+        {user && <PushPrompt />}
+        {openGuest && <JoinPrompt shell={data} open={joinAsk} onClose={() => setJoinAsk(false)} />}
       </div>
+    </JoinGateProvider>
     </ShellProvider>
   );
 }

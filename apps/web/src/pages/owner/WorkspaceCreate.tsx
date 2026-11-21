@@ -3,12 +3,12 @@
 // hội được tạo ở trạng thái chờ thanh toán rồi chuyển thẳng sang màn thanh toán gói. Không có dùng thử.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Field, Input, T, Textarea, money } from '@hoiminh/ui';
-import { planPrice, toSlug, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
+import { pickCycle, planPerMonth, planPrice, planSells, soldCycles, toSlug, type PlanCycle, type PlanDef, type PlanKey } from '@hoiminh/contracts';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
-import { CYCLES, capLabel, cycleLabel } from '@/lib/platform-plan';
+import { capLabel, cycleHint, cycleLabel } from '@/lib/platform-plan';
 import { WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 import { Done, ModePicker, STEPS, SlugInput, StepBar, TemplatePicker, useSlugCheck, type PricingMode, type Template } from './WorkspaceCreateParts';
 import { PLANS_QUERY } from './WorkspacePlanCard';
@@ -19,9 +19,11 @@ interface Created { id: string; slug: string; name: string; needsPlan: boolean }
 const FREE_STEPS: readonly string[] = STEPS;
 const PAID_STEPS: readonly string[] = [...STEPS.slice(0, 5), 'Gói', 'Xong'];
 
-/** Bước "Gói" của hội thứ hai trở đi: ba gói trả phí, hai chu kỳ, tổng tiền. */
+/** Bước "Gói" của hội thứ hai trở đi: các gói trả phí bán kỳ đang chọn, các kỳ đang bán, tổng tiền. */
 function PlanStep({ plans, planKey, cycle, onPlan, onCycle }: { plans: PlanDef[]; planKey: PlanKey; cycle: PlanCycle; onPlan: (k: PlanKey) => void; onCycle: (c: PlanCycle) => void }) {
-  const paid = plans.filter((p) => p.key !== 'free');
+  const cycles = soldCycles(plans);
+  const paid = plans.filter((p) => p.key !== 'free' && planSells(p, cycle));
+  if (!cycles.length) return <div className="text-[15px] rounded-[12px] px-4 py-3" style={{ background: T.goldSoft, color: T.goldText }}>Hội Mình hiện chưa mở bán gói trả phí nên chưa tạo thêm hội được. Bạn quay lại sau nhé.</div>;
   return (
     <div className="flex flex-col gap-4">
       <span className="font-semibold text-[16px]">Gói cho hội này</span>
@@ -36,7 +38,7 @@ function PlanStep({ plans, planKey, cycle, onPlan, onCycle }: { plans: PlanDef[]
                 <span className="font-bold text-[16px]">{p.name}</span>
                 <span className="text-[14px]" style={{ color: T.ink3 }}>{capLabel(p.memberCap)}{extra}</span>
               </span>
-              <span className="font-bold text-[15px] whitespace-nowrap">{money(p.monthlyMinor)}/tháng</span>
+              <span className="font-bold text-[15px] whitespace-nowrap">{money(planPerMonth(p, cycle))}/tháng</span>
             </button>
           );
         })}
@@ -44,9 +46,10 @@ function PlanStep({ plans, planKey, cycle, onPlan, onCycle }: { plans: PlanDef[]
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[15px] font-semibold">Trả theo</span>
         <div className="seg" role="tablist" aria-label="Chu kỳ thanh toán">
-          {CYCLES.map((c) => <button key={c} type="button" role="tab" aria-selected={cycle === c} className={cycle === c ? 'on' : undefined} onClick={() => onCycle(c)}>{c === 'yearly' ? '1 năm, tặng 2 tháng' : cycleLabel(c)}</button>)}
+          {cycles.map((c) => <button key={c} type="button" role="tab" aria-selected={cycle === c} className={cycle === c ? 'on' : undefined} onClick={() => onCycle(c)}>{cycleLabel(c)}</button>)}
         </div>
       </div>
+      <span className="text-[14px]" style={{ color: T.ink3 }}>{cycleHint(plans, cycle)}</span>
     </div>
   );
 }
@@ -67,14 +70,18 @@ export default function Page() {
   const steps = paid ? PAID_STEPS : FREE_STEPS;
   const last = steps.length - 1; // bước "Xong"
   const createAt = last - 1; // bước cuối trước khi tạo
-  const picked = plans.data?.find((p) => p.key === d.planKey);
-  const total = picked ? money(planPrice(picked.monthlyMinor, d.cycle)) : '';
+  // Chỉ bán kỳ có giá lớn hơn 0: kỳ đang chọn không còn bán thì lấy kỳ dài nhất đang bán, gói đang chọn không bán kỳ
+  // đó thì lấy gói thấp nhất có bán.
+  const cycle = pickCycle(soldCycles(plans.data ?? []), d.cycle) ?? d.cycle;
+  const sellable = (plans.data ?? []).filter((p) => p.key !== 'free' && planSells(p, cycle));
+  const picked = sellable.find((p) => p.key === d.planKey) ?? sellable[0];
+  const total = picked ? money(planPrice(picked, cycle)) : '';
   const m = useMutation({
     mutationFn: () => api.post<Created>('/v1/communities', { name: d.name.trim(), slug: d.slug, shortDescription: d.shortDescription.trim(), pricingMode: d.pricingMode, template: d.template }),
     onSuccess: (c) => {
       void qc.invalidateQueries({ queryKey: WS_HOME_KEY });
       // Hội chờ thanh toán: sang thẳng màn thanh toán gói đã chọn, khung chọn cách trả mở sẵn.
-      if (c.needsPlan) navigate(`/admin/goi?hoi=${c.slug}&goi=${d.planKey}&ky=${d.cycle}&tra=1`);
+      if (c.needsPlan) navigate(picked ? `/admin/goi?hoi=${c.slug}&goi=${picked.key}&ky=${cycle}&tra=1` : `/admin/goi?hoi=${c.slug}`);
       else { setCreated(c); setStep(last); }
     },
   });
@@ -122,13 +129,13 @@ export default function Page() {
         )}
         {paid && step === 5 && (
           plans.data
-            ? <PlanStep plans={plans.data} planKey={d.planKey} cycle={d.cycle} onPlan={(planKey) => patch({ planKey })} onCycle={(cycle) => patch({ cycle })} />
+            ? <PlanStep plans={plans.data} planKey={picked?.key ?? d.planKey} cycle={cycle} onPlan={(planKey) => patch({ planKey })} onCycle={(next) => patch({ cycle: next })} />
             : <div className="text-[14px]" style={{ color: T.accentText }}>{plans.isError ? 'Chưa tải được bảng gói. Tải lại trang để thử lại.' : 'Đang tải bảng gói...'}</div>
         )}
         {step === last && created && <Done slug={created.slug} name={created.name} />}
         {paid && step === createAt && picked && (
           <div className="flex items-baseline gap-3 rounded-[12px] px-4 py-3" style={{ background: T.bg }}>
-            <span className="font-semibold">Gói {picked.name}, {cycleLabel(d.cycle)}</span>
+            <span className="font-semibold">Gói {picked.name}, {cycleLabel(cycle)}</span>
             <span className="flex-grow" />
             <span className="serif text-[20px] font-extrabold">{total}</span>
           </div>

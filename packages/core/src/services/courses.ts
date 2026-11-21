@@ -14,7 +14,8 @@ import { assertCommunityHasPlan } from './plans';
 /** Thư viện khóa học của hội: thẻ có % tiến độ, nhãn Nháp/khóa, khối "Học tiếp". */
 export async function listCourses(ctx: Ctx, communityId: string) {
   const access = await resolveCommunityAccess(ctx, communityId);
-  if (!access.permissions.has('course.read') && !access.permissions.has('course.manage')) throw forbidden('Tham gia hội để xem khóa học');
+  // Hội mở: người ngoài thấy danh sách khóa học, còn từng khóa vẫn khóa theo quyền (resolveCourseAccess trả 'not_member').
+  if (!access.canView && !access.permissions.has('course.read') && !access.permissions.has('course.manage')) throw forbidden('Tham gia hội để xem khóa học');
   const staff = access.permissions.has('course.manage');
   const userId = ctx.actor.type === 'user' ? ctx.actor.userId : null;
   const conds = [eq(courses.communityId, communityId), isNull(courses.deletedAt)];

@@ -5,6 +5,7 @@ import { T } from '@hoiminh/ui';
 import { ThumbsUp } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { api } from '@/lib/api';
+import { useJoinGate } from '@/lib/community';
 
 export type ReactionKind = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
 export const REACTIONS: Array<{ kind: ReactionKind; emoji: string; label: string; color: string }> = [
@@ -53,6 +54,8 @@ const noCallout: CSSProperties = { WebkitTouchCallout: 'none', userSelect: 'none
  */
 export function ReactionButton({ targetType, targetId, mine, variant = 'bar', className }: { targetType: 'post' | 'comment'; targetId: string; mine: string | null | undefined; variant?: 'bar' | 'text'; className?: string }) {
   const react = useReact(targetType);
+  // Khách xem hội mở bấm thả cảm xúc thì được mời tham gia hội, không gọi máy chủ.
+  const gate = useJoinGate();
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Nhấn giữ trên điện thoại mở thanh cảm xúc; lượt "click" mà trình duyệt bắn ra sau khi nhả tay không được tính là bấm Thích.
@@ -70,7 +73,7 @@ export function ReactionButton({ targetType, targetId, mine, variant = 'bar', cl
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
 
-  const pick = (kind: ReactionKind) => { clear(); setOpen(false); react.mutate({ targetId, reaction: kind }); };
+  const pick = (kind: ReactionKind) => { clear(); setOpen(false); if (gate.guest) { gate.askJoin(); return; } react.mutate({ targetId, reaction: kind }); };
   const onMainClick = () => {
     if (skipClick.current) { skipClick.current = false; return; }
     pick(current?.kind ?? 'like');

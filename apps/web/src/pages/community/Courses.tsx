@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
-import { useShell } from '@/lib/community';
+import { useJoinGate, useShell } from '@/lib/community';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { CourseMenu, type CourseMenuActions } from './CourseMenu';
 
@@ -33,6 +33,8 @@ const inProgress = (c: CourseItem) => c.status !== 'draft' && c.percent > 0 && !
 interface CardManage { canMovePrev: boolean; canMoveNext: boolean; busy: boolean; actions: CourseMenuActions }
 
 function CourseCard({ c, slug, manage }: { c: CourseItem; slug: string; manage?: CardManage }) {
+  // Khách xem hội mở: khóa nào cũng còn khóa vì chưa là thành viên, lối mở là tham gia hội.
+  const { guest } = useJoinGate();
   const s = state(c);
   const to = `/${slug}/khoa-hoc/${c.id}`;
   const meta = [`${c.lessonCount} bài`, fmtDuration(c.totalDurationSeconds, true), s === 'lock' ? 'dành cho Premium' : s === 'draft' ? 'chỉ bạn thấy' : `cập nhật ${timeAgo(c.updatedAt)}`].filter(Boolean).join(' · ');
@@ -52,7 +54,9 @@ function CourseCard({ c, slug, manage }: { c: CourseItem; slug: string; manage?:
         <Link to={to} className="font-semibold text-[15px]" style={{ color: T.ink }}>{c.title}</Link>
         <div className="muted text-[12px]">{meta}</div>
         <div className="flex-grow" />
-        {s === 'lock' ? (
+        {s === 'lock' && guest ? (
+          <Link to={`/${slug}`} className="btn btn-ghost btn-sm">Tham gia hội để học</Link>
+        ) : s === 'lock' ? (
           <Link to={c.lockReason === 'store' || c.accessMode === 'store_only' ? `/${slug}/cua-hang` : `/${slug}/thanh-toan?tier=premium&cycle=monthly`} className="btn btn-ghost btn-sm">Nâng cấp để mở</Link>
         ) : s === 'draft' ? (
           <Link to={`${to}/soan`} className="btn btn-ghost btn-sm">Tiếp tục soạn</Link>
