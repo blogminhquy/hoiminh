@@ -3,9 +3,10 @@ import { AppError, type Logger } from '@hoiminh/core';
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
 
-/** Map mọi lỗi về JSON chuẩn. */
-export function errorHandler(log: Logger) {
+/** Map mọi lỗi về JSON chuẩn. `logOf` lấy logger theo request: lỗi có thể nổ trước khi authMiddleware gắn App vào context. */
+export function errorHandler(logOf: (c: Context<Env>) => Logger) {
   return (err: Error, c: Context<Env>): Response => {
+    const log = logOf(c);
     if (err instanceof AppError) {
       if (err.status >= 500) log.error('request.error', { code: err.code, message: err.message, requestId: c.get('ctx')?.requestId });
       return c.json({ code: err.code, message: err.message, details: err.details ?? undefined }, err.status as 400);
@@ -15,12 +16,13 @@ export function errorHandler(log: Logger) {
   };
 }
 
-/** Log một dòng mỗi request. */
-export function requestLog(log: Logger): MiddlewareHandler<Env> {
+/** Log một dòng mỗi request. Đặt sau authMiddleware: logger lấy từ App mà middleware đó đã gắn vào context. */
+export function requestLog(): MiddlewareHandler<Env> {
   return async (c, next) => {
     const start = Date.now();
     await next();
     const ctx = c.get('ctx');
+    const log = c.get('app').ctx.log;
     log.debug('request', { method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - start, requestId: ctx?.requestId, actor: ctx?.actor.type });
   };
 }
