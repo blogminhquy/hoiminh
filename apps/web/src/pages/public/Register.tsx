@@ -8,7 +8,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '@/layouts/AuthShell';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider, readCookie, StrengthBars } from './AuthParts';
+import { currentRef } from '@/lib/referral';
+import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider, StrengthBars } from './AuthParts';
 
 interface AboutLite {
   community: { name: string; slug: string };
@@ -19,7 +20,7 @@ export default function Page() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { setSession } = useAuth();
-  const ref = params.get('ref') ?? readCookie('hm_ref');
+  const ref = currentRef(params);
   const hoi = params.get('hoi');
   const next = params.get('next') ?? (hoi ? `/${hoi}` : null);
 
