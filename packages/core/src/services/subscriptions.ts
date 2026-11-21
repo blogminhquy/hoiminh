@@ -1,8 +1,7 @@
 // Subscription tier hội và tài khoản · Gói và thanh toán của thành viên: kích hoạt sau thanh toán, hủy gia hạn, hết kỳ → churned.
-import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt } from 'drizzle-orm';
 import { communities, communityMembers, communityTiers, entitlements, invoices, orders, payments, subscriptions } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { raw } from '../lib/db';
 import { invalidState, notFound } from '../errors';
 import { monthsOfCycle } from '@hoiminh/contracts';
 import { periodEndMonths } from '../lib/money';
@@ -48,7 +47,6 @@ export async function activateTierPurchase(ctx: Ctx, p: { orderId: string; userI
   if (!fromTierId || fromTierId !== tier.id) await ctx.db.update(communities).set({ paidMemberCount: community.paidMemberCount + 1 }).where(eq(communities.id, p.communityId));
   await ctx.db.update(entitlements).set({ status: 'revoked', revokedAt: ctx.now() }).where(and(eq(entitlements.userId, p.userId), eq(entitlements.communityId, p.communityId), eq(entitlements.resourceType, 'tier'), eq(entitlements.status, 'active')));
   await grant(ctx, { userId: p.userId, workspaceId: community.workspaceId, communityId: p.communityId, resourceType: 'tier', resourceId: tier.id, sourceType: subId ? 'subscription' : 'purchase', sourceId: subId ?? p.orderId, expiresAt: sub?.currentPeriodEnd ?? null });
-  if (p.affiliateAccountId) await raw(ctx.db, and(eq(communities.id, p.communityId)) ? sql`update affiliate_accounts set paid_count = paid_count + 1 where id = ${p.affiliateAccountId}` : sql`select 1`);
   if (!wasActive) await ctx.events.emit('member.joined', { communityId: p.communityId, userId: p.userId, memberId, source: values.source, referredByAffiliateId: values.referredByAffiliateId });
   if (fromTierId !== tier.id) await ctx.events.emit('member.tier_changed', { communityId: p.communityId, userId: p.userId, memberId, fromTierId, toTierId: tier.id, reason: 'payment' });
   return { subscriptionId: subId, memberId };

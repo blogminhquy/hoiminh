@@ -3,12 +3,12 @@ import type { CheckoutSession, CreateCheckoutInput, PaymentInstruction, PaymentP
 import type { CheckoutInput, CheckoutResult } from '@hoiminh/payments';
 import { PLAN_CYCLE, applyPromo, cycleOfMonths, effectivePlanKey, formatMoney, monthsOfCycle, planQuote, termLabel, termPrice, termUnit, tierTerms } from '@hoiminh/contracts';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, users, type OrderStatus } from '@hoiminh/db';
+import { communities, communityMembers, communityTiers, coupons, orderItems, orders, paymentAttempts, payments, products, users, type OrderStatus } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { raw } from '../lib/db';
 import { AppError, conflict, invalid, invalidState, notFound } from '../errors';
 import { applyCoupon, newReference } from '../lib/money';
 import { requireUser, requireWorkspaceRole } from '../permissions';
+import { resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { ownsProduct } from './entitlements';
 import { FLAG, requireFlag } from './feature-flags';
@@ -110,28 +110,16 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const discount = applyCoupon(r.amountMinor, coupon);
   const total = r.amountMinor - discount;
 
-  // Affiliate: ưu tiên ref truyền vào, sau đó attribution còn hạn (last click wins), không tự giới thiệu.
+  // Affiliate: người giới thiệu cố định của thành viên đứng trước; chưa có thì mới tính mã đi kèm rồi lượt bấm cuối
+  // còn hạn (xem resolveReferrer). Không tự giới thiệu.
   let affiliateId: string | null = null;
   let referredBy: string | null = null;
   if (r.communityId) {
-    const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, r.communityId) });
-    if (program && program.status === 'active') {
-      let acc = input.ref ? await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.affiliateCode, input.ref), eq(affiliateAccounts.programId, program.id)) }) : null;
-      if (!acc) {
-        const attr = await raw(ctx.db, sql`select affiliate_account_id from affiliate_attributions where user_id = ${userId} and program_id = ${program.id} and expires_at > now() order by attributed_at desc limit 1`);
-        const id = (attr[0] as { affiliate_account_id: string } | undefined)?.affiliate_account_id;
-        acc = id ? await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, id) }) : null;
-      }
-      if (!acc) {
-        const m = await raw(ctx.db, sql`select referred_by_affiliate_id from community_members where community_id = ${r.communityId} and user_id = ${userId}`);
-        const id = (m[0] as { referred_by_affiliate_id: string | null } | undefined)?.referred_by_affiliate_id;
-        acc = id ? await ctx.db.query.affiliateAccounts.findFirst({ where: eq(affiliateAccounts.id, id) }) : null;
-      }
-      if (acc && acc.status === 'active' && (acc.userId !== userId || program.allowSelfReferral)) {
-        affiliateId = acc.id;
-        const ref = await ctx.db.query.users.findFirst({ where: eq(users.id, acc.userId), columns: { name: true } });
-        referredBy = ref?.name ?? null;
-      }
+    const referrer = await resolveReferrer(ctx, { communityId: r.communityId, userId, ref: input.ref });
+    if (referrer.program?.status === 'active' && referrer.account) {
+      affiliateId = referrer.account.id;
+      const ref = await ctx.db.query.users.findFirst({ where: eq(users.id, referrer.account.userId), columns: { name: true } });
+      referredBy = ref?.name ?? null;
     }
   }
 

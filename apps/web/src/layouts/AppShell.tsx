@@ -16,6 +16,7 @@ import { ErrorBox } from '@hoiminh/ui';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { canManage, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
+import { movedSlugPath } from '@/lib/referral';
 import { useSidebarCollapsed } from '@/lib/sidebar';
 import { CommunitySwitcher } from './CommunitySwitcher';
 import { SidebarToggle } from './SidebarToggle';
@@ -265,7 +266,7 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   const [drawer, setDrawer] = useState(false);
   const toggleCommand = useCallback(() => setCommand((v) => !v), []);
   useCommandHotkey(toggleCommand, Boolean(shell.data && canManage(shell.data)));
-  useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(params.slug); }, [params.slug, shell.data]);
+  useEffect(() => { if (params.slug && shell.data?.viewer.isMember) rememberCommunitySlug(shell.data.community.slug); }, [params.slug, shell.data]);
   const communityId = shell.data?.community.id;
   useEffect(() => { if (communityId && user) void api.post(`/v1/communities/${communityId}/touch`).catch(() => null); }, [user, communityId]);
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
@@ -286,6 +287,9 @@ export function AppShell({ requireMember = true }: { requireMember?: boolean }) 
   if (shell.isLoading) return <div className="p-8"><LoadingBlock /></div>;
   if (shell.isError) return <div className="p-8"><ErrorBox message={errorMessage(shell.error)} onRetry={() => void shell.refetch()} /></div>;
   const data = shell.data!;
+  // Hội đã đổi đường dẫn: link cũ (thông báo, link đã lưu) chuyển sang đường dẫn mới, giữ nguyên trang đang mở.
+  const moved = movedSlugPath(location, params.slug, data.community.slug);
+  if (moved) return <Navigate to={moved} replace />;
   if (requireMember && !data.viewer.isMember && params.slug) return <Navigate to={`/${slug}`} replace />;
   return (
     <ShellProvider value={data}>

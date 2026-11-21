@@ -42,6 +42,12 @@ export const requestWithdrawalSchema = z.object({
 export const markPaidSchema = z.object({ transferReference: z.string().trim().min(4).max(64), version: z.number().int() });
 export const rejectWithdrawalSchema = z.object({ reason: z.string().trim().min(3).max(300), version: z.number().int() });
 
+/** Thành viên tự đổi người giới thiệu: `code` nhận mã giới thiệu, cả link có `?ref=`, hoặc email của người giới thiệu. */
+export const setReferrerSchema = z.object({ code: z.string().trim().min(2).max(300) });
+
+/** Người giới thiệu của tôi trong một hội. `enabled`: hội đang bật affiliate; `active`: tài khoản affiliate của người đó còn hoạt động. */
+export interface MyReferrer { enabled: boolean; referrer: { name: string; handle: string; avatarUrl: string | null; coverColor: string | null; code: string; active: boolean } | null }
+
 export const leaderboardQuerySchema = z.object({ period: z.enum(['month', 'quarter', 'all']).default('month') });
 
 export const walletSummarySchema = z.object({

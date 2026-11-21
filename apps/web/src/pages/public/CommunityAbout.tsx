@@ -2,26 +2,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
 import { useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { PublicHeader } from '@/layouts/PublicHeader';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AboutHero, AboutTabs, Benefits, CourseList, Faq, isViewerMember, Leader, type AboutPage } from './CommunityAboutParts';
 import { AboutRail } from './CommunityAboutRail';
-import { readCookie } from './AuthParts';
+import { currentRef, movedSlugPath } from '@/lib/referral';
 
 export default function Page() {
   const { slug = '' } = useParams();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const ref = params.get('ref') ?? readCookie('hm_ref');
-
-  // Ghi cookie giới thiệu 30 ngày để đăng ký/tham gia sau vẫn ghi nhận affiliate.
-  useEffect(() => {
-    const r = params.get('ref');
-    if (r) document.cookie = `hm_ref=${encodeURIComponent(r)}; path=/; max-age=${30 * 86400}; samesite=lax`;
-  }, [params]);
+  const location = useLocation();
+  // Mã giới thiệu trên link được ghi nhớ 30 ngày ở gốc router (mọi trang), để đăng ký/tham gia sau vẫn ghi nhận affiliate.
+  const ref = currentRef(params);
 
   const q = useQuery({
     queryKey: ['about', slug, ref, user?.id ?? null],
@@ -33,6 +29,10 @@ export default function Page() {
   useEffect(() => {
     if (q.data) document.title = `${q.data.community.name} · Hội Mình`;
   }, [q.data]);
+
+  // Hội đã đổi đường dẫn: link cũ đã chia sẻ (kể cả link affiliate có ?ref=) chuyển sang đường dẫn mới.
+  const moved = q.data ? movedSlugPath(location, slug, q.data.community.slug) : null;
+  if (moved) return <Navigate to={moved} replace />;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>

@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 1.36.0 - 2026-11-21
+## 1.36.2 - 2026-11-21
 
 Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Theo yêu cầu của chủ dự án.
 
@@ -22,6 +22,39 @@ Quản lý khóa học ngay tại thư viện Khóa học, không phải mở t�
 - `packages/core/src/services/courses.ts`: `reorderCourses`, `duplicateCourse`. Giao diện: `apps/web/src/pages/community/CourseMenu.tsx`, lớp `.course-more`, `.course-menu` trong `packages/ui/src/styles.css`.
 - Test: `packages/core/src/test/course-manage.test.ts` (6 test), thêm một test HTTP trong `apps/api/src/api.test.ts`.
 - Không có migration database (dùng cột `courses.sort_order` đã có sẵn).
+## 1.36.1 - 2026-11-21
+
+### Thêm
+
+- **Chọn người giới thiệu bằng email.** Thẻ "Người giới thiệu của bạn" nay nhận ba thứ: mã giới thiệu, link giới thiệu, hoặc email đăng nhập của người đã mời mình. Email phải là của một thành viên đang ở trong hội. Người đó chưa từng lấy link affiliate thì được mở tài khoản affiliate luôn, để lượt giới thiệu vẫn được tính và hoa hồng vẫn vào ví của họ. Theo yêu cầu của chủ dự án. Không có migration.
+
+## 1.36.0 - 2026-11-21
+
+Affiliate theo luật "người giới thiệu cố định", và sửa hai lỗi chủ dự án báo: bấm thông báo thành viên mới ra "Hội không tồn tại", bấm thẻ khóa học ra "Bài học không tồn tại". Theo yêu cầu của chủ dự án.
+
+### Thêm
+
+- **Người giới thiệu cố định.** Thành viên đã có người giới thiệu thì mọi hoa hồng từ các lần thanh toán của họ trong hội (gói thành viên, gia hạn, sản phẩm cửa hàng) về đúng người đó. Bấm link của affiliate khác hay có cookie mới đều không đổi được. Luật này tính theo tài khoản thành viên lưu trên máy chủ, không phụ thuộc cookie còn hay mất.
+- **Chưa có người giới thiệu thì lượt bấm cuối thắng (last click).** Người mới tính theo mã trên link lần này, không có thì theo lượt bấm gần nhất còn hạn. Tham gia hội hoặc thanh toán lần đầu qua link của ai thì người đó thành người giới thiệu cố định.
+- **Thành viên tự đổi người giới thiệu.** Trang Xếp hạng affiliate có thẻ "Người giới thiệu của bạn": xem ai đang nhận hoa hồng từ mình, và nhập mã hoặc dán link của người khác để đổi. Đây là cách duy nhất để đổi. Người được chọn nhận thông báo, lần đổi ghi vào nhật ký. Không tự chọn mình, không nhận mã của hội khác. Hai đường dẫn mới `GET` và `PUT /v1/communities/:id/my-referrer`, chỉ dùng khi đăng nhập trên web (API key không gọi được).
+- **Link affiliate dẫn tới trang nào cũng được ghi nhớ.** Trước đây chỉ trang giới thiệu hội ghi nhớ mã `?ref=`; link affiliate tới sản phẩm cửa hàng bị rơi mã. Nay mọi trang đều ghi nhớ.
+- **Hội đổi đường dẫn thì đường dẫn cũ vẫn chạy.** Đường dẫn cũ được giữ lại (bảng `community_slug_aliases`), web tự chuyển sang đường dẫn mới và giữ nguyên trang đang mở cùng mã `?ref=`. Hội khác không lấy được đường dẫn cũ của hội mình; chính hội đó lấy lại được.
+
+### Sửa
+
+- **Bấm thông báo cũ ra "Hội không tồn tại".** Hội đổi đường dẫn thì thông báo, link mời và link affiliate đã chia sẻ trước đó đều chết. Nay các link đó dẫn về đúng hội.
+- **Bấm thẻ khóa học ra "Bài học không tồn tại".** Xóa một bài (hoặc cả chương) mà có người đang học dở bài đó thì tiến độ của họ vẫn trỏ tới bài đã xóa. Nay xóa bài thì tiến độ tự bỏ trỏ (khóa ngoại `ON DELETE SET NULL`), thẻ khóa học dẫn về trang khóa học. Migration dọn luôn các dòng đang trỏ sai.
+- **Thanh toán qua link của affiliate khác làm đổi người nhận hoa hồng.** Trước đây mã trên link đứng trước người giới thiệu đã ghi của thành viên. Nay ngược lại.
+- **Quay lại hội làm mất người giới thiệu.** Thành viên rời hội rồi tham gia lại không qua link bị xóa người giới thiệu cũ. Nay giữ nguyên.
+- **Tham gia hội bằng mã của hội khác vẫn được ghi nhận.** Mã không được kiểm thuộc chương trình nào, tài khoản affiliate bị khóa vẫn được gắn. Nay chỉ nhận mã đang hoạt động của chính hội đó.
+- **Số "Trả phí" của affiliate đếm đôi với đơn gói thành viên.** Nay mỗi đơn đếm một lần.
+- Link affiliate của hội (trang Ví, trang Xếp hạng) viết lại theo đường dẫn mới khi hội đổi đường dẫn.
+
+### Lưu ý khi nâng cấp
+
+- Có migration `0016_slug_aliases_lesson_fk`: thêm bảng `community_slug_aliases`, thêm khóa ngoại cho `course_progress.last_lesson_id` và dọn dòng trỏ sai. Áp dụng lên database thật trước khi merge.
+- Hội đã đổi đường dẫn TRƯỚC bản này không có dòng nào trong bảng mới, nên sau khi áp dụng migration cần thêm tay đường dẫn cũ của hội đó (với hội Javiser: `agent-automation-cung-javis`).
+- Chương trình affiliate nền tảng (giới thiệu chủ hội mua gói Hội Mình) không đổi: vẫn tính theo người giới thiệu lúc đăng ký tài khoản.
 
 ## 1.35.1 - 2026-11-17
 

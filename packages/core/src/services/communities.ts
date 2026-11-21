@@ -2,7 +2,7 @@
 import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
 import { ABOUT_MEDIA_MAX, applyPromo, legacyPricesOf, normalizeTerms, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
-import { affiliatePrograms, communities, communityJoinQuestions, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
+import { affiliatePrograms, communities, communityJoinQuestions, communitySlugAliases, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { conflict, invalid, notFound } from '../errors';
@@ -24,6 +24,9 @@ export async function assertSlugAvailable(ctx: Ctx, slug: string, exceptId?: str
   if (RESERVED_SLUGS.has(slug)) throw invalid('Đường dẫn này được hệ thống dùng, chọn tên khác');
   const row = await ctx.db.query.communities.findFirst({ where: eq(communities.slug, slug), columns: { id: true } });
   if (row && row.id !== exceptId) throw conflict('Đường dẫn đã có hội khác dùng');
+  // Đường dẫn cũ của hội khác vẫn đang dẫn link đã chia sẻ về hội đó, nên không cho hội khác lấy. Hội lấy lại đường dẫn cũ của chính mình thì được.
+  const alias = await ctx.db.query.communitySlugAliases.findFirst({ where: eq(communitySlugAliases.slug, slug) });
+  if (alias && alias.communityId !== exceptId) throw conflict('Đường dẫn đã có hội khác dùng');
 }
 
 /** Tạo hội mới với tier, chuyên mục, plugin mặc định và chương trình affiliate (tắt). */
@@ -80,8 +83,12 @@ async function syncTierOffers(db: Ctx['db'], communityId: string, workspaceId: s
 /** Hội theo slug (kể cả bản nháp cho chủ hội). */
 export async function getCommunityBySlug(ctx: Ctx, slug: string) {
   const c = await ctx.db.query.communities.findFirst({ where: and(eq(communities.slug, slug), isNull(communities.deletedAt)) });
-  if (!c) throw notFound('Hội không tồn tại');
-  return c;
+  if (c) return c;
+  // Hội đã đổi đường dẫn: đường dẫn cũ vẫn tìm ra hội. Kết quả mang đường dẫn mới, web dựa vào đó để chuyển địa chỉ.
+  const alias = await ctx.db.query.communitySlugAliases.findFirst({ where: eq(communitySlugAliases.slug, slug) });
+  const moved = alias ? await ctx.db.query.communities.findFirst({ where: and(eq(communities.id, alias.communityId), isNull(communities.deletedAt)) }) : null;
+  if (!moved) throw notFound('Hội không tồn tại');
+  return moved;
 }
 
 /** Dữ liệu trang giới thiệu hội (đích của link hội): công khai, kèm trạng thái của người xem nếu đã đăng nhập. */
@@ -116,7 +123,7 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
 export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; links?: Array<{ label: string; url: string }> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   if (input.slug) await assertSlugAvailable(ctx, input.slug, communityId);
-  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { logoUrl: true, coverUrl: true, customDomain: true } });
+  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true } });
   // Tên miền riêng là tính năng trả phí: chỉ chặn khi gắn hoặc đổi tên miền, còn gỡ tên miền thì gói nào cũng làm được.
   if (input.customDomain && input.customDomain !== before?.customDomain) await requirePlanFeature(ctx, communityId, 'custom_domain');
   const patch: Partial<typeof communities.$inferInsert> = { updatedAt: ctx.now() };
@@ -125,11 +132,26 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
   }
   if (input.name) patch.logoMark = markOf(input.name);
   const [row] = await ctx.db.update(communities).set(patch).where(eq(communities.id, communityId)).returning();
+  if (input.slug && before && input.slug !== before.slug) await keepOldSlug(ctx, communityId, before.slug, input.slug);
   // Đổi hoặc gỡ logo/ảnh bìa thì tệp cũ trên R2 không còn ai dùng.
   const replaced = [input.logoUrl !== undefined && input.logoUrl !== before?.logoUrl ? before?.logoUrl : null, input.coverUrl !== undefined && input.coverUrl !== before?.coverUrl ? before?.coverUrl : null];
   await releaseFiles(ctx, { urls: replaced }, { communityId });
   await audit(ctx, { action: 'community.update_general', resourceType: 'community', resourceId: communityId, communityId, metadata: { keys: Object.keys(patch) } });
   return row!;
+}
+
+/**
+ * Hội đổi đường dẫn: giữ đường dẫn cũ làm lối tắt để link đã lưu và đã chia sẻ (thông báo, link mời, link affiliate)
+ * không chết, và viết lại link affiliate của hội theo đường dẫn mới.
+ */
+async function keepOldSlug(ctx: Ctx, communityId: string, oldSlug: string, newSlug: string): Promise<void> {
+  // Lấy lại một đường dẫn cũ của chính mình thì nó thôi là lối tắt.
+  await ctx.db.delete(communitySlugAliases).where(and(eq(communitySlugAliases.slug, newSlug), eq(communitySlugAliases.communityId, communityId)));
+  await ctx.db.insert(communitySlugAliases).values({ slug: oldSlug, communityId }).onConflictDoNothing();
+  await raw(ctx.db, sql`
+    update affiliate_links l set destination_url = ${`${ctx.env.APP_URL}/${newSlug}?ref=`} || a.affiliate_code
+    from affiliate_accounts a join affiliate_programs p on p.id = a.program_id
+    where l.affiliate_account_id = a.id and p.community_id = ${communityId} and l.target_type = 'community'`);
 }
 
 /**
