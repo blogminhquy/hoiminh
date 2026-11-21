@@ -1,4 +1,4 @@
-// Tài khoản · Affiliate (affiliateWalletMain): bước 1 chọn chương trình (nền tảng, từng hội), bước 2 chọn trang muốn
+// Tài khoản · Affiliate của tôi (affiliateWalletMain; khác với Affiliate hội là nơi chủ hội quản lý chương trình): bước 1 chọn chương trình (nền tảng, từng hội), bước 2 chọn trang muốn
 // chia sẻ, bước 3 sao chép link; rồi tới ví của chương trình đó: 4 ô ví, tài khoản nhận tiền, rút tiền, lịch sử.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { WalletBox, money } from '@hoiminh/ui';
@@ -30,7 +30,7 @@ export default function Page() {
   if (!programId && current) return <Navigate to={`/tai-khoan/cong-su/${current}`} replace />;
   return (
     <>
-      <div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate</h1><div className="muted text-[14px]">Giới thiệu một lần, nhận hoa hồng mỗi lần người đó trả phí. Làm theo 3 bước để lấy link.</div></div>
+      <div><h1 className="serif m-0 text-[28px] font-extrabold">Affiliate của tôi</h1><div className="muted text-[14px]">Link giới thiệu và ví hoa hồng của riêng bạn. Giới thiệu một lần, nhận hoa hồng mỗi lần người đó trả phí. Làm theo 3 bước để lấy link.</div></div>
       <QueryState q={programs} rows={2}>
         {(all) => <ProgramPicker programs={all} current={current} onPick={(id) => navigate(`/tai-khoan/cong-su/${id}`)} />}
       </QueryState>

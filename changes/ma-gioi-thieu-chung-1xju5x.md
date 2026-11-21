@@ -11,6 +11,10 @@ Mỗi người tự chọn được một mã giới thiệu chung, dùng cho li
 - **Link cũ không hỏng.** Link đã chia sẻ với mã cũ vẫn chạy và vẫn tính hoa hồng. Trang Affiliate ghi rõ mã cũ nào còn hiệu lực.
 - **Thành viên chưa từng lấy link vẫn dùng được mã chung ở hội mình đang tham gia.** Ví affiliate của hội đó tự mở khi có người đầu tiên đi qua link, như lúc tự mở trang Affiliate.
 
+### Thay đổi
+
+- **Trang Affiliate trong Tài khoản nay tên là "Affiliate của tôi".** Để khỏi lẫn với phần quản lý chương trình affiliate của hội.
+
 ### Không đổi
 
 - Luật tính hoa hồng giữ nguyên. Link mở ở trang của một hội (trang giới thiệu, trang sản phẩm) chỉ tính cho chương trình của hội đó; link mở ở trang nền tảng (trang chủ, trang mở hội) chỉ tính cho chương trình nền tảng. Người vào một hội mà chưa có người giới thiệu nền tảng thì người giới thiệu nền tảng vẫn mặc định là chủ hội.
