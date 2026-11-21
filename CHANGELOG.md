@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.41.0 - 2026-11-21
+
+Trang bán của sản phẩm mở cho mọi người, để link sản phẩm (của affiliate, của chủ hội đem đi quảng cáo) đưa người lạ tới đúng sản phẩm. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Thay đổi
+
+- **Ai cũng mở được trang bán của một sản phẩm**, kể cả người chưa đăng nhập và kể cả khi hội là hội kín. Trước đây người chưa đăng nhập bị đưa về trang đăng nhập, và người đã đăng nhập mà chưa vào hội bị đưa về trang giới thiệu hội, nên link sản phẩm không bao giờ tới được sản phẩm.
+- Người ngoài của hội kín thấy trang bán trong khung trang công khai: đầu trang có dải "Sản phẩm của hội" kèm nút "Xem giới thiệu hội", không có thanh bên của hội. Lối quay lại dẫn về trang giới thiệu hội thay cho cửa hàng.
+- Bấm "Mua ngay" mới phải đăng nhập hoặc đăng ký; xong thì quay lại đúng trang thanh toán của sản phẩm đó. Người ngoài mua lẻ như trước, không bị thêm vào hội.
+- Bài xem thử và nút "Vào học" của người ngoài mở ở Khu học tập, vì họ không vào được bên trong hội.
+- Mọi trang khác của hội kín (cửa hàng, bảng tin, khóa học, sự kiện, thành viên) vẫn đóng với người ngoài. Thành viên và khách xem hội mở thấy trang bán như cũ.
+
+### Sửa
+
+- Trang Affiliate bỏ dòng ghi chú "Trang sản phẩm chỉ mở cho người đã đăng nhập" vì không còn đúng.
+
 ## 1.40.1 - 2026-11-21
 
 Ô "Lượt bấm" ở trang Affiliate đếm được link dạng `?ref=`. Theo yêu cầu của chủ dự án. Không có migration.
