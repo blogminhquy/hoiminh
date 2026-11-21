@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 1.44.2 - 2026-11-22
+
+Thông tin riêng của thành viên trong khung chat chỉ còn người quản lý hội thấy, theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Ai trò chuyện cũng xem được tiến độ học và người giới thiệu của người kia.** Bảng "Thông tin hội thoại" trong Tin nhắn vốn làm cho chủ hội xem thành viên của mình, nhưng máy chủ trả đủ thông tin cho bất kỳ ai đang trò chuyện. Vì vậy một thành viên thường mở cuộc trò chuyện với thành viên khác (hoặc với chủ hội) là thấy tình trạng thành viên, giá gói, khóa đang học kèm phần trăm tiến độ, và người đã giới thiệu người đó. Nay chỉ chủ hội và quản trị của hội thấy các thông tin này.
+- Người xem khác (thành viên thường, điều hành viên) chỉ còn thấy đúng những gì danh bạ thành viên của hội vốn đã cho mọi thành viên xem: vai trò, tên gói, ngày tham gia.
+
+### Kỹ thuật
+
+- `packages/core/src/services/messaging.ts`: `memberPanel` kiểm quyền `member.manage` của người xem trong hội của cuộc trò chuyện; không có quyền thì `status`, `tier.monthlyMinor`, `learning`, `referrer` là null. Giao diện vốn tự ẩn các dòng không có dữ liệu nên không phải sửa bố cục.
+- Test: `packages/core/src/test/messaging.test.ts` thêm 2 ca (chủ hội thấy đủ, thành viên thường và chiều ngược lại chỉ thấy phần công khai, hội thoại không gắn hội thì không có thông tin thành viên).
+
 ## 1.44.1 - 2026-11-22
 
 Bảng "Thông tin hội thoại" trong Tin nhắn gọn lại, theo góp ý của chủ dự án. Chỉ sửa giao diện web, không có migration.
