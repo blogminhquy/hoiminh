@@ -181,7 +181,7 @@ Không còn nhãn phiên bản trên mọi màn hình. Mọi thứ nằm ở **Q
 
 - **Bản đang chạy**: phiên bản, nhánh, giờ build, commit của trình duyệt đang mở, so với `/version.json` trên Cloudflare.
 - **Phát hành**: danh sách 15 bản gần nhất đã tải lên Cloudflare. Bấm **Cập nhật** để đưa một bản lên chạy 100% cho mọi người, bấm **Quay lui** ở bản cũ hơn khi có lỗi. Mỗi lần bấm được ghi vào nhật ký thao tác (`release.deploy`).
-- **Lịch sử phiên bản**: đọc từ `CHANGELOG.md` lúc build, nên viết CHANGELOG là đủ.
+- **Lịch sử phiên bản**: đọc từ `CHANGELOG.md` lúc build. Nhánh không viết thẳng vào CHANGELOG mà viết phiếu trong `changes/`; phiên merge gom phiếu vào CHANGELOG lúc đóng số (xem `changes/README.md`).
 
 Người dùng thường không thấy gì: khi máy chủ có bản mới, trình duyệt tự nạp lại ở lần chuyển trang kế tiếp (không mất nội dung đang gõ dở), và nếu chunk cũ đã bị xóa sau deploy thì cũng tự nạp lại một lần.
 
@@ -193,7 +193,7 @@ Bật phát hành thủ công (admin bấm mới lên bản mới):
 
 Chưa đặt `RELEASE_MODE` thì vẫn như cũ: đẩy lên `main` là web tự lên bản mới. API Worker luôn deploy thẳng, nên thay đổi API phải tương thích ngược với bản web đang chạy.
 
-Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
+Số phiên bản có một nguồn: `APP_VERSION` trong `packages/config/src/version.ts`; test bắt nó khớp `package.json` gốc và mục đầu CHANGELOG. Không tăng số bằng tay: `pnpm version:stamp` ghi cả ba nơi lúc merge (luật ở `CLAUDE.md`, mục "Làm song song nhiều phiên"). Thông tin build do `apps/web/scripts/version-plugin.ts` sinh lúc đóng gói (`__HM_BUILD__` + `dist/version.json`); `apps/web/public/_headers` giữ `version.json` và `index.html` không bị cache.
 
 ## Cấu hình cổng thanh toán
 

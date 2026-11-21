@@ -23,7 +23,10 @@
     "db:reset": "pnpm --filter @hoiminh/db reset",
     "deploy": "node infra/deploy.mjs",
     "deploy:check": "node infra/verify-live.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "test:scripts": "node --test \"scripts/*.test.mjs\"",
+    "check:parallel": "node scripts/check-parallel.mjs",
+    "version:stamp": "node scripts/stamp-version.mjs",
+    "check": "pnpm check:parallel && pnpm typecheck && pnpm lint && pnpm test && pnpm test:scripts"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",

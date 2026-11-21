@@ -78,6 +78,6 @@ Xếp theo thứ tự:
 
 **Bước 2 — Triển khai.** Tự làm thẳng những phần đã rõ ràng: lỗi, thiếu endpoint, thiếu màn, thiếu test, chỗ nối hỏng. Với những phần cần quyết định sản phẩm (chọn cách làm), tốn tiền (mua dịch vụ), hoặc đụng tới tiền thật của người dùng — **dừng lại hỏi trước**, đừng tự quyết.
 
-**Bước 3 — Kiểm chứng.** Mỗi phần làm xong phải thử lại trên production và ghi bằng chứng. Cập nhật `docs/PROGRESS.md` và `CHANGELOG.md` theo đúng những gì đã **kiểm chứng được**, không phải theo những gì đã viết code.
+**Bước 3 — Kiểm chứng.** Mỗi phần làm xong phải thử lại trên production và ghi bằng chứng. Cập nhật `docs/PROGRESS.md` và phiếu thay đổi trong `changes/` (không viết thẳng vào `CHANGELOG.md`, xem `changes/README.md`) theo đúng những gì đã **kiểm chứng được**, không phải theo những gì đã viết code.
 
 Nếu phát hiện điều gì mâu thuẫn với chính bản hướng dẫn này, cứ nói ra — nó được viết dựa trên hiểu biết tại một thời điểm và có thể đã cũ.
