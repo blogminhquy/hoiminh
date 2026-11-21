@@ -1,5 +1,5 @@
 // Entitlement Engine (mục 62–63, 140–145): quyền truy cập tách khỏi thanh toán.
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { communityMembers, communityTiers, courses, entitlements, products, bundleItems } from '@hoiminh/db';
 import type { Ctx } from '../context';
 
@@ -41,30 +41,68 @@ export async function memberTierKey(ctx: Ctx, userId: string, communityId: strin
   return r.key ?? 'standard';
 }
 
-/** Access Resolver cho khóa học (mục 145): chủ hội, mọi thành viên, tier, mua lẻ, combo, cấp thủ công. */
-export async function canAccessCourse(ctx: Ctx, userId: string | null, courseId: string, opts: { lessonIsPreview?: boolean; isStaff?: boolean } = {}): Promise<AccessDecision> {
-  const course = await ctx.db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+/** Phần của một khóa học mà Access Resolver cần đọc. */
+export type CourseForAccess = Pick<typeof courses.$inferSelect, 'id' | 'ownerUserId' | 'communityId' | 'accessMode'>;
+
+/**
+ * Access Resolver cho khóa học (mục 145): chủ hội, mọi thành viên, tier, mua lẻ, combo, cấp thủ công.
+ * `opts.course`: nơi gọi đã nạp sẵn khóa học thì truyền vào để khỏi truy vấn lại.
+ */
+export async function canAccessCourse(ctx: Ctx, userId: string | null, courseId: string, opts: { lessonIsPreview?: boolean; isStaff?: boolean; course?: CourseForAccess } = {}): Promise<AccessDecision> {
+  const course = opts.course ?? (await ctx.db.query.courses.findFirst({ where: eq(courses.id, courseId) }));
   if (!course) return { allowed: false, reason: 'locked' };
   if (opts.isStaff) return { allowed: true, reason: 'owner' };
   if (opts.lessonIsPreview) return { allowed: true, reason: 'preview' };
-  if (!userId) return { allowed: false, reason: 'not_member' };
-  if (course.ownerUserId === userId) return { allowed: true, reason: 'owner' };
-  if (await hasEntitlement(ctx, userId, 'course', courseId)) return { allowed: true, reason: 'manual' };
-  const productRows = await ctx.db.query.products.findMany({ where: and(eq(products.courseId, courseId), isNull(products.deletedAt)), columns: { id: true } });
-  for (const p of productRows) {
-    if (await hasEntitlement(ctx, userId, 'product', p.id)) return { allowed: true, reason: 'purchase' };
-    const bundles = await ctx.db.query.bundleItems.findMany({ where: eq(bundleItems.itemProductId, p.id) });
-    for (const b of bundles) if (await hasEntitlement(ctx, userId, 'product', b.bundleProductId)) return { allowed: true, reason: 'purchase' };
+  return (await resolveCourseAccess(ctx, userId, [course])).get(course.id)!;
+}
+
+/**
+ * Access Resolver cho nhiều khóa học trong một lượt: tối đa bốn câu lệnh (ba câu gửi cùng lúc) dù danh sách dài bao nhiêu.
+ * Trước đây trang danh sách khóa học gọi resolver từng khóa một, mỗi khóa năm đến bảy câu lệnh.
+ * Thứ tự xét giữ nguyên: người quản lý, chủ khóa, cấp thủ công, đã mua (lẻ hoặc qua combo), rồi mới tới hạng thành viên.
+ */
+export async function resolveCourseAccess(ctx: Ctx, userId: string | null, list: CourseForAccess[], opts: { isStaff?: boolean } = {}): Promise<Map<string, AccessDecision>> {
+  const out = new Map<string, AccessDecision>();
+  const pending: CourseForAccess[] = [];
+  for (const c of list) {
+    if (opts.isStaff) out.set(c.id, { allowed: true, reason: 'owner' });
+    else if (!userId) out.set(c.id, { allowed: false, reason: 'not_member' });
+    else if (c.ownerUserId === userId) out.set(c.id, { allowed: true, reason: 'owner' });
+    else pending.push(c);
   }
-  if (!course.communityId) return { allowed: false, reason: 'needs_purchase' };
-  const tierKey = await memberTierKey(ctx, userId, course.communityId);
-  if (!tierKey) return { allowed: false, reason: 'not_member' };
-  if (course.accessMode === 'all_members') return { allowed: true, reason: 'all_members' };
-  if (course.accessMode === 'premium' || course.accessMode === 'premium_and_store') {
-    if (tierKey === 'premium' || tierKey === 'vip') return { allowed: true, reason: 'tier' };
-    return { allowed: false, reason: course.accessMode === 'premium' ? 'needs_premium' : 'needs_premium' };
+  if (!userId || !pending.length) return out;
+
+  const ids = pending.map((c) => c.id);
+  const communityIds = [...new Set(pending.map((c) => c.communityId).filter((x): x is string => Boolean(x)))];
+  const active = and(eq(entitlements.userId, userId), eq(entitlements.status, 'active'), or(isNull(entitlements.expiresAt), gt(entitlements.expiresAt, ctx.now())));
+  const [courseEnts, productRows, tierRows] = await Promise.all([
+    ctx.db.select({ resourceId: entitlements.resourceId }).from(entitlements).where(and(active, eq(entitlements.resourceType, 'course'), inArray(entitlements.resourceId, ids))),
+    // Sản phẩm bán khóa học, kèm các combo chứa sản phẩm đó (mỗi combo một dòng).
+    ctx.db.select({ courseId: products.courseId, productId: products.id, bundleProductId: bundleItems.bundleProductId }).from(products).leftJoin(bundleItems, eq(bundleItems.itemProductId, products.id)).where(and(inArray(products.courseId, ids), isNull(products.deletedAt))),
+    communityIds.length ? ctx.db.select({ communityId: communityMembers.communityId, key: communityTiers.key, status: communityMembers.status }).from(communityMembers).leftJoin(communityTiers, eq(communityTiers.id, communityMembers.tierId)).where(and(inArray(communityMembers.communityId, communityIds), eq(communityMembers.userId, userId))) : [],
+  ]);
+  const sellable = [...new Set(productRows.flatMap((r) => (r.bundleProductId ? [r.productId, r.bundleProductId] : [r.productId])))];
+  const productEnts = sellable.length ? await ctx.db.select({ resourceId: entitlements.resourceId }).from(entitlements).where(and(active, eq(entitlements.resourceType, 'product'), inArray(entitlements.resourceId, sellable))) : [];
+
+  const granted = new Set(courseEnts.map((e) => e.resourceId));
+  const ownedProducts = new Set(productEnts.map((e) => e.resourceId));
+  const purchased = new Set(productRows.filter((r) => ownedProducts.has(r.productId) || (r.bundleProductId && ownedProducts.has(r.bundleProductId))).map((r) => r.courseId));
+  const tierByCommunity = new Map<string, 'standard' | 'premium' | 'vip' | null>();
+  for (const t of tierRows) tierByCommunity.set(t.communityId, t.status !== 'active' && t.status !== 'cancelling' ? null : t.key ?? 'standard');
+
+  for (const c of pending) {
+    if (granted.has(c.id)) out.set(c.id, { allowed: true, reason: 'manual' });
+    else if (purchased.has(c.id)) out.set(c.id, { allowed: true, reason: 'purchase' });
+    else if (!c.communityId) out.set(c.id, { allowed: false, reason: 'needs_purchase' });
+    else {
+      const tierKey = tierByCommunity.get(c.communityId) ?? null;
+      if (!tierKey) out.set(c.id, { allowed: false, reason: 'not_member' });
+      else if (c.accessMode === 'all_members') out.set(c.id, { allowed: true, reason: 'all_members' });
+      else if (c.accessMode === 'premium' || c.accessMode === 'premium_and_store') out.set(c.id, tierKey === 'premium' || tierKey === 'vip' ? { allowed: true, reason: 'tier' } : { allowed: false, reason: 'needs_premium' });
+      else out.set(c.id, { allowed: false, reason: 'needs_purchase' });
+    }
   }
-  return { allowed: false, reason: 'needs_purchase' };
+  return out;
 }
 
 /** Người dùng đã sở hữu sản phẩm cửa hàng chưa. */
