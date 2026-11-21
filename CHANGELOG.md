@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.38.0 - 2026-11-21
+
+Gói Hội Mình bán theo bốn kỳ với giá riêng từng kỳ, theo yêu cầu của chủ dự án ngày 21/11/2026. Thay luật "chỉ bán hai chu kỳ, giá 3 tháng và 1 năm tự tính từ giá tháng" của kế hoạch 11/11/2026. Có migration `0017_plan_cycle_prices`: thêm cột `plans.cycle_prices` (jsonb) và điền sẵn từ giá cũ, chạy lại được. **Áp dụng lên database thật trước khi merge.**
+
+### Thêm
+
+- **Bốn kỳ trả tiền: 1 tháng, 3 tháng, 6 tháng, 1 năm.** Số ngày của từng kỳ là 30, 90, 180, 365. Gia hạn nối tiếp và nâng gói tặng ngày còn lại vẫn như cũ, dùng được với mọi kỳ.
+- **Quản trị nhập giá riêng cho từng kỳ của từng gói** ở Hệ thống, Gói nền tảng. Dưới mỗi ô có ghi giá quy ra mỗi tháng để dễ so.
+- **Kỳ nào để giá 0 thì không bán.** Trang mua gói, bảng giá công khai và bước chọn gói khi tạo hội thứ hai chỉ hiện tab của kỳ có ít nhất một gói đang bán; gói không bán kỳ đang chọn thì không có thẻ ở kỳ đó. Gói để 0 ở cả bốn kỳ thì không hiện ở đâu để mua. Gọi thẳng API mua một kỳ có giá 0 cũng bị từ chối.
+- **Lời mời tự tính theo giá đã nhập.** "Tặng 2 tháng" không còn viết cứng: mức lợi của kỳ dài tính so với kỳ ngắn nhất gói đang bán, ra số tháng tròn thì ghi "tặng N tháng", không thì ghi "tiết kiệm N%".
+
+### Thay đổi
+
+- **Sau khi cập nhật, trang mua gói chưa đổi gì.** Giá 3 tháng và 1 năm giữ nguyên con số đang bán; 1 tháng và 6 tháng để 0 (trước đây không bán) cho tới khi quản trị nhập giá.
+- **Bảng gói có thêm hai luật kiểm tra khi lưu.** Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn (bắt lỗi gõ thiếu một số 0). Gói cao hơn không được rẻ hơn gói thấp hơn ở kỳ mà cả hai cùng bán.
+- **Bảng so sánh** có một dòng giá cho mỗi kỳ đang bán, gói không bán kỳ đó ghi "Không bán". Bỏ dòng "Giá niêm yết mỗi tháng".
+- **Lời mời nâng gói** ghi "từ ... mỗi tháng" theo kỳ rẻ nhất, và không gợi ý gói đã ngừng bán.
+- **Dãy tab kỳ hạn trên điện thoại** thu lề để bốn tab nằm gọn một hàng.
+- API: `GET /v1/plans` và `GET /v1/admin/plans` trả `prices` (`monthly`, `quarterly`, `semiannual`, `yearly`) thay cho `monthlyMinor`; `PUT /v1/admin/plans` nhận `prices`; `POST /v1/checkout` cho gói nhận thêm `cycle` là `monthly` và `semiannual`. Số liệu gói trả `cycleCounts` thay cho `quarterlyCount`, `yearlyCount`.
+
 ## 1.37.1 - 2026-11-21
 
 Đổi tên biến trong mẫu tin nhắn chào tự động sang tiếng Anh, viết liền, theo yêu cầu của chủ dự án. Không có migration.
