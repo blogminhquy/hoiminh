@@ -23,3 +23,12 @@ eventRoutes.post('/events/:id/questions', requireAuth, async (c) => {
 eventRoutes.post('/event-questions/:id/vote', requireAuth, async (c) => c.json(await events.voteQuestion(c.get('ctx'), c.req.param('id'))));
 eventRoutes.post('/events/:id/recordings', requireAuth, async (c) => c.json(await events.addRecording(c.get('ctx'), c.req.param('id'), await parse(eventRecordingSchema, await body(c))), 201));
 eventRoutes.get('/events/:id/attendees', requireAuth, async (c) => c.json(await events.eventAttendees(c.get('ctx'), c.req.param('id'))));
+/** Hủy một buổi: ẩn khỏi lịch và ngừng nhắc, dữ liệu còn nguyên. Mở lại bằng PATCH với `status: 'scheduled'`. */
+eventRoutes.delete('/events/:id', requireAuth, async (c) => {
+  await events.cancelEvent(c.get('ctx'), c.req.param('id'));
+  return c.json({ ok: true });
+});
+eventRoutes.delete('/recordings/:id', requireAuth, async (c) => {
+  await events.deleteRecording(c.get('ctx'), c.req.param('id'));
+  return c.json({ ok: true });
+});
