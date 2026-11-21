@@ -1,6 +1,6 @@
 // /v1/communities/:id/members: quản trị thành viên (bộ lọc, modal 4 tab, đổi vai trò/gói, hành động, mời, CSV) và danh bạ công khai.
 import { inviteSchema, memberFilterSchema, updateMemberSchema } from '@hoiminh/contracts';
-import { members } from '@hoiminh/core';
+import { invites, members } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, csv, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -13,6 +13,7 @@ memberRoutes.get('/:id/members/directory', async (c) => c.json(await members.mem
 memberRoutes.use('/:id/members', requireAuth);
 memberRoutes.use('/:id/members/*', requireAuth);
 memberRoutes.use('/:id/invites', requireAuth);
+memberRoutes.use('/:id/invites/*', requireAuth);
 memberRoutes.use('/:id/touch', requireAuth);
 memberRoutes.use('/:id/today', requireAuth);
 
@@ -31,6 +32,15 @@ memberRoutes.post('/:id/members/:memberId/actions', async (c) => {
 memberRoutes.post('/:id/members/:memberId/grant-course', async (c) => {
   const { courseId } = await parse(z.object({ courseId: z.string().uuid() }), await body(c));
   await members.grantCourse(c.get('ctx'), c.req.param('id'), c.req.param('memberId'), courseId);
+  return c.json({ ok: true });
+});
+memberRoutes.post('/:id/members/:memberId/revoke-course', async (c) => {
+  const { courseId } = await parse(z.object({ courseId: z.string().uuid() }), await body(c));
+  return c.json(await members.revokeCourse(c.get('ctx'), c.req.param('id'), c.req.param('memberId'), courseId));
+});
+memberRoutes.get('/:id/invites', async (c) => c.json(await invites.listInvites(c.get('ctx'), c.req.param('id'))));
+memberRoutes.delete('/:id/invites/:inviteId', async (c) => {
+  await invites.revokeInvite(c.get('ctx'), c.req.param('id'), c.req.param('inviteId'));
   return c.json({ ok: true });
 });
 memberRoutes.post('/:id/invites', async (c) => c.json(await members.invite(c.get('ctx'), c.req.param('id'), await parse(inviteSchema.partial({ emails: true }), await body(c))), 201));
