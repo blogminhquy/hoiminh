@@ -1,9 +1,9 @@
-// Menu ba chấm ở đầu khung chat (xem hồ sơ, chặn / bỏ chặn, báo cáo) và hộp thoại báo cáo người dùng.
+// Menu ba chấm ở đầu khung chat (xem hồ sơ, ghim, lưu trữ, chặn / bỏ chặn, báo cáo) và hộp thoại báo cáo người dùng.
 // Chặn: hai bên không nhắn được cho nhau cho tới khi người chặn bỏ chặn. Báo cáo: gửi tới quản trị hệ thống.
 import { useMutation } from '@tanstack/react-query';
 import { USER_REPORT_REASONS } from '@hoiminh/contracts';
 import { Modal, T } from '@hoiminh/ui';
-import { Ban, Flag, MoreHorizontal, User } from 'lucide-react';
+import { Archive, ArchiveRestore, Ban, Flag, MoreHorizontal, Pin, PinOff, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
@@ -12,7 +12,7 @@ import type { Person } from './MessagesParts';
 type Reason = (typeof USER_REPORT_REASONS)[number];
 const REASON_LABELS: Record<Reason, string> = { spam: 'Spam, quảng cáo', harassment: 'Quấy rối, xúc phạm', scam: 'Lừa đảo', inappropriate: 'Nội dung không phù hợp', other: 'Lý do khác' };
 
-export function ChatMenu({ other, blockedByMe, onBlock, onReport }: { other: Person; blockedByMe: boolean; onBlock: (block: boolean) => void; onReport: () => void }) {
+export function ChatMenu({ other, blockedByMe, pinned, archived, onPin, onArchive, onBlock, onReport }: { other: Person; blockedByMe: boolean; pinned: boolean; archived: boolean; onPin: () => void; onArchive: () => void; onBlock: (block: boolean) => void; onReport: () => void }) {
   const [open, setOpen] = useState(false);
   const firstName = other.name.trim().split(/\s+/).pop() ?? other.name;
   const pick = (fn: () => void) => () => { setOpen(false); fn(); };
@@ -24,6 +24,9 @@ export function ChatMenu({ other, blockedByMe, onBlock, onReport }: { other: Per
           <button type="button" className="fixed inset-0 z-10 cursor-default" aria-label="Đóng menu" onClick={() => setOpen(false)} />
           <div role="menu" className="chat-menu" style={{ top: 46, right: 0 }}>
             <Link role="menuitem" to={`/u/${other.handle}`} onClick={() => setOpen(false)}><User size={16} />Xem hồ sơ</Link>
+            <button type="button" role="menuitem" onClick={pick(onPin)}>{pinned ? <PinOff size={16} /> : <Pin size={16} />}{pinned ? 'Bỏ ghim hội thoại' : 'Ghim hội thoại'}</button>
+            <button type="button" role="menuitem" onClick={pick(onArchive)}>{archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}{archived ? 'Bỏ lưu trữ' : 'Lưu trữ hội thoại'}</button>
+            <div role="separator" style={{ height: 1, margin: '6px 4px', background: T.line }} />
             <button type="button" role="menuitem" onClick={pick(() => onBlock(!blockedByMe))}><Ban size={16} />{blockedByMe ? `Bỏ chặn ${firstName}` : `Chặn ${firstName}`}</button>
             <button type="button" role="menuitem" style={{ color: T.accentText }} onClick={pick(onReport)}><Flag size={16} />Báo cáo {firstName}</button>
           </div>

@@ -63,7 +63,7 @@ export const createCheckoutSchema = z.object({
   /** Không gửi thì dùng cách chủ hội (hoặc quản trị, với gói Hội Mình) đặt làm mặc định. */
   provider: paymentProviderSchema.optional(),
   /** Một mã giới thiệu hoặc danh sách mã cách nhau bằng dấu phẩy (xem refCodes). */
-  ref: z.string().max(300).optional(),
+  ref: z.string().max(700).optional(),
   returnUrl: z.string().url().optional(),
 });
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;

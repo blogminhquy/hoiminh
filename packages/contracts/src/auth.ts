@@ -8,7 +8,7 @@ export const registerSchema = z.object({
   password: z.string().min(8).max(128),
   /** Mã affiliate đọc từ cookie/ref khi đăng ký (ghi nhận người giới thiệu). */
   /** Một mã giới thiệu hoặc danh sách mã cách nhau bằng dấu phẩy (xem refCodes). */
-  ref: z.string().max(300).optional(),
+  ref: z.string().max(700).optional(),
   /** Slug hội mà người dùng đang đăng ký để tham gia (nếu đến từ link hội). */
   communitySlug: z.string().max(48).optional(),
   acceptTerms: z.literal(true),
