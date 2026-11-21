@@ -39,9 +39,14 @@ function Rail({ shell }: { shell: Shell }) {
   return (
     <aside className="rail">
       <div className="card overflow-hidden">
-        <div className="h-[120px] flex items-end p-4" style={{ background: c.coverUrl ? `url(${c.coverUrl}) center/cover` : c.coverColor }}>
-          <span className="serif text-[22px] font-bold leading-[1.1]" style={{ color: T.invertInk }}>{c.coverTagline}</span>
-        </div>
+        {/* Giống thẻ ở trang giới thiệu: có ảnh bìa thì hiện trọn ảnh 16:9, không chồng chữ (ảnh thường đã có chữ riêng, tên hội nằm ngay dưới); chưa có thì nền màu kèm khẩu hiệu. */}
+        {c.coverUrl
+          ? <img src={c.coverUrl} alt={`Ảnh bìa ${c.name}`} className="block w-full" style={{ aspectRatio: '16 / 9', objectFit: 'cover', background: c.coverColor }} />
+          : (
+            <div className="h-[120px] flex items-end p-4" style={{ background: c.coverColor }}>
+              <span className="serif text-[22px] font-bold leading-[1.1]" style={{ color: T.invertInk }}>{c.coverTagline}</span>
+            </div>
+          )}
         <div className="p-4 flex flex-col gap-2.5">
           <div className="font-semibold text-[16px]">{c.name}</div>
           <div className="muted text-[13px]">{SITE_HOST}/{c.slug}</div>
