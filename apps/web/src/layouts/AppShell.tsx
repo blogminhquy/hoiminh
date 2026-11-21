@@ -81,9 +81,9 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
         <>
           <div className="nav-group">Quản lý</div>
           <div className="flex flex-col gap-0.5">
-            {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem collapsed={collapsed} to={`/${s}/tien`} icon={<Wallet size={20} />} label="Tiền" />}
-            {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Affiliate" end />}
-            {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem collapsed={collapsed} to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt" />}
+            {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem collapsed={collapsed} to={`/${s}/tien`} icon={<Wallet size={20} />} label="Đơn hàng" />}
+            {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Quản lý affiliate" end />}
+            {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem collapsed={collapsed} to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" />}
           </div>
         </>
       )}

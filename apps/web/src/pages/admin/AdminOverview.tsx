@@ -1,12 +1,15 @@
-// Hệ thống · Tổng quan (saOverviewMain): chip kỳ, 5 thẻ số liệu, GMV theo ngày + tỷ trọng cổng, khối Cần xử lý, hội mới.
+// Hệ thống · Tổng quan (saOverviewMain): bảng lọc khoảng ngày, 5 thẻ số liệu, GMV theo ngày + tỷ trọng cổng, khối Cần xử lý, hội mới.
+import { vnDay } from '@hoiminh/contracts';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Bars, Button, Chip, CommunityMark, StatCard, T, money } from '@hoiminh/ui';
+import { Bars, Button, CommunityMark, StatCard, T, money } from '@hoiminh/ui';
 import { AlertTriangle, BadgeCheck, ExternalLink, Send, Users, Wallet } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { DateRangePicker } from '@/components/DateRangePicker';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
-import { fmtCount, fmtDate, fmtShortMoney } from '@/lib/format';
+import { choiceRange, dailySeries, rangeLabelShort, rangeQuery, type RangeChoice } from '@/lib/date-range';
+import { fmtCount, fmtShortMoney } from '@/lib/format';
 
 interface Overview {
   config: Array<{ key: string; label: string; detail: string; severity: 'error' | 'warn' }>;
@@ -16,7 +19,6 @@ interface Overview {
   daily: Array<{ date: string; amountMinor: number }>; byProvider: Array<{ provider: string; amountMinor: number }>;
   recentCommunities: Array<{ id: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl: string | null; pricingMode: string; memberCount: number; ownerName: string; planName: string; planKey: string }>;
 }
-const RANGES: Array<[number, string]> = [[1, 'Hôm nay'], [30, '30 ngày'], [90, 'Quý']];
 const PROVIDER: Record<string, string> = { sepay: 'Chuyển khoản QR', momo: 'MoMo', vnpay: 'VNPAY', paypal: 'PayPal' };
 const MODE: Record<string, string> = { free: 'Miễn phí', freemium: 'Freemium', subscription: 'Thu phí', one_time: 'Trọn đời' };
 
@@ -42,16 +44,16 @@ function Todo({ icon, bg, fg, text, action, to }: { icon: ReactNode; bg: string;
 }
 
 export default function Page() {
-  const [days, setDays] = useState(30);
-  const q = useQuery({ queryKey: ['admin', 'overview', days], queryFn: () => api.get<Overview>(`/v1/admin/overview?days=${days}`) });
-  const from = new Date(Date.now() - days * 86_400_000);
+  const [choice, setChoice] = useState<RangeChoice>({ preset: 'last30' });
+  // Khoảng ngày theo giờ Việt Nam, tính cả hai đầu.
+  const range = choiceRange(choice, vnDay(new Date()));
+  const q = useQuery({ queryKey: ['admin', 'overview', range.from, range.to], queryFn: () => api.get<Overview>(`/v1/admin/overview?${rangeQuery(range)}`) });
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3 flex-wrap"><h1 className="serif m-0 text-[28px] font-extrabold">Tổng quan hệ thống</h1><span className="flex-grow" /><div className="flex gap-2">{RANGES.map(([d, l]) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{l}</Chip>)}</div></div>
+      <div className="flex items-center gap-3 flex-wrap"><h1 className="serif m-0 text-[28px] font-extrabold">Tổng quan hệ thống</h1><span className="flex-grow" /><DateRangePicker value={choice} onChange={setChoice} /></div>
       <QueryState q={q} rows={5}>
         {(d) => {
-          const byDay = new Map(d.daily.map((x) => [x.date, x.amountMinor]));
-          const series = Array.from({ length: days }, (_, i) => { const dt = new Date(from.getTime() + (i + 1) * 86_400_000); return byDay.get(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`) ?? 0; });
+          const series = dailySeries(d.daily, range);
           const totalProv = d.byProvider.reduce((a, b) => a + b.amountMinor, 0) || 1;
           const failPct = d.totals.totalPayments ? Math.round((d.totals.failedPayments / d.totals.totalPayments) * 1000) / 10 : 0;
           return (
@@ -81,8 +83,8 @@ export default function Page() {
               </div>
               <div className="flex gap-4 flex-col md:flex-row">
                 <div className="card flex-[1.6_1_0] flex flex-col gap-3" style={{ padding: '18px 20px' }}>
-                  <div className="flex items-center"><span className="font-semibold">GMV theo ngày</span><span className="flex-grow" /><span className="muted text-[12px]">{fmtDate(from).slice(0, 5)} – {fmtDate(new Date()).slice(0, 5)}</span></div>
-                  <Bars values={series} height={150} />
+                  <div className="flex items-center gap-3"><span className="font-semibold">{series.bucketDays === 1 ? 'GMV theo ngày' : `GMV, mỗi cột ${series.bucketDays} ngày`}</span><span className="flex-grow" /><span className="muted text-[12px]">{rangeLabelShort(series)}</span></div>
+                  <Bars values={series.values} height={150} />
                   <div className="flex gap-4 text-[12px] muted flex-wrap">{d.byProvider.length ? d.byProvider.map((p) => <span key={p.provider}>{PROVIDER[p.provider] ?? p.provider} {Math.round((p.amountMinor / totalProv) * 100)}%</span>) : <span>Chưa có thanh toán trong kỳ</span>}</div>
                 </div>
                 <div className="card flex-1 flex flex-col gap-2.5" style={{ padding: '18px 20px' }}>

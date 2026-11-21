@@ -57,7 +57,7 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await expect(buyer.getByText('Đã nhận thanh toán')).toBeVisible({ timeout: 20_000 });
   await buyerCtx.close();
 
-  // Trang Tiền của chủ hội: không còn "Có thể rút", có số đã thu.
+  // Trang Quản lý đơn hàng của chủ hội: không còn "Có thể rút", có số đã thu.
   await page.goto('/ngoai-ngu-vy/tien');
   const money = page.getByRole('region', { name: 'Nhận tiền' });
   await expect(money.getByText('149.000đ').first()).toBeVisible();

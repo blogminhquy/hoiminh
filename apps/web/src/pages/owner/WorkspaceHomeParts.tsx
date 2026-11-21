@@ -49,7 +49,7 @@ export function HoiCard({ c, role }: { c: WorkspaceHome['owned'][number]; role: 
         <span className="flex-grow" />
         {waiting
           ? <Link to={`/admin/goi?hoi=${c.slug}`} className="btn btn-primary btn-sm">Thanh toán để mở hội</Link>
-          : <><Link to={`/${c.slug}/cai-dat`} className="btn btn-ghost btn-sm">Cài đặt</Link><Link to={`/${c.slug}/hom-nay`} className="btn btn-dark btn-sm">Vào quản lý</Link></>}
+          : <><Link to={`/${c.slug}/cai-dat`} className="btn btn-ghost btn-sm">Cài đặt hội</Link><Link to={`/${c.slug}/hom-nay`} className="btn btn-dark btn-sm">Vào quản lý</Link></>}
       </div>
     </div>
   );

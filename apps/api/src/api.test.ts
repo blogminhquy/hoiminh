@@ -205,6 +205,60 @@ describe('API', () => {
     const recon = await json('/v1/admin/reconciliation?status=unmatched', { auth: t });
     expect((await recon.json()).items.length).toBeGreaterThan(0);
   });
+  it('số liệu theo kỳ: nhận from/to, "từ trước đến nay" (chỉ có to), days cũ; ngày sai dạng → 422', async () => {
+    const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
+    const t = (await login.json()).accessToken;
+    const paths: Array<[string, string]> = [[`/v1/communities/${communityId}/revenue`, token], [`/v1/communities/${communityId}/overview`, token], ['/v1/admin/overview', t]];
+    for (const [path, auth] of paths) {
+      const ranged = await json(`${path}?from=2026-10-08&to=2026-11-20`, { auth });
+      expect(ranged.status, path).toBe(200);
+      expect((await ranged.json()).range).toMatchObject({ from: '2026-10-08', to: '2026-11-20' });
+      const all = await json(`${path}?to=2026-11-20`, { auth });
+      expect(all.status, path).toBe(200);
+      expect((await all.json()).range).toMatchObject({ from: null, to: '2026-11-20' });
+      // Bản web cũ còn mở trong trình duyệt vẫn gửi ?days=.
+      const legacy = await json(`${path}?days=30`, { auth });
+      expect(legacy.status, path).toBe(200);
+      expect((await legacy.json()).range.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect((await json(path, { auth })).status, path).toBe(200);
+      for (const bad of ['from=08/10/2026', 'from=2026-02-30', 'from=2026-11-21&to=2026-11-20', 'days=0', 'days=abc']) {
+        const r = await json(`${path}?${bad}`, { auth });
+        expect(r.status, `${path}?${bad}`).toBe(422);
+        expect((await r.json()).code).toBe('validation_error');
+      }
+    }
+  });
+  it('danh sách đơn hàng: chủ hội lọc và phân trang được; thành viên thường và khách bị từ chối; bộ lọc lạ → 422', async () => {
+    const path = `/v1/communities/${communityId}/orders`;
+    const first = await json(`${path}?to=2031-01-01&status=paid&affiliate=with&limit=1`, { auth: token });
+    expect(first.status).toBe(200);
+    const page = await first.json();
+    expect(page.range).toEqual({ from: null, to: '2031-01-01' });
+    expect(page.total).toBeGreaterThan(1);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]).toMatchObject({ status: 'paid', hasAffiliate: true });
+    expect(page.nextCursor).toBeTruthy();
+    const second = await (await json(`${path}?to=2031-01-01&status=paid&affiliate=with&limit=1&cursor=${encodeURIComponent(page.nextCursor)}`, { auth: token })).json();
+    expect(second.items).toHaveLength(1);
+    expect(second.items[0].orderId).not.toBe(page.items[0].orderId);
+    expect(second.total).toBe(page.total);
+
+    // Thành viên thường của hội không xem được đơn hàng, cũng không xem được doanh thu.
+    const member = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'duynguyen@gmail.com', password: 'hoiminh123' }) });
+    const memberToken = (await member.json()).accessToken;
+    for (const url of [path, `/v1/communities/${communityId}/revenue`]) {
+      const denied = await json(url, { auth: memberToken });
+      expect(denied.status, url).toBe(403);
+      expect((await denied.json()).code).toBe('forbidden');
+    }
+    expect((await json(path)).status).toBe(401);
+
+    for (const bad of ['status=succeeded', 'affiliate=yes', 'limit=0', 'cursor=abc', 'from=2026-11-21&to=2026-11-20']) {
+      const r = await json(`${path}?${bad}`, { auth: token });
+      expect(r.status, bad).toBe(422);
+      expect((await r.json()).code).toBe('validation_error');
+    }
+  });
   it('email thử: không có RESEND_API_KEY thì trả logged, có dòng trong nhật ký email; /health báo provider', async () => {
     const login = await json('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@hoiminh.vn', password: 'hoiminh123' }) });
     const t = (await login.json()).accessToken;
