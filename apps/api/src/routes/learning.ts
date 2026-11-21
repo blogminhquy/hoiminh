@@ -1,5 +1,5 @@
 // Khóa học, module, bài học, tiến độ.
-import { createCourseSchema, lessonInputSchema, moduleInputSchema, reorderSchema, updateCourseSchema, updateLessonSchema } from '@hoiminh/contracts';
+import { createCourseSchema, lessonInputSchema, moduleInputSchema, reorderCoursesSchema, reorderSchema, updateCourseSchema, updateLessonSchema } from '@hoiminh/contracts';
 import { courses, videoMeta } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
@@ -9,7 +9,13 @@ export const learningRoutes = router();
 
 learningRoutes.get('/communities/:id/courses', async (c) => c.json(await courses.listCourses(c.get('ctx'), c.req.param('id'))));
 learningRoutes.post('/communities/:id/courses', requireAuth, async (c) => c.json(await courses.createCourse(c.get('ctx'), c.req.param('id'), await parse(createCourseSchema, await body(c))), 201));
+learningRoutes.put('/communities/:id/courses/order', requireAuth, async (c) => {
+  const { courseIds } = await parse(reorderCoursesSchema, await body(c));
+  await courses.reorderCourses(c.get('ctx'), c.req.param('id'), courseIds);
+  return c.json({ ok: true });
+});
 learningRoutes.get('/courses/:id', async (c) => c.json(await courses.getCourse(c.get('ctx'), c.req.param('id'))));
+learningRoutes.post('/courses/:id/duplicate', requireAuth, async (c) => c.json(await courses.duplicateCourse(c.get('ctx'), c.req.param('id')), 201));
 // Công khai: trang kiểm tra chứng nhận không cần đăng nhập.
 learningRoutes.get('/courses/:id/certificate/:userId', async (c) => c.json(await courses.certificate(c.get('ctx'), c.req.param('id'), c.req.param('userId'))));
 learningRoutes.patch('/courses/:id', requireAuth, async (c) => c.json(await courses.updateCourse(c.get('ctx'), c.req.param('id'), await parse(updateCourseSchema, await body(c)))));
