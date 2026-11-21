@@ -7,7 +7,7 @@ import { systemCtx, type AppContext, type Ctx } from '../context';
 import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
-import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
+import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution, defaultPlatformReferrer } from '../services/affiliate';
 import { applyPendingGrantsForUser, elevated } from '../services/automation-engine';
 import { grant } from '../services/entitlements';
 import { notify } from '../services/notifications';
@@ -54,6 +54,8 @@ export function registerHandlers(app: AppContext): void {
     const community = await communityOf(c, p.communityId);
     const user = await userOf(c, p.userId);
     if (!community || !user) return;
+    // Người vào hội mà chưa có người giới thiệu nền tảng thì mặc định là chủ hội này.
+    await defaultPlatformReferrer(c, { userId: p.userId, communityId: p.communityId });
     const plugin = await raw(c.db, sql`select enabled, config from community_plugins where community_id = ${p.communityId} and plugin_key = 'welcome_dm'`);
     const row = plugin[0] as { enabled: boolean; config: { delayMinutes?: number } } | undefined;
     if (row?.enabled) {

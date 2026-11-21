@@ -100,13 +100,14 @@ export async function verifyTwoFactor(ctx: Ctx, provider: AuthProvider, ticket: 
   return issueSession(ctx, provider, user, remember, meta);
 }
 
-/** Đăng nhập bằng danh tính Supabase (sau Google OAuth): tạo user nếu chưa có. */
-export async function loginWithIdentity(ctx: Ctx, provider: AuthProvider, identity: { providerUserId: string; email: string; name?: string; emailVerified: boolean }): Promise<AuthSession> {
+/** Đăng nhập bằng danh tính Supabase (sau Google OAuth): tạo user nếu chưa có. `ref` chỉ dùng khi tạo user mới. */
+export async function loginWithIdentity(ctx: Ctx, provider: AuthProvider, identity: { providerUserId: string; email: string; name?: string; emailVerified: boolean }, opts: { ref?: string | null } = {}): Promise<AuthSession> {
   let user = await ctx.db.query.users.findFirst({ where: eq(users.email, identity.email.toLowerCase()) });
   if (!user) {
     const name = identity.name ?? identity.email.split('@')[0] ?? 'Thành viên';
     [user] = await ctx.db.insert(users).values({ email: identity.email.toLowerCase(), name, handle: await uniqueHandle(ctx, name), authProviderId: identity.providerUserId, emailVerifiedAt: identity.emailVerified ? ctx.now() : null }).returning();
-    await ctx.events.emit('user.registered', { userId: user!.id, email: user!.email, ref: null, communitySlug: null });
+    // Đăng ký bằng Google cũng là đăng ký tài khoản mới: mã giới thiệu trong cookie được tính như đăng ký bằng email.
+    await ctx.events.emit('user.registered', { userId: user!.id, email: user!.email, ref: opts.ref ?? null, communitySlug: null });
   } else if (!user.authProviderId) {
     await ctx.db.update(users).set({ authProviderId: identity.providerUserId }).where(eq(users.id, user.id));
   }

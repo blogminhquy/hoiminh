@@ -1,11 +1,12 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { body, csv, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
+import { readCookie } from '../lib/session-cookie';
 import { rateLimit } from '../middleware/rate-limit';
 
 export const communityRoutes = router();
@@ -15,11 +16,12 @@ communityRoutes.get('/discover', async (c) => {
   return c.json(await communities.discover(c.get('ctx'), { category: q.category, search: q.q, limit: q.limit ? Number(q.limit) : undefined }));
 });
 communityRoutes.post('/', requireAuth, async (c) => c.json(await communities.createCommunity(c.get('ctx'), await parse(createCommunitySchema, await body(c))), 201));
-communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), query(c).ref ?? null)));
+communityRoutes.get('/by-slug/:slug', async (c) => c.json(await communities.aboutPage(c.get('ctx'), c.req.param('slug'), joinRefs(query(c).ref) ?? null)));
 communityRoutes.get('/by-slug/:slug/shell', async (c) => c.json(await shell.communityShell(c.get('ctx'), c.req.param('slug'))));
 communityRoutes.post('/by-slug/:slug/join', requireAuth, async (c) => {
   const input = await parse(joinCommunitySchema, await body(c));
-  return c.json(await members.joinCommunity(c.get('ctx'), c.req.param('slug'), input));
+  // Mã trên link đứng trước, rồi tới các mã đã nhớ trong cookie (30 ngày): mã của hội này trong đó sẽ được tính.
+  return c.json(await members.joinCommunity(c.get('ctx'), c.req.param('slug'), { ...input, ref: joinRefs(input.ref, readCookie(c, 'hm_ref')) }));
 });
 communityRoutes.post('/slug-available', async (c) => {
   const { slug } = await parse(z.object({ slug: z.string() }), await body(c));
