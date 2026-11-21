@@ -1,7 +1,7 @@
-// Bảng giá công khai (/tao-hoi/goi): bốn gói từ /v1/plans, hai tab chu kỳ (3 tháng, 1 năm). Mỗi gói dùng cho một hội.
+// Bảng giá công khai (/tao-hoi/goi): các gói từ /v1/plans, tab kỳ hạn chỉ gồm kỳ đang bán (giá lớn hơn 0). Mỗi gói dùng cho một hội.
 // Không có dùng thử: ai cũng bắt đầu bằng hội miễn phí (dùng vĩnh viễn), muốn nâng gói thì nâng trong trang quản lý hội.
 import { useQuery } from '@tanstack/react-query';
-import type { PlanCycle, PlanDef } from '@hoiminh/contracts';
+import { pickCycle, soldCycles, type PlanCycle, type PlanDef } from '@hoiminh/contracts';
 import { T } from '@hoiminh/ui';
 import { Check, Lock, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { CYCLES, cycleLabel, tierCards, type HoiPlan } from '@/lib/platform-plan';
+import { cycleLabel, cycleSaving, tierCards, type HoiPlan } from '@/lib/platform-plan';
 import { SignupPage, withRef } from './SignupParts';
 
 /** Người xem bảng giá chưa có hội nào: coi như đang ở gói Miễn phí để dựng bốn thẻ. */
@@ -21,8 +21,13 @@ export default function Page() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const ref = params.get('ref');
-  const [cycle, setCycle] = useState<PlanCycle>('yearly');
+  const [wanted, setCycle] = useState<PlanCycle>('yearly');
   const plans = useQuery({ queryKey: ['plans'], queryFn: () => api.get<PlanDef[]>('/v1/plans'), staleTime: 300_000 });
+  // Chỉ hiện các kỳ đang bán. Kỳ đang chọn không còn bán thì lấy kỳ dài nhất đang bán.
+  const cycles = soldCycles(plans.data ?? []);
+  const cycle = pickCycle(cycles, wanted) ?? wanted;
+  const longest = cycles.at(-1);
+  const note = longest && plans.data ? cycleSaving(plans.data, longest) : '';
   const go = () => navigate(user ? '/admin/tao-hoi' : withRef('/dang-ky?next=%2Fadmin%2Ftao-hoi', ref));
 
   return (
@@ -32,12 +37,14 @@ export default function Page() {
           <h1 className="serif m-0 font-extrabold text-[30px] md:text-[40px]">Bắt đầu miễn phí, nâng gói khi hội lớn</h1>
           <div className="text-[16px]" style={{ color: T.sideText }}>Mỗi gói dùng cho một hội. Không thu phí trên doanh thu ở bất kỳ gói nào.</div>
         </div>
+        {cycles.length > 0 && (
         <div className="relative flex p-1 rounded-full" style={{ background: 'rgba(255,253,249,0.1)' }} role="tablist" aria-label="Chu kỳ thanh toán">
-          {CYCLES.map((k) => (
-            <button key={k} type="button" role="tab" aria-selected={cycle === k} onClick={() => setCycle(k)} className="rounded-full" style={{ minHeight: 44, padding: '0 32px', fontSize: 15, fontWeight: cycle === k ? 700 : 600, background: cycle === k ? T.surface : 'transparent', color: cycle === k ? T.ink : T.sideText }}>{cycleLabel(k)}</button>
+          {cycles.map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={cycle === k} onClick={() => setCycle(k)} className="rounded-full" style={{ minHeight: 44, padding: cycles.length > 2 ? '0 16px' : '0 32px', fontSize: 15, fontWeight: cycle === k ? 700 : 600, background: cycle === k ? T.surface : 'transparent', color: cycle === k ? T.ink : T.sideText }}>{cycleLabel(k)}</button>
           ))}
-          <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.invertInk, height: 26, padding: '0 10px' }}>Tặng 2 tháng</span>
+          {note && <span className="tag absolute" style={{ top: -14, right: -8, background: '#1E8A5A', color: T.invertInk, height: 26, padding: '0 10px' }}>{note.charAt(0).toLocaleUpperCase('vi') + note.slice(1)}</span>}
         </div>
+        )}
         <QueryState q={plans} rows={2}>
           {(list) => (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-start w-full" style={{ maxWidth: 1180 }}>

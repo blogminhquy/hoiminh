@@ -86,7 +86,7 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
 /** Mã bí mật của địa chỉ báo có của hội chính trong dữ liệu mẫu, để test giả lập ngân hàng báo tiền về. */
 export const SEED_BANK_WEBHOOK_TOKEN = '5eed'.repeat(10);
 
-export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'quarterly' | 'yearly'; daysLeft: number }
+export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'monthly' | 'quarterly' | 'semiannual' | 'yearly'; daysLeft: number }
 
 interface CommunitySpec {
   key: string; owner: SeedUser; workspaceKey: string; name: string; slug: string; mark: string; color: string; coverColor: string; tagline: string;

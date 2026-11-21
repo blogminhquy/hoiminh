@@ -1,6 +1,6 @@
-// Gói Hội Mình theo kế hoạch 11/11/2026: bốn gói, mỗi gói cho một hội, hai chu kỳ, không dùng thử.
+// Gói Hội Mình theo kế hoạch 11/11/2026 (sửa 21/11/2026): bốn gói, mỗi gói cho một hội, bốn kỳ với giá riêng từng kỳ, không dùng thử.
 // Kiểm tra bảng gói, mua/gia hạn/nâng gói, hội miễn phí của tài khoản, trần thành viên, khóa tính năng, nhắc hạn và hết hạn.
-import { PLAN_DEFAULTS, planQuote, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
+import { PLAN_DEFAULTS, pickCycle, planCyclesOf, planLowestPerMonth, planQuote, planSaving, soldCycles, type PlanCycle, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
 import { communities, communityMembers, platformSubscriptions } from '@hoiminh/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -53,7 +53,8 @@ async function buy(ctx: Ctx, communityId: string, planKey: Exclude<PlanKey, 'fre
   return s;
 }
 
-const defaults = () => PLAN_DEFAULTS.map((p) => ({ key: p.key, monthlyMinor: p.monthlyMinor, memberCap: p.memberCap, features: [...p.features] }));
+const defaults = () => PLAN_DEFAULTS.map((p) => ({ key: p.key, prices: { ...p.prices }, memberCap: p.memberCap, features: [...p.features] }));
+const priced = (p: Partial<PlanPrices>): PlanPrices => ({ monthly: 0, quarterly: 0, semiannual: 0, yearly: 0, ...p });
 const daysFromNow = (d: Date | null) => Math.round(((d?.getTime() ?? 0) - Date.now()) / DAY);
 
 async function expectCode(p: Promise<unknown>, code: string): Promise<AppError> {
@@ -65,14 +66,46 @@ async function expectCode(p: Promise<unknown>, code: string): Promise<AppError> 
 
 describe('cách tính một lần mua gói (hàm thuần)', () => {
   const now = new Date('2026-11-11T02:00:00Z');
-  const pro = { key: 'pro' as const, monthlyMinor: 299_000, memberCap: 5_000 };
-  const starter = { key: 'starter' as const, monthlyMinor: 99_000, memberCap: 500 };
+  const pro = { key: 'pro' as const, prices: priced({ quarterly: 897_000, yearly: 2_990_000 }), memberCap: 5_000 };
+  const starter = { key: 'starter' as const, prices: priced({ quarterly: 297_000, yearly: 990_000 }), memberCap: 500 };
+  const full = { key: 'pro' as const, prices: priced({ monthly: 329_000, quarterly: 897_000, semiannual: 1_690_000, yearly: 2_990_000 }), memberCap: 5_000 };
 
-  it('3 tháng bằng 3 lần giá tháng và 90 ngày; 1 năm bằng 10 lần giá tháng và 365 ngày', () => {
+  it('mỗi kỳ trả đúng giá quản trị nhập cho kỳ đó: 1 tháng 30 ngày, 3 tháng 90, 6 tháng 180, 1 năm 365', () => {
     const q = planQuote({ now, current: { key: 'free', endsAt: null }, target: pro, cycle: 'quarterly', members: 10 });
     expect(q).toMatchObject({ ok: true, action: 'buy', amountMinor: 897_000, days: 90, carryDays: 0, totalDays: 90 });
     const y = planQuote({ now, current: { key: 'free', endsAt: null }, target: pro, cycle: 'yearly', members: 10 });
     expect(y).toMatchObject({ amountMinor: 2_990_000, days: 365 });
+    expect(planQuote({ now, current: { key: 'free', endsAt: null }, target: full, cycle: 'monthly', members: 10 })).toMatchObject({ ok: true, amountMinor: 329_000, days: 30 });
+    expect(planQuote({ now, current: { key: 'free', endsAt: null }, target: full, cycle: 'semiannual', members: 10 })).toMatchObject({ ok: true, amountMinor: 1_690_000, days: 180 });
+  });
+
+  it('kỳ có giá 0 là kỳ không bán: không mua được, không nằm trong danh sách kỳ', () => {
+    expect(planQuote({ now, current: { key: 'free', endsAt: null }, target: pro, cycle: 'monthly', members: 10 })).toMatchObject({ ok: false, blocked: 'unsold', amountMinor: 0 });
+    expect(planQuote({ now, current: { key: 'free', endsAt: null }, target: pro, cycle: 'semiannual', members: 10 })).toMatchObject({ ok: false, blocked: 'unsold' });
+    expect(planCyclesOf(pro)).toEqual(['quarterly', 'yearly']);
+    expect(planCyclesOf(full)).toEqual(['monthly', 'quarterly', 'semiannual', 'yearly']);
+    const hidden = { key: 'unlimited' as const, prices: priced({}) };
+    expect(soldCycles([{ key: 'free', prices: priced({}) }, starter, hidden])).toEqual(['quarterly', 'yearly']);
+    expect(soldCycles([starter, { key: 'pro', prices: priced({ semiannual: 1_500_000 }) }])).toEqual(['quarterly', 'semiannual', 'yearly']);
+    expect(soldCycles([{ key: 'free', prices: priced({}) }, hidden])).toEqual([]);
+    // Chọn kỳ: lấy kỳ ưu tiên đầu tiên còn bán, không có thì kỳ dài nhất đang bán.
+    expect(pickCycle(['quarterly', 'yearly'], 'monthly', null, 'yearly')).toBe('yearly');
+    expect(pickCycle(['monthly', 'quarterly'], 'yearly')).toBe('quarterly');
+    expect(pickCycle([], 'yearly')).toBeNull();
+  });
+
+  it('mức lợi của kỳ dài tính so với kỳ ngắn nhất đang bán: số tháng tròn thì ghi tặng tháng, không thì ghi phần trăm', () => {
+    // 3 tháng 897.000đ là 299.000đ mỗi tháng; 1 năm 2.990.000đ bằng tiền của 10 tháng.
+    expect(planSaving(pro, 'yearly')).toEqual({ kind: 'months', months: 2 });
+    expect(planSaving(pro, 'quarterly')).toBeNull();
+    expect(planSaving(pro, 'monthly')).toBeNull();
+    // Có bán 1 tháng 329.000đ: 3 tháng rẻ hơn 9%, 6 tháng rẻ hơn 14%.
+    expect(planSaving(full, 'quarterly')).toEqual({ kind: 'percent', percent: 9 });
+    expect(planSaving(full, 'semiannual')).toEqual({ kind: 'percent', percent: 14 });
+    // Kỳ dài không rẻ hơn thì không ghi gì.
+    expect(planSaving({ prices: priced({ monthly: 100_000, quarterly: 300_000 }) }, 'quarterly')).toBeNull();
+    expect(planLowestPerMonth(full)).toBe(249_167);
+    expect(planLowestPerMonth({ prices: priced({}) })).toBeNull();
   });
 
   it('nâng gói: Khởi đầu còn 60 ngày, mua Chuyên nghiệp 3 tháng thì được 90 + 60 ngày', () => {
@@ -100,7 +133,9 @@ describe('cách tính một lần mua gói (hàm thuần)', () => {
 describe('bảng bốn gói', () => {
   it('luôn đủ bốn gói với giá và trần đã chốt', async () => {
     const list = await platformBilling.listPlans(app.anon());
-    expect(list.map((p) => [p.key, p.monthlyMinor, p.memberCap])).toEqual([['free', 0, 100], ['starter', 99_000, 500], ['pro', 299_000, 5_000], ['unlimited', 799_000, null]]);
+    expect(list.map((p) => [p.key, p.prices.quarterly, p.prices.yearly, p.memberCap])).toEqual([['free', 0, 0, 100], ['starter', 297_000, 990_000, 500], ['pro', 897_000, 2_990_000, 5_000], ['unlimited', 2_397_000, 7_990_000, null]]);
+    // 1 tháng và 6 tháng chưa có giá nên chưa bán, cho tới khi quản trị nhập.
+    expect(list.every((p) => p.prices.monthly === 0 && p.prices.semiannual === 0)).toBe(true);
     expect(list[0]!.features).toEqual([]);
     expect(list[2]!.features).toEqual(['automation', 'custom_domain', 'affiliate', 'api']);
   });
@@ -109,17 +144,56 @@ describe('bảng bốn gói', () => {
     const admin = await app.as('admin');
     await expect(platformBilling.savePlans(await app.as('minhquy'), { plans: defaults() })).rejects.toThrow();
     const patch = (key: PlanKey, change: Partial<ReturnType<typeof defaults>[number]>) => ({ plans: defaults().map((p) => (p.key === key ? { ...p, ...change } : p)) });
-    await expect(platformBilling.savePlans(admin, patch('free', { monthlyMinor: 1_000 }))).rejects.toThrow(/Miễn phí luôn có giá 0/);
-    await expect(platformBilling.savePlans(admin, patch('starter', { monthlyMinor: 0 }))).rejects.toThrow(/lớn hơn 0/);
-    await expect(platformBilling.savePlans(admin, patch('pro', { monthlyMinor: 50_000 }))).rejects.toThrow(/không được rẻ hơn/);
+    await expect(platformBilling.savePlans(admin, patch('free', { prices: priced({ monthly: 1_000 }) }))).rejects.toThrow(/Miễn phí luôn có giá 0/);
+    // Gói cao hơn không được rẻ hơn gói thấp hơn ở kỳ mà cả hai cùng bán.
+    await expect(platformBilling.savePlans(admin, patch('pro', { prices: priced({ quarterly: 150_000, yearly: 2_990_000 }) }))).rejects.toThrow(/không được rẻ hơn gói Khởi đầu ở kỳ 3 tháng/);
+    // Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn (gõ thiếu một số 0).
+    await expect(platformBilling.savePlans(admin, patch('starter', { prices: priced({ quarterly: 297_000, yearly: 99_000 }) }))).rejects.toThrow(/giá 1 năm không được thấp hơn giá 3 tháng/);
     await expect(platformBilling.savePlans(admin, patch('pro', { memberCap: 200 }))).rejects.toThrow(/không được thấp hơn/);
-    const saved = await platformBilling.savePlans(admin, patch('starter', { monthlyMinor: 129_000, memberCap: 800, features: ['custom_domain'] }));
-    expect(saved.find((p) => p.key === 'starter')).toMatchObject({ monthlyMinor: 129_000, memberCap: 800, features: ['custom_domain'] });
+    const saved = await platformBilling.savePlans(admin, patch('starter', { prices: priced({ monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }), memberCap: 800, features: ['custom_domain'] }));
+    expect(saved.find((p) => p.key === 'starter')).toMatchObject({ prices: { monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }, memberCap: 800, features: ['custom_domain'] });
     await platformBilling.savePlans(admin, { plans: defaults() });
     const stats = await platformBilling.planStats(admin);
     expect(stats.plans).toHaveLength(4);
     // Dữ liệu mẫu: hội chính ở Chuyên nghiệp 3 tháng, hội YouTube ở Chuyên nghiệp 1 năm.
-    expect(stats.plans.find((p) => p.key === 'pro')).toMatchObject({ quarterlyCount: 1, yearlyCount: 1, communities: 2 });
+    expect(stats.plans.find((p) => p.key === 'pro')).toMatchObject({ cycleCounts: { monthly: 0, quarterly: 1, semiannual: 0, yearly: 1 }, communities: 2 });
+    // Quy ra tháng: 897.000đ chia 3 cộng 2.990.000đ chia 12.
+    expect(stats.plans.find((p) => p.key === 'pro')!.mrrMinor).toBe(299_000 + 249_167);
+  });
+
+  it('giá từng kỳ nhập riêng: kỳ để 0 thì không mua được, kỳ có giá thì trả đúng giá đó và được đúng số ngày', async () => {
+    const admin = await app.as('admin');
+    const starterOf = async () => (await platformBilling.planStats(admin)).plans.find((p) => p.key === 'starter')!;
+    const before = await starterOf();
+    try {
+      // Khởi đầu: bán 1 tháng và 6 tháng, ngừng bán 3 tháng. Không giới hạn: mọi kỳ đều 0, tức là không bán gói này.
+      await platformBilling.savePlans(admin, { plans: defaults().map((p) => (p.key === 'starter' ? { ...p, prices: priced({ monthly: 119_000, semiannual: 599_000, yearly: 990_000 }) } : p.key === 'unlimited' ? { ...p, prices: priced({}) } : p)) });
+      const list = await platformBilling.listPlans(app.anon());
+      expect(soldCycles(list)).toEqual(['monthly', 'quarterly', 'semiannual', 'yearly']);
+      expect(planCyclesOf(list.find((p) => p.key === 'starter')!)).toEqual(['monthly', 'semiannual', 'yearly']);
+      expect(planCyclesOf(list.find((p) => p.key === 'unlimited')!)).toEqual([]);
+      await expect(checkout.createCheckout(duc, { target: { type: 'platform', communityId: SHOPEE, planKey: 'starter', cycle: 'quarterly' }, provider: 'sepay' })).rejects.toThrow(/không bán kỳ 3 tháng/);
+      await expect(checkout.createCheckout(duc, { target: { type: 'platform', communityId: SHOPEE, planKey: 'unlimited', cycle: 'yearly' }, provider: 'sepay' })).rejects.toThrow(/không bán kỳ 1 năm/);
+      const month = await buy(duc, SHOPEE, 'starter', 'monthly');
+      expect(month.amountMinor).toBe(119_000);
+      expect(daysFromNow((await communityPlan(duc, SHOPEE)).endsAt)).toBe(30);
+      // Gia hạn bằng kỳ 6 tháng: nối tiếp 180 ngày vào 30 ngày đang có.
+      const half = await buy(duc, SHOPEE, 'starter', 'semiannual');
+      expect(half.amountMinor).toBe(599_000);
+      expect(daysFromNow((await communityPlan(duc, SHOPEE)).endsAt)).toBe(210);
+      const sub = await app.ctx.db.query.platformSubscriptions.findFirst({ where: eq(platformSubscriptions.communityId, SHOPEE) });
+      expect(sub).toMatchObject({ planKey: 'starter', status: 'active', billingCycle: 'semiannual' });
+      // Số liệu quản trị: thêm đúng một hội ở kỳ 6 tháng, quy ra tháng là 599.000đ chia 6.
+      const after = await starterOf();
+      expect(after.cycleCounts).toEqual({ ...before.cycleCounts, semiannual: before.cycleCounts.semiannual + 1 });
+      expect(after.communities).toBe(before.communities + 1);
+      expect(after.mrrMinor).toBe(before.mrrMinor + 99_833);
+    } finally {
+      // Trả bảng gói và hội Shopee về như dữ liệu mẫu để các bài sau không bị ảnh hưởng.
+      await platformBilling.savePlans(admin, { plans: defaults() });
+      await app.ctx.db.delete(platformSubscriptions).where(eq(platformSubscriptions.communityId, SHOPEE));
+      await app.ctx.db.update(communities).set({ planKey: 'free', planEndsAt: null }).where(eq(communities.id, SHOPEE));
+    }
   });
 });
 
