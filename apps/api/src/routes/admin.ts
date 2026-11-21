@@ -58,11 +58,8 @@ adminRoutes.get('/releases', async (c) => c.json(await releases.listReleases(c.g
 adminRoutes.post('/releases/:versionId/deploy', async (c) => c.json(await releases.deployRelease(c.get('ctx'), c.req.param('versionId'))));
 
 // Affiliate nền tảng
-async function platformProgram(c: Ctx$) {
-  const p = await c.get('ctx').db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.scopeType, 'platform') });
-  if (!p) throw new Error('Chưa có chương trình affiliate nền tảng');
-  return p;
-}
+// Chương trình nền tảng tự được tạo với mức mặc định nếu chưa có (web thật không chạy dữ liệu mẫu).
+const platformProgram = (c: Ctx$) => affiliate.platformProgram(c.get('ctx'));
 adminRoutes.get('/affiliate', async (c) => {
   const ctx = c.get('ctx');
   const program = await platformProgram(c);

@@ -9,7 +9,7 @@ import { videoInfo } from '@/lib/about-media';
 import { fmtCount } from '@/lib/format';
 
 export interface AboutPage {
-  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; description: string; category: string; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; introVideoUrl: string | null; aboutMedia?: AboutMediaItem[]; links: Array<{ label: string; url: string }>; status: string; pricingMode: string; doorsOpen: boolean; memberCount: number; paidMemberCount: number; tabs: Record<string, boolean>; customDomain: string | null };
+  community: { id: string; workspaceId: string; name: string; slug: string; shortDescription: string; description: string; category: string; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; introVideoUrl: string | null; aboutMedia?: AboutMediaItem[]; links: Array<{ label: string; url: string }>; status: string; /** Hội mở ('public'): người chưa vào hội cũng xem được bên trong. Bản API cũ không trả thì coi là hội kín. */ visibility?: 'private' | 'public'; pricingMode: string; doorsOpen: boolean; memberCount: number; paidMemberCount: number; tabs: Record<string, boolean>; customDomain: string | null };
   tiers: Array<{ id: string; key: string; name: string; monthlyMinor: number | null; yearlyMinor: number | null; oneTimeMinor: number | null; benefits: string[] }>;
   owner: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; bio: string } | null;
   courses: Array<{ id: string; title: string; slug: string; coverColor: string; coverUrl: string | null; lessonCount: number; accessMode: string; priceMinor: number | null }>;
@@ -42,7 +42,8 @@ export function AboutTabs({ d, member }: { d: AboutPage; member: boolean }) {
   return (
     <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.line}` }}>
       <span className={cls} style={{ padding: '12px 4px', borderBottom: `2px solid ${T.ink}`, fontWeight: 700, color: T.ink }}>Giới thiệu</span>
-      {items.filter(([, , on]) => on).map(([label, path]) => tab(label, path, !member))}
+      {/* Hội mở: người chưa vào hội cũng mở được các tab, ở chế độ chỉ xem. */}
+      {items.filter(([, , on]) => on).map(([label, path]) => tab(label, path, !member && d.community.visibility !== 'public'))}
       {tabs.store !== false && tab('Cửa hàng', 'cua-hang', false)}
     </div>
   );

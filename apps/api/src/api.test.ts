@@ -465,6 +465,27 @@ describe('API', () => {
     }
   });
 
+  describe('đếm lượt mở link ?ref=', () => {
+    it('khách chưa đăng nhập: đếm một lượt, cấp mã khách, mở lại không đếm thêm', async () => {
+      const click = (cookie?: string) => json('/v1/ref-clicks', { method: 'POST', body: JSON.stringify({ code: 'hv8k2', url: 'http://localhost:5173/minhquy?ref=hv8k2' }), headers: { 'User-Agent': 'api-test-ref', 'X-Forwarded-For': '203.0.113.9', ...(cookie ? { Cookie: cookie } : {}) } });
+      const first = await click();
+      expect(first.status).toBe(200);
+      expect((await first.json()).counted).toBe(true);
+      const vid = /hm_vid=([^;]+)/.exec(first.headers.get('set-cookie') ?? '')?.[1];
+      expect(vid).toBeTruthy();
+      const again = await click(`hm_vid=${vid}`);
+      expect((await again.json()).counted).toBe(false);
+      // Đã có mã khách thì không đặt lại cookie.
+      expect(again.headers.get('set-cookie') ?? '').not.toContain('hm_vid=');
+    });
+    it('mã lạ trả counted false, thiếu mã thì 422', async () => {
+      const unknown = await json('/v1/ref-clicks', { method: 'POST', body: JSON.stringify({ code: 'khong-co-ma' }) });
+      expect(unknown.status).toBe(200);
+      expect((await unknown.json()).counted).toBe(false);
+      expect((await json('/v1/ref-clicks', { method: 'POST', body: JSON.stringify({}) })).status).toBe(422);
+    });
+  });
+
   describe('phiên đăng nhập bằng cookie httpOnly', () => {
     const web = 'http://localhost:5173';
     const cookieOf = (res: Response) => res.headers.getSetCookie();

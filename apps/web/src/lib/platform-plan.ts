@@ -1,7 +1,8 @@
-// Gói Hội Mình ở phía web (kế hoạch 11/11/2026): bốn gói, mỗi gói cho một hội, hai chu kỳ 3 tháng và 1 năm.
+// Gói Hội Mình ở phía web (kế hoạch 11/11/2026, sửa 21/11/2026): bốn gói, mỗi gói cho một hội, bốn kỳ trả tiền
+// (1 tháng, 3 tháng, 6 tháng, 1 năm) với giá riêng từng kỳ. Kỳ nào có giá 0 thì không bán và không hiện ở đây.
 // Hàm thuần dựng dữ liệu hiển thị cho thẻ ở Hội của tôi, trang chọn gói và màn nâng gói. Luật giá và ngày tặng
 // nằm ở @hoiminh/contracts (API dùng chung), ở đây chỉ đổi kết quả đó ra chữ.
-import { PLAN_CYCLE, PLAN_FEATURES, PLAN_FEATURE_LABEL, lowestPlanWith, planPerMonth, planPrice, planQuote, planRank, type PlanCycle, type PlanDef, type PlanFeature, type PlanKey, type PlanQuote } from '@hoiminh/contracts';
+import { PLAN_CYCLE, PLAN_FEATURES, PLAN_FEATURE_LABEL, lowestPlanWith, planCyclesOf, planLowestPerMonth, planPerMonth, planPrice, planQuote, planRank, planSaving, planSells, soldCycles, type PlanCycle, type PlanDef, type PlanFeature, type PlanKey, type PlanQuote } from '@hoiminh/contracts';
 import { fmtDate, money } from './format';
 
 /** Số đầy đủ kiểu Việt Nam (5.000), không viết tắt thành 5k: trần thành viên phải đọc được chính xác. */
@@ -24,8 +25,45 @@ export interface HoiPlan {
   full: boolean;
 }
 
-export const CYCLES: PlanCycle[] = ['quarterly', 'yearly'];
 export const cycleLabel = (c: PlanCycle) => PLAN_CYCLE[c].label;
+
+/** Một kỳ của một gói rẻ hơn bao nhiêu so với kỳ ngắn nhất gói đang bán: "tặng 2 tháng", "tiết kiệm 17%", hoặc rỗng. */
+export function savingText(plan: Pick<PlanDef, 'prices'>, cycle: PlanCycle): string {
+  const s = planSaving(plan, cycle);
+  return !s ? '' : s.kind === 'months' ? `tặng ${s.months} tháng` : `tiết kiệm ${s.percent}%`;
+}
+
+/**
+ * Lời mời ghi cạnh tab của một kỳ, tính trên các gói trả phí đang bán kỳ đó: mọi gói lợi như nhau thì ghi đúng mức đó
+ * ("tặng 2 tháng"), khác nhau thì ghi mức cao nhất ("tiết kiệm tới 20%"), không gói nào lợi thì rỗng.
+ */
+export function cycleSaving(plans: PlanDef[], cycle: PlanCycle): string {
+  const selling = plans.filter((p) => p.key !== 'free' && planSells(p, cycle));
+  const texts = selling.map((p) => savingText(p, cycle));
+  if (!texts.length || texts.every((t) => !t)) return '';
+  if (texts.every((t) => t === texts[0])) return texts[0]!;
+  const best = Math.max(...selling.map((p) => {
+    const base = planCyclesOf(p)[0]!;
+    return Math.round((1 - planPerMonth(p, cycle) / planPerMonth(p, base)) * 100);
+  }));
+  return best >= 1 ? `tiết kiệm tới ${best}%` : '';
+}
+
+/** Dòng chữ dưới các tab kỳ hạn: kỳ đang chọn trả thế nào, và kỳ dài nhất lợi hơn ra sao. */
+export function cycleHint(plans: PlanDef[], cycle: PlanCycle): string {
+  const here = cycleSaving(plans, cycle);
+  const longest = soldCycles(plans).at(-1);
+  const there = longest && longest !== cycle ? cycleSaving(plans, longest) : '';
+  return `Trả ${cycleLabel(cycle)} một lần${here ? `, ${here}` : ''}.${there && longest ? ` Chọn ${cycleLabel(longest)}: ${there}.` : ''}`;
+}
+
+/** Giá của một gói ghi gọn trong một câu: "từ 82.500đ mỗi tháng" (nhiều kỳ, giá mỗi tháng khác nhau) hoặc "99.000đ mỗi tháng". */
+export function priceLine(plan: Pick<PlanDef, 'prices'>): string {
+  const low = planLowestPerMonth(plan);
+  if (low === null) return '';
+  const varied = planCyclesOf(plan).some((c) => planPerMonth(plan, c) !== low);
+  return `${varied ? 'từ ' : ''}${money(low)} mỗi tháng`;
+}
 
 export interface PlanBadge { label: string; tone: 'gold' | 'accent' | 'teal' | 'muted'; note: string }
 
@@ -105,13 +143,17 @@ function tierFeatures(plans: PlanDef[], p: PlanDef): TierFeature[] {
   return out;
 }
 
-/** Bốn thẻ gói của trang chọn gói, theo chu kỳ đang chọn và tình trạng của hội. */
+/**
+ * Các thẻ gói của trang chọn gói, theo kỳ đang chọn và tình trạng của hội. Gói trả phí không bán kỳ đang chọn
+ * (giá của kỳ đó là 0) thì không có thẻ.
+ */
 export function tierCards(plans: PlanDef[], current: HoiPlan, members: number, cycle: PlanCycle, now: Date): TierCard[] {
   const popularKey = plans.find((p) => p.key === 'pro') ? 'pro' : null;
-  return plans.map((p) => {
+  return plans.filter((p) => p.key === 'free' || planSells(p, cycle)).map((p) => {
     const free = p.key === 'free';
     const q = planQuote({ now, current: { key: current.key, endsAt: current.endsAt }, target: p, cycle, members });
-    const total = planPrice(p.monthlyMinor, cycle);
+    const total = planPrice(p, cycle);
+    const saving = savingText(p, cycle);
     const isCurrent = p.key === current.key && !current.needsPlan;
     let state: TierCard['state'] = 'buy';
     let cta = q.action === 'renew' ? `Gia hạn gói ${p.name}` : q.action === 'upgrade' ? `Nâng lên ${p.name}` : `Chọn gói ${p.name}`;
@@ -132,9 +174,9 @@ export function tierCards(plans: PlanDef[], current: HoiPlan, members: number, c
     return {
       key: p.key,
       name: p.name,
-      price: money(planPerMonth(p.monthlyMinor, cycle)),
+      price: money(planPerMonth(p, cycle)),
       per: free ? 'mãi mãi' : 'mỗi tháng',
-      sub: free ? 'Không cần thẻ, không hết hạn.' : cycle === 'yearly' ? `Trả ${money(total)} cho 1 năm, tặng 2 tháng.` : `Trả ${money(total)} cho 3 tháng.`,
+      sub: free ? 'Không cần thẻ, không hết hạn.' : `Trả ${money(total)} cho ${cycleLabel(cycle)}${saving ? `, ${saving}` : ''}.`,
       cap: capLabel(p.memberCap),
       popular: p.key === popularKey,
       state,
@@ -147,14 +189,12 @@ export function tierCards(plans: PlanDef[], current: HoiPlan, members: number, c
 
 export interface CompareRow { label: string; cells: Array<{ text: string; tone: 'on' | 'off' | 'plain' }> }
 
-/** Bảng so sánh đầy đủ bốn gói. */
+/** Bảng so sánh đầy đủ bốn gói. Mỗi kỳ đang bán một dòng giá; gói không bán kỳ đó thì ghi "Không bán". */
 export function compareRows(plans: PlanDef[]): CompareRow[] {
   const plain = (text: string) => ({ text, tone: 'plain' as const });
   const rows: CompareRow[] = [
     { label: 'Thành viên tối đa', cells: plans.map((p) => plain(p.memberCap === null ? 'Không giới hạn' : num(p.memberCap))) },
-    { label: 'Giá niêm yết mỗi tháng', cells: plans.map((p) => plain(money(p.monthlyMinor))) },
-    { label: 'Trả 3 tháng', cells: plans.map((p) => plain(money(planPrice(p.monthlyMinor, 'quarterly')))) },
-    { label: 'Trả 1 năm', cells: plans.map((p) => plain(money(planPrice(p.monthlyMinor, 'yearly')))) },
+    ...soldCycles(plans).map((c) => ({ label: `Trả ${cycleLabel(c)}`, cells: plans.map((p) => (p.key === 'free' ? plain(money(0)) : planSells(p, c) ? plain(money(planPrice(p, c))) : { text: 'Không bán', tone: 'off' as const })) })),
     { label: 'Bán hàng và thu tiền', cells: plans.map(() => ({ text: 'Có', tone: 'on' as const })) },
     { label: 'Phí trên doanh thu', cells: plans.map(() => plain('0%')) },
   ];

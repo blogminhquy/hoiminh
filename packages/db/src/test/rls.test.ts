@@ -119,6 +119,24 @@ describe('RLS chặn theo tenant khi đã bật thi hành', () => {
     expect(Number(after[0]!.c)).toBe(truth.theirs);
   });
 
+  it('hội mở: người ngoài đọc được bài viết của hội đó nhưng không ghi được, hội kín thì vẫn không thấy gì', async () => {
+    // Mặc định mọi hội là hội kín: người không có biến phiên không thấy bài nào (phép thử ở trên).
+    await handle.db.execute(sql`update communities set visibility = 'public' where id = ${other}`);
+    try {
+      const open = await asTenant<{ c: number }>({}, sql`select count(*)::int as c from posts`);
+      expect(Number(open[0]!.c)).toBe(truth.theirs);
+      const kin = await asTenant<{ c: number }>({}, sql`select count(*)::int as c from posts where community_id = ${kd}`);
+      expect(Number(kin[0]!.c)).toBe(0);
+      const insert = sql`insert into posts (community_id, author_user_id, title, content_md, excerpt, space_id)
+        values (${other}, ${minhquy}, 'Lén', 'x', 'x', ${otherSpace})`;
+      await expect(asTenant({ userId: minhquy }, insert)).rejects.toThrow(/row-level security|policy/i);
+    } finally {
+      await handle.db.execute(sql`update communities set visibility = 'private' where id = ${other}`);
+    }
+    const closed = await asTenant<{ c: number }>({}, sql`select count(*)::int as c from posts`);
+    expect(Number(closed[0]!.c)).toBe(0);
+  });
+
   it('dữ liệu riêng của người dùng chỉ chính chủ đọc được', async () => {
     const own = await asTenant<{ c: number }>({ userId: minhquy }, sql`select count(*)::int as c from notifications where user_id = ${minhquy}`);
     const someoneElse = await sid('user:hoangvu');

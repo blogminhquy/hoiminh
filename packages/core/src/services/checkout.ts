@@ -71,8 +71,9 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
   const q = planQuote({ now, current: { key: current.key, endsAt: c.planEndsAt }, target: plan, cycle: t.cycle, members: c.memberCount });
   if (q.blocked === 'cap') throw invalidState(`Hội đang có ${c.memberCount.toLocaleString('vi-VN')} thành viên, nhiều hơn trần ${plan.memberCap?.toLocaleString('vi-VN')} của gói ${plan.name}, nên chưa mua được gói này.`);
   if (q.blocked === 'lower') throw invalidState(`Hội đang ở gói ${current.name} và còn hạn. Chỉ mua được gói thấp hơn khi hết kỳ đang trả.`);
-  if (q.amountMinor <= 0) throw invalid('Gói này chưa có giá');
   const label = PLAN_CYCLE[t.cycle].label;
+  // Kỳ có giá 0 là kỳ quản trị không bán: trang mua gói không hiện, và gọi thẳng API cũng không mua được.
+  if (q.blocked === 'unsold' || q.amountMinor <= 0) throw invalid(`Gói ${plan.name} hiện không bán kỳ ${label}. Bạn chọn kỳ khác nhé.`);
   const title = `Gói ${plan.name} · ${label}`;
   return { title, subtitle: `Gói Hội Mình cho ${c.name}`, amountMinor: q.amountMinor, currency: 'VND', communityId: null, workspaceId: c.workspaceId, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, planKey: plan.key, planCommunityId: c.id, communitySlug: c.slug, title: `${title} · ${c.name}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `${title} · ${c.name}` };
 }
@@ -110,8 +111,9 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
   const discount = applyCoupon(r.amountMinor, coupon);
   const total = r.amountMinor - discount;
 
-  // Affiliate: người giới thiệu cố định của thành viên đứng trước; chưa có thì mới tính mã đi kèm rồi lượt bấm cuối
-  // còn hạn (xem resolveReferrer). Không tự giới thiệu.
+  // Affiliate của hội: người giới thiệu cố định của thành viên; người chưa ở trong hội thì tính lượt bấm cuối (mã của
+  // hội này họ đang mang theo, không có thì lượt bấm lúc đăng ký còn hạn), xem resolveReferrer. Thành viên đang ở
+  // trong hội thì mã trên link lúc thanh toán không được tính: link không tính cho từng đơn hàng. Không tự giới thiệu.
   let affiliateId: string | null = null;
   let referredBy: string | null = null;
   if (r.communityId) {

@@ -4,6 +4,7 @@ import { Avatar, DateBlock, T } from '@hoiminh/ui';
 import { Check, ChevronLeft, ChevronRight, Clock, Globe, Play, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { useJoinGate } from '@/lib/community';
 import { fmtTime } from '@/lib/format';
 
 export interface Host { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null }
@@ -19,10 +20,13 @@ export function timeRange(a: string, b: string): string { return `${fmtTime(a)} 
 
 export function useRegister(eventId: string) {
   const qc = useQueryClient();
-  return useMutation({
+  const gate = useJoinGate();
+  const m = useMutation({
     mutationFn: (join: boolean) => (join ? api.post(`/v1/events/${eventId}/register`, {}) : api.del(`/v1/events/${eventId}/register`)),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['events'] }); void qc.invalidateQueries({ queryKey: ['event', eventId] }); },
   });
+  // Khách xem hội mở bấm đăng ký thì được mời tham gia hội.
+  return { ...m, mutate: (join: boolean) => (gate.guest ? gate.askJoin() : m.mutate(join)) };
 }
 
 export function EventRow({ e, slug }: { e: EventItem; slug: string }) {

@@ -30,6 +30,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Cần đầu main (cha thứ nhất của commit merge thử) để so PR với main ở bước luật làm song song.
+          fetch-depth: 2
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -37,7 +40,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+      # Chạy trước khi cài gói vì không cần gói nào và chỉ mất một giây: PR tự đặt số phiên bản, tự viết CHANGELOG,
+      # thiếu phiếu thay đổi, hay migration xếp sai chỗ thì biết ngay. Ở PR, HEAD là commit merge thử của GitHub
+      # (PR đã gộp main mới nhất) và HEAD^1 là đầu main. Luật ở CLAUDE.md, mục "Làm song song nhiều phiên".
+      - name: Luật làm song song
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-parallel.mjs --base HEAD^1
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test:scripts
       # Lint trước vì chỉ mất khoảng 10 giây: lỗi dễ sửa nhất hiện ra sớm nhất.
       - run: pnpm lint
       - run: pnpm typecheck

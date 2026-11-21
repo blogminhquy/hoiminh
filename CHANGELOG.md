@@ -1,5 +1,131 @@
 # CHANGELOG
 
+## 1.41.1 - 2026-11-21
+
+Người vào hội được ghi chủ hội làm người giới thiệu nền tảng ngay cả khi hệ thống chưa có chương trình affiliate nền tảng. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Người vào hội sớm bị bỏ sót người giới thiệu nền tảng.** Luật của bản 1.37.0: người vào một hội mà tài khoản chưa có người giới thiệu nền tảng thì chủ hội đó là người giới thiệu nền tảng. Nhưng luật này bỏ qua khi hệ thống chưa có chương trình affiliate nền tảng, mà chương trình chỉ được tạo lúc có người mở trang Affiliate lần đầu (bản 1.40.0). Ai vào hội trước thời điểm đó thì không được ghi, và về sau cũng không được ghi lại. Nay chương trình được tạo ngay ở lần đầu có người vào một hội.
+- Chương trình nền tảng đang tạm dừng thì vẫn không ghi, như cũ.
+
+## 1.41.0 - 2026-11-21
+
+Trang bán của sản phẩm mở cho mọi người, để link sản phẩm (của affiliate, của chủ hội đem đi quảng cáo) đưa người lạ tới đúng sản phẩm. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Thay đổi
+
+- **Ai cũng mở được trang bán của một sản phẩm**, kể cả người chưa đăng nhập và kể cả khi hội là hội kín. Trước đây người chưa đăng nhập bị đưa về trang đăng nhập, và người đã đăng nhập mà chưa vào hội bị đưa về trang giới thiệu hội, nên link sản phẩm không bao giờ tới được sản phẩm.
+- Người ngoài của hội kín thấy trang bán trong khung trang công khai: đầu trang có dải "Sản phẩm của hội" kèm nút "Xem giới thiệu hội", không có thanh bên của hội. Lối quay lại dẫn về trang giới thiệu hội thay cho cửa hàng.
+- Bấm "Mua ngay" mới phải đăng nhập hoặc đăng ký; xong thì quay lại đúng trang thanh toán của sản phẩm đó. Người ngoài mua lẻ như trước, không bị thêm vào hội.
+- Bài xem thử và nút "Vào học" của người ngoài mở ở Khu học tập, vì họ không vào được bên trong hội.
+- Mọi trang khác của hội kín (cửa hàng, bảng tin, khóa học, sự kiện, thành viên) vẫn đóng với người ngoài. Thành viên và khách xem hội mở thấy trang bán như cũ.
+
+### Sửa
+
+- Trang Affiliate bỏ dòng ghi chú "Trang sản phẩm chỉ mở cho người đã đăng nhập" vì không còn đúng.
+
+## 1.40.1 - 2026-11-21
+
+Ô "Lượt bấm" ở trang Affiliate đếm được link dạng `?ref=`. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Lượt bấm gần như luôn bằng 0.** Trước đây chỉ link dạng `/r/<mã>` mới ghi lượt bấm, trong khi mọi link trang Affiliate đưa ra (trang hội, trang sản phẩm, trang mở hội) đều là dạng `?ref=<mã>`. Nay mở link nào có `?ref=` cũng được đếm một lượt.
+- Không đếm trùng: cùng một người xem mở lại hoặc tải lại trang trong 30 phút chỉ tính một lượt. Chính affiliate tự mở link của mình thì không tính. Mã không tồn tại, tài khoản affiliate hoặc chương trình đang tắt thì không tính.
+- Cách tính người giới thiệu và hoa hồng không đổi: phần sửa này chỉ đếm lượt bấm.
+
+## 1.40.0 - 2026-11-21
+
+Trang Tài khoản → Affiliate lấy được link giới thiệu của nền tảng, của từng hội và của từng sản phẩm. Theo yêu cầu của chủ dự án, sau khi web thật không lấy được link nào. Không có migration.
+
+### Thêm
+
+- **Lấy link theo ba bước.** Bước 1 chọn nơi muốn giới thiệu (Nền tảng Hội Mình, hoặc từng hội đang tham gia), bước 2 chọn trang muốn chia sẻ, bước 3 sao chép link. Phần chọn luôn hiện, kể cả khi chỉ có một chương trình; trước đây hàng chọn chỉ hiện khi có từ hai chương trình trở lên.
+- **Link cho từng sản phẩm.** Trong một hội, ngoài trang giới thiệu hội còn chọn được từng khóa học, combo, sản phẩm số đang bán. Mỗi dòng ghi giá và hoa hồng ước tính. Nhiều sản phẩm thì có ô tìm. Trước đây link sản phẩm chỉ nằm trong trang bán của từng sản phẩm, và chỉ hiện sau khi đã từng mở trang Ví.
+- **Link nền tảng có hai trang.** Trang mở hội (cho người muốn mở hội riêng) và trang chủ Hội Mình.
+- **Nút "Sao chép link" lớn, link hiện đủ không bị cắt**, có thêm nút Chia sẻ trên điện thoại và nút sao chép riêng mã giới thiệu. Trình duyệt không cho sao chép tự động thì trang báo để người dùng tự nhấn giữ vào link.
+- **Hội chưa bật affiliate vẫn hiện trong danh sách**, kèm lý do. Người quản lý hội có nút "Bật affiliate cho hội" dẫn thẳng tới Cài đặt · Affiliate; thành viên thì được báo là chủ hội chưa bật.
+- Trang nhớ chương trình xem lần trước trên máy đó. Lần đầu thì mở hội mà bạn đã có ví, không có thì mở chương trình nền tảng.
+
+### Sửa
+
+- **Web thật không có chương trình affiliate nền tảng.** Dòng này trước đây chỉ có trong dữ liệu mẫu, nên không ai lấy được link nền tảng và trang Hệ thống · Affiliate nền tảng báo lỗi. Nay hệ thống tự tạo khi chưa có, với mức mặc định 40% trong 12 tháng đầu, giữ 30 ngày, rút tối thiểu 500.000đ. Quản trị hệ thống đổi mức ở trang Hệ thống · Affiliate nền tảng.
+- **Màn "Chưa có chương trình affiliate" không có lối đi tiếp.** Người ở trong hội chưa bật affiliate chỉ thấy một dòng thông báo. Nay luôn có link nền tảng, và hội chưa bật có hướng dẫn đi tiếp.
+- **Hội tắt affiliate thì ví biến mất.** Người đã có hoa hồng trong một hội vừa tắt chương trình không còn lối vào ví để rút. Nay hội đó vẫn nằm trong danh sách, ví vẫn xem và rút được, chỉ ẩn phần link.
+- Đổi chương trình không còn tải lại cả trang.
+- Mức hoa hồng trên ô chọn chương trình lấy theo mức riêng của tài khoản (nếu quản trị đã đặt), không chỉ mức chung.
+
+## 1.39.1 - 2026-11-21
+
+Sửa thẻ hội ở cột phải trang Bảng tin, theo báo lỗi của chủ dự án. Không có migration.
+
+### Sửa
+
+- **Ảnh bìa ở thẻ hội trên Bảng tin bị cắt và bị chồng chữ.** Trước đây thẻ ép ảnh bìa vào khung cao 120px nên ảnh bị cắt trên dưới, và in khẩu hiệu của hội bằng chữ trắng đè lên ảnh. Nay hội có ảnh bìa thì thẻ hiện trọn ảnh tỉ lệ 16:9, giống thẻ ở trang giới thiệu, và không chồng chữ lên ảnh nữa (tên hội đã có ngay bên dưới). Hội chưa có ảnh bìa thì vẫn là nền màu kèm khẩu hiệu như cũ.
+
+## 1.39.0 - 2026-11-21
+
+Thêm lựa chọn hội kín hay hội mở trong Cài đặt, theo yêu cầu của chủ dự án ngày 21/11/2026. Có migration database (`0018_community_visibility`): thêm cột `communities.visibility`, mặc định `private`, nên mọi hội đang có vẫn là hội kín như trước.
+
+### Thêm
+
+- **Hội kín hay hội mở.** Trong Cài đặt, mục Chung có thêm phần "Ai xem được bên trong hội" với hai thẻ để chọn: Hội kín (chỉ thành viên xem được bên trong) và Hội mở (ai cũng xem được, chỉ thành viên mới đăng bài, bình luận và học). Chạm một thẻ rồi bấm Lưu. Hội đang có và hội tạo mới mặc định là hội kín.
+- **Khách xem được hội mở.** Với hội mở, người chưa vào hội (kể cả chưa đăng nhập) mở được Bảng tin, bài viết kèm bình luận, danh sách khóa học, Sự kiện, Thành viên và Cửa hàng ở chế độ chỉ xem. Đầu trang có dải "Bạn đang xem hội mở" kèm nút Tham gia hội. Bấm thả tim, bình luận, bình chọn, đăng ký sự kiện thì hiện lời mời tham gia thay vì báo lỗi.
+- **Trang giới thiệu hội ghi rõ hội kín hay hội mở.** Hội mở có thêm nút "Xem trước bên trong", và các tab Bảng tin, Khóa học, Sự kiện, Thành viên không còn khóa với người chưa vào hội.
+- **Ô lệnh của chủ hội** có thêm mục "Hội kín hay hội mở" dẫn thẳng tới chỗ cài đặt.
+
+### Thay đổi
+
+- **Danh bạ thành viên của hội mở** xem được mà không cần đăng nhập (tên, ảnh, giới thiệu ngắn; không có email). Hội kín vẫn chỉ thành viên xem được.
+
+## 1.38.0 - 2026-11-21
+
+Gói Hội Mình bán theo bốn kỳ với giá riêng từng kỳ, theo yêu cầu của chủ dự án ngày 21/11/2026. Thay luật "chỉ bán hai chu kỳ, giá 3 tháng và 1 năm tự tính từ giá tháng" của kế hoạch 11/11/2026. Có migration `0017_plan_cycle_prices`: thêm cột `plans.cycle_prices` (jsonb) và điền sẵn từ giá cũ, chạy lại được. **Áp dụng lên database thật trước khi merge.**
+
+### Thêm
+
+- **Bốn kỳ trả tiền: 1 tháng, 3 tháng, 6 tháng, 1 năm.** Số ngày của từng kỳ là 30, 90, 180, 365. Gia hạn nối tiếp và nâng gói tặng ngày còn lại vẫn như cũ, dùng được với mọi kỳ.
+- **Quản trị nhập giá riêng cho từng kỳ của từng gói** ở Hệ thống, Gói nền tảng. Dưới mỗi ô có ghi giá quy ra mỗi tháng để dễ so.
+- **Kỳ nào để giá 0 thì không bán.** Trang mua gói, bảng giá công khai và bước chọn gói khi tạo hội thứ hai chỉ hiện tab của kỳ có ít nhất một gói đang bán; gói không bán kỳ đang chọn thì không có thẻ ở kỳ đó. Gói để 0 ở cả bốn kỳ thì không hiện ở đâu để mua. Gọi thẳng API mua một kỳ có giá 0 cũng bị từ chối.
+- **Lời mời tự tính theo giá đã nhập.** "Tặng 2 tháng" không còn viết cứng: mức lợi của kỳ dài tính so với kỳ ngắn nhất gói đang bán, ra số tháng tròn thì ghi "tặng N tháng", không thì ghi "tiết kiệm N%".
+
+### Thay đổi
+
+- **Sau khi cập nhật, trang mua gói chưa đổi gì.** Giá 3 tháng và 1 năm giữ nguyên con số đang bán; 1 tháng và 6 tháng để 0 (trước đây không bán) cho tới khi quản trị nhập giá.
+- **Bảng gói có thêm hai luật kiểm tra khi lưu.** Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn (bắt lỗi gõ thiếu một số 0). Gói cao hơn không được rẻ hơn gói thấp hơn ở kỳ mà cả hai cùng bán.
+- **Bảng so sánh** có một dòng giá cho mỗi kỳ đang bán, gói không bán kỳ đó ghi "Không bán". Bỏ dòng "Giá niêm yết mỗi tháng".
+- **Lời mời nâng gói** ghi "từ ... mỗi tháng" theo kỳ rẻ nhất, và không gợi ý gói đã ngừng bán.
+- **Dãy tab kỳ hạn trên điện thoại** thu lề để bốn tab nằm gọn một hàng.
+- API: `GET /v1/plans` và `GET /v1/admin/plans` trả `prices` (`monthly`, `quarterly`, `semiannual`, `yearly`) thay cho `monthlyMinor`; `PUT /v1/admin/plans` nhận `prices`; `POST /v1/checkout` cho gói nhận thêm `cycle` là `monthly` và `semiannual`. Số liệu gói trả `cycleCounts` thay cho `quarterlyCount`, `yearlyCount`.
+
+## 1.37.1 - 2026-11-21
+
+Đổi tên biến trong mẫu tin nhắn chào tự động sang tiếng Anh, viết liền, theo yêu cầu của chủ dự án. Không có migration.
+
+### Thay đổi
+
+- **Biến trong mẫu tin nhắn chào viết bằng tiếng Anh, viết liền.** `{{tên}}` thành `{{full_name}}`, `{{cộng đồng}}` thành `{{community_name}}`, `{{link bắt đầu}}` thành `{{start_link}}`, cùng kiểu với biến của Quy tắc tự động (`{{name}}`, `{{email}}`). `{{full_name}}` là họ tên đầy đủ của thành viên: tin nhắn chào nay viết "Chào Nguyễn Văn An" thay vì "Chào An" như biến `{{tên}}` trước đây. Mẫu chủ hội đã lưu bằng tên cũ vẫn gửi được, và trang Tiện ích hiện mẫu đó bằng tên mới; lần lưu kế tiếp database nhận tên mới. Hội tạo mới dùng mẫu mặc định với tên mới.
+
+## 1.37.0 - 2026-11-21
+
+Chốt cách tính link và cookie cho affiliate, tách rõ hai tầng: affiliate nền tảng và affiliate của từng hội. Theo yêu cầu của chủ dự án. Không có migration.
+
+### Thay đổi
+
+- **Hai tầng affiliate tính riêng.** Link của hội nào thì tính hoa hồng cho hội đó. Tầng nền tảng tính cho dịch vụ của nền tảng (gói Hội Mình). Một người giới thiệu được nhiều người, ở nhiều hội khác nhau.
+- **Trong một hội thì tính lượt bấm cuối (last click), 30 ngày, cho tới lúc người đó vào hội.** Áp dụng cho cả người đã có tài khoản Hội Mình (đang ở hội khác). Đăng ký qua link của A rồi bấm link của B mới vào hội thì B được ghi nhận. Vào hội rồi thì người giới thiệu là cố định: người khác không giới thiệu tranh được nữa.
+- **Thành viên đang ở trong hội thì link không tính cho từng đơn hàng.** Thành viên chưa có người giới thiệu mà bấm thêm link của ai đó rồi mua thì đơn đó không tính hoa hồng. Họ tự chọn người giới thiệu ở thẻ "Người giới thiệu của bạn" (mã, link hoặc email). Bản 1.36.0 còn tính trường hợp này; nay bỏ.
+- **Tầng nền tảng ghi một lần rồi cố định.** Đăng ký tài khoản qua link nền tảng thì người chia sẻ link là người giới thiệu nền tảng; sau đó người khác giới thiệu không được tính nữa.
+- **Người vào một hội thì người giới thiệu nền tảng mặc định là chủ hội đó.** Áp dụng khi tài khoản chưa có người giới thiệu nền tảng. Về sau người này mua gói Hội Mình thì hoa hồng nền tảng về chủ hội đã đưa họ về.
+- **Cookie nhớ được nhiều mã.** Trước đây cookie chỉ nhớ một mã, nên bấm link của hội B là mất mã của hội A. Nay cookie nhớ tới 8 mã, mỗi hội (và nền tảng) tính mã mới nhất của chính mình. Một lượt đăng ký ghi được cả người giới thiệu nền tảng lẫn lượt bấm của từng hội.
+- Trang giới thiệu hội chỉ hiện dòng "Bạn được ... giới thiệu" khi lượt giới thiệu đó thật sự được tính cho hội này.
+
+### Sửa
+
+- **Đăng ký bằng Google làm rơi mã giới thiệu.** Tài khoản tạo qua Google không được ghi người giới thiệu dù có cookie. Nay được tính như đăng ký bằng email.
+- Mã giới thiệu của hội khác trên link không còn làm hiện sai tên người giới thiệu ở trang giới thiệu hội.
+
 ## 1.36.3 - 2026-11-21
 
 Quản lý khóa học ngay tại thư viện Khóa học, không phải mở từng khóa mới tìm ra chỗ cài đặt. Bài học nhận thêm link Google Drive, phát ngay trong trang và chặn mở sang Drive. Theo yêu cầu của chủ dự án.

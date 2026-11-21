@@ -33,8 +33,9 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
     const p = await raw(ctx.db, sql`select enabled from community_plugins where community_id = ${c.id} and plugin_key = 'instant_approval'`);
     return (p[0] as { enabled: boolean } | undefined)?.enabled ?? true;
   });
-  // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới thì tính mã đi kèm, rồi
-  // lượt bấm cuối còn hạn, và chỉ nhận mã của chính chương trình hội này khi chương trình đang bật.
+  // Người giới thiệu cố định: người quay lại hội giữ nguyên người giới thiệu cũ. Người mới vào hội (kể cả đã có tài
+  // khoản Hội Mình từ trước) thì tính lượt bấm cuối: mã của hội này họ đang mang theo (link vừa bấm và cookie 30
+  // ngày), không có thì lượt bấm lúc đăng ký còn hạn. Chỉ nhận mã của chương trình hội này và khi chương trình đang bật.
   const keptAffiliateId = existing?.referredByAffiliateId ?? null;
   let affiliateId = keptAffiliateId;
   if (!affiliateId) {
@@ -210,7 +211,8 @@ export async function exportMembersCsv(ctx: Ctx, communityId: string, q: { statu
 /** Danh sách thành viên công khai (tab Thành viên cho thành viên thường). */
 export async function memberDirectory(ctx: Ctx, communityId: string, q: { q?: string; limit?: number }) {
   const access = await resolveCommunityAccess(ctx, communityId);
-  if (!access.permissions.has('member.read')) throw forbidden();
+  // Hội mở: người ngoài cũng xem được danh bạ (tên, ảnh, giới thiệu ngắn; không có email hay số điện thoại).
+  if (!access.canView && !access.permissions.has('member.read')) throw forbidden();
   const conds = [eq(communityMembers.communityId, communityId), eq(communityMembers.status, 'active')];
   if (q.q) conds.push(or(ilike(users.name, `%${q.q}%`), ilike(users.handle, `%${q.q}%`))!);
   return ctx.db.select({ id: communityMembers.id, role: communityMembers.role, level: communityMembers.level, joinedAt: communityMembers.joinedAt, lastActiveAt: communityMembers.lastActiveAt, user: { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor, bio: users.bio }, tier: { key: communityTiers.key, name: communityTiers.name } }).from(communityMembers).innerJoin(users, eq(users.id, communityMembers.userId)).leftJoin(communityTiers, eq(communityTiers.id, communityMembers.tierId)).where(and(...conds)).orderBy(desc(communityMembers.lastActiveAt)).limit(q.limit ?? 60);

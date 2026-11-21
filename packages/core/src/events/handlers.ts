@@ -1,5 +1,5 @@
 // Đăng ký handler nghiệp vụ cho event bus: entitlement, hoa hồng, thông báo, email, webhook gửi đi, tin nhắn chào.
-import { formatMoney, isPlanKey, type PlanKey } from '@hoiminh/contracts';
+import { formatMoney, isPlanKey, planCycleSchema, type PlanCycle, type PlanKey } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, sql } from 'drizzle-orm';
 import { comments, communities, communityMembers, courses, orders, posts, products, spaces, users, workspaces } from '@hoiminh/db';
@@ -7,7 +7,7 @@ import { systemCtx, type AppContext, type Ctx } from '../context';
 import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
-import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution } from '../services/affiliate';
+import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution, defaultPlatformReferrer } from '../services/affiliate';
 import { applyPendingGrantsForUser, elevated } from '../services/automation-engine';
 import { grant } from '../services/entitlements';
 import { notify } from '../services/notifications';
@@ -20,6 +20,12 @@ async function userOf(ctx: Ctx, id: string) {
 }
 async function communityOf(ctx: Ctx, id: string | null) {
   return id ? ctx.db.query.communities.findFirst({ where: eq(communities.id, id) }) : null;
+}
+
+/** Kỳ của một đơn mua gói Hội Mình, đọc từ metadata của đơn. Đơn cũ không ghi kỳ hợp lệ thì tính 3 tháng như trước. */
+function planCycle(v: unknown): PlanCycle {
+  const r = planCycleSchema.safeParse(v);
+  return r.success ? r.data : 'quarterly';
 }
 
 /**
@@ -54,6 +60,8 @@ export function registerHandlers(app: AppContext): void {
     const community = await communityOf(c, p.communityId);
     const user = await userOf(c, p.userId);
     if (!community || !user) return;
+    // Người vào hội mà chưa có người giới thiệu nền tảng thì mặc định là chủ hội này.
+    await defaultPlatformReferrer(c, { userId: p.userId, communityId: p.communityId });
     const plugin = await raw(c.db, sql`select enabled, config from community_plugins where community_id = ${p.communityId} and plugin_key = 'welcome_dm'`);
     const row = plugin[0] as { enabled: boolean; config: { delayMinutes?: number } } | undefined;
     if (row?.enabled) {
@@ -79,10 +87,10 @@ export function registerHandlers(app: AppContext): void {
     const order = await c.db.query.orders.findFirst({ where: eq(orders.id, p.orderId) });
     const user = await userOf(c, p.userId);
     if (!order || !user) return;
-    const meta = order.metadata as { cycle?: 'monthly' | 'yearly' | 'one_time' | 'quarterly'; months?: number; title?: string; communitySlug?: string; productSlug?: string; kind?: string; planKey?: string; planCommunityId?: string };
+    const meta = order.metadata as { cycle?: 'monthly' | 'yearly' | 'one_time' | 'quarterly' | 'semiannual'; months?: number; title?: string; communitySlug?: string; productSlug?: string; kind?: string; planKey?: string; planCommunityId?: string };
     const paidAt = order.paidAt ?? c.now();
     if (p.targetType === 'tier' && p.communityId) {
-      await activateTierPurchase(c, { orderId: order.id, userId: p.userId, communityId: p.communityId, tierId: p.targetId, cycle: meta.cycle && meta.cycle !== 'quarterly' ? meta.cycle : 'monthly', months: Number.isInteger(meta.months) ? meta.months : null, amountMinor: p.amountMinor, provider: p.provider, affiliateAccountId: p.affiliateAccountId, paidAt });
+      await activateTierPurchase(c, { orderId: order.id, userId: p.userId, communityId: p.communityId, tierId: p.targetId, cycle: meta.cycle === 'yearly' || meta.cycle === 'one_time' ? meta.cycle : 'monthly', months: Number.isInteger(meta.months) ? meta.months : null, amountMinor: p.amountMinor, provider: p.provider, affiliateAccountId: p.affiliateAccountId, paidAt });
     } else if (p.targetType === 'product' && p.communityId) {
       const product = await c.db.query.products.findFirst({ where: eq(products.id, p.targetId) });
       await grant(c, { userId: p.userId, workspaceId: p.workspaceId, communityId: p.communityId, resourceType: 'product', resourceId: p.targetId, sourceType: 'purchase', sourceId: order.id });
@@ -94,7 +102,7 @@ export function registerHandlers(app: AppContext): void {
       // và Khu học tập /hoc phục vụ được người có 0 hội. Muốn vào hội thì tự bấm ở lời mời trên Khu học tập.
     } else if (p.targetType === 'platform' && meta.planCommunityId && isPlanKey(meta.planKey ?? '')) {
       // Gói Hội Mình cho một hội: hội và gói nằm trong metadata của đơn (đơn gói không gắn community_id để không lẫn vào doanh thu của hội).
-      await activatePlatformPurchase(c, { communityId: meta.planCommunityId, planKey: meta.planKey as PlanKey, cycle: meta.cycle === 'yearly' ? 'yearly' : 'quarterly', orderId: order.id, paidAt, provider: p.provider, userId: p.userId });
+      await activatePlatformPurchase(c, { communityId: meta.planCommunityId, planKey: meta.planKey as PlanKey, cycle: planCycle(meta.cycle), orderId: order.id, paidAt, provider: p.provider, userId: p.userId });
     }
     await createCommissionForPayment(c, { paymentId: p.paymentId, orderId: p.orderId, userId: p.userId, communityId: p.communityId, workspaceId: p.workspaceId, amountMinor: p.amountMinor, targetType: p.targetType, affiliateAccountId: p.affiliateAccountId });
     const community = await communityOf(c, p.communityId);

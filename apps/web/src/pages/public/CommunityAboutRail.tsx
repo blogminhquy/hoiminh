@@ -1,12 +1,13 @@
 // Rail trang giới thiệu hội: thẻ hội (số liệu, avatar, giá, nút tham gia), câu hỏi khi tham gia, giới thiệu, liên kết.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, CommunityMark, Modal, money, T } from '@hoiminh/ui';
-import { ExternalLink, Sparkles, Tag, Users } from 'lucide-react';
+import { ExternalLink, Eye, Globe, Lock, Sparkles, Tag, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
 import { rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { fmtCount } from '@/lib/format';
+import { guestHome } from '@/lib/guest';
 import { checkoutQuery, modeChoices, promoEndLabel } from '@/lib/membership';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
@@ -44,6 +45,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
   const qc = useQueryClient();
   const member = isViewerMember(d);
   const pending = d.viewer?.memberStatus === 'pending';
+  const open = c.visibility === 'public';
   const paid = d.pricing.mode === 'subscription' || d.pricing.mode === 'one_time';
   // Giá mở đầu là kỳ hạn ngắn nhất (đã trừ khuyến mãi đang chạy); các kỳ dài hơn ghi ở dòng "Hoặc".
   const choices = modeChoices({ terms: d.pricing.premiumTerms ?? [], promo: d.pricing.promo ?? null, oneTimeMinor: d.pricing.oneTimeMinor }, d.pricing.mode);
@@ -97,6 +99,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
             <div className="min-w-0"><div className="font-bold text-[16px] truncate">{c.name}</div><div className="muted text-[12px]">{SITE_HOST}/{c.slug} · {categoryLabel(c.category)}</div></div>
           </div>
           {c.shortDescription && <div className="text-[13px]" style={{ color: T.ink2 }}>{c.shortDescription}</div>}
+          <div className="flex items-center gap-1.5 text-[13px]" style={{ color: T.ink2 }}>{open ? <Globe size={15} /> : <Lock size={15} />}<span><strong style={{ color: T.ink }}>{open ? 'Hội mở' : 'Hội kín'}</strong> · {open ? 'ai cũng xem được bên trong' : 'chỉ thành viên xem được bên trong'}</span></div>
           <div className="grid grid-cols-3 gap-2 py-2.5" style={{ borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}` }}>
             {([[d.stats.members, 'Thành viên'], [d.stats.online, 'Online'], [d.stats.courses, 'Khóa học']] as const).map(([v, l]) => (
               <div key={l} className="text-center"><div className="font-bold text-[18px]">{fmtCount(v)}</div><div className="muted text-[12px]">{l}</div></div>
@@ -117,6 +120,7 @@ export function AboutRail({ d, refCode: ref }: { d: AboutPage; refCode: string |
             {longer.length > 0 && <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {longer.map((x) => `${money(x.payMinor)}/${x.unit}`).join(', ')}</div>}
           </div>
           <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={pending || payLocked || (!member && !c.doorsOpen)} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
+          {open && !member && <Link to={guestHome(c.slug, c.tabs)} className="btn btn-ghost" style={{ height: 44, borderRadius: 12 }}><Eye size={16} />Xem trước bên trong</Link>}
           {(notice || join.isError) && <div className="text-[12px]" style={{ color: join.isError ? T.accentText : T.tealText }}>{join.isError ? errorMessage(join.error) : notice}</div>}
           {d.referrer && (
             <div className="flex items-center gap-2 rounded-[10px] text-[12px]" style={{ padding: '10px 12px', background: T.goldSoft, color: T.goldDark }}><Users size={14} />Bạn được <strong className="mx-1">{d.referrer.name}</strong> giới thiệu</div>
