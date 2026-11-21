@@ -36,7 +36,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: T.bg }}>
-      <PublicHeader cta="join" />
+      <PublicHeader cta="join" join={slug ? { slug: q.data?.community.slug ?? slug, loginNext: `/${q.data?.community.slug ?? slug}/bang-tin`, ref } : undefined} />
       <div className="flex justify-center px-4 md:px-16 pt-6 pb-12">
         <div className="w-full flex flex-col lg:flex-row gap-8 items-start" style={{ maxWidth: 1120 }}>
           <QueryState q={q} rows={3}>

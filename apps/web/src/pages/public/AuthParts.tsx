@@ -3,6 +3,7 @@ import { T } from '@hoiminh/ui';
 import { Check, Eye, EyeOff } from 'lucide-react';
 import { useCallback, useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { rememberAfterAuth } from '@/lib/join-intent';
 
 export function GoogleIcon() {
   return (
@@ -16,7 +17,8 @@ export function GoogleIcon() {
 }
 
 /** Nút "Tiếp tục với Google": xin URL từ API rồi chuyển hướng; 501 thì hiện thông báo nhỏ. */
-export function GoogleButton() {
+/** `next`: nơi cần về sau khi Google trả lại (cất tạm, vì trình duyệt rời hẳn trang này). */
+export function GoogleButton({ next = null }: { next?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const go = async () => {
@@ -24,6 +26,7 @@ export function GoogleButton() {
     setNote(null);
     try {
       const r = await api.get<{ url: string }>('/v1/auth/google');
+      rememberAfterAuth(next);
       window.location.href = r.url;
     } catch (err) {
       setNote(err instanceof ApiError && err.status === 501 ? 'Đăng nhập Google chưa được bật trên hệ thống này. Hãy dùng email.' : errorMessage(err));

@@ -8,6 +8,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthShell } from '@/layouts/AuthShell';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { joinPath } from '@/lib/join-intent';
 import { currentRef } from '@/lib/referral';
 import { AuthInput, CheckBox, FormError, GoogleButton, OrDivider, StrengthBars } from './AuthParts';
 
@@ -22,7 +23,8 @@ export default function Page() {
   const { setSession } = useAuth();
   const ref = currentRef(params);
   const hoi = params.get('hoi');
-  const next = params.get('next') ?? (hoi ? `/${hoi}` : null);
+  // Đăng ký từ trang của một hội: xong là vào thẳng hội đó (trang giới thiệu tự chạy bước tham gia).
+  const next = params.get('next') ?? (hoi ? joinPath(hoi) : null);
 
   const about = useQuery({
     queryKey: ['about-lite', hoi, ref],
@@ -73,7 +75,7 @@ export default function Page() {
             <span className="flex-grow">{referral}</span>
           </div>
         )}
-        <GoogleButton />
+        <GoogleButton next={next} />
         <OrDivider />
         <AuthInput label="Tên hiển thị" autoComplete="name" required minLength={2} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nguyễn Minh Quý" />
         <AuthInput label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ban@email.com" />

@@ -1,4 +1,5 @@
-// Luồng 1: đăng ký với mã affiliate → xác minh email (OTP test 482913) → trang giới thiệu → tham gia Freemium → Bảng tin có dữ liệu.
+// Luồng 1: đăng ký với mã affiliate → xác minh email (OTP test 482913) → vào thẳng hội vừa xem (bảng câu hỏi tự mở,
+// không phải bấm "Tham gia" lần nữa) → Bảng tin có dữ liệu. Hội không có câu hỏi thì vào luôn Bảng tin.
 import { expect, test } from '@playwright/test';
 import { uniqueEmail } from '../helpers';
 
@@ -22,8 +23,8 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
   // lúc đang gửi thì nút đang disabled, rồi điều hướng gỡ luôn phần tử khỏi DOM và click treo hết giờ.
   await expect(page).not.toHaveURL(/xac-minh-email/, { timeout: 20_000 });
 
-  await page.goto('/minhquy');
-  await page.getByRole('button', { name: /Tham gia miễn phí/ }).first().click();
+  // Đăng ký từ trang của hội thì xong là vào thẳng hội đó: về trang giới thiệu và bảng câu hỏi tham gia tự mở.
+  await expect(page).toHaveURL(/\/minhquy(\?|$)/);
   const modal = page.getByRole('dialog').or(page.locator('.modal'));
   await expect(modal.first()).toBeVisible();
   await modal.locator('textarea').first().fill('Bán phụ kiện điện thoại trên Shopee');
@@ -31,6 +32,36 @@ test('đăng ký, xác minh, tham gia hội miễn phí và thấy Bảng tin', 
 
   await expect(page).toHaveURL(/\/minhquy\/bang-tin/);
   await expect(page.getByText('Lộ trình Funnel Money Model 2026').first()).toBeVisible();
+});
+
+// Dùng một hội thu phí mà không bài test nào khác đụng tới: tới bước thanh toán là dừng, không thêm thành viên vào hội nào.
+// (Vào một hội miễn phí sẽ làm lệch số thành viên mà các bài về gói nền tảng đang kiểm.)
+test('bấm "Tham gia hội" trên thanh đầu trang của một hội, đăng ký xong vào thẳng hội đó chứ không về màn Tạo hội', async ({ page }) => {
+  await page.goto('/cong-su-mmo');
+  await page.getByRole('link', { name: 'Tham gia hội' }).click();
+  await expect(page).toHaveURL(/\/dang-ky\?hoi=cong-su-mmo/);
+  await expect(page.getByText(/Bạn đang đăng ký để tham gia/)).toBeVisible();
+
+  await page.getByPlaceholder('Nguyễn Minh Quý').fill('Người Mới E2E');
+  await page.getByPlaceholder('ban@email.com').fill(uniqueEmail('header'));
+  await page.locator('input[type="password"]').fill('matkhau-e2e-123');
+  await page.getByText(/Tôi đồng ý với/).click();
+  await page.getByRole('button', { name: 'Tạo tài khoản' }).click();
+  await expect(page).toHaveURL(/xac-minh-email/);
+  await page.getByLabel('Số thứ 1').click();
+  await page.keyboard.type('482913');
+
+  // Hội thu phí: trang giới thiệu tự làm tiếp việc của nút Tham gia, tức sang bước thanh toán của chính hội đó.
+  await expect(page).toHaveURL(/\/cong-su-mmo\/thanh-toan/, { timeout: 20_000 });
+});
+
+test('thành viên bấm "Đăng nhập" trên thanh đầu trang của hội thì vào Bảng tin của hội đó', async ({ page }) => {
+  await page.goto('/minhquy');
+  await page.getByRole('link', { name: 'Đăng nhập' }).first().click();
+  await page.getByPlaceholder('ban@email.com').fill('congtran@gmail.com');
+  await page.locator('input[type="password"]').fill('hoiminh123');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await expect(page).toHaveURL(/\/minhquy\/bang-tin/, { timeout: 20_000 });
 });
 
 test('đăng nhập sai mật khẩu báo lỗi, đúng thì vào được', async ({ page }) => {
