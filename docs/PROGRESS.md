@@ -2,7 +2,7 @@
 
 Wiki ngắn để phiên làm việc sau biết đã làm đến đâu mà **không phải đọc lại code**. Cập nhật cuối mỗi phần việc, commit cùng code.
 
-Quy ước làm việc: code xong phần nào → `git add -A && git commit && git push origin main` ngay. Tra cứu code bằng GitNexus (`gitnexus query/context/impact`, MCP đã cấu hình cho Claude Code) thay vì đọc cả file.
+Quy ước làm việc: mỗi phiên một nhánh và một PR, code xong phần nào thì commit và push nhánh đó ngay, không push thẳng `main` (luật ở `CLAUDE.md`). Tra cứu code bằng GitNexus (`gitnexus query/context/impact`, MCP đã cấu hình cho Claude Code) thay vì đọc cả file.
 
 ## Trạng thái tổng (cập nhật 2026-09-20)
 
