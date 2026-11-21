@@ -2,7 +2,7 @@
 // đã chia sẻ và thông báo đang dẫn tới đó). Gom về một chỗ: tab "Link của tôi" (lấy link, số liệu, tóm tắt ví) và tab
 // "Xếp hạng" (bảng xếp hạng của hội); tab đang mở nằm trên địa chỉ (?tab=link, ?tab=xep-hang). Cột phải: người giới
 // thiệu của bạn, cách tính, tổng affiliate của tháng. Phần chủ hội quản lý chương trình nằm ở trang khác (/:slug/cong-su).
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CommunityMark, Prog, T, Tag, WalletBox, money } from '@hoiminh/ui';
 import { Clock, Link as LinkIcon, ShieldCheck, UserCheck, Users, Wallet as WalletIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -17,7 +17,7 @@ import { RankBoard, type Board, type Period } from './AffiliateRank';
 import { ReferrerCard } from './ReferrerCard';
 
 /** Ví của tôi trong chương trình của hội này (GET /v1/me/affiliate/:programId). Gọi API này là mở tài khoản affiliate. */
-interface Wallet { programId: string; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; clicks: number; signups: number; paid: number }
+interface Wallet { programId: string; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; codeEditable: boolean; previousCode: string | null; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; clicks: number; signups: number; paid: number }
 
 /** Hội chưa bật affiliate (hoặc gói của hội không có): nói rõ vì sao chưa có link và đưa lối đi tiếp. */
 function ProgramOff({ name, slug, canManage, canConfigure, walletProgramId }: { name: string; slug: string; canManage: boolean; canConfigure: boolean; walletProgramId: string | null }) {
@@ -46,6 +46,9 @@ function ProgramOff({ name, slug, canManage, canConfigure, walletProgramId }: { 
  * hội nào và đưa lối sang link của hội khác hoặc của nền tảng.
  */
 function MyLink({ w, community }: { w: Wallet; community: Shell['community'] }) {
+  const qc = useQueryClient();
+  // Mã giới thiệu chung dùng cho mọi chương trình: đổi xong thì link ở mọi ví, bảng xếp hạng và trang sản phẩm đổi theo.
+  const codeChanged = () => { void qc.invalidateQueries({ queryKey: ['wallet'] }); void qc.invalidateQueries({ queryKey: ['leaderboard'] }); void qc.invalidateQueries({ queryKey: ['product'] }); };
   return (
     <>
       {w.enabled && (
@@ -65,7 +68,7 @@ function MyLink({ w, community }: { w: Wallet; community: Shell['community'] }) 
           <Link to="/tai-khoan/cong-su" className="self-start inline-flex items-center min-h-[44px] text-[14px] font-semibold" style={{ color: T.primaryText }}>Lấy link của hội khác hoặc của nền tảng Hội Mình</Link>
         </section>
       )}
-      {w.enabled && <LinkCard key={w.programId} program={{ scope: 'community', rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
+      {w.enabled && <LinkCard key={w.programId} program={{ scope: 'community', rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} codeEditable={w.codeEditable} previousCode={w.previousCode} onCodeChanged={codeChanged} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
       <div className="pt-1">
         <h2 className="m-0 text-[18px] font-bold">Ví hoa hồng của bạn</h2>
         <div className="muted text-[14px]">Hoa hồng từ hội này về một ví riêng. {w.payerName} chuyển khoản khi bạn gửi yêu cầu rút.</div>

@@ -8,6 +8,7 @@ Thành viên thấy Affiliate ngay trên thanh bên của hội, kèm phần tr�
 
 - **Mục "Affiliate" trên thanh bên của hội, kèm phần trăm hoa hồng.** Thành viên của hội đang bật affiliate thấy mục "Affiliate" ở nhóm Hội, bên phải là mức hoa hồng của chính họ (ví dụ "40%"). Trước đây muốn lấy link phải vào Tài khoản, Affiliate nên khó tìm. Mục này hiện cả trên menu của điện thoại; thanh bên thu gọn thì còn biểu tượng.
 - **Trang Affiliate của thành viên trong hội.** Trang `/<hội>/xep-hang` (địa chỉ cũ giữ nguyên) nay có tiêu đề "Affiliate", nói rõ quyền lợi bằng số thật ("Giới thiệu người vào <tên hội>, nhận 40% hoa hồng mỗi lần họ trả phí") và có hai tab. "Link của tôi" mở sẵn: chọn trang muốn chia sẻ, sao chép link, xem lượt bấm, đăng ký, trả phí, hai ô ví (Đang giữ, Có thể rút) và nút "Xem ví và rút tiền" sang trang ví đầy đủ. "Xếp hạng" là bảng xếp hạng như trước. Tab đang mở nằm trên địa chỉ (`?tab=link`, `?tab=xep-hang`). Thẻ "Người giới thiệu của bạn" vẫn ở trang này.
+- **Đổi mã giới thiệu ngay trong trang Affiliate của hội.** Tab "Link của tôi" có nút "Đổi mã" như ở trang Affiliate của tôi (mỗi người đổi được một lần, một mã dùng cho mọi chương trình). Đổi xong thì link ở mọi ví, bảng xếp hạng và trang sản phẩm đổi theo.
 
 ### Thay đổi
 
