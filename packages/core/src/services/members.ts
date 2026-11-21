@@ -14,20 +14,41 @@ import { resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { tagsByEmail } from './automation';
 import { getCommunityBySlug } from './communities';
+import { acceptInvite, inviteRole, requireUsableInvite } from './invites';
 import { assertRoomForMember, communityPlan } from './plans';
 
-/** Tham gia hội miễn phí (free/freemium). Hội thu phí đi qua checkout. */
-export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: Array<{ questionId: string; answer: string }>; ref?: string | null }) {
+/**
+ * Tham gia hội miễn phí (free/freemium). Hội thu phí đi qua checkout.
+ *
+ * Kèm mã mời (`invite`, lấy từ link `?invite=` chủ hội gửi) thì người được mời vào thẳng: không chờ duyệt, không phải trả
+ * lời câu hỏi tham gia, và vào được cả khi hội đã đóng cổng, vì chính chủ hội đã chọn họ. Lời mời không thay cho tiền: hội
+ * thu phí thì người được mời làm thành viên vẫn phải thanh toán. Riêng lời mời làm quản trị viên (luôn gắn với một email)
+ * cho vào không cần thanh toán và trao vai trò quản trị. Trần thành viên của gói và lệnh chặn vẫn áp dụng như thường.
+ */
+export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: Array<{ questionId: string; answer: string }>; ref?: string | null; invite?: string | null }) {
   const userId = requireUser(ctx);
   const c = await getCommunityBySlug(ctx, slug);
   if (c.status !== 'active') throw invalidState('Hội chưa mở');
-  if (!c.doorsOpen) throw invalidState('Hội đã đóng cổng, không nhận thành viên mới');
-  if (c.pricingMode === 'subscription' || c.pricingMode === 'one_time') throw invalidState('Hội này cần thanh toán để tham gia');
+  const invited = input.invite ? await requireUsableInvite(ctx, c.id, input.invite) : null;
+  const asAdmin = invited ? inviteRole(invited) === 'admin' : false;
+  if (!c.doorsOpen && !invited) throw invalidState('Hội đã đóng cổng, không nhận thành viên mới');
+  if ((c.pricingMode === 'subscription' || c.pricingMode === 'one_time') && !asAdmin) throw invalidState('Hội này cần thanh toán để tham gia');
   const existing = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.communityId, c.id), eq(communityMembers.userId, userId)) });
   if (existing?.status === 'banned') throw forbidden('Bạn đã bị chặn khỏi hội này');
-  if (existing && (existing.status === 'active' || existing.status === 'cancelling')) return { member: existing, alreadyMember: true };
+  if (existing && (existing.status === 'active' || existing.status === 'cancelling')) {
+    // Người đã ở trong hội nhận lời mời làm quản trị viên: chỉ nâng vai trò, không bao giờ hạ (chủ hội và quản trị viên giữ nguyên).
+    if (invited && asAdmin && (existing.role === 'member' || existing.role === 'moderator')) {
+      await acceptInvite(ctx, invited);
+      const [promoted] = await ctx.db.update(communityMembers).set({ role: 'admin', updatedAt: ctx.now() }).where(eq(communityMembers.id, existing.id)).returning();
+      await audit(ctx, { action: 'member.invite_accepted', resourceType: 'community_member', resourceId: existing.id, communityId: c.id, metadata: { inviteId: invited.id, role: 'admin' } });
+      return { member: promoted!, alreadyMember: true };
+    }
+    // Người được mời qua email đã ở sẵn trong hội: ghi nhận luôn để lời mời không nằm mãi ở danh sách đang chờ.
+    if (invited) await acceptInvite(ctx, invited);
+    return { member: existing, alreadyMember: true };
+  }
   const questions = await ctx.db.query.communityJoinQuestions.findMany({ where: eq(communityJoinQuestions.communityId, c.id) });
-  for (const q of questions) if (q.required && !input.answers?.find((a) => a.questionId === q.id && a.answer.trim())) throw invalid(`Cần trả lời: ${q.question}`);
+  if (!invited) for (const q of questions) if (q.required && !input.answers?.find((a) => a.questionId === q.id && a.answer.trim())) throw invalid(`Cần trả lời: ${q.question}`);
   const tier = await ctx.db.query.communityTiers.findFirst({ where: and(eq(communityTiers.communityId, c.id), eq(communityTiers.isDefault, true)) });
   const instant = await ctx.db.query.communities.findFirst({ where: eq(communities.id, c.id), columns: { id: true } }).then(async () => {
     const p = await raw(ctx.db, sql`select enabled from community_plugins where community_id = ${c.id} and plugin_key = 'instant_approval'`);
@@ -46,11 +67,13 @@ export async function joinCommunity(ctx: Ctx, slug: string, input: { answers?: A
   const plan = await communityPlan(ctx, c.id);
   if (plan.needsPlan) throw invalidState('Hội chưa mở');
   const waitlisted = plan.full;
-  const status: MemberStatus = instant && !waitlisted ? 'active' : 'pending';
-  const values = { communityId: c.id, userId, role: 'member' as const, status, tierId: tier?.id ?? null, referredByAffiliateId: affiliateId, source: existing?.source ?? (affiliateId ? ('affiliate' as const) : ('direct' as const)), joinedAt: ctx.now(), lastActiveAt: ctx.now(), churnedAt: null, updatedAt: ctx.now() };
+  const status: MemberStatus = (instant || invited) && !waitlisted ? 'active' : 'pending';
+  if (invited) await acceptInvite(ctx, invited);
+  const values = { communityId: c.id, userId, role: asAdmin ? ('admin' as const) : ('member' as const), status, tierId: tier?.id ?? null, referredByAffiliateId: affiliateId, source: existing?.source ?? (affiliateId ? ('affiliate' as const) : invited ? ('invite' as const) : ('direct' as const)), joinedAt: ctx.now(), lastActiveAt: ctx.now(), churnedAt: null, updatedAt: ctx.now() };
   const [member] = existing
     ? await ctx.db.update(communityMembers).set(values).where(eq(communityMembers.id, existing.id)).returning()
     : await ctx.db.insert(communityMembers).values(values).returning();
+  if (invited) await audit(ctx, { action: 'member.invite_accepted', resourceType: 'community_member', resourceId: member!.id, communityId: c.id, metadata: { inviteId: invited.id, role: values.role } });
   if (input.answers?.length) {
     await ctx.db.delete(memberJoinAnswers).where(eq(memberJoinAnswers.memberId, member!.id));
     await ctx.db.insert(memberJoinAnswers).values(input.answers.filter((a) => questions.some((q) => q.id === a.questionId)).map((a) => ({ memberId: member!.id, questionId: a.questionId, answer: a.answer })));
@@ -149,6 +172,22 @@ export async function grantCourse(ctx: Ctx, communityId: string, memberId: strin
   await audit(ctx, { action: 'entitlement.grant_manual', resourceType: 'course', resourceId: courseId, communityId, metadata: { memberId } });
 }
 
+/**
+ * Thu hồi khóa học đã cấp tay cho thành viên. Chỉ gỡ quyền cấp tay: quyền có được do mua khóa hoặc do gói thành viên
+ * không đổi (muốn thu thì hoàn tiền đơn hoặc đổi gói).
+ */
+export async function revokeCourse(ctx: Ctx, communityId: string, memberId: string, courseId: string) {
+  await requireCommunityPermission(ctx, communityId, 'member.manage');
+  const m = await ctx.db.query.communityMembers.findFirst({ where: and(eq(communityMembers.id, memberId), eq(communityMembers.communityId, communityId)) });
+  if (!m) throw notFound();
+  const rows = await ctx.db.update(entitlements).set({ status: 'revoked', revokedAt: ctx.now() })
+    .where(and(eq(entitlements.userId, m.userId), eq(entitlements.communityId, communityId), eq(entitlements.resourceType, 'course'), eq(entitlements.resourceId, courseId), eq(entitlements.sourceType, 'manual_grant'), eq(entitlements.status, 'active')))
+    .returning({ id: entitlements.id });
+  if (!rows.length) throw invalidState('Thành viên không có quyền cấp tay cho khóa học này');
+  await audit(ctx, { action: 'entitlement.revoke_manual', resourceType: 'course', resourceId: courseId, communityId, metadata: { memberId } });
+  return { revoked: rows.length };
+}
+
 /** Xóa khỏi nhóm (giữ lịch sử thanh toán), chặn, hoặc hủy đăng ký. */
 export async function memberAction(ctx: Ctx, communityId: string, memberId: string, action: 'remove' | 'ban' | 'cancel_subscription' | 'approve' | 'unban') {
   await requireCommunityPermission(ctx, communityId, 'member.manage');
@@ -183,6 +222,8 @@ export async function memberAction(ctx: Ctx, communityId: string, memberId: stri
 /** Mời qua email (gửi link tham gia) hoặc tạo link mời dùng nhiều lần. */
 export async function invite(ctx: Ctx, communityId: string, input: { emails?: string[]; role?: 'member' | 'admin' }) {
   await requireCommunityPermission(ctx, communityId, 'member.manage');
+  // Link mời chung dùng được nhiều lần: ai cầm link cũng vào được, nên không bao giờ trao quyền quản trị qua link đó.
+  if (input.role === 'admin' && !input.emails?.length) throw invalid('Mời làm quản trị viên phải kèm email của người được mời');
   const c = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId) });
   if (!c) throw notFound();
   const inviter = ctx.actor.type === 'user' ? await ctx.db.query.users.findFirst({ where: eq(users.id, ctx.actor.userId) }) : null;

@@ -66,6 +66,16 @@ export async function createComment(ctx: Ctx, targetType: 'post' | 'lesson' | 'e
   return row!;
 }
 
+/** Sửa nội dung bình luận (tác giả hoặc người kiểm duyệt). Ảnh đính kèm, lượt thích và các trả lời giữ nguyên. */
+export async function updateComment(ctx: Ctx, commentId: string, input: { contentMd: string }) {
+  const c = await ctx.db.query.comments.findFirst({ where: and(eq(comments.id, commentId), isNull(comments.deletedAt)) });
+  if (!c) throw notFound();
+  const access = await resolveCommunityAccess(ctx, c.communityId);
+  if (!(ctx.actor.type === 'user' && ctx.actor.userId === c.authorUserId) && !access.permissions.has('post.moderate')) throw forbidden();
+  const [row] = await ctx.db.update(comments).set({ contentMd: input.contentMd, updatedAt: ctx.now() }).where(eq(comments.id, commentId)).returning();
+  return row!;
+}
+
 /** Ghim/bỏ ghim bình luận (tác giả bài hoặc quản trị). */
 export async function pinComment(ctx: Ctx, commentId: string, pinned: boolean) {
   const c = await ctx.db.query.comments.findFirst({ where: eq(comments.id, commentId) });

@@ -1,5 +1,5 @@
 // Người chi trả hoa hồng (chủ hội / super admin): xem xét, đánh dấu đã trả, từ chối; affiliate hủy yêu cầu; link affiliate /r/:code; đếm lượt mở link ?ref=.
-import { markPaidSchema, rejectWithdrawalSchema, joinRefs } from '@hoiminh/contracts';
+import { REF_PLATFORM_SCOPE, markPaidSchema, rejectWithdrawalSchema, joinRefs, scopeRefs } from '@hoiminh/contracts';
 import { affiliate, withdrawals } from '@hoiminh/core';
 import { body, parse, router } from '../lib/hono';
 import { z } from 'zod';
@@ -28,7 +28,7 @@ payerRoutes.post('/withdrawals/:id/cancel', requireAuth, async (c) => c.json(awa
  */
 payerRoutes.post('/ref-clicks', rateLimit('write', { scope: 'ref-clicks' }), async (c) => {
   const ctx = c.get('ctx');
-  const input = await parse(z.object({ code: z.string().trim().min(2).max(64), url: z.string().max(2000).optional(), referrer: z.string().max(2000).optional() }), await body(c));
+  const input = await parse(z.object({ code: z.string().trim().min(2).max(100), url: z.string().max(2000).optional(), referrer: z.string().max(2000).optional() }), await body(c));
   const known = readCookie(c, 'hm_vid');
   const visitorId = known && /^[a-zA-Z0-9-]{8,64}$/.test(known) ? known : crypto.randomUUID();
   const counted = await affiliate.recordLandingClick(ctx, input.code, { visitorId, ip: c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? undefined, userAgent: c.req.header('user-agent') ?? undefined, landingUrl: input.url, referrer: input.referrer });
@@ -51,7 +51,8 @@ refRoutes.get('/:code', async (c) => {
   const remembered = cookies.split(';').map((s) => s.trim()).find((s) => s.startsWith('hm_ref='))?.slice(7);
   let before = '';
   try { before = decodeURIComponent(remembered ?? ''); } catch { /* cookie hỏng: coi như chưa nhớ mã nào */ }
-  const refs = joinRefs(c.req.param('code'), before) ?? c.req.param('code');
+  // Link `/r/<mã>` không nằm ở trang của hội nào: mã chung bấm qua đây tính cho nền tảng (mã riêng thì phạm vi không có ý nghĩa).
+  const refs = joinRefs(scopeRefs(c.req.param('code'), REF_PLATFORM_SCOPE), before) ?? c.req.param('code');
   c.header('Set-Cookie', `hm_ref=${encodeURIComponent(refs)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`, { append: true });
   c.header('Set-Cookie', `hm_vid=${visitorId}; Path=/; Max-Age=${365 * 86_400}; SameSite=Lax${secure}`, { append: true });
   return c.redirect(dest, 302);

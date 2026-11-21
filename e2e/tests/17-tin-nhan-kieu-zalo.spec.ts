@@ -42,7 +42,11 @@ test('máy tính: khung chat lấp đầy màn hình, gửi, trả lời, thả 
   await expect(thread.locator('.chat-row')).toHaveCount(1);
   await expectFillsScreen(page);
   // Bảng thông tin hội thoại là cột thứ ba; tin mới nhất nằm sát ô nhập (luồng dồn về đáy).
-  await expect(page.getByRole('complementary', { name: 'Thông tin hội thoại' })).toBeVisible();
+  const infoPanel = page.getByRole('complementary', { name: 'Thông tin hội thoại' });
+  await expect(infoPanel).toBeVisible();
+  // Bảng chỉ có một nút "Xem chi tiết hồ sơ": ghim và lưu trữ nằm ở menu ba chấm, không có nút "Quản lý thành viên".
+  await expect(infoPanel.getByRole('link', { name: 'Xem chi tiết hồ sơ' })).toHaveAttribute('href', /\/u\//);
+  for (const gone of ['Quản lý thành viên', 'Ghim hội thoại', 'Lưu trữ hội thoại']) await expect(infoPanel.getByText(gone)).toHaveCount(0);
   const gap = await page.evaluate(() => document.querySelector('.chat-composer')!.getBoundingClientRect().top - [...document.querySelectorAll('.chat-row')].at(-1)!.getBoundingClientRect().bottom);
   expect(gap).toBeLessThan(80);
   const theirs = thread.locator('.chat-row:not(.mine)').first();
@@ -221,10 +225,12 @@ test('máy tính: tệp đính kèm 5MB, đã gửi / đã nhận / đã xem, ta
   await row.getByRole('button', { name: /Hoàng Vũ/ }).first().click();
   await expect(thread.locator('.chat-row').first()).toBeVisible();
 
-  // Menu ba chấm: xem hồ sơ, chặn, báo cáo. Báo cáo tới được quản trị hệ thống.
+  // Menu ba chấm: xem hồ sơ, ghim, lưu trữ, chặn, báo cáo. Báo cáo tới được quản trị hệ thống.
   const more = thread.getByRole('button', { name: 'Thao tác với Hoàng Vũ' });
   await more.click();
   await expect(page.getByRole('menuitem', { name: 'Xem hồ sơ' })).toHaveAttribute('href', /\/u\//);
+  await expect(page.getByRole('menuitem', { name: /ghim hội thoại/i })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /lưu trữ/i })).toBeVisible();
   await page.getByRole('menuitem', { name: 'Báo cáo Vũ' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Lừa đảo').check();

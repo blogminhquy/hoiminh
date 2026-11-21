@@ -134,6 +134,13 @@
       "when": 1795254482776,
       "tag": "0018_community_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795285954034,
+      "tag": "0019_affiliate_user_codes",
+      "breakpoints": true
     }
   ]
 }
