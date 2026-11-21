@@ -284,6 +284,25 @@ describe('đổi hoặc gỡ ảnh', () => {
     expect(bucket.objects.has(c2.key)).toBe(false);
   });
 
+  it('đăng khóa học bán lẻ lần đầu: sản phẩm cửa hàng mang ảnh bìa của khóa học, khách chưa đăng nhập cũng thấy', async () => {
+    const mq = await app.as('minhquy');
+    const kd = await app.ids(KD);
+    const cover = await upload(mq, 'cover', { communityId: kd });
+    const course = await courses.createCourse(mq, kd, { title: 'Khóa có ảnh bìa', shortDescription: 'x', descriptionMd: '', coverFileId: cover.fileId, accessMode: 'premium_and_store', priceMinor: 990_000, compareAtMinor: 1_900_000, previewFirstModule: true, affiliateEnabled: true, dripEnabled: false, certificateEnabled: true, sequential: false, hiddenFromStore: false });
+    const mod = await courses.upsertModule(mq, course.id, { title: 'Module 1' });
+    await courses.upsertLesson(mq, course.id, { moduleId: mod.id, title: 'Bài 1', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' });
+    await courses.updateCourse(mq, course.id, { status: 'published' });
+    const p = await app.ctx.db.query.products.findFirst({ where: eq(products.courseId, course.id) });
+    expect(p?.coverUrl).toBe(cover.url);
+    // Trang bán mở cho mọi người (link ?ref= của affiliate): khách chưa đăng nhập phải nhận được ảnh bìa.
+    const guest = app.anon();
+    expect((await store.getProduct(guest, p!.id)).coverUrl).toBe(cover.url);
+    // Sản phẩm tạo trước bản sửa có bản sao ảnh bìa trống: trang bán và cửa hàng vẫn lấy ảnh của khóa học.
+    await app.ctx.db.update(products).set({ coverUrl: null }).where(eq(products.id, p!.id));
+    expect((await store.getProduct(guest, p!.id)).coverUrl).toBe(cover.url);
+    expect((await store.listProducts(mq, kd, {})).items.find((i) => i.id === p!.id)?.coverUrl).toBe(cover.url);
+  });
+
   it('xóa sản phẩm xóa ảnh bìa của sản phẩm và trang bán', async () => {
     const mq = await app.as('minhquy');
     const kd = await app.ids(KD);
