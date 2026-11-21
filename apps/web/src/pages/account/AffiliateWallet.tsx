@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { LinkCard, ProgramOffNotice, ProgramPicker } from './AffiliateLinkParts';
 import { CommissionsTable, PayoutProfileCard, WithdrawCard, WithdrawalsTable, type Commission, type Withdrawal } from './AffiliateWalletParts';
 
-interface Wallet { programId: string; scope: 'platform' | 'community'; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; link: string; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; requestedMinor: number; paidMinor: number; clicks: number; signups: number; paid: number; maskedAccount: string | null; bankCode: string | null; recentCommissions: Commission[]; withdrawals: Withdrawal[] }
+interface Wallet { programId: string; scope: 'platform' | 'community'; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; codeEditable: boolean; previousCode: string | null; link: string; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; requestedMinor: number; paidMinor: number; clicks: number; signups: number; paid: number; maskedAccount: string | null; bankCode: string | null; recentCommissions: Commission[]; withdrawals: Withdrawal[] }
 
 export default function Page() {
   const { programId } = useParams();
@@ -24,6 +24,8 @@ export default function Page() {
   const openWallet = programs.isSuccess && Boolean(current) && (!selected || selected.enabled || selected.hasAccount);
   const q = useQuery({ queryKey: ['wallet', current], queryFn: () => api.get<Wallet>(`/v1/me/affiliate/${current}`), enabled: openWallet });
   const refresh = () => qc.invalidateQueries({ queryKey: ['wallet', current] });
+  // Mã chung đổi thì link của MỌI chương trình đổi theo, và link affiliate ở các trang khác (xếp hạng, sản phẩm) cũng vậy.
+  const codeChanged = () => { void qc.invalidateQueries({ queryKey: ['wallet'] }); void qc.invalidateQueries({ queryKey: ['leaderboard'] }); void qc.invalidateQueries({ queryKey: ['product'] }); };
   useEffect(() => { if (programId) rememberProgram(programId); }, [programId]);
   if (!programId && current) return <Navigate to={`/tai-khoan/cong-su/${current}`} replace />;
   return (
@@ -37,7 +39,7 @@ export default function Page() {
         <QueryState q={q} rows={3}>
           {(w) => (
             <>
-              {w.enabled && <LinkCard key={w.programId} program={{ scope: w.scope, rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
+              {w.enabled && <LinkCard key={w.programId} program={{ scope: w.scope, rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} codeEditable={w.codeEditable} previousCode={w.previousCode} onCodeChanged={codeChanged} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
               <div><h2 className="m-0 text-[18px] font-bold">Ví hoa hồng · {w.communityName}</h2><div className="muted text-[14px]">Mỗi chương trình có một ví riêng. {w.payerName} là người chuyển khoản hoa hồng của ví này.</div></div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <WalletBox label="Đang giữ" value={money(w.pendingMinor)} hint={`chờ hết ${w.holdDays} ngày đối soát`} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { joinRefs, refCodes } from '@hoiminh/contracts';
+import { REF_PLATFORM_SCOPE, joinRefs, refCodes, refScopeOf, scopeRefs, splitRef } from '@hoiminh/contracts';
 import { movedSlugPath, refCodeOf } from './referral';
 
 describe('refCodeOf', () => {
@@ -23,6 +23,33 @@ describe('danh sách mã giới thiệu', () => {
   it('không có mã nào thì undefined, và chỉ giữ 8 mã mới nhất', () => {
     expect(joinRefs(null, '', undefined)).toBeUndefined();
     expect(refCodes('a1,a2,a3,a4,a5,a6,a7,a8,a9,a10')).toHaveLength(8);
+  });
+});
+
+describe('phạm vi của mã giới thiệu (trang mà link được mở)', () => {
+  it('trang của hội lấy đường dẫn hội, trang chủ là nền tảng, trang đăng ký đi từ một hội lấy theo hội đó', () => {
+    expect(refScopeOf('/javiser')).toBe('javiser');
+    expect(refScopeOf('/javiser/cua-hang/javis-agent-automation-v78')).toBe('javiser');
+    expect(refScopeOf('/')).toBe(REF_PLATFORM_SCOPE);
+    expect(refScopeOf('/tao-hoi/goi')).toBe('tao-hoi');
+    expect(refScopeOf('/dang-ky', 'javiser')).toBe('javiser');
+    expect(refScopeOf('/dang-ky', null)).toBe('dang-ky');
+    expect(refScopeOf('/Hội%20lạ')).toBe(REF_PLATFORM_SCOPE);
+  });
+  it('gắn phạm vi cho mã đọc từ link, mã đã có phạm vi thì giữ nguyên', () => {
+    expect(scopeRefs('MinhQuy', 'javiser')).toBe('minhquy.javiser');
+    expect(scopeRefs('minhquy.javiser,hv8k2', 'dang-ky')).toBe('minhquy.javiser,hv8k2.dang-ky');
+    expect(scopeRefs(null, 'javiser')).toBeUndefined();
+    expect(scopeRefs('<script>', 'javiser')).toBeUndefined();
+  });
+  it('danh sách mã nhận cả mã có phạm vi; cùng một mã ở hai trang là hai lượt bấm khác nhau', () => {
+    expect(refCodes('minhquy.javiser', 'minhquy._,minhquy.javiser,hv8k2')).toEqual(['minhquy.javiser', 'minhquy._', 'hv8k2']);
+    expect(refCodes('a.b.c', 'a.', '.b')).toEqual([]);
+    expect(joinRefs('minhquy.javiser', 'hv8k2')).toBe('minhquy.javiser,hv8k2');
+  });
+  it('tách mã và phạm vi', () => {
+    expect(splitRef('minhquy.javiser')).toEqual({ code: 'minhquy', scope: 'javiser' });
+    expect(splitRef('hv8k2')).toEqual({ code: 'hv8k2', scope: null });
   });
 });
 
