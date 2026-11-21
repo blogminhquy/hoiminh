@@ -6,7 +6,7 @@ import { SEED_BANK_WEBHOOK_TOKEN } from '@hoiminh/db/seed';
 import { openSeededTestDb } from '@hoiminh/db/testing';
 import { fakeBucket, fakeImages } from '@hoiminh/media/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createHonoApp } from './app';
+import { createHonoApp, fetchWithSharedHono } from './app';
 import { resetMemoryLimits, TIERS } from './middleware/rate-limit';
 import { MAX_SOCKETS, RealtimeHub } from './realtime-hub';
 
@@ -202,6 +202,31 @@ describe('API', () => {
     expect(health.email).toBe('log');
     expect(health.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
+  it('Worker dùng chung một Hono app cho mọi request: request nào vẫn chạy bằng App của request đó', async () => {
+    const dbHandle = (app.ctx as { db: unknown }).db as never;
+    const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
+    const noR2 = await createApp({ env: loadEnv(base), db: dbHandle });
+    const withR2 = await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: fakeBucket() });
+    const upload = (a: App) => fetchWithSharedHono(a, new Request('https://api.test/v1/files/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: 5, purpose: 'post_image', communityId }) }), {});
+    // Xen kẽ hai App qua cùng một Hono app: App không có R2 luôn bị chặn, App có R2 luôn được, không App nào "dính" sang request sau.
+    expect((await upload(noR2)).status).toBe(503);
+    expect((await upload(withR2)).status).toBe(201);
+    expect((await upload(noR2)).status).toBe(503);
+    const [a, b] = await Promise.all([upload(withR2), upload(noR2)]);
+    expect([a.status, b.status]).toEqual([201, 503]);
+    // /health đọc môi trường từ App của request, và các binding khác trong env vẫn nguyên.
+    const health = await fetchWithSharedHono(app, new Request('https://api.test/health'), { RL_API: undefined });
+    expect(((await health.json()) as { env: string }).env).toBe('test');
+    const prod = await fetchWithSharedHono(noR2, new Request('https://api.test/health'), {});
+    expect(((await prod.json()) as { env: string }).env).toBe('production');
+    // CORS tính theo APP_URL của từng App: web của App này không được App kia cho phép.
+    const cors = (a: App, origin: string) => fetchWithSharedHono(a, new Request('https://api.test/health', { headers: { Origin: origin } }), {}).then((r) => r.headers.get('access-control-allow-origin'));
+    expect(await cors(noR2, 'https://test')).toBe('https://test');
+    expect(await cors(noR2, 'https://www.test')).toBe('https://www.test');
+    expect(await cors(noR2, 'https://ke-la.example')).toBeNull();
+    expect(await cors(app, 'https://test')).toBeNull();
+  });
+
   it('tệp: production mà chưa nối R2 → 503 nói rõ nguyên nhân; có binding R2 → tải lên và phát lại qua API', async () => {
     const dbHandle = (app.ctx as { db: unknown }).db as never;
     const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };

@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.35.2 - 2026-11-21
+
+Giảm CPU và số câu lệnh database của mỗi request, theo yêu cầu của chủ dự án sau khi rà soát giới hạn 10 ms CPU của gói Workers miễn phí. Không đổi tính năng, không đổi dữ liệu trả về, không có migration.
+
+Số đo dưới đây lấy trên workerd chạy tại máy (cùng nhân với Cloudflare) với dữ liệu mẫu, tính CPU của cả tiến trình nên cao hơn con số Cloudflare tính. Dùng để so trước và sau, không phải số trên hệ thống thật.
+
+### Thay đổi
+
+- **Worker dựng bộ định tuyến một lần cho cả isolate, không dựng lại ở mỗi request.** Trước đây request nào cũng đăng ký lại hơn 350 route rồi biên dịch bộ định tuyến. Nay Hono app dùng chung, chỉ App (giữ kết nối Postgres) là tạo mới theo request. Mọi request nhẹ đi khoảng 1,2 ms CPU (`/health` từ 5,2 xuống 4,0 ms).
+- **Trang danh sách khóa học hỏi quyền của cả danh sách trong một lượt.** Trước đây mỗi khóa tốn năm đến bảy câu lệnh để xét quyền (cấp thủ công, mua lẻ, combo, hạng thành viên). Với bốn khóa: từ 38 xuống 14 câu lệnh, CPU từ 16,3 xuống 7,7 ms. Người quản lý: từ 15 xuống 11 câu lệnh. Trang chi tiết khóa học và bài học bớt một câu lệnh nạp lại khóa học.
+- **Khung hội gửi các truy vấn độc lập cùng lúc và gộp ba con số của thanh bên vào một câu lệnh.** Từ 23 xuống 21 câu lệnh, số lượt chờ database nối tiếp giảm khoảng một nửa, CPU từ 12,6 xuống 9,4 ms.
+
+### Chưa giải quyết được bằng mã
+
+- Đăng nhập (khoảng 19 ms CPU) và đăng ký (khoảng 43 ms) vẫn vượt 10 ms vì riêng bước băm mật khẩu PBKDF2 100.000 vòng đã tốn khoảng 13 ms. Không giảm số vòng vì đó là lớp bảo vệ mật khẩu. Hai đường này chỉ chạy ổn định trên gói Workers Paid.
+
 ## 1.35.1 - 2026-11-17
 
 ### Thay đổi

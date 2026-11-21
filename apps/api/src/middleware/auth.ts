@@ -1,6 +1,6 @@
 // Xác thực: cookie httpOnly hm_at (web), Bearer JWT (ứng dụng ngoài) hoặc API key hm_… (tích hợp, MCP). Không có → anonymous.
 import { apiKeys as apiKeySvc, auth as authSvc, forbidden, unauthorized, withSystemScope, withTenantScope, type App, type Ctx } from '@hoiminh/core';
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import type { Env } from '../lib/hono';
 import { ACCESS_COOKIE, readCookie, sameOriginWrite } from '../lib/session-cookie';
 import { apiKeyAccess } from './api-key-access';
@@ -14,9 +14,14 @@ const SYSTEM_PATHS = ['/webhooks', '/pay/simulator', '/r', '/files', '/health'];
  */
 const NO_DB_PATHS = ['/v1/video/meta', '/mcp'];
 
-/** Gắn ctx vào mỗi request; xác thực nếu có Authorization hoặc cookie phiên. */
-export function authMiddleware(app: App): MiddlewareHandler<Env> {
+/**
+ * Gắn ctx vào mỗi request; xác thực nếu có Authorization hoặc cookie phiên.
+ * Nhận hàm lấy App theo request (không phải một App cố định), vì trên Worker một Hono app phục vụ mọi request
+ * còn App thì mỗi request một cái (xem `fetchWithSharedHono` ở app.ts).
+ */
+export function authMiddleware(appOf: (c: Context<Env>) => App): MiddlewareHandler<Env> {
   return async (c, next) => {
+    const app = appOf(c);
     const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
     const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? '';
     const base: Ctx = { ...app.ctx, actor: { type: 'anonymous' }, requestId, ipHash: ip ? await hashIp(ip) : undefined };
