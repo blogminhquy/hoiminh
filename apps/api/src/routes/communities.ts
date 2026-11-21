@@ -1,5 +1,5 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
 import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
@@ -82,6 +82,9 @@ communityRoutes.get('/:id/leaderboard', async (c) => {
   const { period } = await parse(leaderboardQuerySchema, query(c));
   return c.json(await affiliate.leaderboard(c.get('ctx'), c.req.param('id'), period));
 });
+// Người giới thiệu của chính thành viên đang đăng nhập: xem và tự đổi. Chỉ làm trên web, API key không gọi được.
+communityRoutes.get('/:id/my-referrer', requireAuth, async (c) => c.json(await affiliate.myReferrer(c.get('ctx'), c.req.param('id'))));
+communityRoutes.put('/:id/my-referrer', requireAuth, rateLimit('write', { scope: 'my-referrer' }), async (c) => c.json(await affiliate.setMyReferrer(c.get('ctx'), c.req.param('id'), await parse(setReferrerSchema, await body(c)))));
 communityRoutes.get('/:id/affiliate/payouts', requireAuth, async (c) => {
   const ctx = c.get('ctx');
   const s = await affiliate.programSettings(ctx, c.req.param('id'));
