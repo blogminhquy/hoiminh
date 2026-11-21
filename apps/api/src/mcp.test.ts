@@ -4,7 +4,7 @@ import { API_SCOPES } from '@hoiminh/contracts';
 import { createApp, featureFlags, type App } from '@hoiminh/core';
 import { openSeededTestDb } from '@hoiminh/db/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createHonoApp } from './app';
+import { createHonoApp, fetchWithSharedHono } from './app';
 import { API_KEY_RULES, apiKeyAccess } from './middleware/api-key-access';
 import { TOOLS, describeTool, toolsFor } from './mcp/tools';
 
@@ -58,6 +58,13 @@ describe('API key: mặc định chặn, chỉ mở đúng đường dẫn đún
       expect(rule).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/v1\//);
       if (need !== 'any') for (const s of need) expect(API_SCOPES).toContain(s);
     }
+  });
+
+  it('MCP qua Hono app dùng chung của Worker: lệnh gọi lại REST nội bộ vẫn thấy đúng App của request', async () => {
+    const res = await fetchWithSharedHono(app, new Request('https://api.test/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${fullKey}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_communities', arguments: {} } }) }), {});
+    const r = (await res.json()) as Loose;
+    expect(r.result.isError).toBeFalsy();
+    expect(JSON.parse(r.result.content[0].text).map((c: Loose) => c.id)).toContain(communityId);
   });
 
   it('key chỉ đọc: đọc được hội và thành viên, không ghi được gì', async () => {
