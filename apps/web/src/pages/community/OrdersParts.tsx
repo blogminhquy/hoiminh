@@ -54,11 +54,12 @@ export function StatsTab({ choice, onChoice }: { choice: RangeChoice; onChoice: 
           const share = referred !== undefined && d.stats.netMinor > 0 ? Math.round((referred / d.stats.netMinor) * 100) : 0;
           return (
             <>
+              {/* Số tiền của kỳ dài có thể dài hơn ô trên điện thoại: cho xuống dòng thay vì tràn ra ngoài thẻ. */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <StatCard label="Tổng thu" value={money(d.stats.grossMinor)} sub={`${d.stats.txCount} giao dịch · không phí giao dịch`} />
-                <StatCard label="Đã thu" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
-                <StatCard label="Nợ affiliate" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
-                <StatCard label="Hoàn tiền" value={money(d.stats.refundedMinor)} sub={`${d.stats.refundCount} giao dịch`} subColor={T.ink3} />
+                <StatCard className="[overflow-wrap:anywhere]" label="Tổng thu" value={money(d.stats.grossMinor)} sub={`${d.stats.txCount} giao dịch · không phí giao dịch`} />
+                <StatCard className="[overflow-wrap:anywhere]" label="Đã thu" value={money(d.stats.netMinor)} sub={d.stats.refundCount ? `sau ${d.stats.refundCount} hoàn tiền` : 'chưa có hoàn tiền'} subColor={T.teal} />
+                <StatCard className="[overflow-wrap:anywhere]" label="Nợ affiliate" value={money(d.stats.owedToAffiliatesMinor)} sub={`bạn tự chuyển khoản · ${d.stats.referredCount} giao dịch có giới thiệu`} subColor={T.goldText} />
+                <StatCard className="[overflow-wrap:anywhere]" label="Hoàn tiền" value={money(d.stats.refundedMinor)} sub={`${d.stats.refundCount} giao dịch`} subColor={T.ink3} />
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 {counts && (

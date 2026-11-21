@@ -126,7 +126,7 @@ export default function Dashboard() {
                 return (
                   <>
                     <div className="grid grid-cols-2 gap-3">
-                      <StatCard label="Doanh thu" value={money(d.stats.revenueMinor)} {...trend(d.stats.revenueDeltaPct)} />
+                      <StatCard className="[overflow-wrap:anywhere]" label="Doanh thu" value={money(d.stats.revenueMinor)} {...trend(d.stats.revenueDeltaPct)} />
                       <StatCard label="Thành viên mới" value={d.stats.newMembers} {...trend(d.stats.newMembersDeltaPct)} />
                       <StatCard label="Đang trả phí" value={d.stats.paying} sub={`Premium ${d.stats.premium} · VIP ${d.stats.vip}`} />
                       <StatCard label="Tỷ lệ hủy" value={`${d.stats.churnRatePct}%`} sub={`${d.stats.churned} người hủy trong kỳ`} subColor={d.stats.churned > 0 ? T.accentText : undefined} />
