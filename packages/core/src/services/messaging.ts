@@ -2,7 +2,7 @@
 // ghim, lưu trữ và bỏ lưu trữ, tin nhắn chào tự động.
 // Có kênh thời gian thực thì báo ngay cho hai bên; không có thì web hỏi lại mỗi 15 giây.
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
-import type { MessageReaction } from '@hoiminh/contracts';
+import { normalizeWelcomeTemplate, type MessageReaction } from '@hoiminh/contracts';
 import { MESSAGE_FILE_MAX_BYTES, MESSAGE_FILE_PREFIX } from '@hoiminh/media';
 import { communities, communityMembers, communityPlugins, communityTiers, conversationParticipants, conversations, courseProgress, courses, files, messages, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -236,7 +236,8 @@ export async function sendWelcomeDm(ctx: Ctx, communityId: string, userId: strin
   if (already.length) return false;
   const firstName = member.name.trim().split(/\s+/).pop() ?? member.name;
   const startLink = `${ctx.env.APP_URL}/${c.slug}/bang-tin`;
-  let body = (cfg.template ?? 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}.').replace(/\{\{\s*tên\s*\}\}/g, firstName).replace(/\{\{\s*first_name\s*\}\}/g, firstName).replace(/\{\{\s*cộng đồng\s*\}\}/g, c.name).replace(/\{\{\s*community_name\s*\}\}/g, c.name).replace(/\{\{\s*link bắt đầu\s*\}\}/g, startLink).replace(/\{\{\s*start_link\s*\}\}/g, startLink);
+  const vars: Record<string, string> = { first_name: firstName, community_name: c.name, start_link: startLink };
+  let body = normalizeWelcomeTemplate(cfg.template ?? 'Chào {{first_name}}, chào mừng bạn đến với {{community_name}}.').replace(/\{\{(\w+)\}\}/g, (whole, key: string) => vars[key] ?? whole);
   if (cfg.includeStartLink !== false && !body.includes(startLink)) body += `\n\nBắt đầu tại đây: ${startLink}`;
   await sendMessage(ctx, { senderUserId, recipientUserId: userId, communityId, body, automated: true });
   return true;

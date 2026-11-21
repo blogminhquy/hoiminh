@@ -1,6 +1,7 @@
 // Kiểm tra các luồng nghiệp vụ chính ở tầng service (mục 6 của prompt), chạy trên PGlite với dữ liệu seed.
-import { and, eq } from 'drizzle-orm';
-import { affiliateCommissions, communities as communitiesTable, communityMembers, entitlements, orders, payments } from '@hoiminh/db';
+import { and, eq, like } from 'drizzle-orm';
+import { affiliateCommissions, communities as communitiesTable, communityMembers, communityPlugins, entitlements, messages as messagesTable, orders, payments } from '@hoiminh/db';
+import { normalizeWelcomeTemplate } from '@hoiminh/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register, login, verifyEmail, forgotPassword, resetPassword, verifyTwoFactor } from '../auth/service';
 import * as totp from '../auth/totp';
@@ -80,8 +81,28 @@ describe('Luồng 1: đăng ký → xác minh → tham gia hội miễn phí →
     const convos = await messaging.listConversations(ctx, {});
     expect(convos.items.some((c) => c.automated)).toBe(true);
     const msgs = await messaging.listMessages(ctx, convos.items[0]!.id, {});
-    expect(msgs.items[0]!.body).toContain('Mới');
+    expect(msgs.items[0]!.body).toContain('Chào Mới, chào mừng bạn đến với ');
+    expect(msgs.items[0]!.body).not.toContain('{{');
     expect(msgs.items[0]!.automated).toBe(true);
+  });
+  it('mẫu tin nhắn chào: biến tên tiếng Anh, mẫu cũ dùng tên tiếng Việt vẫn chạy và được đổi sang tên mới', async () => {
+    expect(normalizeWelcomeTemplate('Chào {{tên}} và {{ Cộng  đồng }}: {{link bắt đầu}} {{ First_Name }} {{khác}}')).toBe('Chào {{first_name}} và {{community_name}}: {{start_link}} {{first_name}} {{khác}}');
+    expect(normalizeWelcomeTemplate('{{te\u0302n}}')).toBe('{{first_name}}');
+    const kd = await app.ids(KD);
+    const owner = { ...app.system(), actor: { type: 'user' as const, userId: await app.ids('user:minhquy'), isSuperAdmin: false, email: 'owner@example.com' } };
+    const where = and(eq(communityPlugins.communityId, kd), eq(communityPlugins.pluginKey, 'welcome_dm'));
+    // Mẫu lưu từ trước khi đổi tên biến: đọc ra đã là tên mới.
+    const before = (await app.ctx.db.query.communityPlugins.findFirst({ where }))!;
+    await app.ctx.db.update(communityPlugins).set({ config: { ...before.config, template: 'Chào {{tên}} đến {{cộng đồng}}, xem {{link bắt đầu}}' } }).where(where);
+    const listed = (await communities.listPlugins(owner, kd)).find((p) => p.pluginKey === 'welcome_dm')!;
+    expect((listed.config as { template: string }).template).toBe('Chào {{first_name}} đến {{community_name}}, xem {{start_link}}');
+    // Gửi bằng mẫu cũ vẫn thay đủ ba biến.
+    expect(await messaging.sendWelcomeDm(app.system(), kd, await app.ids('user:thaovy'))).toBe(true);
+    const sent = await app.ctx.db.query.messages.findFirst({ where: like(messagesTable.body, 'Chào % đến %, xem %') });
+    expect(sent!.body).toMatch(/^Chào \S+ đến .+, xem https?:\/\/\S+\/bang-tin$/);
+    // Lưu bằng tên cũ thì database nhận tên mới.
+    const saved = await communities.updatePlugin(owner, kd, 'welcome_dm', { enabled: true, config: { template: 'Xin chào {{tên}}' } });
+    expect((saved.config as { template: string }).template).toBe('Xin chào {{first_name}}');
   });
   it('quên mật khẩu → token → đặt lại → đăng nhập bằng mật khẩu mới', async () => {
     const { token } = await forgotPassword(app.anon(), 'nguoimoi@example.com');

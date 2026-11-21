@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.36.2 - 2026-11-21
+
+### Đổi
+
+- **Biến trong mẫu tin nhắn chào viết bằng tiếng Anh, viết liền.** `{{tên}}` thành `{{first_name}}`, `{{cộng đồng}}` thành `{{community_name}}`, `{{link bắt đầu}}` thành `{{start_link}}`, cùng kiểu với biến của Quy tắc tự động (`{{name}}`, `{{email}}`). Mẫu chủ hội đã lưu bằng tên cũ vẫn gửi đúng, và trang Tiện ích hiện mẫu đó bằng tên mới; lần lưu kế tiếp database nhận tên mới. Hội tạo mới dùng mẫu mặc định với tên mới. Theo yêu cầu của chủ dự án. Không có migration.
+
 ## 1.36.1 - 2026-11-21
 
 ### Thêm
