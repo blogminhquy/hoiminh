@@ -122,7 +122,7 @@ export const WELCOME_DM_TEMPLATE_MAX = 1000;
 export const WELCOME_DM_DEFAULT_TEMPLATE = 'Chào {{full_name}}, chào mừng bạn đến với {{community_name}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.';
 /** {{first_name}} (chỉ tên gọi) không còn trong gợi ý nhưng mẫu nào đang dùng thì vẫn chạy. */
 const WELCOME_DM_HIDDEN_VARIABLES = ['first_name'];
-/** Tên biến tiếng Việt dùng trước 1.36.4. Mẫu đã lưu bằng tên cũ vẫn chạy và được đổi sang tên mới khi đọc, khi lưu. */
+/** Tên biến tiếng Việt dùng trước khi đổi sang tiếng Anh. Mẫu đã lưu bằng tên cũ vẫn chạy và được đổi sang tên mới khi đọc, khi lưu. */
 const WELCOME_DM_LEGACY_VARIABLES: Record<string, WelcomeDmVariable> = { 'tên': 'full_name', 'cộng đồng': 'community_name', 'link bắt đầu': 'start_link' };
 /** Đổi biến tên cũ ({{tên}}, {{cộng đồng}}, {{link bắt đầu}}) sang tên mới và viết gọn biến tên mới ({{ Full_Name }} → {{full_name}}). Biến lạ giữ nguyên. */
 export function normalizeWelcomeTemplate(template: string): string {
