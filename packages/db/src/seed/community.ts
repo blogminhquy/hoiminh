@@ -86,7 +86,7 @@ export async function seedCommunities(db: Database, base: Date, U: Record<string
 /** Mã bí mật của địa chỉ báo có của hội chính trong dữ liệu mẫu, để test giả lập ngân hàng báo tiền về. */
 export const SEED_BANK_WEBHOOK_TOKEN = '5eed'.repeat(10);
 
-export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'quarterly' | 'yearly'; daysLeft: number }
+export interface SeedPlan { key: 'starter' | 'pro' | 'unlimited'; cycle: 'monthly' | 'quarterly' | 'semiannual' | 'yearly'; daysLeft: number }
 
 interface CommunitySpec {
   key: string; owner: SeedUser; workspaceKey: string; name: string; slug: string; mark: string; color: string; coverColor: string; tagline: string;
@@ -151,7 +151,7 @@ async function createCommunity(db: Database, base: Date, s: CommunitySpec): Prom
   }
 
   const plugins: Array<[string, boolean, Record<string, unknown>]> = [
-    ['welcome_dm', true, { senderUserId: s.owner.id, template: 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true }],
+    ['welcome_dm', true, { senderUserId: s.owner.id, template: 'Chào {{full_name}}, chào mừng bạn đến với {{community_name}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true }],
     ['instant_approval', true, {}], ['links', true, {}], ['webhook', false, {}], ['meta_pixel', s.key === 'kd', { pixelId: s.key === 'kd' ? '1234567890' : '' }],
   ];
   for (const [pluginKey, enabled, config] of plugins) {

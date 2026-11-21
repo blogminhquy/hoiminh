@@ -10,7 +10,7 @@ import { QueryState } from '@/components/QueryState';
 import { UserAvatar, type UserLite } from '@/components/UserLink';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useShell } from '@/lib/community';
+import { useJoinGate, useShell } from '@/lib/community';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { InstructorCard, Learners, ProgressRing, ResourceList, type Owner, type Resource } from './CourseOverviewParts';
@@ -49,6 +49,7 @@ function ModuleBlock({ m, n, slug, open, onToggle }: { m: ModuleLite; n: number;
 }
 
 function Body({ c, slug }: { c: Course; slug: string }) {
+  const { guest } = useJoinGate();
   const [tab, setTab] = useState<Tab>('content');
   const firstLesson = c.modules.flatMap((m) => m.lessons)[0];
   const current = c.modules.flatMap((m) => m.lessons).find((l) => l.current);
@@ -94,7 +95,9 @@ function Body({ c, slug }: { c: Course; slug: string }) {
             </>
           )}
           {(c.access.allowed || firstLesson?.isPreview) && <Link to={startTo} className="btn btn-primary btn-lg"><Play size={16} /> {pct > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}</Link>}
-          {!c.access.allowed && !c.canManage && <Link to={c.product ? `/${slug}/thanh-toan?product=${c.product.id}` : `/${slug}/thanh-toan?tier=premium&cycle=monthly`} className={`btn btn-lg ${c.access.allowed || firstLesson?.isPreview ? 'btn-ghost' : 'btn-primary'}`}>Nâng cấp để mở</Link>}
+          {!c.access.allowed && !c.canManage && (guest
+            ? <Link to={`/${slug}`} className={`btn btn-lg ${firstLesson?.isPreview ? 'btn-ghost' : 'btn-primary'}`}>Tham gia hội để học</Link>
+            : <Link to={c.product ? `/${slug}/thanh-toan?product=${c.product.id}` : `/${slug}/thanh-toan?tier=premium&cycle=monthly`} className={`btn btn-lg ${c.access.allowed || firstLesson?.isPreview ? 'btn-ghost' : 'btn-primary'}`}>Nâng cấp để mở</Link>)}
         </div>
       </div>
       <div className="flex gap-5 overflow-x-auto" style={{ borderBottom: `1px solid ${T.line}` }}>

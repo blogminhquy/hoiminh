@@ -2,14 +2,14 @@
 // bấm vào thì thấy lời mời nâng gói thay vì mở tính năng. Máy chủ vẫn là nơi chặn thật (lỗi plan_locked, member_cap);
 // phần này chỉ để người dùng không phải đụng vào lỗi mới biết.
 import { useQuery } from '@tanstack/react-query';
-import { PLAN_FEATURE_LABEL, lowestPlanWith, type PlanDef, type PlanFeature } from '@hoiminh/contracts';
-import { T, money } from '@hoiminh/ui';
+import { PLAN_FEATURE_LABEL, lowestPlanWith, planCyclesOf, type PlanDef, type PlanFeature } from '@hoiminh/contracts';
+import { T } from '@hoiminh/ui';
 import { Lock, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
 import { useShell, type Shell } from '@/lib/community';
-import { capLabel, featureInline } from '@/lib/platform-plan';
+import { capLabel, featureInline, priceLine } from '@/lib/platform-plan';
 
 const PLANS_QUERY = { queryKey: ['plans'], queryFn: () => api.get<PlanDef[]>('/v1/plans'), staleTime: 300_000 } as const;
 
@@ -64,7 +64,7 @@ export function FeatureLock({ feature }: { feature: PlanFeature }) {
         secondary={isOwner ? <Link to={planUrl(shell.community.slug)} className="btn btn-ghost">Xem các gói</Link> : undefined}
       >
         <span>{FEATURE_PITCH[feature].long}</span>
-        {plan && <span>Gói {plan.name}: {money(plan.monthlyMinor)} mỗi tháng, {capLabel(plan.memberCap).toLocaleLowerCase('vi')}, mở cả {plan.features.map(featureInline).join(', ')}.</span>}
+        {plan && <span>Gói {plan.name}: {priceLine(plan)}, {capLabel(plan.memberCap).toLocaleLowerCase('vi')}, mở cả {plan.features.map(featureInline).join(', ')}.</span>}
         <span className="text-[14px]" style={{ color: T.ink3 }}>Dữ liệu đã có của tính năng này vẫn được giữ nguyên.</span>
       </UpgradeCard>
     </>
@@ -96,7 +96,7 @@ export function MemberCapCard({ details, who, onClose }: { details: MemberCapDet
   const shell = useShell();
   const plans = useQuery(PLANS_QUERY);
   const current = plans.data?.find((p) => p.key === details.planKey);
-  const higher = (plans.data ?? []).filter((p) => p.key !== 'free' && (p.memberCap === null || p.memberCap > (details.members ?? 0)) && (!current || plans.data!.indexOf(p) > plans.data!.indexOf(current))).slice(0, 2);
+  const higher = (plans.data ?? []).filter((p) => p.key !== 'free' && planCyclesOf(p).length > 0 && (p.memberCap === null || p.memberCap > (details.members ?? 0)) && (!current || plans.data!.indexOf(p) > plans.data!.indexOf(current))).slice(0, 2);
   const isOwner = shell.viewer.role === 'owner';
   const cap = (details.cap ?? 0).toLocaleString('vi-VN');
   return (
@@ -110,7 +110,7 @@ export function MemberCapCard({ details, who, onClose }: { details: MemberCapDet
       {higher.map((p) => (
         <div key={p.key} className="flex flex-col rounded-[12px] px-4 py-2.5" style={{ background: T.bg }}>
           <span className="font-bold" style={{ color: T.ink }}>{p.name}</span>
-          <span className="text-[14px]">{capLabel(p.memberCap)} · {money(p.monthlyMinor)} mỗi tháng</span>
+          <span className="text-[14px]">{capLabel(p.memberCap)} · {priceLine(p)}</span>
         </div>
       ))}
     </UpgradeCard>

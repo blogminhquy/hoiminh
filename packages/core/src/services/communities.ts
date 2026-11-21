@@ -1,6 +1,6 @@
 // Hội: tạo (6 bước một màn), trang giới thiệu, cài đặt chung/giá/plugin/bảng tin/affiliate, khám phá.
 import { RESERVED_SLUGS, randomToken } from '@hoiminh/config';
-import { ABOUT_MEDIA_MAX, applyPromo, legacyPricesOf, normalizeTerms, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
+import { ABOUT_MEDIA_MAX, WELCOME_DM_DEFAULT_TEMPLATE, WELCOME_DM_TEMPLATE_MAX, applyPromo, legacyPricesOf, normalizeTerms, normalizeWelcomeTemplate, parseVideoUrl, promoActive, termUnit, termsFromLegacy, tierTerms, type CreateCommunityInput, type PricingPromo, type TierTerm, type UpdateAboutMediaInput, type UpdatePricingInput } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { affiliatePrograms, communities, communityJoinQuestions, communitySlugAliases, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -49,7 +49,7 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     await tx.insert(communityTiers).values({ communityId: c!.id, key: 'vip', name: 'VIP', description: 'Coaching 1-1', benefits: ['Coaching 1-1 hàng tuần'], isDefault: false, isActive: false, sortOrder: 2 });
     for (const [i, [name, slug, perm, color]] of DEFAULT_SPACES.entries()) await tx.insert(spaces).values({ communityId: c!.id, name, slug, postPermission: perm, colorKey: color, sortOrder: i });
     for (const [key, enabled] of [['welcome_dm', true], ['instant_approval', true], ['links', true], ['webhook', false], ['meta_pixel', false]] as const) {
-      await tx.insert(communityPlugins).values({ communityId: c!.id, pluginKey: key, enabled, config: key === 'welcome_dm' ? { senderUserId: userId, template: 'Chào {{tên}}, chào mừng bạn đến với {{cộng đồng}}. Bạn bắt đầu ở mục “Bắt đầu tại đây” nhé, có gì cứ nhắn mình ở đây.', delayMinutes: 2, includeStartLink: true } : {} });
+      await tx.insert(communityPlugins).values({ communityId: c!.id, pluginKey: key, enabled, config: key === 'welcome_dm' ? { senderUserId: userId, template: WELCOME_DM_DEFAULT_TEMPLATE, delayMinutes: 2, includeStartLink: true } : {} });
     }
     await tx.insert(affiliatePrograms).values({ scopeType: 'community', communityId: c!.id, workspaceId: ws.id, name: `Affiliate ${input.name}`, status: 'paused', commissionRateBps: 4000, holdDays: 14, minWithdrawalMinor: 500_000, payerUserId: ws.ownerUserId });
     await tx.insert(communityMembers).values({ communityId: c!.id, userId: ws.ownerUserId, role: 'owner', status: 'active', tierId: premium!.id, level: 1 });
@@ -128,14 +128,14 @@ export async function aboutPage(ctx: Ctx, slug: string, ref?: string | null) {
 }
 
 /** Cài đặt · Chung. */
-export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; links?: Array<{ label: string; url: string }> }) {
+export async function updateGeneral(ctx: Ctx, communityId: string, input: { name?: string; slug?: string; shortDescription?: string; description?: string; category?: string; rules?: string[]; logoUrl?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; customDomain?: string | null; discoverable?: boolean; visibility?: 'private' | 'public'; links?: Array<{ label: string; url: string }> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   if (input.slug) await assertSlugAvailable(ctx, input.slug, communityId);
-  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true } });
+  const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true, visibility: true } });
   // Tên miền riêng là tính năng trả phí: chỉ chặn khi gắn hoặc đổi tên miền, còn gỡ tên miền thì gói nào cũng làm được.
   if (input.customDomain && input.customDomain !== before?.customDomain) await requirePlanFeature(ctx, communityId, 'custom_domain');
   const patch: Partial<typeof communities.$inferInsert> = { updatedAt: ctx.now() };
-  for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'links'] as const) {
+  for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'visibility', 'links'] as const) {
     if (input[k] !== undefined) (patch as Record<string, unknown>)[k] = input[k];
   }
   if (input.name) patch.logoMark = markOf(input.name);
@@ -145,6 +145,8 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
   const replaced = [input.logoUrl !== undefined && input.logoUrl !== before?.logoUrl ? before?.logoUrl : null, input.coverUrl !== undefined && input.coverUrl !== before?.coverUrl ? before?.coverUrl : null];
   await releaseFiles(ctx, { urls: replaced }, { communityId });
   await audit(ctx, { action: 'community.update_general', resourceType: 'community', resourceId: communityId, communityId, metadata: { keys: Object.keys(patch) } });
+  // Đổi hội kín sang hội mở (hoặc ngược lại) đổi luôn việc người ngoài đọc được gì, nên ghi riêng một dòng nhật ký.
+  if (input.visibility && before && input.visibility !== before.visibility) await audit(ctx, { action: 'community.set_visibility', resourceType: 'community', resourceId: communityId, communityId, metadata: { from: before.visibility, to: input.visibility } });
   return row!;
 }
 
@@ -251,12 +253,20 @@ export async function getCommunityById(ctx: Ctx, id: string) {
 /** Plugins (Tiện ích). */
 export async function listPlugins(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
-  return ctx.db.query.communityPlugins.findMany({ where: eq(communityPlugins.communityId, communityId) });
+  const rows = await ctx.db.query.communityPlugins.findMany({ where: eq(communityPlugins.communityId, communityId) });
+  return rows.map((r) => (r.pluginKey === 'welcome_dm' ? { ...r, config: withEnglishVariables(r.config) } : r));
+}
+/** Mẫu tin nhắn chào lưu bằng tên biến tiếng Việt cũ thì đổi sang tên mới. Đổi xong mà vượt giới hạn độ dài thì giữ nguyên (tên cũ vẫn chạy). */
+function withEnglishVariables<T extends Record<string, unknown>>(config: T): T {
+  if (typeof config.template !== 'string') return config;
+  const template = normalizeWelcomeTemplate(config.template);
+  return template.length <= WELCOME_DM_TEMPLATE_MAX ? { ...config, template } : config;
 }
 export async function updatePlugin(ctx: Ctx, communityId: string, pluginKey: string, input: { enabled: boolean; config: Record<string, unknown> }) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   const existing = await ctx.db.query.communityPlugins.findFirst({ where: and(eq(communityPlugins.communityId, communityId), eq(communityPlugins.pluginKey, pluginKey)) });
-  const config = { ...(existing?.config ?? {}), ...input.config };
+  const merged = { ...(existing?.config ?? {}), ...input.config };
+  const config = pluginKey === 'welcome_dm' ? withEnglishVariables(merged) : merged;
   const [row] = await ctx.db.insert(communityPlugins).values({ communityId, pluginKey, enabled: input.enabled, config, updatedAt: ctx.now() }).onConflictDoUpdate({ target: [communityPlugins.communityId, communityPlugins.pluginKey], set: { enabled: input.enabled, config, updatedAt: ctx.now() } }).returning();
   await audit(ctx, { action: 'plugin.update', resourceType: 'community_plugin', resourceId: pluginKey, communityId, metadata: { enabled: input.enabled } });
   return row!;

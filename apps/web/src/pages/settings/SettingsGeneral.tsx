@@ -1,6 +1,6 @@
-// Cài đặt · Chung (generalMain): logo, ảnh bìa, tên, đường dẫn, mô tả ngắn, danh mục, ảnh và video trang giới thiệu, quy tắc, câu hỏi khi tham gia, tên miền riêng, lưu trữ hội.
+// Cài đặt · Chung (generalMain): logo, ảnh bìa, tên, đường dẫn, mô tả ngắn, danh mục, hội kín hay hội mở, ảnh và video trang giới thiệu, quy tắc, câu hỏi khi tham gia, tên miền riêng, lưu trữ hội.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { COMMUNITY_CATEGORY_LABELS, toSlug, type AboutMediaItem } from '@hoiminh/contracts';
+import { COMMUNITY_CATEGORY_LABELS, toSlug, type AboutMediaItem, type CommunityVisibility } from '@hoiminh/contracts';
 import { Button, CommunityMark, Field, Input, SaveBar, Select, T, Textarea } from '@hoiminh/ui';
 import { Check, Globe, Image as ImageIcon, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -11,9 +11,10 @@ import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
 import { AboutMediaCard } from './SettingsAboutMedia';
 import { JoinQuestionsCard } from './SettingsJoinQuestions';
+import { VisibilityPicker } from './SettingsVisibility';
 
-interface About { community: { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; aboutMedia?: AboutMediaItem[]; customDomain: string | null; customDomainVerifiedAt: string | null; discoverable: boolean }; joinQuestions: Array<{ id: string; question: string; required: boolean; sortOrder: number }> }
-interface Form { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoFileId: string | null | undefined; logoUrl: string | null; coverFileId: string | null | undefined; coverUrl: string | null; customDomain: string; discoverable: boolean }
+interface About { community: { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; aboutMedia?: AboutMediaItem[]; customDomain: string | null; customDomainVerifiedAt: string | null; discoverable: boolean; visibility?: CommunityVisibility }; joinQuestions: Array<{ id: string; question: string; required: boolean; sortOrder: number }> }
+interface Form { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoFileId: string | null | undefined; logoUrl: string | null; coverFileId: string | null | undefined; coverUrl: string | null; customDomain: string; discoverable: boolean; visibility: CommunityVisibility }
 
 export default function Page() {
   const shell = useShell();
@@ -30,10 +31,10 @@ export default function Page() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  useEffect(() => { if (q.data && !f) { const c = q.data.community; setF({ name: c.name, slug: c.slug, shortDescription: c.shortDescription, description: c.description, category: c.category, rules: c.rules, logoFileId: undefined, logoUrl: c.logoUrl, coverFileId: undefined, coverUrl: c.coverUrl, customDomain: c.customDomain ?? '', discoverable: c.discoverable }); } }, [q.data, f]);
+  useEffect(() => { if (q.data && !f) { const c = q.data.community; setF({ name: c.name, slug: c.slug, shortDescription: c.shortDescription, description: c.description, category: c.category, rules: c.rules, logoFileId: undefined, logoUrl: c.logoUrl, coverFileId: undefined, coverUrl: c.coverUrl, customDomain: c.customDomain ?? '', discoverable: c.discoverable, visibility: c.visibility ?? 'private' }); } }, [q.data, f]);
   const patch = (p: Partial<Form>) => setF((prev) => (prev ? { ...prev, ...p } : prev));
   const save = useMutation({
-    mutationFn: () => api.patch<{ slug: string }>(`/v1/communities/${shell.community.id}/general`, { name: f?.name.trim(), slug: f?.slug, shortDescription: f?.shortDescription.trim(), description: f?.description, category: f?.category, rules: f?.rules.filter((r) => r.trim()), customDomain: f?.customDomain.trim() || null, discoverable: f?.discoverable, ...(f?.logoFileId !== undefined ? { logoFileId: f.logoFileId } : {}), ...(f?.coverFileId !== undefined ? { coverFileId: f.coverFileId } : {}) }),
+    mutationFn: () => api.patch<{ slug: string }>(`/v1/communities/${shell.community.id}/general`, { name: f?.name.trim(), slug: f?.slug, shortDescription: f?.shortDescription.trim(), description: f?.description, category: f?.category, rules: f?.rules.filter((r) => r.trim()), customDomain: f?.customDomain.trim() || null, discoverable: f?.discoverable, visibility: f?.visibility, ...(f?.logoFileId !== undefined ? { logoFileId: f.logoFileId } : {}), ...(f?.coverFileId !== undefined ? { coverFileId: f.coverFileId } : {}) }),
     onSuccess: (c) => { setSaved(true); setTimeout(() => setSaved(false), 2000); patch({ logoFileId: undefined, coverFileId: undefined }); void qc.invalidateQueries({ queryKey: shellKey(shell.community.slug) }); void qc.invalidateQueries({ queryKey: ['about'] }); if (c.slug !== shell.community.slug) navigate(`/${c.slug}/cai-dat/chung`); },
   });
   const archive = useMutation({ mutationFn: () => api.post(`/v1/communities/${shell.community.id}/archive`, {}), onSuccess: () => navigate('/admin') });
@@ -41,7 +42,7 @@ export default function Page() {
   const onCover = async (file: File) => { setCoverUploading(true); setUploadError(null); try { const r = await api.upload(file, 'cover', { communityId: shell.community.id }); if (f?.coverFileId) void api.discardUpload(f.coverFileId); patch({ coverFileId: r.fileId, coverUrl: r.url }); } catch (e) { setUploadError(errorMessage(e)); } finally { setCoverUploading(false); } };
   // Trang giới thiệu dẫn chủ hội tới thẳng mục ảnh và video (#anh-video).
   const ready = Boolean(f);
-  useEffect(() => { if (ready && hash === '#anh-video') document.getElementById('anh-video')?.scrollIntoView({ block: 'start' }); }, [ready, hash]);
+  useEffect(() => { if (ready && (hash === '#anh-video' || hash === '#che-do')) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' }); }, [ready, hash]);
   if (!f) return <LoadingBlock rows={5} />;
   return (
     <>
@@ -66,6 +67,7 @@ export default function Page() {
         <Field label="Mô tả ngắn" hint="160 ký tự, hiện trên trang Khám phá và thẻ chia sẻ"><Input value={f.shortDescription} maxLength={160} onChange={(e) => patch({ shortDescription: e.target.value })} /></Field>
         <Field label="Giới thiệu đầy đủ" hint="Hiện trên trang giới thiệu hội, hỗ trợ Markdown"><Textarea rows={5} value={f.description} maxLength={5000} onChange={(e) => patch({ description: e.target.value })} /></Field>
         <Field label="Danh mục"><Select value={f.category} onChange={(e) => patch({ category: e.target.value })} style={{ width: 320, maxWidth: '100%' }}>{Object.entries(COMMUNITY_CATEGORY_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
+        <div id="che-do" className="flex flex-col gap-2"><span className="font-semibold text-[13px]">Ai xem được bên trong hội</span><VisibilityPicker value={f.visibility} onChange={(visibility) => patch({ visibility })} /></div>
         <label className="flex items-center gap-2.5 text-[14px]"><input type="checkbox" checked={f.discoverable} onChange={(e) => patch({ discoverable: e.target.checked })} />Hiện trên trang Khám phá</label>
       </div>
       <AboutMediaCard communityId={shell.community.id} initial={q.data?.community.aboutMedia ?? []} />

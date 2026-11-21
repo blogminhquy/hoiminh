@@ -25,7 +25,8 @@ export async function listComments(ctx: Ctx, targetType: 'post' | 'lesson' | 'ev
   const communityId = await communityOfTarget(ctx, targetType, targetId);
   if (!communityId) throw notFound();
   const access = await resolveCommunityAccess(ctx, communityId);
-  if (!access.permissions.has('community.read')) throw forbidden();
+  // Hội mở: người ngoài đọc được bình luận của bài viết và sự kiện. Thảo luận trong bài học vẫn chỉ dành cho thành viên.
+  if (!(targetType === 'lesson' ? access.permissions.has('community.read') : access.canView)) throw forbidden();
   const rows = await ctx.db
     .select({ c: comments, author: authorCols, level: communityMembers.level, role: communityMembers.role })
     .from(comments)

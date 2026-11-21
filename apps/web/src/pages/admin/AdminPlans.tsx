@@ -1,9 +1,10 @@
 // Hệ thống · Gói nền tảng và Tính năng (hai tab của nhóm "Gói và tính năng").
-// Tab Gói: bảng bốn gói (Miễn phí, Khởi đầu, Chuyên nghiệp, Không giới hạn), mỗi gói cho một hội. Quản trị chỉ nhập
-// giá mỗi tháng và trần thành viên, bật tắt bốn tính năng trả phí; giá 3 tháng (bằng 3 lần) và 1 năm (bằng 10 lần) tự tính.
+// Tab Gói: bảng bốn gói (Miễn phí, Khởi đầu, Chuyên nghiệp, Không giới hạn), mỗi gói cho một hội. Quản trị nhập giá
+// của từng kỳ (1 tháng, 3 tháng, 6 tháng, 1 năm) và trần thành viên, bật tắt bốn tính năng trả phí. Kỳ nào để giá 0
+// thì gói không bán kỳ đó và trang mua gói không hiện.
 // Lưu cả bảng một lần (PUT /v1/admin/plans). Tab Tính năng bật tắt các cờ có tác dụng thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PLAN_FEATURES, PLAN_FEATURE_LABEL, planPrice, type PlanDef, type PlanFeature, type PlanKey } from '@hoiminh/contracts';
+import { PLAN_CYCLE, PLAN_CYCLES, PLAN_FEATURES, PLAN_FEATURE_LABEL, type PlanCycle, type PlanDef, type PlanFeature, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
 import { Button, T, Toggle, money } from '@hoiminh/ui';
 import { Lock } from 'lucide-react';
 import { useState } from 'react';
@@ -13,7 +14,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fmtShortMoney } from '@/lib/format';
 import { num as fmtCount } from '@/lib/platform-plan';
 
-interface PlanRow extends PlanDef { communities: number; quarterlyCount: number; yearlyCount: number; mrrMinor: number }
+interface PlanRow extends PlanDef { communities: number; cycleCounts: Record<PlanCycle, number>; mrrMinor: number }
 interface Stats { plans: PlanRow[]; paidCommunities: number; totalCommunities: number; mrrMinor: number }
 interface Flag { key: string; description: string; enabled: boolean; rules: Record<string, unknown> }
 interface AffiliateInfo { program: { commissionRateBps: number; commissionDurationMonths: number | null }; stats: { paidThisMonthMinor: number } }
@@ -30,27 +31,27 @@ const isFeature = (f: { key: string }) => !NO_EFFECT.has(f.key) && f.key !== INS
 /** Luật đã chốt trong kế hoạch 11/11/2026: nằm trong mã, không sửa ở màn này. */
 const FIXED_RULES = [
   'Không thu phí trên doanh thu ở mọi gói.',
-  'Chỉ bán hai chu kỳ: 3 tháng (bằng 3 lần giá tháng) và 1 năm (bằng 10 lần giá tháng).',
   'Không có dùng thử. Mỗi tài khoản một hội miễn phí, hội thứ hai trở đi trả ngay khi tạo.',
   'Mọi gói đều bán hàng và thu tiền được.',
   'Chạm trần thành viên thì không nhận thêm người mới, không xóa ai.',
   'Nâng gói thì số ngày còn lại của gói cũ được tặng sang gói mới.',
 ];
 
-interface Draft { key: PlanKey; name: string; price: string; cap: string; features: PlanFeature[] }
+interface Draft { key: PlanKey; name: string; prices: Record<PlanCycle, string>; cap: string; features: PlanFeature[] }
 const digits = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max);
-const toDraft = (p: PlanDef): Draft => ({ key: p.key, name: p.name, price: String(p.monthlyMinor), cap: p.memberCap === null ? '' : String(p.memberCap), features: [...p.features] });
+const toDraft = (p: PlanDef): Draft => ({ key: p.key, name: p.name, prices: Object.fromEntries(PLAN_CYCLES.map((c) => [c, String(p.prices[c] ?? 0)])) as Record<PlanCycle, string>, cap: p.memberCap === null ? '' : String(p.memberCap), features: [...p.features] });
+const toPrices = (d: Draft): PlanPrices => Object.fromEntries(PLAN_CYCLES.map((c) => [c, d.key === 'free' ? 0 : Number(d.prices[c] || 0)])) as PlanPrices;
 const sameDraft = (a: Draft[], b: Draft[]) => JSON.stringify(a) === JSON.stringify(b);
 const inputStyle = { height: 48, border: `1px solid ${T.line2}`, background: T.surface, borderRadius: 10, fontSize: 17, fontWeight: 700, textAlign: 'right' as const, padding: '0 14px', width: '100%' };
 
-/** Bảng bốn gói: sửa giá mỗi tháng, trần thành viên và tính năng của từng gói, lưu cả bảng một lần. */
+/** Bảng bốn gói: sửa giá từng kỳ, trần thành viên và tính năng của từng gói, lưu cả bảng một lần. */
 function PlanTable({ stats }: { stats: Stats }) {
   const qc = useQueryClient();
   const saved = stats.plans.map(toDraft);
   const [rows, setRows] = useState<Draft[]>(saved);
   const patch = (key: PlanKey, change: Partial<Draft>) => setRows((list) => list.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const m = useMutation({
-    mutationFn: () => api.put<PlanDef[]>('/v1/admin/plans', { plans: rows.map((r) => ({ key: r.key, monthlyMinor: Number(r.price || 0), memberCap: r.cap ? Number(r.cap) : null, features: r.features })) }),
+    mutationFn: () => api.put<PlanDef[]>('/v1/admin/plans', { plans: rows.map((r) => ({ key: r.key, prices: toPrices(r), memberCap: r.cap ? Number(r.cap) : null, features: r.features })) }),
     onSuccess: (list) => { setRows(list.map(toDraft)); void qc.invalidateQueries({ queryKey: ['admin', 'plans'] }); void qc.invalidateQueries({ queryKey: ['plans'] }); },
   });
   const dirty = !sameDraft(rows, saved);
@@ -60,20 +61,28 @@ function PlanTable({ stats }: { stats: Stats }) {
         {rows.map((r) => {
           const stat = stats.plans.find((p) => p.key === r.key);
           const free = r.key === 'free';
-          const price = Number(r.price || 0);
           return (
             <div key={r.key} className="card flex flex-col gap-3.5 p-5">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[19px] font-extrabold">{r.name}</span>
                 <span className="text-[13px]" style={{ color: T.ink3 }}>{fmtCount(stat?.communities ?? 0)} hội{stat && !free ? ` · ${fmtShortMoney(stat.mrrMinor)}/tháng` : ''}</span>
               </div>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[14px] font-semibold">Giá mỗi tháng (đồng)</span>
-                <input type="text" inputMode="numeric" aria-label={`Giá mỗi tháng, gói ${r.name}`} value={free ? '0' : r.price} disabled={free} onChange={(e) => patch(r.key, { price: digits(e.target.value, 9) })} style={{ ...inputStyle, opacity: free ? 0.6 : 1 }} />
-              </label>
-              <div className="flex flex-col text-[14px]" style={{ borderTop: `1px solid ${T.line}` }}>
-                <div className="flex items-baseline gap-2 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}><span style={{ color: T.ink2 }}>3 tháng</span><span className="flex-grow" /><span className="font-bold text-[15px]">{money(planPrice(price, 'quarterly'))}</span></div>
-                <div className="flex items-baseline gap-2 py-2.5" style={{ borderBottom: `1px solid ${T.line}` }}><span style={{ color: T.ink2 }}>1 năm</span><span className="flex-grow" /><span className="font-bold text-[15px]">{money(planPrice(price, 'yearly'))}</span></div>
+              <div className="flex flex-col gap-2.5">
+                <span className="text-[15px] font-semibold">Giá từng kỳ (đồng)</span>
+                {PLAN_CYCLES.map((c) => {
+                  const value = Number(r.prices[c] || 0);
+                  const months = PLAN_CYCLE[c].months;
+                  return (
+                    <label key={c} className="flex flex-col gap-1">
+                      <span className="flex items-center gap-3">
+                        <span className="text-[15px] flex-shrink-0" style={{ width: 68, color: T.ink2 }}>{PLAN_CYCLE[c].label}</span>
+                        <input type="text" inputMode="numeric" aria-label={`Giá ${PLAN_CYCLE[c].label}, gói ${r.name}`} value={free ? '0' : r.prices[c]} disabled={free} onChange={(e) => patch(r.key, { prices: { ...r.prices, [c]: digits(e.target.value, 9) } })} style={{ ...inputStyle, opacity: free ? 0.6 : 1 }} />
+                      </span>
+                      {!free && <span className="text-[14px] text-right" style={{ color: value > 0 ? T.ink3 : T.goldText }}>{value > 0 ? (months > 1 ? `${money(value)}, khoảng ${money(Math.round(value / months))} mỗi tháng` : money(value)) : 'Không bán kỳ này'}</span>}
+                    </label>
+                  );
+                })}
+                {!free && <span className="text-[14px]" style={{ color: T.ink3 }}>Kỳ nào để 0 thì không bán, trang mua gói không hiện kỳ đó.</span>}
               </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-[14px] font-semibold">Trần thành viên</span>
@@ -131,7 +140,7 @@ export default function Page() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Gói nền tảng</h1><div className="muted text-[14px]">Bốn gói, mỗi gói cho một hội. Bạn chỉ nhập giá mỗi tháng và trần thành viên, giá 3 tháng và 1 năm tự tính.</div></div></div>
+      <div className="flex items-center gap-3 flex-wrap"><div><h1 className="serif m-0 text-[28px] font-extrabold">Gói nền tảng</h1><div className="muted text-[15px]">Bốn gói, mỗi gói cho một hội. Bạn nhập giá riêng cho từng kỳ: 1 tháng, 3 tháng, 6 tháng, 1 năm. Kỳ nào để 0 thì không bán và không hiện ở trang mua gói.</div></div></div>
       <QueryState q={stats} rows={4}>
         {(s) => (
           <>

@@ -7,7 +7,7 @@ import { Link, useParams } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
-import { useShell } from '@/lib/community';
+import { useJoinGate, useShell } from '@/lib/community';
 import { saveBlob, toCsvBlob } from '@/lib/download';
 import { fmtDate, fmtDuration, fmtLongDate } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
@@ -20,16 +20,17 @@ function Questions({ e }: { e: EventDetail }) {
   const qc = useQueryClient();
   const [text, setText] = useState('');
   const refresh = () => qc.invalidateQueries({ queryKey: ['event', e.id] });
+  const gate = useJoinGate();
   const ask = useMutation({ mutationFn: () => api.post(`/v1/events/${e.id}/questions`, { question: text.trim() }), onSuccess: () => { setText(''); void refresh(); } });
   const vote = useMutation({ mutationFn: (id: string) => api.post(`/v1/event-questions/${id}/vote`, {}), onSuccess: () => void refresh() });
   return (
     <div className="card flex flex-col gap-3.5" style={{ padding: '22px 24px' }}>
       <div className="flex items-center gap-2.5 flex-wrap"><span className="font-bold text-[16px]">Câu hỏi gửi trước</span><span className="muted text-[13px]">· {e.questions.length} câu, bình chọn để xếp thứ tự</span></div>
-      <div className="input" style={{ height: 46, borderRadius: 12 }}><input value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Gửi câu hỏi của bạn cho buổi này…" className="flex-grow min-w-0" onKeyDown={(ev) => { if (ev.key === 'Enter' && text.trim().length >= 3) ask.mutate(); }} /><Button size="sm" variant="dark" loading={ask.isPending} disabled={text.trim().length < 3} onClick={() => ask.mutate()}>Gửi</Button></div>
+      <div className="input" style={{ height: 46, borderRadius: 12 }}><input value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Gửi câu hỏi của bạn cho buổi này…" className="flex-grow min-w-0" onKeyDown={(ev) => { if (ev.key === 'Enter' && text.trim().length >= 3) { if (gate.guest) gate.askJoin(); else ask.mutate(); } }} /><Button size="sm" variant="dark" loading={ask.isPending} disabled={text.trim().length < 3} onClick={() => (gate.guest ? gate.askJoin() : ask.mutate())}>Gửi</Button></div>
       {ask.isError && <div className="text-[13px]" style={{ color: T.accentText }}>{errorMessage(ask.error)}</div>}
       {e.questions.map((qn) => (
         <div key={qn.id} className="flex gap-3 items-start py-3" style={{ borderTop: `1px solid ${T.line}` }}>
-          <button type="button" onClick={() => vote.mutate(qn.id)} className="flex flex-col items-center gap-0.5 w-11 flex-shrink-0 py-1.5 rounded-[10px]" style={{ background: qn.voted ? T.accentSoft : T.bg, color: qn.voted ? T.accentText : T.ink2 }}><ChevronUp size={16} /><span className="font-bold text-[13px]">{qn.voteCount}</span></button>
+          <button type="button" onClick={() => (gate.guest ? gate.askJoin() : vote.mutate(qn.id))} className="flex flex-col items-center gap-0.5 w-11 flex-shrink-0 py-1.5 rounded-[10px]" style={{ background: qn.voted ? T.accentSoft : T.bg, color: qn.voted ? T.accentText : T.ink2 }}><ChevronUp size={16} /><span className="font-bold text-[13px]">{qn.voteCount}</span></button>
           <div className="flex-grow min-w-0"><div className="flex items-center gap-2 text-[13px]"><Avatar name={qn.user.name} src={qn.user.avatarUrl} color={qn.user.coverColor ?? T.ink} size={22} /><span className="font-semibold">{qn.user.name}</span>{qn.answeredAt && <span className="tag" style={{ background: T.tealSoft, color: T.tealText }}>Đã trả lời</span>}</div><div className="text-[14px] mt-1" style={{ color: T.ink2 }}>{qn.question}</div></div>
         </div>
       ))}

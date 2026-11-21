@@ -71,8 +71,9 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
   const q = planQuote({ now, current: { key: current.key, endsAt: c.planEndsAt }, target: plan, cycle: t.cycle, members: c.memberCount });
   if (q.blocked === 'cap') throw invalidState(`Hội đang có ${c.memberCount.toLocaleString('vi-VN')} thành viên, nhiều hơn trần ${plan.memberCap?.toLocaleString('vi-VN')} của gói ${plan.name}, nên chưa mua được gói này.`);
   if (q.blocked === 'lower') throw invalidState(`Hội đang ở gói ${current.name} và còn hạn. Chỉ mua được gói thấp hơn khi hết kỳ đang trả.`);
-  if (q.amountMinor <= 0) throw invalid('Gói này chưa có giá');
   const label = PLAN_CYCLE[t.cycle].label;
+  // Kỳ có giá 0 là kỳ quản trị không bán: trang mua gói không hiện, và gọi thẳng API cũng không mua được.
+  if (q.blocked === 'unsold' || q.amountMinor <= 0) throw invalid(`Gói ${plan.name} hiện không bán kỳ ${label}. Bạn chọn kỳ khác nhé.`);
   const title = `Gói ${plan.name} · ${label}`;
   return { title, subtitle: `Gói Hội Mình cho ${c.name}`, amountMinor: q.amountMinor, currency: 'VND', communityId: null, workspaceId: c.workspaceId, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, planKey: plan.key, planCommunityId: c.id, communitySlug: c.slug, title: `${title} · ${c.name}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `${title} · ${c.name}` };
 }

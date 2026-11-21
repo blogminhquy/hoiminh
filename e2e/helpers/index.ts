@@ -81,16 +81,22 @@ export async function readOrder(page: Page): Promise<{ reference: string; amount
   return { reference: ref, amountMinor: parseMoney(amount) };
 }
 
-/** Bảng bốn gói mặc định (giá, trần, tính năng đã chốt), dùng để trả bảng gói về như cũ sau khi một bài test đổi nó. */
+export type PlanPricesInput = { monthly: number; quarterly: number; semiannual: number; yearly: number };
+const prices = (p: Partial<PlanPricesInput>): PlanPricesInput => ({ monthly: 0, quarterly: 0, semiannual: 0, yearly: 0, ...p });
+
+/**
+ * Bảng bốn gói mặc định (giá từng kỳ, trần, tính năng đã chốt), dùng để trả bảng gói về như cũ sau khi một bài test đổi nó.
+ * Mặc định chỉ bán 3 tháng và 1 năm; 1 tháng và 6 tháng để 0 (không bán) cho tới khi quản trị nhập giá.
+ */
 export const DEFAULT_PLANS = [
-  { key: 'free', monthlyMinor: 0, memberCap: 100, features: [] },
-  { key: 'starter', monthlyMinor: 99_000, memberCap: 500, features: [] },
-  { key: 'pro', monthlyMinor: 299_000, memberCap: 5_000, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
-  { key: 'unlimited', monthlyMinor: 799_000, memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'free', prices: prices({}), memberCap: 100, features: [] },
+  { key: 'starter', prices: prices({ quarterly: 297_000, yearly: 990_000 }), memberCap: 500, features: [] },
+  { key: 'pro', prices: prices({ quarterly: 897_000, yearly: 2_990_000 }), memberCap: 5_000, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'unlimited', prices: prices({ quarterly: 2_397_000, yearly: 7_990_000 }), memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
 ] as const;
 
 /** Quản trị lưu bảng gói qua API; `change` sửa riêng vài gói so với bảng mặc định. */
-export async function savePlans(request: APIRequestContext, change: Partial<Record<(typeof DEFAULT_PLANS)[number]['key'], { monthlyMinor?: number; memberCap?: number | null; features?: string[] }>> = {}): Promise<void> {
+export async function savePlans(request: APIRequestContext, change: Partial<Record<(typeof DEFAULT_PLANS)[number]['key'], { prices?: PlanPricesInput; memberCap?: number | null; features?: string[] }>> = {}): Promise<void> {
   const token = await apiToken(request, USERS.admin);
   await apiJson(request, token, 'PUT', '/v1/admin/plans', { plans: DEFAULT_PLANS.map((p) => ({ ...p, ...(change[p.key] ?? {}) })) });
 }
