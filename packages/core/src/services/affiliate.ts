@@ -336,6 +336,45 @@ export async function updateProgram(ctx: Ctx, communityId: string, input: { enab
   return row!;
 }
 
+/** Các affiliate của chương trình của hội: mã, trạng thái, tỉ lệ riêng, lượt bấm, đăng ký, đơn, hoa hồng theo trạng thái. */
+export async function listProgramAccounts(ctx: Ctx, communityId: string) {
+  const { program } = await programSettings(ctx, communityId);
+  const rows = await raw(ctx.db, sql`
+    select a.id, a.user_id, a.affiliate_code, a.status, a.commission_rate_bps, a.click_count, a.signup_count, a.paid_count, a.created_at,
+      u.name, u.handle, u.email,
+      coalesce((select sum(c.amount_minor) from affiliate_commissions c where c.affiliate_account_id = a.id and c.status = 'pending'), 0)::bigint as holding,
+      coalesce((select sum(c.amount_minor) from affiliate_commissions c where c.affiliate_account_id = a.id and c.status = 'available'), 0)::bigint as available,
+      coalesce((select sum(c.amount_minor) from affiliate_commissions c where c.affiliate_account_id = a.id and c.status = 'paid'), 0)::bigint as paid
+    from affiliate_accounts a join users u on u.id = a.user_id
+    where a.program_id = ${program.id}
+    order by a.paid_count desc, a.signup_count desc, a.created_at asc
+    limit 500`);
+  return {
+    programRateBps: program.commissionRateBps,
+    items: (rows as Array<Record<string, string | number | null>>).map((r) => ({
+      id: String(r.id), userId: String(r.user_id), name: String(r.name), handle: String(r.handle), email: String(r.email), code: String(r.affiliate_code), status: String(r.status),
+      commissionRateBps: r.commission_rate_bps === null ? null : Number(r.commission_rate_bps), effectiveRateBps: Number(r.commission_rate_bps ?? program.commissionRateBps),
+      clickCount: Number(r.click_count), signupCount: Number(r.signup_count), paidCount: Number(r.paid_count),
+      holdingMinor: Number(r.holding), availableMinor: Number(r.available), paidMinor: Number(r.paid), createdAt: r.created_at,
+    })),
+  };
+}
+
+/**
+ * Chủ hội chỉnh một affiliate của hội: tạm khóa (`suspended`: mã ngừng ghi nhận, đơn mới không sinh hoa hồng), mở lại (`active`),
+ * hoặc đặt tỉ lệ hoa hồng riêng (`null` là quay về mức chung). Hoa hồng đã ghi và yêu cầu rút đang chờ không đổi.
+ */
+export async function updateProgramAccount(ctx: Ctx, communityId: string, accountId: string, input: { status?: 'active' | 'suspended'; commissionRateBps?: number | null }) {
+  const { program } = await programSettings(ctx, communityId);
+  const acc = await ctx.db.query.affiliateAccounts.findFirst({ where: and(eq(affiliateAccounts.id, accountId), eq(affiliateAccounts.programId, program.id)) });
+  if (!acc) throw notFound();
+  // Chủ hội chỉ chuyển qua lại giữa đang chạy và tạm khóa; trạng thái khác (chờ duyệt, bị cấm) không phải của chủ hội đặt.
+  if (input.status && acc.status !== 'active' && acc.status !== 'suspended') throw invalidState('Affiliate này đang ở trạng thái không đổi được ở đây');
+  const [row] = await ctx.db.update(affiliateAccounts).set({ status: input.status ?? acc.status, commissionRateBps: input.commissionRateBps === undefined ? acc.commissionRateBps : input.commissionRateBps, updatedAt: ctx.now() }).where(eq(affiliateAccounts.id, accountId)).returning();
+  await audit(ctx, { action: 'affiliate.update_account', resourceType: 'affiliate_account', resourceId: accountId, communityId, metadata: { ...input } });
+  return { id: row!.id, code: row!.affiliateCode, status: row!.status, commissionRateBps: row!.commissionRateBps, effectiveRateBps: row!.commissionRateBps ?? program.commissionRateBps };
+}
+
 /** Thống kê chương trình: affiliate có phát sinh tháng này, % doanh thu từ giới thiệu, đã trả / chờ / đang giữ. */
 export async function programStats(ctx: Ctx, programId: string) {
   const r = await raw(ctx.db, sql`

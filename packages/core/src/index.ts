@@ -26,6 +26,7 @@ export * as users from './services/users';
 export * as workspaces from './services/workspaces';
 export * as communities from './services/communities';
 export * as members from './services/members';
+export * as invites from './services/invites';
 export * as posts from './services/posts';
 export * as comments from './services/comments';
 export * as courses from './services/courses';
