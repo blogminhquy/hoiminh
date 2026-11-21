@@ -3,16 +3,18 @@
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
 // Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, Trophy, User, Users, Wallet, X } from 'lucide-react';
+import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { NotificationBell } from '@/components/NotificationBell';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
 import { InviteModal } from '@/components/InviteModal';
 import { PushPrompt } from '@/components/PushPrompt';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
+import { affiliateNavRate } from '@/lib/affiliate-nav';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
 import { canManage, isGuest, JoinGateProvider, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
@@ -63,7 +65,7 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
         {tabs.feed !== false && <NavItem collapsed={collapsed} to={`/${s}/bang-tin`} icon={<House size={20} />} label="Bảng tin" />}
         {tabs.events !== false && <NavItem collapsed={collapsed} to={`/${s}/su-kien`} icon={<Calendar size={20} />} label="Sự kiện" extra={shell.stats.upcomingEvents > 0 ? <span className="text-[11px] font-semibold rounded-full px-[7px]" style={{ background: T.accent, color: T.invertInk }}>{shell.stats.upcomingEvents}</span> : undefined} />}
         {tabs.members !== false && <NavItem collapsed={collapsed} to={`/${s}/thanh-vien`} icon={<Users size={20} />} label="Thành viên" />}
-        {tabs.affiliate !== false && !guest && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<Trophy size={20} />} label="Xếp hạng affiliate" />}
+        {affiliateNavRate(shell) && <NavItem collapsed={collapsed} to={`/${s}/xep-hang`} icon={<BadgePercent size={20} />} label="Affiliate" extra={<span className="text-[12px] font-semibold rounded-full px-2" style={{ background: `color-mix(in srgb, ${T.gold} 18%, transparent)`, color: T.gold }}>{affiliateNavRate(shell)}</span>} />}
       </div>
       {(tabs.courses !== false || tabs.store !== false) && (
         <>
@@ -218,7 +220,7 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
           {user ? (
             <>
               <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
-              <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
+              <NotificationBell />
               <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
             </>
           ) : <span className="hide-mobile"><Link to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} className="btn btn-ghost">Đăng nhập</Link></span>}

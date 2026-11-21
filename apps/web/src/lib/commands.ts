@@ -34,7 +34,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     tab('feed') && { id: 'go-feed', group: 'Đi tới', label: 'Bảng tin', to: `${b}/bang-tin` },
     tab('events') && { id: 'go-events', group: 'Đi tới', label: 'Sự kiện', to: `${b}/su-kien`, keywords: 'lich' },
     tab('members') && { id: 'go-members', group: 'Đi tới', label: 'Thành viên', to: `${b}/thanh-vien`, keywords: 'danh sach nguoi' },
-    tab('affiliate') && { id: 'go-rank', group: 'Đi tới', label: 'Xếp hạng affiliate', to: `${b}/xep-hang` },
+    scope.tabs.affiliatePage === true && { id: 'go-rank', group: 'Đi tới', label: 'Affiliate của hội: link và xếp hạng', hint: 'Link giới thiệu của bạn, hoa hồng, bảng xếp hạng', to: `${b}/xep-hang`, keywords: 'affiliate link gioi thieu hoa hong xep hang bang' },
     tab('courses') && { id: 'go-courses', group: 'Đi tới', label: 'Khóa học', to: `${b}/khoa-hoc` },
     tab('store') && { id: 'go-store', group: 'Đi tới', label: 'Cửa hàng', to: `${b}/cua-hang`, keywords: 'san pham' },
     money && { id: 'go-money', group: 'Đi tới', label: 'Đơn hàng', hint: 'Đơn chờ xác nhận, thống kê doanh thu, tất cả đơn hàng', to: `${b}/tien`, keywords: 'tien doanh thu thanh toan giao dich quan ly don' },

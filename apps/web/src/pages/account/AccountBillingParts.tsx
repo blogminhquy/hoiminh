@@ -1,4 +1,5 @@
 // Khối con của Gói và thanh toán: bảng lịch sử, hóa đơn in được, modal yêu cầu hoàn tiền.
+import { selfRefundConditions } from '@hoiminh/contracts';
 import { Button, Modal, StatusTag, T, Textarea, money } from '@hoiminh/ui';
 import { FileText } from 'lucide-react';
 import { useState } from 'react';
@@ -92,7 +93,8 @@ export function RefundModal({ row, onClose, onSubmit, pending, error }: { row: B
       </div>
     )}>
       <div className="p-5 flex flex-col gap-3">
-        <div className="text-[13px]">Hoàn tiền cho <strong>{row?.title}</strong> · {money(row?.amountMinor)}. Áp dụng trong 7 ngày kể từ khi mua, chưa học quá nửa khóa.</div>
+        <div className="text-[14px] leading-[1.55]">Hoàn tiền cho <strong>{row?.title}</strong> · {money(row?.amountMinor)}. {selfRefundConditions()}</div>
+        <div className="muted text-[14px] leading-[1.55]">Đủ điều kiện thì đơn được ghi nhận hoàn tiền ngay và quyền truy cập sản phẩm bị thu lại. Tiền do người bán hoàn: qua cổng thanh toán bạn đã dùng, hoặc chủ hội tự chuyển khoản lại nếu bạn đã trả bằng chuyển khoản.</div>
         <Textarea rows={3} value={reason} maxLength={500} placeholder="Lý do bạn muốn hoàn tiền" onChange={(e) => setReason(e.target.value)} />
         {error && <div className="text-[13px]" style={{ color: T.accentText }}>{error}</div>}
       </div>

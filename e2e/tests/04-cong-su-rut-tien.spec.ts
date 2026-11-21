@@ -25,9 +25,20 @@ test('affiliate rút tiền và chủ hội chi trả thủ công', async ({ pag
   await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).click();
   await expect(page.getByText('Chờ duyệt').first()).toBeVisible();
 
-  await page.goto('/minhquy/xep-hang');
-  await expect(page.getByRole('heading', { name: 'Xếp hạng affiliate' })).toBeVisible();
+  // Trang Affiliate của hội: vào từ mục "Affiliate" (kèm phần trăm hoa hồng) ở nhóm Hội trên thanh bên, địa chỉ cũ giữ nguyên.
+  // Tab "Link của tôi" mở sẵn với link của đúng hội này, tab "Xếp hạng" là bảng xếp hạng.
+  await page.goto('/minhquy/bang-tin');
+  await page.locator('aside.app-sidebar').getByRole('link', { name: /^Affiliate\s*\d+(,\d+)?%$/ }).click();
+  await expect(page).toHaveURL(/\/minhquy\/xep-hang$/);
+  await expect(page.getByRole('heading', { name: 'Affiliate', exact: true })).toBeVisible();
+  await expect(page.getByText(/Giới thiệu người vào Kinh Doanh Online Cùng AI, nhận \d+(,\d+)?% hoa hồng mỗi lần họ trả phí/)).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Link của tôi' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('affiliate-link')).toHaveText(/\/minhquy\?ref=hv8k2$/);
+  await expect(page.getByRole('link', { name: 'Xem ví và rút tiền' })).toHaveAttribute('href', /^\/tai-khoan\/cong-su\/[0-9a-f-]{36}$/);
+  await page.getByRole('tab', { name: 'Xếp hạng' }).click();
+  await expect(page).toHaveURL(/\/minhquy\/xep-hang\?tab=xep-hang$/);
   await expect(page.getByText('Hoàng Vũ').first()).toBeVisible();
+  await expect(page.getByTestId('affiliate-link')).toHaveCount(0);
 
   await login(page, USERS.owner);
   // Đường dẫn cũ (trong thông báo đã gửi) phải tự chuyển sang trang Affiliate mới.
