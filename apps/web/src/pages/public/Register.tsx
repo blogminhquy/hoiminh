@@ -82,7 +82,7 @@ export default function Page() {
         <AuthInput label="Mật khẩu" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ít nhất 8 ký tự" />
         <StrengthBars password={password} />
         <CheckBox on={accept} onChange={setAccept}>
-          Tôi đồng ý với <a href="/dieu-khoan" className="font-semibold">Điều khoản</a> và <a href="/quyen-rieng-tu" className="font-semibold">Chính sách quyền riêng tư</a> của Hội Mình
+          Tôi đồng ý với <a href="/dieu-khoan" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold">Điều khoản</a> và <a href="/quyen-rieng-tu" target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold">Chính sách quyền riêng tư</a> của Hội Mình
         </CheckBox>
         <FormError error={m.error} />
         <Button type="submit" variant="primary" loading={m.isPending} disabled={!accept} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>Tạo tài khoản</Button>

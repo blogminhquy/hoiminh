@@ -1,4 +1,5 @@
 // Mảnh trang bán (productDetailMain): rail giá + CTA, tải tệp sản phẩm số đã mua, thẻ Premium, combo chứa, link affiliate; khối lợi ích, giáo trình, FAQ.
+import { selfRefundRule } from '@hoiminh/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, T, money } from '@hoiminh/ui';
 import { BadgeCheck, Check, ChevronDown, ChevronRight, Clock, Copy, Download, FileText, Link as LinkIcon, Lock, MessageCircle, Play, QrCode, ShieldCheck, Sparkles, Video } from 'lucide-react';
@@ -134,7 +135,7 @@ export function PriceRail({ p, slug, premium, pricingMode, outsider = false }: {
           <Row icon={<Clock size={15} />}>Truy cập trọn đời, cập nhật miễn phí</Row>
           {p.kind !== 'digital' && <Row icon={<MessageCircle size={15} />}>Thảo luận theo từng bài</Row>}
           {p.kind === 'course' && <Row icon={<BadgeCheck size={15} />}>Chứng nhận hoàn thành</Row>}
-          <Row icon={<ShieldCheck size={15} />}>{p.page?.guarantee || 'Hoàn tiền trong 7 ngày'}</Row>
+          <Row icon={<ShieldCheck size={15} />}>{p.page?.guarantee || selfRefundRule(p.kind)}</Row>
         </div>
         <div className="muted text-[12px] flex items-center gap-1.5"><QrCode size={14} />Chuyển khoản QR, MoMo, VNPAY · mở khóa tự động</div>
       </div>

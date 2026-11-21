@@ -3,11 +3,12 @@
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
 // Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { BadgePercent, Bell, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
+import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { NotificationBell } from '@/components/NotificationBell';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
 import { InviteModal } from '@/components/InviteModal';
 import { PushPrompt } from '@/components/PushPrompt';
@@ -219,7 +220,7 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
           {user ? (
             <>
               <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
-              <Link to="/thong-bao" aria-label="Thông báo" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><Bell size={20} />{dot(badges.data?.unreadNotifications)}</Link>
+              <NotificationBell />
               <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
             </>
           ) : <span className="hide-mobile"><Link to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} className="btn btn-ghost">Đăng nhập</Link></span>}

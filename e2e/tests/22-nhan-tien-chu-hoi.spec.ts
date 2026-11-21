@@ -37,7 +37,13 @@ test('hội chưa cài nhận tiền thì khóa nút mua; cài xong, chủ hội
   await expect(buyer.getByText('19039998887776').first()).toBeVisible();
   await expect(buyer.getByText(/NGUYEN THAO VY/).first()).toBeVisible();
   await buyer.getByRole('button', { name: 'Tôi đã chuyển khoản' }).click();
-  await expect(buyer.getByRole('button', { name: 'Đã báo chủ hội, chờ xác nhận' })).toBeDisabled();
+  // Bấm xong là sang màn cảm ơn và chờ xác nhận: nói rõ đang chờ chủ hội, có thẻ chủ hội để nhắn tin, mở lại được thông tin chuyển khoản.
+  await expect(buyer.getByText('Đã báo cho chủ hội, đang chờ chủ hội kiểm tra tài khoản và xác nhận')).toBeVisible();
+  await expect(buyer.getByRole('button', { name: 'Tôi đã chuyển khoản' })).toHaveCount(0);
+  await expect(buyer.getByRole('button', { name: 'Nhắn tin cho chủ hội' })).toBeVisible();
+  await buyer.getByText('Xem lại thông tin chuyển khoản').click();
+  await expect(buyer.getByText('19039998887776')).toBeVisible();
+  await expect(buyer.getByRole('link', { name: 'Về trang hội' })).toHaveAttribute('href', '/ngoai-ngu-vy');
 
   // Chủ hội thấy đơn ở danh sách chờ và bấm "Đã nhận tiền".
   await page.reload();

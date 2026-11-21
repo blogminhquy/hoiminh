@@ -49,6 +49,9 @@ const publicRoutes: RouteObject[] = [
   { path: '/tao-hoi/goi', element: page(() => import('@/pages/public/SignupPlan')) },
   { path: '/thanh-toan/:orderId', element: page(() => import('@/pages/community/Checkout')) },
   { path: '/chung-nhan/:courseId/:userId', element: page(() => import('@/pages/public/Certificate')) },
+  // Hai trang pháp lý. Phải nằm trong nhóm công khai, trước route `/:slug` của hội, và có tên trong RESERVED_SLUGS.
+  { path: '/dieu-khoan', element: page(() => import('@/pages/public/Terms')) },
+  { path: '/quyen-rieng-tu', element: page(() => import('@/pages/public/Privacy')) },
 ];
 
 const ownerRoutes: RouteObject = {
