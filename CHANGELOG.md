@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.52.0 - 2026-11-24
+
+Chia sẻ khóa học ngay ở thư viện khóa học: thẻ khóa có dòng nhỏ "Nhận 99.800đ khi chia sẻ", bấm vào chọn giới thiệu khóa học hoặc giới thiệu vào hội (chủ dự án yêu cầu). Không có migration.
+
+### Thêm
+
+- **Dòng "Nhận ... khi chia sẻ" trên thẻ khóa học.** Hội đang bật affiliate thì mỗi thẻ khóa đã đăng có một dòng chữ nhỏ, kín đáo dưới nút chính: khóa bán lẻ ghi số tiền nhận mỗi đơn ("Nhận 99.800đ khi chia sẻ"), khóa chỉ nằm trong hội ghi số tiền nhận mỗi tháng ("Nhận 39.800đ/tháng khi chia sẻ"). Chỉ số tiền có màu xanh. Khách chưa vào hội, hội chưa bật affiliate, khóa nháp thì không có dòng này.
+- **Bảng chia sẻ hai lựa chọn.** Bấm dòng chia sẻ mở bảng có hai ô, mỗi ô có nút sao chép link và nút chia sẻ riêng: "Giới thiệu khóa học này" (link trang bán lẻ của khóa, nhận một lần cho mỗi người mua) và "Giới thiệu vào hội" (link trang giới thiệu hội, nhận hằng tháng khi người được mời đóng phí thành viên, kèm số tháng được tính và tổng tối đa). Khóa vừa bán lẻ vừa có trong Premium thì link khóa dẫn tới trang bán lẻ. Mọi chỗ ghi số tiền cụ thể, không ghi phần trăm.
+- **Mục "Giới thiệu khóa học" trong menu ba chấm** của người quản lý khóa, mở cùng bảng chia sẻ.
+- Số tiền hằng tháng tính trên gói thành viên rẻ nhất (gói bán theo năm thì chia đều ra tháng), để không hứa quá tay. Mức hoa hồng là mức riêng của người giới thiệu nếu chủ hội đã đặt, làm tròn xuống như lúc ghi hoa hồng thật.
+- Màu "xanh tiền" mới trong bộ màu giao diện (`T.money`, `T.moneySoft`, `T.moneyText`), có cả giao diện tối.
+
 ## 1.51.2 - 2026-11-24
 
 Bảng gói ở trang tạo hội: các thẻ cao bằng nhau, cùng một danh sách tính năng để so từng dòng (chủ dự án yêu cầu). Không có migration.
