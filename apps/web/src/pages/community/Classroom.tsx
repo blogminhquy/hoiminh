@@ -1,9 +1,10 @@
 // Lớp học (classroomMain / classroomFreeMain): breadcrumb + tiến độ, giáo trình 360px bên trái, player/nội dung, tài liệu, thảo luận.
 // Dưới 1024px: video lên đầu, giáo trình thu thành một dòng "Danh sách bài" bấm mới mở. Điện thoại: nút hoàn thành ghim ở đáy màn hình.
 // Bấm hoàn thành bài làm khóa đạt 100%: sang trang chứng nhận ở chế độ chúc mừng, hoặc mở bảng chúc mừng nếu khóa không cấp chứng nhận.
+// Người có quyền soạn khóa học (course.manage) thấy thêm nút "Sửa bài học": mở khung soạn khóa ở đúng bài đang xem. Học viên không thấy nút này.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Prog, T } from '@hoiminh/ui';
-import { Award, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock } from 'lucide-react';
+import { Award, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, List, Lock, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CourseDoneModal } from '@/components/Celebration';
@@ -14,6 +15,7 @@ import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { afterComplete, certificatePath, type CompleteResult } from '@/lib/certificate';
+import { lessonEditPath } from '@/lib/course-edit';
 import { isPremium, useJoinGate, useOptionalShell } from '@/lib/community';
 import { useLearningLinks } from '@/layouts/LearnerShell';
 import { Markdown } from '@/lib/markdown';
@@ -103,6 +105,8 @@ export default function Page() {
         const certificateTo = user && d.course.certificateEnabled && (p?.percent ?? 0) >= 100 ? certificatePath(d.course.id, user.id) : null;
         // Điện thoại, ở bài cuối đã học xong: thanh ghim đáy màn hình đã là nút "Xem chứng chỉ", nên nút ở đầu trang ẩn đi cho khỏi lặp.
         const barHasCertificate = Boolean(certificateTo) && !d.locked && d.done && !d.next;
+        // Chỉ trong khung hội mới biết quyền của người xem; ở Khu học tập (/hoc) không có nút sửa.
+        const editTo = shell?.viewer.permissions.includes('course.manage') ? lessonEditPath(slug, d.course.id, d.lesson.id) : null;
         return (
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-3 md:gap-4 flex-wrap">
@@ -130,10 +134,12 @@ export default function Page() {
                 {/* Tiêu đề và nút cùng một hàng; nội dung bài nằm ở hàng dưới để không bị nút bóp hẹp. */}
                 <div className="flex items-start gap-4 flex-wrap">
                   <h1 className="serif m-0 text-[24px] font-bold flex-1 min-w-[240px]" style={{ color: d.locked ? T.ink3 : T.ink }}>{d.lesson.title}</h1>
-                  {!d.locked && (
-                    <div className="hidden md:flex gap-2 flex-wrap">
-                      {d.next && <Link to={links.lesson(d.next.id)} className="btn btn-ghost">Bài tiếp theo <ChevronRight size={16} /></Link>}
-                      <Button variant="primary" loading={complete.isPending} disabled={d.done} onClick={() => (gate.guest ? gate.askJoin() : complete.mutate())}><Check size={18} />{d.done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</Button>
+                  {/* Nút sửa đứng cùng hàng với hai nút học. Điện thoại: hai nút học nằm ở thanh ghim đáy màn hình, chỉ còn nút sửa ở đây. */}
+                  {(editTo || !d.locked) && (
+                    <div className={`${editTo ? 'flex' : 'hidden md:flex'} gap-2 flex-wrap`}>
+                      {editTo && <Link to={editTo} className="btn btn-ghost"><Pencil size={16} />Sửa bài học</Link>}
+                      {!d.locked && d.next && <Link to={links.lesson(d.next.id)} className="btn btn-ghost hidden md:inline-flex">Bài tiếp theo <ChevronRight size={16} /></Link>}
+                      {!d.locked && <Button variant="primary" className="hidden md:inline-flex" loading={complete.isPending} disabled={d.done} onClick={() => (gate.guest ? gate.askJoin() : complete.mutate())}><Check size={18} />{d.done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</Button>}
                     </div>
                   )}
                 </div>
