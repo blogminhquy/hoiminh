@@ -108,15 +108,18 @@ describe('planFeatureRows', () => {
     expect(texts[0]).toEqual(['Bán khóa học, sự kiện, sản phẩm và thu tiền', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Affiliate', 'API']);
     const [freeRows, , proRows, unlimitedRows] = rows;
     expect(freeRows!.map((x) => x.on)).toEqual([true, true, false, false, false, false]);
-    expect(proRows!.every((x) => x.on)).toBe(true);
+    // Tên miền riêng chỉ có ở gói Không giới hạn.
+    expect(proRows!.map((x) => x.on)).toEqual([true, true, true, false, true, true]);
     expect(unlimitedRows!.every((x) => x.on)).toBe(true);
   });
 
   it('dòng khóa ghi gói thấp nhất mở được nó, dòng mở thì không', () => {
     const freeRows = planFeatureRows(plans, plans[0]!);
     expect(freeRows.find((x) => x.text === 'API')).toEqual({ text: 'API', on: false, from: 'Chuyên nghiệp' });
+    expect(freeRows.find((x) => x.text === 'Tên miền riêng')).toEqual({ text: 'Tên miền riêng', on: false, from: 'Không giới hạn' });
     expect(freeRows[0]!.from).toBeNull();
-    expect(planFeatureRows(plans, plans[2]!).every((x) => x.from === null)).toBe(true);
+    expect(planFeatureRows(plans, plans[2]!).filter((x) => x.from !== null)).toEqual([{ text: 'Tên miền riêng', on: false, from: 'Không giới hạn' }]);
+    expect(planFeatureRows(plans, plans[3]!).every((x) => x.from === null)).toBe(true);
   });
 });
 
