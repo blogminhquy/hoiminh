@@ -1,15 +1,17 @@
 // Nút chuông ở đầu trang (dùng chung cho AppShell, LearnerShell, WorkspaceShell). Bấm vào thì mở bảng thông báo nổi ngay
 // tại chỗ, không rời trang đang xem: máy tính là bảng thả dưới nút chuông, điện thoại là bảng trượt từ đáy lên.
-// Trang /thong-bao vẫn còn, là nơi xem đầy đủ và cài đặt (nút "Cài đặt" của bảng dẫn tới đó).
+// Trang /thong-bao vẫn còn, là nơi xem đầy đủ và cài đặt (nút "Cài đặt" của bảng dẫn tới đó). Cách mở, đóng bảng dùng chung
+// với nút Tin nhắn (use-header-popover.ts).
 import { Chip, ErrorBox, Skeleton, T } from '@hoiminh/ui';
 import { Bell, CheckCheck, Settings, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { errorMessage } from '@/lib/api';
 import { useBadges } from '@/lib/auth';
 import { NOTIFICATIONS_PATH, NOTIFICATION_SETTINGS_PATH, bellLabel, defaultPanelTab, mergeUnreadFirst, notificationTarget, notifSections, unreadBadge, type Notif } from '@/lib/notifications';
 import { useMarkRead, useNotificationPages } from '@/lib/use-notifications';
 import { NotificationRow } from './NotificationRow';
+import { useHeaderPopover } from './use-header-popover';
 
 type Tab = 'unread' | 'all';
 
@@ -109,39 +111,13 @@ function Panel({ tab, setTab, badgeCount, onClose, refocus }: { tab: Tab; setTab
 
 export function NotificationBell() {
   const badges = useBadges();
-  const location = useLocation();
-  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('all');
-  const wrap = useRef<HTMLDivElement>(null);
-  const bell = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
+  const { open, setOpen, close, wrap, trigger: bell, panel } = useHeaderPopover();
   const count = badges.data?.unreadNotifications ?? 0;
   const badge = unreadBadge(count);
 
-  const close = (toBell = false) => { setOpen(false); if (toBell) bell.current?.focus(); };
   // Mỗi lần mở chọn lại mục: còn cái chưa đọc thì vào "Chưa đọc", hết rồi thì vào "Tất cả".
   const toggle = () => { if (!open) setTab(defaultPanelTab(count)); setOpen((v) => !v); };
-
-  // Chuyển trang (kể cả bấm một thông báo trong bảng) thì đóng bảng.
-  useEffect(() => { setOpen(false); }, [location.key]);
-
-  useEffect(() => {
-    if (!open) return;
-    panel.current?.focus();
-    const onDown = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); bell.current?.focus(); } };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    // Điện thoại: bảng phủ gần hết màn hình, khóa cuộn trang phía sau để vuốt trong bảng không kéo theo trang.
-    const sheet = window.matchMedia('(max-width: 767px)').matches;
-    const prev = document.body.style.overflow;
-    if (sheet) document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('pointerdown', onDown);
-      document.removeEventListener('keydown', onKey);
-      if (sheet) document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   return (
     <div ref={wrap} className="notif-wrap">
