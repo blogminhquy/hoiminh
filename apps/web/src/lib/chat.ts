@@ -104,3 +104,19 @@ export function deliveryStatus(m: { pending?: boolean; deliveredAt: string | nul
   if (m.readAt) return 'Đã xem';
   return m.deliveredAt ? 'Đã nhận' : 'Đã gửi';
 }
+
+/** Đường dẫn trang Tin nhắn, và đường dẫn mở thẳng một hội thoại trên trang đó. */
+export const MESSAGES_PATH = '/tin-nhan';
+export const conversationPath = (id: string): string => `${MESSAGES_PATH}?c=${encodeURIComponent(id)}`;
+
+/** Dòng xem trước của một hội thoại (danh sách ở trang Tin nhắn và bảng nổi ở nút Tin nhắn): tin tự động hay tin mình gửi có tiền tố. */
+export function convoPreview(c: { automated: boolean; lastFromMe: boolean; preview: string | null }): string {
+  const prefix = c.automated ? 'Tự động · ' : c.lastFromMe ? 'Bạn: ' : '';
+  return `${prefix}${c.preview ?? ''}`;
+}
+
+/** Nhãn đọc cho trình đọc màn hình của nút Tin nhắn, kèm số tin chưa đọc thật (không rút gọn thành "9+"). */
+export function messagesButtonLabel(count: number | null | undefined): string {
+  const n = Math.floor(Number(count ?? 0));
+  return Number.isFinite(n) && n > 0 ? `Tin nhắn, ${n} tin chưa đọc` : 'Tin nhắn';
+}
