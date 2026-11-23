@@ -102,6 +102,20 @@ export function youtubePoster(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 
+/**
+ * Ảnh bìa nét cho khung phát lớn ở trang học, thử lần lượt từ nét nhất: `maxresdefault` (1280x720, 16:9, chỉ có khi video
+ * được tải lên từ 720p trở lên), `sddefault` (640x480), rồi `hqdefault` (480x360, luôn có). Bản 480px kéo giãn ra khung
+ * rộng cả nghìn điểm ảnh thì mờ, nên chỉ dùng khi không còn bản nào nét hơn.
+ */
+export function youtubePosterCandidates(videoId: string): string[] {
+  return ['maxresdefault', 'sddefault', 'hqdefault'].map((size) => `https://i.ytimg.com/vi/${videoId}/${size}.jpg`);
+}
+
+/** Video không có bản ảnh cỡ đó thì YouTube trả về ảnh xám 120x90 thay vì báo lỗi: coi như không có, thử bản kế tiếp. */
+export function isMissingYoutubeThumb(naturalWidth: number): boolean {
+  return naturalWidth > 0 && naturalWidth <= 120;
+}
+
 /** Link dạng /shorts/ là video dọc. */
 export function isVerticalVideoUrl(url: string | null | undefined): boolean {
   return Boolean(url && /\/shorts\//.test(url));

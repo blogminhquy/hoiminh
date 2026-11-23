@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUALITY_AUTO, YT_PLAYER_VARS, formatClock, frameScale, isVerticalVideoUrl, learnGain, nearEnd, qualityHeight, qualityLabel, qualityOptions, qualityTarget, speedLabel, speedOptions, youtubeErrorMessage, youtubePoster } from './youtube';
+import { QUALITY_AUTO, YT_PLAYER_VARS, formatClock, frameScale, isMissingYoutubeThumb, isVerticalVideoUrl, learnGain, nearEnd, qualityHeight, qualityLabel, qualityOptions, qualityTarget, speedLabel, speedOptions, youtubeErrorMessage, youtubePoster, youtubePosterCandidates } from './youtube';
 
 describe('trình phát YouTube của bài học', () => {
   it('tắt điều khiển, phím tắt, toàn màn hình của YouTube và không gợi ý video kênh khác', () => {
@@ -110,6 +110,21 @@ describe('trình phát YouTube của bài học', () => {
 
   it('ảnh bìa lấy từ máy chủ ảnh của YouTube theo mã video', () => {
     expect(youtubePoster('dQw4w9WgXcQ')).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  });
+
+  it('ảnh bìa ở khung phát thử bản nét nhất trước, lùi dần về bản luôn có', () => {
+    expect(youtubePosterCandidates('dQw4w9WgXcQ')).toEqual([
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/sddefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    ]);
+  });
+
+  it('ảnh xám 120x90 của YouTube là "không có bản này"', () => {
+    expect(isMissingYoutubeThumb(120)).toBe(true);
+    expect(isMissingYoutubeThumb(1280)).toBe(false);
+    expect(isMissingYoutubeThumb(480)).toBe(false);
+    expect(isMissingYoutubeThumb(0)).toBe(false);
   });
 
   it('lời báo lỗi theo mã của YouTube', () => {
