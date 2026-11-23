@@ -4,6 +4,7 @@ import { Chip, T } from '@hoiminh/ui';
 import { GraduationCap, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CreateHoiInvite } from '@/components/CreateHoiInvite';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth, type MyCommunity } from '@/lib/auth';
@@ -101,6 +102,9 @@ export default function Page() {
           );
         }}
       </QueryState>
+
+      {/* Người vừa mua khóa là lúc thấy rõ giá trị của một hội: mời họ mở hội riêng. Đóng được, nhớ trên máy này. */}
+      <CreateHoiInvite dismissible />
     </div>
   );
 }

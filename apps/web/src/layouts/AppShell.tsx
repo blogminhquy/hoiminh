@@ -3,7 +3,7 @@
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
 // Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
+import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, PackagePlus, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { PushPrompt } from '@/components/PushPrompt';
 import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
+import { ADDONS_PATH, ownsCommunity } from '@/lib/addons';
 import { affiliateNavRate } from '@/lib/affiliate-nav';
 import { api, errorMessage } from '@/lib/api';
 import { preferredCommunitySlug, rememberCommunitySlug, useAuth } from '@/lib/auth';
@@ -55,6 +56,8 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
   const invite = <button type="button" className="btn w-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: T.invertInk }} title={collapsed ? 'Mời thành viên' : undefined} aria-label={collapsed ? 'Mời thành viên' : undefined} onClick={onInvite}><Plus size={18} /><span className="nav-label">Mời thành viên</span></button>;
   // Hội tắt Bảng tin thì không có nút Viết bài: nút Mời thành viên lên chỗ ghim.
   const inviteInFoot = pinInvite || !canPost;
+  const { user, communities } = useAuth();
+  const invitesToCreate = Boolean(user) && !guest && !manage && !ownsCommunity(communities);
   return (
     <>
       <div className="side-scroll flex flex-col flex-1 min-h-0 overflow-y-auto">
@@ -85,6 +88,8 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
             {(perms.includes('billing.manage') || perms.includes('revenue.read')) && <NavItem collapsed={collapsed} to={`/${s}/tien`} icon={<Wallet size={20} />} label="Đơn hàng" />}
             {perms.includes('affiliates.manage') && <NavItem collapsed={collapsed} to={`/${s}/cong-su`} icon={<Handshake size={20} />} label="Quản lý affiliate" end />}
             {(perms.includes('settings.manage') || perms.includes('billing.manage')) && <NavItem collapsed={collapsed} to={`/${s}/cai-dat`} icon={<Settings size={20} />} label="Cài đặt hội" />}
+            {/* Gói bổ sung (tên miền riêng, email marketing): mua thêm ngoài gói của hội, nên chỉ chủ hội thấy. */}
+            {shell.viewer.role === 'owner' && <NavItem collapsed={collapsed} to={`${ADDONS_PATH}?hoi=${s}`} icon={<PackagePlus size={20} />} label="Gói bổ sung" />}
           </div>
         </>
       )}
@@ -93,6 +98,8 @@ function SidebarNav({ shell, onInvite, pinInvite, collapsed }: { shell: Shell; o
       <div className="flex flex-col gap-2 pt-3 flex-shrink-0">
         {canPost && <Link to={`/${s}/bang-tin/moi`} className="btn btn-gold w-full" title={collapsed ? 'Viết bài' : undefined} aria-label={collapsed ? 'Viết bài' : undefined}><Pencil size={18} /><span className="nav-label">Viết bài</span></Link>}
         {guest ? <Link to={`/${s}`} className="btn btn-gold w-full" title={collapsed ? 'Tham gia hội' : undefined} aria-label={collapsed ? 'Tham gia hội' : undefined}><Plus size={18} /><span className="nav-label">Tham gia hội</span></Link> : inviteInFoot && invite}
+        {/* Thành viên chưa làm chủ hội nào: lời mời nhỏ ở chân thanh bên, để ai cũng biết mình mở được một hội như vậy. */}
+        {invitesToCreate && !collapsed && <Link to="/tao-hoi" className="text-center text-[14px] font-semibold py-2" style={{ color: T.sideText }} data-testid="create-hoi-side">Tạo hội của bạn, miễn phí</Link>}
       </div>
     </>
   );

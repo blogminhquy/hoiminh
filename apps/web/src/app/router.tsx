@@ -60,6 +60,7 @@ const ownerRoutes: RouteObject = {
     { path: '/admin', element: page(() => import('@/pages/owner/WorkspaceHome')) },
     { path: '/admin/tao-hoi', element: page(() => import('@/pages/owner/WorkspaceCreate')) },
     { path: '/admin/goi', element: page(() => import('@/pages/owner/WorkspacePlan')) },
+    { path: '/admin/goi-bo-sung', element: page(() => import('@/pages/owner/WorkspaceAddons')) },
     { path: '/admin/nha-phat-trien', element: page(() => import('@/pages/owner/Developer')) },
   ],
 };

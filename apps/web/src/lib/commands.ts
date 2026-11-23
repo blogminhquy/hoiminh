@@ -60,6 +60,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     settings && { id: 'set-pixel', group: 'Cài đặt hội', label: 'Pixel Facebook', to: `${b}/cai-dat/tien-ich`, keywords: 'quang cao meta' },
     settings && scope.role === 'owner' && { id: 'set-dev', group: 'Cài đặt hội', label: 'Khóa API và webhook', to: `${b}/cai-dat/nha-phat-trien`, keywords: 'nha phat trien mcp ket noi' },
     scope.role === 'owner' && { id: 'set-plan', group: 'Cài đặt hội', label: 'Gói của hội', hint: 'Xem gói, trần thành viên, gia hạn, nâng gói', to: `/admin/goi?hoi=${scope.slug}`, keywords: 'nen tang hoi minh nang cap tran thanh vien' },
+    scope.role === 'owner' && { id: 'set-addons', group: 'Cài đặt hội', label: 'Gói bổ sung', hint: 'Tên miền riêng, email marketing (sắp ra mắt)', to: `/admin/goi-bo-sung?hoi=${scope.slug}`, keywords: 'email marketing mua them goi bo sung' },
   ];
   return list.filter((c): c is Command => Boolean(c));
 }
