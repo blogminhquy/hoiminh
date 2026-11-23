@@ -1,12 +1,13 @@
 // Khung Khu học tập (V2, mục 153): dành cho người mua lẻ, có thể không thuộc hội nào.
 // Cố tình KHÔNG dùng thanh bên hội như AppShell, người ở đây không có bảng tin, sự kiện hay cửa hàng để vào.
 import { Avatar, Logo, T } from '@hoiminh/ui';
-import { GraduationCap, MessageCircle, Receipt } from 'lucide-react';
+import { GraduationCap, Receipt } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { MessagesButton } from '@/components/MessagesButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { LoadingBlock } from '@/components/QueryState';
-import { useAuth, useBadges } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 import { AppShell } from './AppShell';
 
 /** Bật khi đang ở trong Khu học tập: các trang dùng chung (Bài học) đổi link về `/hoc` thay vì khung hội. */
@@ -36,7 +37,6 @@ function Tab({ to, icon, label, dot }: { to: string; icon: React.ReactNode; labe
 
 export function LearnerShell() {
   const { user, loading } = useAuth();
-  const badges = useBadges();
   const location = useLocation();
   if (!user && !loading) return <Navigate to={`/dang-nhap?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (loading) return <div className="p-8"><LoadingBlock /></div>;
@@ -51,7 +51,7 @@ export function LearnerShell() {
           </nav>
           <span className="flex-grow" />
           <div className="flex items-center gap-2">
-            <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={{ color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface }}><MessageCircle size={20} />{badges.data?.unreadMessages ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null}</Link>
+            <MessagesButton />
             <NotificationBell />
             <Link to="/tai-khoan/ho-so" aria-label="Tài khoản"><Avatar name={user?.name} src={user?.avatarUrl} color={T.side} size={40} /></Link>
           </div>

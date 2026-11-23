@@ -5,7 +5,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { USERS, login } from '../helpers';
 
-const bellOf = (page: Page) => page.locator('.notif-wrap > button[aria-haspopup="dialog"]');
+// Nút Tin nhắn dùng chung khung .notif-wrap với chuông (cùng kiểu bảng nổi), nên chọn chuông theo nhãn.
+const bellWrapOf = (page: Page) => page.locator('.notif-wrap:has(> button[aria-label^="Thông báo"])');
+const bellOf = (page: Page) => bellWrapOf(page).locator('> button[aria-haspopup="dialog"]');
 const panelOf = (page: Page) => page.getByRole('dialog', { name: 'Thông báo' });
 
 /** Số chưa đọc đọc từ nhãn của chuông ("Thông báo, 5 chưa đọc"); không còn gì thì 0. */
@@ -21,7 +23,7 @@ test('chuông mở bảng thông báo tại chỗ, đánh dấu đã đọc, và
   const before = await unreadOnBell(page);
   expect(before, 'dữ liệu mẫu phải có thông báo chưa đọc cho chủ hội').toBeGreaterThan(0);
   // Chuông hiện số, quá 9 thì "9+".
-  await expect(page.locator('.notif-count')).toHaveText(before > 9 ? '9+' : String(before));
+  await expect(bellWrapOf(page).locator('.notif-count')).toHaveText(before > 9 ? '9+' : String(before));
 
   // Bấm chuông: bảng mở, vẫn ở trang đang xem, mở sẵn mục "Chưa đọc".
   const url = page.url();
