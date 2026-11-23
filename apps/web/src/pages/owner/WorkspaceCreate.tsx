@@ -68,10 +68,11 @@ function PlanStep({ plans, planKey, cycle, freeHoi, onPlan, onCycle }: { plans: 
           const border = on ? T.teal : best ? T.gold : T.line2;
           return (
             <button key={p.key} type="button" role="radio" aria-checked={on} onClick={() => onPlan(p.key)} className="relative flex items-center gap-3 text-left rounded-[14px] px-4" style={{ border: `${best ? 2 : 1.5}px solid ${border}`, background: on ? T.tealSoft : T.surface, minHeight: 64, paddingTop: best ? 20 : 14, paddingBottom: 14 }}>
-              {best && <span className="tag absolute" style={{ top: -12, left: 16, background: T.gold, color: T.invertBg }}>Dành cho đa số</span>}
+              {/* Nhãn chỉ để nhìn; trình đọc màn hình đọc nó sau tên gói, để tên của lựa chọn vẫn bắt đầu bằng tên gói. */}
+              {best && <span className="tag absolute" aria-hidden="true" style={{ top: -12, left: 16, background: T.gold, color: T.invertBg }}>Dành cho đa số</span>}
               <span className="w-5 h-5 rounded-full flex-shrink-0 inline-flex items-center justify-center self-start mt-0.5" style={{ border: `2px solid ${on ? T.teal : T.line2}` }}>{on && <span className="w-2.5 h-2.5 rounded-full" style={{ background: T.teal }} />}</span>
               <span className="flex flex-col flex-grow min-w-0 gap-0.5">
-                <span className="font-bold text-[16px]">{p.name}</span>
+                <span className="font-bold text-[16px]">{p.name}{best && <span className="sr-only">, dành cho đa số</span>}</span>
                 {/* Điện thoại: giá nằm ngay dưới tên gói, để chữ mô tả có đủ bề ngang. */}
                 <span className="sm:hidden font-bold text-[15px]">{money(planPerMonth(p, cycle))}/tháng</span>
                 {best ? (
