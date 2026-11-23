@@ -1,6 +1,6 @@
 // /v1/communities: tạo, trang giới thiệu, khung hội, tham gia, cài đặt (chung, giá, tiện ích, bảng tin, câu hỏi, affiliate, thanh toán), tổng quan, doanh thu.
-import { affiliateSettingsSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateAffiliateAccountSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
-import { affiliate, communities, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
+import { affiliateSettingsSchema, courseShareLinksSchema, createCommunitySchema, feedSettingsSchema, joinCommunitySchema, joinRefs, joinQuestionSchema, leaderboardQuerySchema, ownerGatewayInputSchema, ownerGatewaySchema, paymentMethodsUpdateSchema, payoutAccountInputSchema, setReferrerSchema, updateAboutMediaSchema, updateAffiliateAccountSchema, updateCommunityGeneralSchema, updatePluginSchema, updatePricingSchema } from '@hoiminh/contracts';
+import { affiliate, communities, courseShare, members, ownerGateways, ownerPayout, revenue, shell, withdrawals } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -86,6 +86,9 @@ communityRoutes.get('/:id/affiliate', requireAuth, async (c) => c.json(await aff
 communityRoutes.put('/:id/affiliate', requireAuth, async (c) => c.json(await affiliate.updateProgram(c.get('ctx'), c.req.param('id'), await parse(affiliateSettingsSchema, await body(c)))));
 communityRoutes.get('/:id/affiliate/accounts', requireAuth, async (c) => c.json(await affiliate.listProgramAccounts(c.get('ctx'), c.req.param('id'))));
 communityRoutes.patch('/:id/affiliate/accounts/:accountId', requireAuth, async (c) => c.json(await affiliate.updateProgramAccount(c.get('ctx'), c.req.param('id'), c.req.param('accountId'), await parse(updateAffiliateAccountSchema, await body(c)))));
+// Chia sẻ khóa học ở thư viện khóa học: số tiền nhận được (không tạo ví), và link kèm mã (tạo ví nếu chưa có).
+communityRoutes.get('/:id/course-share', requireAuth, async (c) => c.json(await courseShare.shareOffer(c.get('ctx'), c.req.param('id'))));
+communityRoutes.post('/:id/course-share/links', requireAuth, rateLimit('write', { scope: 'course-share' }), async (c) => c.json(await courseShare.shareLinks(c.get('ctx'), c.req.param('id'), (await parse(courseShareLinksSchema, await body(c))).courseId)));
 communityRoutes.get('/:id/leaderboard', async (c) => {
   const { period } = await parse(leaderboardQuerySchema, query(c));
   return c.json(await affiliate.leaderboard(c.get('ctx'), c.req.param('id'), period));

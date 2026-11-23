@@ -6,6 +6,8 @@
   --accent: #C2410C; --accent-soft: #FFEDD5; --accent-text: #9A3412; --teal: #0B6F75; --teal-soft: #DDF1F1; --teal-text: #0B5C61;
   --side: #0C3A3E; --side-dark: #082B2E; --side-text: #BFE3E1; --side-muted: #8DBAB8;
   --gold: #F5B841; --gold-soft: #FBF0D2; --gold-text: #7A5C14; --gold-dark: #5C4A16; --player: #0A1413;
+  /* Xanh tiền: số tiền nhận được (chia sẻ khóa học, hoa hồng). */
+  --money: #15803D; --money-soft: #E3F7E9; --money-text: #166534;
   /* Thẻ nổi bật nền tối (gói Premium, "học tiếp", top 1 bảng xếp hạng): tối ở cả hai giao diện. */
   --invert-bg: #0C4A4F; --invert-ink: #FFFFFF; --invert-line: #0C4A4F;
   --shimmer: #EAF0EE; --focus-ring: rgba(11, 111, 117, 0.16);
@@ -25,6 +27,7 @@ html { color-scheme: light; }
     --accent: #F4803F; --accent-soft: #3B2413; --accent-text: #FDBA74; --teal: #4CC2C9; --teal-soft: #12383B; --teal-text: #7FDBE0;
     --side: #0A1413; --side-dark: #070F0E; --side-text: #BFE3E1; --side-muted: #8DBAB8;
     --gold: #F5B841; --gold-soft: #352B14; --gold-text: #E3C27E; --gold-dark: #F0DCAE; --player: #070F0E;
+    --money: #4ADE80; --money-soft: #12321F; --money-text: #86EFAC;
     --invert-bg: #123E42; --invert-ink: #F3F6F4; --invert-line: #1C5257;
     --shimmer: #1D2B29; --focus-ring: rgba(127, 219, 224, 0.22);
   }
@@ -36,6 +39,7 @@ html { color-scheme: light; }
   --accent: #F4803F; --accent-soft: #3B2413; --accent-text: #FDBA74; --teal: #4CC2C9; --teal-soft: #12383B; --teal-text: #7FDBE0;
   --side: #0A1413; --side-dark: #070F0E; --side-text: #BFE3E1; --side-muted: #8DBAB8;
   --gold: #F5B841; --gold-soft: #352B14; --gold-text: #E3C27E; --gold-dark: #F0DCAE; --player: #070F0E;
+  --money: #4ADE80; --money-soft: #12321F; --money-text: #86EFAC;
   --invert-bg: #123E42; --invert-ink: #F3F6F4; --invert-line: #1C5257;
   --shimmer: #1D2B29; --focus-ring: rgba(127, 219, 224, 0.22);
 }

@@ -1,7 +1,10 @@
 // Thư viện khóa học: chip lọc, khối "Học tiếp", lưới thẻ khóa với % tiến độ và nhãn Premium/Nháp/Hoàn thành.
 // Bìa thẻ theo tỷ lệ 16:9 để ảnh bìa hiện trọn; chỉ bìa màu (chưa có ảnh) mới in tên khóa lên bìa.
 // Người quản lý khóa có nút ba chấm ở góc trên bên phải mỗi thẻ (CourseMenu): cài đặt, sắp thứ tự, nhân bản, đăng, xóa ngay tại thư viện.
+// Hội đang bật affiliate: thẻ khóa đã đăng có dòng chữ nhỏ "Nhận 99.800đ khi chia sẻ" dưới nút chính, bấm vào mở bảng chia sẻ
+// (CourseShare.tsx). Người quản lý mở cùng bảng đó từ mục "Giới thiệu khóa học" trong menu ba chấm.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CourseShareOffer } from '@hoiminh/contracts';
 import { BadgeCheck, Lock, Play, Plus } from 'lucide-react';
 import { Chip, Prog, T } from '@hoiminh/ui';
 import { useEffect, useState } from 'react';
@@ -9,8 +12,10 @@ import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useJoinGate, useShell } from '@/lib/community';
+import { shareAmount } from '@/lib/course-share';
 import { fmtDuration, timeAgo } from '@/lib/format';
 import { CourseMenu, type CourseMenuActions } from './CourseMenu';
+import { CourseShareLine, CourseShareModal } from './CourseShare';
 
 interface CourseItem {
   id: string; title: string; coverColor: string; coverUrl: string | null; status: 'draft' | 'published' | 'archived'; accessMode: string; lessonCount: number; totalDurationSeconds: number; updatedAt: string; priceMinor: number | null;
@@ -32,7 +37,10 @@ const inProgress = (c: CourseItem) => c.status !== 'draft' && c.percent > 0 && !
 /** Phần quản lý của một thẻ: chỉ truyền khi người xem được quản lý khóa học. */
 interface CardManage { canMovePrev: boolean; canMoveNext: boolean; busy: boolean; actions: CourseMenuActions }
 
-function CourseCard({ c, slug, manage }: { c: CourseItem; slug: string; manage?: CardManage }) {
+/** Phần chia sẻ của một thẻ: số tiền nhận được và lối mở bảng chia sẻ. Chỉ truyền khi khóa chia sẻ được. */
+interface CardShare { amount: { minor: number; perMonth: boolean }; onOpen: () => void }
+
+function CourseCard({ c, slug, manage, share }: { c: CourseItem; slug: string; manage?: CardManage; share?: CardShare }) {
   // Khách xem hội mở: khóa nào cũng còn khóa vì chưa là thành viên, lối mở là tham gia hội.
   const { guest } = useJoinGate();
   const s = state(c);
@@ -66,6 +74,7 @@ function CourseCard({ c, slug, manage }: { c: CourseItem; slug: string; manage?:
             <Link to={s === 'done' ? to : continueTo} className={`btn btn-sm ${s === 'learning' ? 'btn-dark' : 'btn-ghost'}`}>{s === 'done' ? 'Xem lại' : s === 'learning' ? 'Tiếp tục' : 'Bắt đầu học'}</Link>
           </>
         )}
+        {share && <CourseShareLine amount={share.amount} onOpen={share.onOpen} />}
       </div>
     </div>
   );
@@ -80,6 +89,16 @@ export default function Page() {
   const counts = { all: items.length, learning: items.filter(inProgress).length, done: items.filter((c) => state(c) === 'done').length, locked: items.filter((c) => state(c) === 'lock' && !inProgress(c)).length };
   const shown = items.filter((c) => filter === 'all' || (filter === 'learning' && inProgress(c)) || (filter === 'done' && state(c) === 'done') || (filter === 'locked' && state(c) === 'lock' && !inProgress(c)));
   const cont = q.data?.continue ?? null;
+
+  // Chia sẻ khóa học: chỉ thành viên (và người quản lý) mới làm người giới thiệu được; khách xem hội mở thì không hỏi.
+  const canRefer = shell.viewer.permissions.includes('community.read');
+  const offer = useQuery({ queryKey: ['course-share', shell.community.id], queryFn: () => api.get<CourseShareOffer>(`/v1/communities/${shell.community.id}/course-share`), enabled: canRefer, staleTime: 5 * 60_000 });
+  const [sharing, setSharing] = useState<{ id: string; title: string } | null>(null);
+  /** Khóa nháp không chia sẻ (người ngoài chưa xem được); khóa đã đăng thì chia sẻ nếu có tiền để nhận. */
+  const shareFor = (c: CourseItem): CardShare | undefined => {
+    const amount = c.status === 'published' ? shareAmount(offer.data, c.id) : null;
+    return amount ? { amount, onOpen: () => setSharing({ id: c.id, title: c.title }) } : undefined;
+  };
 
   // Quản lý khóa ngay tại thư viện (menu ba chấm trên thẻ).
   const qc = useQueryClient();
@@ -137,6 +156,7 @@ export default function Page() {
       onDuplicate: () => { setNotice(null); duplicate.mutate(c.id); },
       onPublish: (status) => { setNotice(null); publish.mutate({ id: c.id, status }); },
       onCopyLink: () => { void copyLink(c.id); },
+      onShare: shareFor(c)?.onOpen,
       onDelete: () => { if (window.confirm(`Xóa khóa học "${c.title}"? Khóa sẽ biến mất khỏi thư viện của mọi học viên.`)) { setNotice(null); remove.mutate(c.id); } },
     },
   });
@@ -169,8 +189,9 @@ export default function Page() {
       )}
       {notice && <div role={notice.ok ? 'status' : 'alert'} className="card px-4 py-3 text-[15px] font-medium" style={notice.ok ? { background: T.tealSoft, color: T.tealText, borderColor: 'transparent' } : { background: T.accentSoft, color: T.accentText, borderColor: 'transparent' }}>{notice.text}</div>}
       <QueryState q={q} rows={3} isEmpty={(d) => d.items.length === 0} empty={{ title: 'Chưa có khóa học', hint: q.data?.canManage ? 'Tạo khóa học đầu tiên cho hội' : 'Chủ hội chưa đăng khóa học nào' }}>
-        {() => (shown.length ? <div className="grid-3">{shown.map((c, i) => <CourseCard key={c.id} c={c} slug={slug} manage={q.data?.canManage ? manageFor(c, i) : undefined} />)}</div> : <div className="muted text-[13px] text-center py-8">Không có khóa nào trong mục này</div>)}
+        {() => (shown.length ? <div className="grid-3">{shown.map((c, i) => <CourseCard key={c.id} c={c} slug={slug} manage={q.data?.canManage ? manageFor(c, i) : undefined} share={shareFor(c)} />)}</div> : <div className="muted text-[13px] text-center py-8">Không có khóa nào trong mục này</div>)}
       </QueryState>
+      {offer.data && <CourseShareModal communityId={shell.community.id} course={sharing} offer={offer.data} onClose={() => setSharing(null)} />}
     </div>
   );
 }
