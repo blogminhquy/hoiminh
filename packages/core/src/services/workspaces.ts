@@ -7,7 +7,7 @@ import { addDays } from '../lib/money';
 import { requireUser, requireWorkspaceRole } from '../permissions';
 import { planDaysLeft } from '@hoiminh/contracts';
 import { audit } from './audit';
-import { planOfCommunity, planTable } from './plans';
+import { ownerHasUnlimitedFree, planOfCommunity, planTable } from './plans';
 
 /** Lấy hoặc tạo workspace mặc định của người dùng. Không còn dùng thử: workspace hoạt động ngay, gói tính theo từng hội. */
 export async function ensureWorkspace(ctx: Ctx, userId?: string): Promise<typeof workspaces.$inferSelect> {
@@ -53,9 +53,10 @@ export async function myWorkspaceHome(ctx: Ctx) {
     const p = planOfCommunity(c, table, now);
     return { key: p.key, name: p.name, memberCap: p.memberCap, features: p.features, endsAt: p.endsAt, daysLeft: planDaysLeft(p.endsAt, now), boughtKey: p.boughtKey, boughtEndsAt: p.boughtEndsAt, isFreeSlot: p.isFreeSlot, needsPlan: p.needsPlan, full: p.full };
   };
-  // Hội miễn phí của tài khoản chỉ tính trên các hội mình làm chủ (không tính hội mình chỉ là quản trị viên).
+  // Hội miễn phí của tài khoản chỉ tính trên các hội mình làm chủ (không tính hội mình chỉ là quản trị viên). Khớp với
+  // ownerHasFreeCommunity ở máy chủ: hội đã lưu trữ thì trả lại suất. Tài khoản quản trị hệ thống thì không bao giờ hết suất.
   const ownWsIds = new Set(owned.map((o) => o.ws.id));
-  const freeSlotUsed = ownedCommunities.some((r) => r.c.isFreeSlot && ownWsIds.has(r.c.workspaceId));
+  const freeSlotUsed = !(await ownerHasUnlimitedFree(ctx, userId)) && ownedCommunities.some((r) => r.c.isFreeSlot && r.c.status !== 'archived' && ownWsIds.has(r.c.workspaceId));
   const team = primaryWs
     ? await ctx.db.select({ m: workspaceMembers, u: { id: users.id, name: users.name, handle: users.handle, avatarUrl: users.avatarUrl, coverColor: users.coverColor } }).from(workspaceMembers).innerJoin(users, eq(users.id, workspaceMembers.userId)).where(eq(workspaceMembers.workspaceId, primaryWs.id))
     : [];

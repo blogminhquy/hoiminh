@@ -67,8 +67,11 @@ describe('tierCards', () => {
     const [f, , pro, unlimited] = tierCards(plans, free, 10, 'yearly', now);
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: tự động hóa', on: false });
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: API', on: false });
-    expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Affiliate', 'API']);
-    expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu']);
+    // Tên miền riêng chỉ có ở gói Không giới hạn: gói thấp hơn ghi rõ có từ gói đó.
+    expect(f!.features).toContainEqual({ text: 'Có từ gói Không giới hạn: tên miền riêng', on: false });
+    expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Affiliate', 'API']);
+    expect(pro!.features).toContainEqual({ text: 'Có từ gói Không giới hạn: tên miền riêng', on: false });
+    expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu', 'Tên miền riêng']);
   });
 
   it('đang ở Chuyên nghiệp với 1.240 thành viên: gói thấp hơn không mua được, cùng gói thì gia hạn, gói trên thì nâng', () => {
