@@ -2,7 +2,7 @@
 // Mọi chỗ cần hỏi "hội này được làm gì" đều đi qua đây, để luật chỉ nằm một nơi.
 import { NO_PRICES, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_FEATURES, PLAN_FEATURE_LABEL, effectivePlanKey, isPlanKey, lowestPlanWith, nextPlanFor, type PlanDef, type PlanFeature, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
 import { and, eq, isNull, ne } from 'drizzle-orm';
-import { communities, workspaces, type plans } from '@hoiminh/db';
+import { communities, users, workspaces, type plans } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, notFound } from '../errors';
 
@@ -137,6 +137,15 @@ export async function workspaceHasFeature(ctx: Ctx, workspaceId: string, feature
 
 export async function requireWorkspaceFeature(ctx: Ctx, workspaceId: string, feature: PlanFeature): Promise<void> {
   if (!(await workspaceHasFeature(ctx, workspaceId, feature))) throw featureError(feature, await planTable(ctx), null);
+}
+
+/**
+ * Tài khoản quản trị hệ thống tạo được bao nhiêu hội miễn phí cũng được (để thử nghiệm và dựng hội mẫu), không bị luật
+ * "mỗi tài khoản một hội miễn phí". Xét theo chủ workspace, không theo người bấm tạo. Chủ dự án chốt ngày 23/11/2026.
+ */
+export async function ownerHasUnlimitedFree(ctx: Ctx, ownerUserId: string): Promise<boolean> {
+  const u = await ctx.db.query.users.findFirst({ where: eq(users.id, ownerUserId), columns: { isSuperAdmin: true } });
+  return u?.isSuperAdmin === true;
 }
 
 /** Tài khoản (chủ workspace) đã dùng hội miễn phí của mình chưa. Hội đã xóa hoặc đã lưu trữ thì không tính, để chủ hội làm lại từ đầu được. */

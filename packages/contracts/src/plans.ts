@@ -53,7 +53,7 @@ export interface PlanDef {
 export const PLAN_DEFAULTS: readonly PlanDef[] = [
   { key: 'free', name: 'Miễn phí', prices: { ...NO_PRICES }, memberCap: 100, features: [] },
   { key: 'starter', name: 'Khởi đầu', prices: { monthly: 0, quarterly: 297_000, semiannual: 0, yearly: 990_000 }, memberCap: 500, features: [] },
-  { key: 'pro', name: 'Chuyên nghiệp', prices: { monthly: 0, quarterly: 897_000, semiannual: 0, yearly: 2_990_000 }, memberCap: 5_000, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'pro', name: 'Chuyên nghiệp', prices: { monthly: 0, quarterly: 897_000, semiannual: 0, yearly: 2_990_000 }, memberCap: 5_000, features: ['automation', 'affiliate', 'api'] },
   { key: 'unlimited', name: 'Không giới hạn', prices: { monthly: 0, quarterly: 2_397_000, semiannual: 0, yearly: 7_990_000 }, memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
 ];
 

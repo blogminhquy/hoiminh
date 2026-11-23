@@ -20,6 +20,12 @@ test('tạo hội, khóa học và sự kiện', async ({ page, request }) => {
   await page.getByRole('button', { name: /Tiếp tục/ }).click();
   await page.getByRole('button', { name: /Tiếp tục/ }).click();
   // Bước Gói: chủ hội này đã dùng hội miễn phí của tài khoản, nên hội mới chọn gói trả phí và thanh toán ngay.
+  // Gói Miễn phí vẫn hiện nhưng khóa, ghi rõ chỉ một hội miễn phí; gói Chuyên nghiệp được chọn sẵn.
+  const freePlan = page.getByRole('radio', { name: /^Miễn phí/ });
+  await expect(freePlan).toHaveAttribute('aria-disabled', 'true');
+  await expect(freePlan).toContainText('Mỗi tài khoản chỉ được tạo 1 hội miễn phí');
+  await expect(page.getByRole('radio', { name: /^Chuyên nghiệp/ })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('radio', { name: /^Khởi đầu/ }).click();
   await expect(page.getByRole('radio', { name: /^Khởi đầu/ })).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('radio', { name: /^Chuyên nghiệp/ }).click();
   await page.getByRole('tab', { name: /1 năm/ }).click();
