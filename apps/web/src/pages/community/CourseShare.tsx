@@ -23,7 +23,7 @@ export function CourseShareLine({ amount, onOpen }: { amount: { minor: number; p
   );
 }
 
-function CopyRow({ url, what }: { url: string; what: string }) {
+export function CopyRow({ url, what }: { url: string; what: string }) {
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const copy = () => { void copyText(url).then((ok) => { setState(ok ? 'copied' : 'failed'); setTimeout(() => setState('idle'), 2000); }); };
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
@@ -40,7 +40,7 @@ function CopyRow({ url, what }: { url: string; what: string }) {
   );
 }
 
-function Option({ icon, name, pill, amount, unit, note, children, strong }: { icon: ReactNode; name: string; pill?: string; amount: string; unit: string; note: string; children: ReactNode; strong?: boolean }) {
+export function ShareOption({ icon, name, pill, amount, unit, note, children, strong }: { icon: ReactNode; name: string; pill?: string; amount: string; unit: string; note: string; children: ReactNode; strong?: boolean }) {
   return (
     <section className="rounded-[14px] p-4 flex flex-col gap-2.5" style={{ border: `1px solid ${strong ? T.money : T.line}`, boxShadow: strong ? `0 0 0 1px ${T.money}` : undefined }}>
       <div className="flex items-center gap-2.5 flex-wrap">
@@ -74,14 +74,14 @@ export function CourseShareModal({ communityId, course, offer, onClose }: { comm
         {links.data && (
           <>
             {retail && links.data.courseUrl && (
-              <Option icon={<BookOpen size={19} />} name="Giới thiệu khóa học này" amount={money(retail.commissionMinor)} unit="mỗi người mua" note={`Mỗi người mua khóa ${money(retail.priceMinor)} qua link của bạn, bạn nhận ${money(retail.commissionMinor)}.`}>
+              <ShareOption icon={<BookOpen size={19} />} name="Giới thiệu khóa học này" amount={money(retail.commissionMinor)} unit="mỗi người mua" note={`Mỗi người mua khóa ${money(retail.priceMinor)} qua link của bạn, bạn nhận ${money(retail.commissionMinor)}.`}>
                 <CopyRow url={links.data.courseUrl} what="course" />
-              </Option>
+              </ShareOption>
             )}
             {monthly && (
-              <Option strong icon={<Users size={19} />} name="Giới thiệu vào hội" pill="Nhận hằng tháng" amount={money(monthly)} unit="mỗi tháng" note={monthlyTerms(monthly, offer.durationMonths)}>
+              <ShareOption strong icon={<Users size={19} />} name="Giới thiệu vào hội" pill="Nhận hằng tháng" amount={money(monthly)} unit="mỗi tháng" note={monthlyTerms(monthly, offer.durationMonths)}>
                 <CopyRow url={links.data.communityUrl} what="community" />
-              </Option>
+              </ShareOption>
             )}
             {!(retail && links.data.courseUrl) && monthly && <div className="text-[14px]" style={{ color: T.ink3 }}>Khóa này không bán lẻ riêng, nên bạn giới thiệu qua link vào hội.</div>}
             <div className="text-[14px] flex items-center gap-2 flex-wrap" style={{ color: T.ink3 }}>
