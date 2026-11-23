@@ -5,7 +5,7 @@ import { Avatar, T, money } from '@hoiminh/ui';
 import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, Link2, MoreHorizontal, Pin, PinOff, Quote, Sparkles, Undo2, User, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { fileSizeLabel, linkParts, reactionSummary } from '@/lib/chat';
+import { convoPreview, fileSizeLabel, linkParts, reactionSummary } from '@/lib/chat';
 import { fmtDate, fmtTime, timeAgo } from '@/lib/format';
 
 export interface Person { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; lastSeenAt?: string | null }
@@ -26,7 +26,6 @@ export const replySnippet = (r: { body: string; hasImage: boolean; fileName?: st
 export function ConvoRow({ c, on, onClick, onPin, onArchive }: { c: Conversation; on: boolean; onClick: () => void; onPin: () => void; onArchive: () => void }) {
   const [menu, setMenu] = useState(false);
   const unread = c.unreadCount > 0;
-  const prefix = c.automated ? 'Tự động · ' : c.lastFromMe ? 'Bạn: ' : '';
   const act = (fn: () => void) => () => { setMenu(false); fn(); };
   return (
     <div className={`chat-convo${on ? ' on' : ''}${menu ? ' menu-open' : ''}`}>
@@ -38,7 +37,7 @@ export function ConvoRow({ c, on, onClick, onPin, onArchive }: { c: Conversation
             <span className="chat-convo-time muted text-[13px] flex-shrink-0">{c.lastMessageAt ? timeAgo(c.lastMessageAt, true) : ''}</span>
           </span>
           <span className="flex items-center gap-2">
-            <span className="text-[14px] flex-grow truncate" style={{ color: unread ? T.ink : T.ink3, fontWeight: unread ? 600 : 400 }}>{prefix}{c.preview ?? ''}</span>
+            <span className="text-[14px] flex-grow truncate" style={{ color: unread ? T.ink : T.ink3, fontWeight: unread ? 600 : 400 }}>{convoPreview(c)}</span>
             {c.pinned && <Pin size={14} className="flex-shrink-0" style={{ color: T.ink3 }} aria-label="Đã ghim" />}
             {unread && <span className="chat-badge" aria-label={`${c.unreadCount} tin chưa đọc`}>{c.unreadCount > 99 ? '99+' : c.unreadCount}</span>}
           </span>

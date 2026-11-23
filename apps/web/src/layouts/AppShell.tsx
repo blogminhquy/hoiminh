@@ -3,11 +3,12 @@
 // (MobileDrawer) chứa đúng các mục của thanh bên và chỗ chuyển hội; thanh dưới 4 mục (Hôm nay, Học, Hội, Tôi) với nút
 // viết bài ở giữa. Chủ hội và quản trị: mục đầu là "Bàn điều khiển" (điện thoại: "Quản lý"), menu có thêm nhóm
 // Quản lý (Tiền, Affiliate, Cài đặt), và ô tìm ở đầu trang thành ô lệnh "Bạn muốn làm gì?" (Ctrl K).
-import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, MessageCircle, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
+import { BadgePercent, BookOpen, Calendar, ChevronsUpDown, FileText, Handshake, House, Info, LayoutDashboard, Lock, LogIn, Menu, Pencil, Plus, Search, Settings, Store, Sun, User, Users, Wallet, X } from 'lucide-react';
 import { CommunityMark, Logo, T } from '@hoiminh/ui';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AccountAvatarLink } from '@/components/AccountAvatarLink';
+import { MessagesButton } from '@/components/MessagesButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { CommandButton, useCommandHotkey } from '@/components/CommandPalette';
 import { InviteModal } from '@/components/InviteModal';
@@ -16,7 +17,7 @@ import { LoadingBlock } from '@/components/QueryState';
 import { ErrorBox } from '@hoiminh/ui';
 import { affiliateNavRate } from '@/lib/affiliate-nav';
 import { api, errorMessage } from '@/lib/api';
-import { preferredCommunitySlug, rememberCommunitySlug, useAuth, useBadges } from '@/lib/auth';
+import { preferredCommunitySlug, rememberCommunitySlug, useAuth } from '@/lib/auth';
 import { canManage, isGuest, JoinGateProvider, ShellProvider, useShellQuery, type Shell } from '@/lib/community';
 import { guestCanOpen, guestHome, isSalePage } from '@/lib/guest';
 import { movedSlugPath } from '@/lib/referral';
@@ -165,7 +166,6 @@ function MobileDrawer({ shell, onInvite, onClose }: { shell: Shell; onInvite: ()
 
 function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => void; onMenu: () => void }) {
   const { user } = useAuth();
-  const badges = useBadges();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
@@ -175,7 +175,6 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
   const location = useLocation();
   // Khách xem hội mở: tên hội dẫn về trang mở đầu của khách; chưa đăng nhập thì chỗ tin nhắn, thông báo là nút Đăng nhập.
   const home = isGuest(shell) ? guestHome(slug, shell.community.tabs) : `/${slug}/hom-nay`;
-  const dot = (n?: number) => (n ? <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: T.accent }} /> : null);
   const submit = () => { navigate(`/${slug}/bang-tin?q=${encodeURIComponent(q)}`); setSearching(false); };
   const iconBtn = { color: T.ink2, border: `1px solid ${T.line2}`, background: T.surface } as const;
   return (
@@ -219,7 +218,7 @@ function Header({ shell, onCommand, onMenu }: { shell: Shell; onCommand: () => v
             : <button type="button" aria-label="Tìm kiếm" aria-expanded={searching} onClick={() => setSearching((v) => !v)} className="md:hidden relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}>{searching ? <X size={20} /> : <Search size={20} />}</button>}
           {user ? (
             <>
-              <Link to="/tin-nhan" aria-label="Tin nhắn" className="relative w-10 h-10 rounded-[10px] flex items-center justify-center" style={iconBtn}><MessageCircle size={20} />{dot(badges.data?.unreadMessages)}</Link>
+              <MessagesButton />
               <NotificationBell />
               <span className="hide-mobile"><AccountAvatarLink user={user} /></span>
             </>

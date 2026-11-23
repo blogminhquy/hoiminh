@@ -833,3 +833,27 @@ section + section > .notif-section { border-top: 1px solid var(--line); }
 }
 @media (max-width: 389px) { .notif-head-top .notif-link-btn svg { display: none; } }
 @media (prefers-reduced-motion: reduce) { .notif-panel { animation: none; } }
+
+/* Bảng tin nhắn nổi ở nút Tin nhắn: dùng chung khung với bảng thông báo (.notif-panel, .notif-head, .notif-list, .notif-foot),
+   chỉ riêng dòng hội thoại. Chưa đọc có chấm, nền nhuộm nhẹ, tên và dòng xem trước đậm, số tin chưa đọc bên phải. */
+.msgpop-search { height: 44px; background: var(--bg); border-color: transparent; margin-right: 6px; }
+.msgpop-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px 16px 12px 8px; border-top: 1px solid var(--line); text-align: left; color: var(--ink2); }
+.notif-list > .msgpop-row:first-child { border-top: 0; }
+.msgpop-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.msgpop-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.msgpop-row.unread { background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface)); }
+.msgpop-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; background: transparent; }
+.msgpop-row.unread .msgpop-dot { background: var(--accent); }
+.msgpop-name { font-size: 15px; font-weight: 600; color: var(--ink); }
+.msgpop-row.unread .msgpop-name { font-weight: 700; }
+.msgpop-time { font-size: 13px; color: var(--ink3); }
+.msgpop-row.unread .msgpop-time { color: var(--accent); font-weight: 600; }
+.msgpop-preview { font-size: 14px; color: var(--ink3); }
+.msgpop-row.unread .msgpop-preview { color: var(--ink); font-weight: 600; }
+.msgpop-community { font-size: 13px; color: var(--ink3); }
+@media (max-width: 767px) {
+  .msgpop-search input { font-size: 16px; }
+  .msgpop-name { font-size: 16px; }
+  .msgpop-preview { font-size: 15px; }
+  .msgpop-time, .msgpop-community { font-size: 14px; }
+}
