@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 1.51.2 - 2026-11-24
+
+Bảng gói ở trang tạo hội: các thẻ cao bằng nhau, cùng một danh sách tính năng để so từng dòng (chủ dự án yêu cầu). Không có migration.
+
+### Thay đổi
+
+- **Bảng gói ở trang tạo hội (/tao-hoi/goi) đều nhau và rõ phần khóa, phần mở.** Bốn thẻ cao bằng nhau. Thẻ nào cũng liệt kê cùng các dòng theo cùng thứ tự (bán hàng và thu tiền, không phí trên doanh thu, tự động hóa, tên miền riêng, affiliate, API): dòng mở có dấu tích xanh, dòng khóa có ổ khóa và chữ mờ, nên các dòng thẳng hàng giữa các thẻ. Cuối thẻ ghi "Mở khóa từ gói ..." hoặc "Đủ mọi tính năng". Nhãn "Dành cho đa số" nằm vắt trên mép thẻ, không đẩy nội dung thẻ đó xuống.
+
+## 1.51.1 - 2026-11-24
+
+Ảnh bìa video YouTube ở trang học bài nét hơn (chủ dự án báo ảnh bị mờ). Không có migration.
+
+### Sửa
+
+- **Ảnh bìa video YouTube bị mờ ở trang học bài.** Trước lấy bản 480x360 của YouTube rồi kéo giãn ra khung rộng cả nghìn điểm ảnh nên mờ. Nay lấy bản 1280x720; video không có bản đó thì lùi về 640x480, cuối cùng mới là 480x360. Ảnh chỉ hiện khi đã tải được bản thật, không chớp ảnh xám.
+
+## 1.51.0 - 2026-11-24
+
+Nút "Sửa bài học" ngay trên trang học bài cho người có quyền soạn khóa học (chủ dự án yêu cầu). Không có migration.
+
+### Thêm
+
+- **Sửa nhanh bài học từ trang học.** Chủ hội và người được giao quyền soạn khóa học thấy nút "Sửa bài học" cạnh tiêu đề bài (máy tính: cùng hàng với "Bài tiếp theo" và "Đánh dấu hoàn thành"; điện thoại: ngay dưới tiêu đề). Bấm vào thì mở khung soạn khóa học ở đúng bài đang xem, module chứa bài được mở sẵn. Học viên không thấy nút này.
+- Khung soạn khóa học nhận tham số `?bai=<id>` để mở sẵn một bài. Bài không còn trong khóa (link cũ, bài đã xóa) thì mở bài đầu tiên.
+
 ## 1.50.0 - 2026-11-24
 
 Nút Tin nhắn ở đầu trang mở bảng tin nhắn nổi, cùng kiểu với bảng Thông báo (chủ dự án yêu cầu). Không có migration.

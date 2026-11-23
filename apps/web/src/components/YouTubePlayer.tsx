@@ -7,8 +7,8 @@
 //     đúng cỡ của mức muốn có rồi thu (hoặc phóng) về vừa trình phát (xem `frameScale` ở lib/youtube.ts).
 // Kiểu dáng nằm ở packages/ui/src/styles.css (các lớp .ytl-*).
 import { Check, ChevronLeft, ChevronRight, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, Settings, Volume2, VolumeX } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent } from 'react';
-import { QUALITY_AUTO, YT_HOST, YT_PLAYER_VARS, YT_STATE, formatClock, frameScale, learnGain, loadYouTubeApi, nearEnd, qualityLabel, qualityOptions, qualityTarget, speedLabel, speedOptions, youtubeErrorMessage, youtubePoster, type YTPlayer } from '@/lib/youtube';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent } from 'react';
+import { QUALITY_AUTO, YT_HOST, YT_PLAYER_VARS, YT_STATE, formatClock, frameScale, learnGain, loadYouTubeApi, nearEnd, qualityLabel, qualityOptions, qualityTarget, speedLabel, speedOptions, isMissingYoutubeThumb, youtubeErrorMessage, youtubePosterCandidates, type YTPlayer } from '@/lib/youtube';
 
 type Phase = 'loading' | 'ready' | 'playing' | 'buffering' | 'paused' | 'ended' | 'error';
 type FullscreenBox = HTMLDivElement & { webkitRequestFullscreen?: () => void };
@@ -79,7 +79,13 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
   const [fullscreen, setFullscreen] = useState(false);
   const [pseudoFs, setPseudoFs] = useState(false);
   const [needsUnmute, setNeedsUnmute] = useState(false);
-  const [posterOk, setPosterOk] = useState(true);
+  // Ảnh bìa: thử bản nét nhất trước, không có thì lùi dần (xem youtubePosterCandidates). Ảnh chỉ hiện khi đã chắc là ảnh thật,
+  // để ảnh xám "không có bản này" của YouTube không chớp lên trước khi đổi sang bản kế tiếp.
+  const posters = useMemo(() => youtubePosterCandidates(videoId), [videoId]);
+  const [posterIdx, setPosterIdx] = useState(0);
+  const [posterShown, setPosterShown] = useState(false);
+  useEffect(() => { setPosterIdx(0); setPosterShown(false); }, [videoId]);
+  const nextPoster = () => { setPosterShown(false); setPosterIdx((i) => i + 1); };
   const [menu, setMenu] = useState<Menu>(null);
   /** Mức YouTube đang phát thật, các mức video có, và mức người học chọn. */
   const [quality, setQuality] = useState('');
@@ -515,7 +521,7 @@ export function YouTubePlayer({ videoId, title, vertical = false }: { videoId: s
         <div ref={frameRef} className="ytl-frame"><div ref={scalerRef} style={scalerStyle} /></div>
         {(!started || phase === 'ended') && phase !== 'error' && (
           <div className="ytl-cover" aria-hidden="true">
-            {posterOk && <img src={youtubePoster(videoId)} alt="" className="ytl-poster" onError={() => setPosterOk(false)} />}
+            {posterIdx < posters.length && <img key={posters[posterIdx]} src={posters[posterIdx]} alt="" className="ytl-poster" style={{ opacity: posterShown ? 1 : 0 }} onLoad={(e) => (isMissingYoutubeThumb(e.currentTarget.naturalWidth) ? nextPoster() : setPosterShown(true))} onError={nextPoster} />}
             <span className={phase === 'ended' ? 'ytl-shade ytl-shade-end' : 'ytl-shade'} />
           </div>
         )}

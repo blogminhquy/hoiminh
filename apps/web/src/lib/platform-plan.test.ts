@@ -1,6 +1,6 @@
 import { PLAN_DEFAULTS, type PlanDef } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { capView, compareRows, cycleHint, cycleSaving, planBadge, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
+import { capView, compareRows, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
 
 const now = new Date('2026-11-11T03:00:00Z');
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString();
@@ -97,6 +97,26 @@ describe('upgradeSummary', () => {
   it('gói Miễn phí mua gói đầu tiên thì không có ngày tặng; gia hạn thì nối tiếp', () => {
     expect(upgradeSummary(free, plans[1]!, 10, 'yearly', now)).toMatchObject({ title: 'Chọn gói Khởi đầu cho hội', carryLabel: '', totalDays: '365 ngày', price: '990.000đ' });
     expect(upgradeSummary(on('pro', 10), plans[2]!, 10, 'yearly', now)).toMatchObject({ title: 'Gia hạn gói Chuyên nghiệp', totalDays: '375 ngày' });
+  });
+});
+
+describe('planFeatureRows', () => {
+  it('mọi gói cùng các dòng, cùng thứ tự; chỉ khác mở hay khóa', () => {
+    const rows = plans.map((p) => planFeatureRows(plans, p));
+    const texts = rows.map((r) => r.map((x) => x.text));
+    for (const t of texts) expect(t).toEqual(texts[0]);
+    expect(texts[0]).toEqual(['Bán khóa học, sự kiện, sản phẩm và thu tiền', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Affiliate', 'API']);
+    const [freeRows, , proRows, unlimitedRows] = rows;
+    expect(freeRows!.map((x) => x.on)).toEqual([true, true, false, false, false, false]);
+    expect(proRows!.every((x) => x.on)).toBe(true);
+    expect(unlimitedRows!.every((x) => x.on)).toBe(true);
+  });
+
+  it('dòng khóa ghi gói thấp nhất mở được nó, dòng mở thì không', () => {
+    const freeRows = planFeatureRows(plans, plans[0]!);
+    expect(freeRows.find((x) => x.text === 'API')).toEqual({ text: 'API', on: false, from: 'Chuyên nghiệp' });
+    expect(freeRows[0]!.from).toBeNull();
+    expect(planFeatureRows(plans, plans[2]!).every((x) => x.from === null)).toBe(true);
   });
 });
 
