@@ -4,6 +4,7 @@ import { T } from '@hoiminh/ui';
 import { ChevronDown, ChevronRight, Download, GripVertical, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
+import { moduleOfLesson } from '@/lib/course-edit';
 import { fmtDuration } from '@/lib/format';
 import { fetchVideoMeta, KIND_ICON, PLACEHOLDER_TITLE, type LessonKind } from './CourseBuilderParts';
 
@@ -27,7 +28,8 @@ function LessonItem({ l, on, onSelect, onDragStart, onDrop, onDelete }: { l: Out
 
 export function Outline({ courseId, modules, selected, onSelect, onOpenImport, onModuleOpen, onLessonsRenamed }: { courseId: string; modules: OutlineModule[]; selected: string | null; onSelect: (id: string) => void; onOpenImport: () => void; onModuleOpen: (id: string | null) => void; onLessonsRenamed: (lessonIds: string[]) => void }) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState<Record<string, boolean>>(() => (modules[0] ? { [modules[0].id]: true } : {}));
+  // Mở sẵn module chứa bài đang chọn (vào từ nút "Sửa bài học"), không có thì module đầu.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => { const m = moduleOfLesson(modules, selected) ?? modules[0]; return m ? { [m.id]: true } : {}; });
   const [drag, setDrag] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ['course', courseId] });
   const addModule = useMutation({ mutationFn: () => api.post<{ id: string }>(`/v1/courses/${courseId}/modules`, { title: `Module ${modules.length + 1}` }), onSuccess: (m) => { setOpen((o) => ({ ...o, [m.id]: true })); void refresh(); } });

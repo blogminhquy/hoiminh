@@ -1,12 +1,14 @@
 // Soạn nội dung khóa học (courseBuilderMain): header trạng thái + Đăng, cột giáo trình, khung soạn bài (LessonForm).
+// Có ?bai=<id> (nút "Sửa bài học" ở trang học bài) thì mở sẵn bài đó và module chứa nó; không thì mở bài đầu tiên.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, T } from '@hoiminh/ui';
 import { Check, ChevronLeft, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useCan, useShell } from '@/lib/community';
+import { LESSON_PARAM, moduleOfLesson } from '@/lib/course-edit';
 import { timeAgo } from '@/lib/format';
 import { BulkImportModal, LessonForm } from './CourseBuilderParts';
 import { Outline, type OutlineModule } from './CourseBuilderOutline';
@@ -20,7 +22,8 @@ export default function Page() {
   const { courseId = '' } = useParams();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['course', courseId], queryFn: () => api.get<Course>(`/v1/courses/${courseId}`) });
-  const [selected, setSelected] = useState<string | null>(null);
+  const [sp] = useSearchParams();
+  const [selected, setSelected] = useState<string | null>(() => sp.get(LESSON_PARAM));
   const [importOpen, setImportOpen] = useState(false);
   const [openModule, setOpenModule] = useState<string | null>(null);
   // Tăng lên khi bài đang mở vừa được đổi tên hàng loạt, để khung soạn nạp lại thay vì giữ bản nháp cũ.
@@ -31,6 +34,9 @@ export default function Page() {
   });
   const first = q.data?.modules.flatMap((m) => m.lessons)[0]?.id ?? null;
   useEffect(() => { if (!selected && first) setSelected(first); }, [first, selected]);
+  // Bài trong ?bai= không thuộc khóa này (link cũ, bài đã xóa): về bài đầu tiên thay vì để khung soạn trống.
+  const missing = Boolean(q.data && selected && !moduleOfLesson(q.data.modules, selected));
+  useEffect(() => { if (missing) setSelected(first); }, [missing, first]);
   if (!can('course.manage')) return <Navigate to={`/${slug}/khoa-hoc`} replace />;
 
   return (
@@ -40,7 +46,7 @@ export default function Page() {
           for (const [mi, m] of c.modules.entries()) { const li = m.lessons.findIndex((l) => l.id === selected); if (li >= 0) return { mi, li }; }
           return null;
         })();
-        const modOpen = openModule ?? c.modules[0]?.id ?? null;
+        const modOpen = openModule ?? moduleOfLesson(c.modules, selected)?.id ?? c.modules[0]?.id ?? null;
         return (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 flex-wrap">
