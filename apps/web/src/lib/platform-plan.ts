@@ -187,6 +187,25 @@ export function tierCards(plans: PlanDef[], current: HoiPlan, members: number, c
   });
 }
 
+/** Một dòng tính năng trên thẻ gói của bảng giá. `from`: gói thấp nhất có tính năng đang khóa (null khi đã mở hoặc không gói nào có). */
+export interface PlanFeatureRow { text: string; on: boolean; from: string | null }
+
+/**
+ * Danh sách tính năng trên thẻ gói ở bảng giá trang tạo hội. Thẻ nào cũng cùng các dòng, cùng thứ tự, cùng chữ; chỉ khác
+ * dòng nào mở (dấu tích) và dòng nào khóa (ổ khóa). Nhờ vậy bốn thẻ đặt cạnh nhau thì từng dòng thẳng hàng, nhìn ngang là so được.
+ */
+export function planFeatureRows(plans: PlanDef[], p: PlanDef): PlanFeatureRow[] {
+  const rows: PlanFeatureRow[] = [
+    { text: 'Bán khóa học, sự kiện, sản phẩm và thu tiền', on: true, from: null },
+    { text: 'Không phí trên doanh thu', on: true, from: null },
+  ];
+  for (const f of PLAN_FEATURES) {
+    const on = p.features.includes(f);
+    rows.push({ text: PLAN_FEATURE_LABEL[f], on, from: on ? null : lowestPlanWith(plans, f)?.name ?? null });
+  }
+  return rows;
+}
+
 export interface CompareRow { label: string; cells: Array<{ text: string; tone: 'on' | 'off' | 'plain' }> }
 
 /** Bảng so sánh đầy đủ bốn gói. Mỗi kỳ đang bán một dòng giá; gói không bán kỳ đó thì ghi "Không bán". */
