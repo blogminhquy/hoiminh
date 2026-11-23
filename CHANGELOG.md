@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 1.53.0 - 2026-11-24
+
+Màn tạo hội: tài khoản quản trị hệ thống tạo hội miễn phí không giới hạn, bước "Gói" hiện cả gói Miễn phí (xám) và ưu tiên gói Chuyên nghiệp; tên miền riêng chỉ còn ở gói Không giới hạn (chủ dự án yêu cầu). Không có migration.
+
+### Thêm
+
+- **Tài khoản quản trị hệ thống tạo hội miễn phí không giới hạn.** Để thử nghiệm và dựng hội mẫu. Hội mới của quản trị luôn là hội miễn phí, hoạt động ngay, và hội miễn phí cũ vẫn giữ nguyên. Người dùng thường vẫn một hội miễn phí mỗi tài khoản.
+
+### Thay đổi
+
+- **Bước "Gói" khi tạo hội thứ hai trở đi.** Gói Miễn phí luôn hiện ở đầu nhưng xám, không chọn được, ghi rõ "Mỗi tài khoản chỉ được tạo 1 hội miễn phí" và hội đã dùng suất đó. Gói Chuyên nghiệp được chọn sẵn, có nhãn "Dành cho đa số", viền nổi và kê đủ tính năng. Dòng mô tả các gói đọc từ tính năng thật của gói, không còn viết cứng.
+- **Tên miền riêng chỉ có ở gói Không giới hạn.** Gói Chuyên nghiệp còn tự động hóa, affiliate và API. Bảng gói mặc định và dữ liệu mẫu đổi theo. Hội đã gắn tên miền từ trước vẫn giữ tên miền, chỉ không gắn hoặc đổi được nữa khi gói không có tính năng này.
+
+### Sửa
+
+- **Hội miễn phí đã lưu trữ mà màn tạo hội vẫn coi là đã dùng suất miễn phí.** Máy chủ trả lại suất khi hội miễn phí bị lưu trữ, nhưng màn tạo hội vẫn ẩn gói Miễn phí. Nay hai bên tính giống nhau.
+
 ## 1.52.0 - 2026-11-24
 
 Chia sẻ khóa học ngay ở thư viện khóa học: thẻ khóa có dòng nhỏ "Nhận 99.800đ khi chia sẻ", bấm vào chọn giới thiệu khóa học hoặc giới thiệu vào hội (chủ dự án yêu cầu). Không có migration.
