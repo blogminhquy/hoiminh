@@ -104,11 +104,12 @@ export function planLowestPerMonth(plan: Priced): number | null {
   return sold.length ? Math.min(...sold.map((c) => planPerMonth(plan, c))) : null;
 }
 
-export type PlanSaving = { kind: 'months'; months: number } | { kind: 'percent'; percent: number };
+/** Mức rẻ hơn của một kỳ, luôn ghi bằng phần trăm (chủ dự án chốt ngày 23/11/2026: không ghi "tặng N tháng" nữa). */
+export type PlanSaving = { kind: 'percent'; percent: number };
 
 /**
- * Một kỳ rẻ hơn bao nhiêu so với kỳ ngắn nhất mà gói đang bán (tính theo giá mỗi tháng). Số tháng được lợi là số
- * nguyên thì ghi "tặng N tháng", không thì ghi phần trăm. Kỳ ngắn nhất, kỳ không bán, hoặc không rẻ hơn thì null.
+ * Một kỳ rẻ hơn bao nhiêu phần trăm so với kỳ ngắn nhất mà gói đang bán (tính theo giá mỗi tháng), làm tròn tới
+ * phần trăm gần nhất. Kỳ ngắn nhất, kỳ không bán, hoặc rẻ hơn chưa tới 1% thì null.
  */
 export function planSaving(plan: Priced, cycle: PlanCycle): PlanSaving | null {
   const base = planCyclesOf(plan)[0];
@@ -119,7 +120,6 @@ export function planSaving(plan: Priced, cycle: PlanCycle): PlanSaving | null {
   // Số tháng trả tiền nếu tính theo giá của kỳ ngắn nhất = price * baseMonths / basePrice.
   const paid = price * baseMonths;
   if (paid >= months * basePrice) return null;
-  if (paid % basePrice === 0 && months - paid / basePrice >= 1) return { kind: 'months', months: months - paid / basePrice };
   const percent = Math.round((1 - paid / (months * basePrice)) * 100);
   return percent >= 1 ? { kind: 'percent', percent } : null;
 }
