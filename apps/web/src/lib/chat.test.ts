@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MESSAGE_FILE_MAX_BYTES, checkAttachment, deliveryStatus, fileSizeLabel, linkParts, linksIn, reactionSummary, sameGroup, seenLabel } from './chat';
+import { MESSAGES_PATH, MESSAGE_FILE_MAX_BYTES, checkAttachment, conversationPath, convoPreview, deliveryStatus, fileSizeLabel, linkParts, linksIn, messagesButtonLabel, reactionSummary, sameGroup, seenLabel } from './chat';
 
 describe('linkParts', () => {
   it('tách link khỏi chữ, bỏ dấu câu sát cuối', () => {
@@ -74,5 +74,26 @@ describe('deliveryStatus', () => {
     expect(deliveryStatus({ deliveredAt: '2026-11-11T01:00:00Z', readAt: null })).toBe('Đã nhận');
     expect(deliveryStatus({ deliveredAt: '2026-11-11T01:00:00Z', readAt: '2026-11-11T01:05:00Z' })).toBe('Đã xem');
     expect(deliveryStatus({ deliveredAt: null, readAt: '2026-11-11T01:05:00Z' })).toBe('Đã xem');
+  });
+});
+
+describe('bảng tin nhắn nổi', () => {
+  it('đường dẫn mở thẳng một hội thoại', () => {
+    expect(MESSAGES_PATH).toBe('/tin-nhan');
+    expect(conversationPath('abc-123')).toBe('/tin-nhan?c=abc-123');
+    expect(conversationPath('a b&c')).toBe('/tin-nhan?c=a%20b%26c');
+  });
+  it('dòng xem trước có tiền tố cho tin tự động và tin mình gửi', () => {
+    expect(convoPreview({ automated: false, lastFromMe: false, preview: 'Chào bạn' })).toBe('Chào bạn');
+    expect(convoPreview({ automated: false, lastFromMe: true, preview: 'Ok nhé' })).toBe('Bạn: Ok nhé');
+    expect(convoPreview({ automated: true, lastFromMe: true, preview: 'Chào mừng' })).toBe('Tự động · Chào mừng');
+    expect(convoPreview({ automated: false, lastFromMe: false, preview: null })).toBe('');
+  });
+  it('nhãn nút Tin nhắn kèm số thật', () => {
+    expect(messagesButtonLabel(0)).toBe('Tin nhắn');
+    expect(messagesButtonLabel(undefined)).toBe('Tin nhắn');
+    expect(messagesButtonLabel(-2)).toBe('Tin nhắn');
+    expect(messagesButtonLabel(3)).toBe('Tin nhắn, 3 tin chưa đọc');
+    expect(messagesButtonLabel(120)).toBe('Tin nhắn, 120 tin chưa đọc');
   });
 });
