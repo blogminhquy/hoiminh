@@ -248,11 +248,12 @@ describe('khóa tính năng trả phí theo gói', () => {
     expect(Array.isArray(await automation.listTags(vy, VY))).toBe(true);
   });
 
-  it('hội gói Chuyên nghiệp dùng được cả bốn tính năng', async () => {
+  it('hội gói Chuyên nghiệp dùng được tự động hóa và API; tên miền riêng chỉ có ở gói Không giới hạn', async () => {
     const mq = await app.as('minhquy');
     const source = await automation.createSource(mq, KD, { name: 'Nguồn của hội chính' });
     expect(source.url).toContain('/webhooks/in/');
-    await communitiesSvc.updateGeneral(mq, KD, { customDomain: 'hoc2.minhquy.vn' });
+    const err = await expectCode(communitiesSvc.updateGeneral(mq, KD, { customDomain: 'hoc2.minhquy.vn' }), 'plan_locked');
+    expect(err.details).toMatchObject({ reason: 'feature', feature: 'custom_domain', requiredPlanKey: 'unlimited', requiredPlanName: 'Không giới hạn' });
     const key = await apiKeys.createApiKey(mq, await app.ids('workspace:minhquy'), { name: 'key', scopes: ['*'] });
     expect(await apiKeys.authenticateApiKey(app.system(), key.raw)).toBeTruthy();
   });
@@ -354,5 +355,28 @@ describe('mỗi tài khoản một hội miễn phí', () => {
     // Hội miễn phí của tài khoản vẫn là hội chính.
     const free = await app.ctx.db.query.communities.findMany({ where: and(eq(communities.workspaceId, await app.ids('workspace:minhquy')), eq(communities.isFreeSlot, true)) });
     expect(free.map((x) => x.id)).toEqual([KD]);
+  });
+
+  it('tài khoản quản trị hệ thống: hội nào cũng là hội miễn phí, không lấy suất của hội cũ', async () => {
+    const admin = await app.as('admin');
+    const input = { shortDescription: '', description: '', category: 'kinh-doanh' as const, pricingMode: 'free' as const, template: 'blank' as const };
+    const a = await communitiesSvc.createCommunity(admin, { ...input, name: 'Hội mẫu một', slug: 'hoi-mau-mot-x1' });
+    const b = await communitiesSvc.createCommunity(admin, { ...input, name: 'Hội mẫu hai', slug: 'hoi-mau-hai-x1' });
+    for (const c of [a, b]) expect(c).toMatchObject({ status: 'active', lockedReason: null, isFreeSlot: true, needsPlan: false });
+    // Hội đầu vẫn giữ suất miễn phí sau khi tạo hội thứ hai.
+    expect(await app.ctx.db.query.communities.findFirst({ where: eq(communities.id, a.id) })).toMatchObject({ isFreeSlot: true, status: 'active' });
+    // Màn tạo hội không coi quản trị là đã hết suất.
+    expect((await workspaces.myWorkspaceHome(admin)).freeSlotUsed).toBe(false);
+  });
+
+  it('hội miễn phí đã lưu trữ thì màn tạo hội cũng trả lại suất, khớp với máy chủ', async () => {
+    const s = await register(app.anon(), app.auth, { name: 'Chủ Hội Lưu Trữ', email: 'luutru@example.com', password: 'matkhau123', acceptTerms: true });
+    const me: Ctx = { ...app.system(), actor: { type: 'user', userId: s.user.id, isSuperAdmin: false, email: 'luutru@example.com' } };
+    const c = await communitiesSvc.createCommunity(me, { name: 'Hội sẽ lưu trữ', slug: 'hoi-se-luu-tru-x1', shortDescription: '', description: '', category: 'kinh-doanh', pricingMode: 'free', template: 'blank' });
+    expect((await workspaces.myWorkspaceHome(me)).freeSlotUsed).toBe(true);
+    await app.ctx.db.update(communities).set({ status: 'archived' }).where(eq(communities.id, c.id));
+    expect((await workspaces.myWorkspaceHome(me)).freeSlotUsed).toBe(false);
+    const again = await communitiesSvc.createCommunity(me, { name: 'Hội làm lại', slug: 'hoi-lam-lai-x1', shortDescription: '', description: '', category: 'kinh-doanh', pricingMode: 'free', template: 'blank' });
+    expect(again).toMatchObject({ status: 'active', isFreeSlot: true, needsPlan: false });
   });
 });

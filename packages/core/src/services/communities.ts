@@ -12,7 +12,7 @@ import { audit } from './audit';
 import { releaseFiles } from './files';
 import { invitePreview } from './invites';
 import { paymentsReady } from './owner-payout';
-import { ownerHasFreeCommunity, requirePlanFeature } from './plans';
+import { ownerHasFreeCommunity, ownerHasUnlimitedFree, requirePlanFeature } from './plans';
 import { ensureWorkspace } from './workspaces';
 
 const DEFAULT_SPACES: Array<[string, string, 'everyone' | 'admins_only' | 'premium', string]> = [['Thông báo', 'thong-bao', 'admins_only', 'accent'], ['Hỏi đáp', 'hoi-dap', 'everyone', 'teal'], ['Chia sẻ', 'chia-se', 'everyone', 'accent'], ['Nhật ký', 'nhat-ky', 'everyone', 'gold'], ['Câu chuyện', 'cau-chuyen', 'premium', 'gold']];
@@ -39,10 +39,12 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
   await assertSlugAvailable(ctx, input.slug);
   // Mỗi tài khoản một hội miễn phí. Hội thứ hai trở đi được tạo ở trạng thái chờ thanh toán (nháp, chưa ai vào được)
   // và mở ngay khi tiền gói về (activatePlatformPurchase). Không có dùng thử.
-  const isFreeSlot = !(await ownerHasFreeCommunity(ctx, ws.ownerUserId));
+  // Tài khoản quản trị hệ thống thì hội nào cũng là hội miễn phí, và không lấy suất miễn phí của hội cũ.
+  const unlimitedFree = await ownerHasUnlimitedFree(ctx, ws.ownerUserId);
+  const isFreeSlot = unlimitedFree || !(await ownerHasFreeCommunity(ctx, ws.ownerUserId));
   const created = await ctx.db.transaction(async (tx) => {
     // Hội miễn phí cũ đã lưu trữ thì nhường suất miễn phí cho hội mới, để mỗi tài khoản luôn chỉ có một suất.
-    if (isFreeSlot) await tx.update(communities).set({ isFreeSlot: false }).where(and(eq(communities.isFreeSlot, true), inArray(communities.workspaceId, tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerUserId, ws.ownerUserId)))));
+    if (isFreeSlot && !unlimitedFree) await tx.update(communities).set({ isFreeSlot: false }).where(and(eq(communities.isFreeSlot, true), inArray(communities.workspaceId, tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerUserId, ws.ownerUserId)))));
     const [c] = await tx.insert(communities).values({ workspaceId: ws.id, name: input.name, slug: input.slug, shortDescription: input.shortDescription, description: input.description || input.shortDescription, category: input.category, logoMark: markOf(input.name), pricingMode: input.pricingMode, status: isFreeSlot ? 'active' : 'draft', lockedReason: isFreeSlot ? null : 'plan_required', discoverable: isFreeSlot, isFreeSlot, coverTagline: input.name }).returning();
     const hasFree = input.pricingMode === 'free' || input.pricingMode === 'freemium';
     const [standard] = await tx.insert(communityTiers).values({ communityId: c!.id, key: 'standard', name: 'Tiêu chuẩn', description: 'Mặc định khi tham gia', benefits: ['Đọc và đăng bài trên Bảng tin', 'Module 1 của mọi khóa học'], isDefault: hasFree, isActive: hasFree, sortOrder: 0 }).returning();
@@ -58,7 +60,7 @@ export async function createCommunity(ctx: Ctx, input: CreateCommunityInput) {
     await syncTierOffers(tx as unknown as Ctx['db'], c!.id, ws.id, [standard!, premium!]);
     return c!;
   });
-  await audit(ctx, { action: 'community.create', resourceType: 'community', resourceId: created.id, workspaceId: ws.id, communityId: created.id, metadata: { isFreeSlot } });
+  await audit(ctx, { action: 'community.create', resourceType: 'community', resourceId: created.id, workspaceId: ws.id, communityId: created.id, metadata: { isFreeSlot, unlimitedFree } });
   return { ...created, needsPlan: !isFreeSlot };
 }
 

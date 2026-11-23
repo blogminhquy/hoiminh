@@ -66,6 +66,10 @@ export const T = {
   goldSoft: 'var(--gold-soft)',
   goldText: 'var(--gold-text)',
   goldDark: 'var(--gold-dark)',
+  /** Xanh tiền: số tiền người dùng nhận được (chia sẻ khóa học, hoa hồng). */
+  money: 'var(--money)',
+  moneySoft: 'var(--money-soft)',
+  moneyText: 'var(--money-text)',
   player: 'var(--player)',
   /** Nền và chữ của thẻ nhấn nền tối: tối/sáng cố định ở cả hai giao diện. */
   invertBg: 'var(--invert-bg)',
