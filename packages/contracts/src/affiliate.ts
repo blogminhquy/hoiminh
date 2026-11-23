@@ -109,6 +109,17 @@ export const setReferrerSchema = z.object({ code: z.string().trim().min(2).max(3
 /** Người giới thiệu của tôi trong một hội. `enabled`: hội đang bật affiliate; `active`: tài khoản affiliate của người đó còn hoạt động. */
 export interface MyReferrer { enabled: boolean; referrer: { name: string; handle: string; avatarUrl: string | null; coverColor: string | null; code: string; active: boolean } | null }
 
+/**
+ * Chia sẻ khóa học ở thư viện khóa học. `courses`: khóa bán lẻ có tính hoa hồng, kèm số tiền tôi nhận mỗi đơn.
+ * `monthlyCommissionMinor`: số tiền tôi nhận mỗi tháng khi người được mời đóng phí gói thành viên rẻ nhất (null khi hội
+ * không có gói trả phí). `durationMonths`: số tháng đầu được tính, null là không giới hạn. `programId`: để mở thẳng ví của
+ * chương trình này ở trang Tài khoản → Affiliate.
+ */
+export interface CourseShareOffer { enabled: boolean; programId: string | null; durationMonths: number | null; monthlyCommissionMinor: number | null; courses: Array<{ courseId: string; priceMinor: number; commissionMinor: number }> }
+/** Link chia sẻ kèm mã của tôi. `courseUrl` null khi khóa không bán lẻ có hoa hồng. */
+export interface CourseShareLinks { code: string; communityUrl: string; courseUrl: string | null }
+export const courseShareLinksSchema = z.object({ courseId: idSchema.nullable().default(null) });
+
 export const leaderboardQuerySchema = z.object({ period: z.enum(['month', 'quarter', 'all']).default('month') });
 
 export const walletSummarySchema = z.object({
