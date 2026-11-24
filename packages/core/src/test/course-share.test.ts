@@ -2,9 +2,11 @@
 //   1. Số tiền ước tính cho từng khóa bán lẻ và cho giới thiệu vào hội, tính như lúc ghi hoa hồng thật, không tạo ví.
 //   2. Khóa tắt hoa hồng bán lẻ, hội tắt affiliate, người không còn là thành viên: không có gì để chia sẻ.
 //   3. Link chia sẻ kèm mã của tôi; lúc này mới tạo ví.
+//   4. Trang chứng nhận có đủ dữ liệu cho khối giới thiệu (id hội) và lời mời học khóa (giá, trang bán lẻ).
 import { and, eq } from 'drizzle-orm';
-import { affiliateAccounts, affiliatePrograms, communityMembers, communityTiers, courses, products } from '@hoiminh/db';
+import { affiliateAccounts, affiliatePrograms, communityMembers, communityTiers, courseProgress, courses, products } from '@hoiminh/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { certificate } from '../services/courses';
 import { cheapestMonthlyMinor, shareLinks, shareOffer } from '../services/course-share';
 import { createTestApp, type TestApp } from './setup';
 
@@ -109,3 +111,20 @@ describe('chia sẻ khóa học: link kèm mã', () => {
     expect(links.communityUrl).toContain('?ref=');
   });
 });
+
+describe('chứng nhận: dữ liệu cho khối giới thiệu và lời mời học khóa', () => {
+  it('khóa bán lẻ: có id hội, giá và đường dẫn trang bán lẻ', async () => {
+    const [first] = await retailCourses();
+    const courseId = first!.courseId!;
+    const userId = await app.ids('user:cong');
+    await app.ctx.db.update(courses).set({ certificateEnabled: true, status: 'published' }).where(eq(courses.id, courseId));
+    await app.ctx.db.insert(courseProgress).values({ courseId, userId, percent: 100, completedLessons: 1, totalLessons: 1, completedAt: new Date() }).onConflictDoUpdate({ target: [courseProgress.courseId, courseProgress.userId], set: { percent: 100, completedAt: new Date() } });
+    const cert = await certificate(app.anon(), courseId, userId);
+    const product = await app.ctx.db.query.products.findFirst({ where: and(eq(products.courseId, courseId), eq(products.status, 'published')) });
+    expect(cert.community?.id).toBe(KD);
+    expect(cert.sale).toEqual({ priceMinor: first!.priceMinor, path: `/${cert.community!.slug}/cua-hang/${product!.slug}` });
+    // Link kiểm tra in trên tấm chứng chỉ vẫn là link gốc, không có mã giới thiệu.
+    expect(cert.verifyUrl).not.toContain('ref=');
+  });
+});
+

@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 1.54.0 - 2026-11-24
+
+Giới thiệu khóa học ngay dưới tấm chứng nhận: người học vừa xong khóa có link giới thiệu kèm số tiền nhận được, link chứng nhận họ khoe cũng kèm mã giới thiệu; người được chia sẻ thấy lời mời học khóa (chủ dự án yêu cầu). Không có migration.
+
+### Thêm
+
+- **Khối "Khóa học giúp ích cho bạn? Giới thiệu cho bạn bè" dưới tấm chứng nhận.** Chỉ chính người học thấy, khi hội đang bật affiliate: hai ô như bảng chia sẻ ở thư viện khóa học, "Giới thiệu khóa học này" (link trang bán lẻ, số tiền nhận mỗi đơn) và "Giới thiệu vào hội" (link trang hội, số tiền nhận hằng tháng), mỗi ô có nút sao chép riêng.
+- **Khoe chứng chỉ cũng là giới thiệu.** Link chứng nhận người học bấm Chia sẻ hay sao chép (nút dưới chứng chỉ và ô mã kiểm tra) kèm sẵn mã giới thiệu của họ và tên hội, để mã được tính cho chương trình của hội. Ảnh và bản in chứng chỉ vẫn in link gốc.
+- **Lời mời học khóa cho người được chia sẻ.** Người khác mở trang chứng nhận thấy "Bạn cũng muốn học khóa này?" với tên khóa, giá và nút "Xem khóa học" (trang bán lẻ) hoặc "Xem hội". Không thấy gì về hoa hồng.
+- Dữ liệu chứng nhận có thêm id hội và giá, đường dẫn trang bán lẻ của khóa.
+
+## 1.53.1 - 2026-11-24
+
+Bảng gói: mức lợi của kỳ dài luôn ghi bằng phần trăm, thẻ bảng giá ghi "Giới hạn N thành viên", làm nổi gói không giới hạn và đưa dòng có dấu tích lên đầu (chủ dự án yêu cầu). Không có migration.
+
+### Thay đổi
+
+- **Mức lợi của kỳ dài luôn ghi bằng phần trăm.** Trước đây giá tròn tháng thì ghi "tặng 2 tháng", lẻ thì ghi phần trăm, nên mỗi chỗ một kiểu. Nay mọi nơi (bảng giá trang tạo hội, nhãn cạnh tab kỳ hạn, bước chọn gói, màn nâng gói) đều ghi "tiết kiệm 17%" hoặc "tiết kiệm tới 33%". Số ngày còn lại của gói cũ khi nâng gói vẫn được cộng như cũ.
+- **Bảng giá trang tạo hội.** Dòng thành viên thành một ô: gói có trần ghi "Giới hạn 5.000 thành viên", gói Không giới hạn là ô vàng có biểu tượng vô cực và chữ "Không giới hạn" to. Trong mỗi thẻ, các dòng có dấu tích đứng trước, dòng có ổ khóa xuống cuối. Các thẻ vẫn cao bằng nhau.
+
 ## 1.53.0 - 2026-11-24
 
 Màn tạo hội: tài khoản quản trị hệ thống tạo hội miễn phí không giới hạn, bước "Gói" hiện cả gói Miễn phí (xám) và ưu tiên gói Chuyên nghiệp; tên miền riêng chỉ còn ở gói Không giới hạn (chủ dự án yêu cầu). Không có migration.

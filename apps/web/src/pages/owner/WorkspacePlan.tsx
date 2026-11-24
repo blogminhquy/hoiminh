@@ -32,7 +32,7 @@ const TONE = { gold: 'gold', accent: 'accent', teal: 'teal', muted: 'neutral' } 
 
 const capitalize = (t: string) => t.charAt(0).toLocaleUpperCase('vi') + t.slice(1);
 
-/** Các tab kỳ hạn đang bán. `note` là lời mời của kỳ dài nhất ("Tặng 2 tháng"), ghi cạnh dãy tab. */
+/** Các tab kỳ hạn đang bán. `note` là lời mời của kỳ dài nhất ("Tiết kiệm 17%"), ghi cạnh dãy tab. */
 function CycleTabs({ cycles, cycle, onPick, note }: { cycles: PlanCycle[]; cycle: PlanCycle; onPick: (c: PlanCycle) => void; note?: string }) {
   return (
     <div className="seg" role="tablist" aria-label="Chu kỳ thanh toán">
