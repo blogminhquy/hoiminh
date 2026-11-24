@@ -1,5 +1,7 @@
 // Chứng nhận hoàn thành khóa học: trang công khai, ai có link cũng kiểm tra được. Tấm chứng chỉ khổ A4 ngang
 // tải được thành ảnh, chia sẻ được, in được. Vừa học xong bài cuối thì trang mở ở chế độ chúc mừng (?chuc-mung=1).
+// Dưới chứng chỉ: chính người học thấy khối giới thiệu khóa học (link chứng nhận họ chia sẻ cũng kèm mã của họ), người
+// khác thấy lời mời học khóa (CertificateShare.tsx).
 import { useQuery } from '@tanstack/react-query';
 import { T } from '@hoiminh/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,6 +13,7 @@ import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { wantsCelebration } from '@/lib/certificate';
 import { CelebrationHero, CertificateActions, CertificateSheet, VerifiedBanner, VerifyBox, toCertificateData, useCertificateArt, type CertificateDto } from './CertificateParts';
+import { CertificateInvite, CertificateReferralBlock, useCertificateReferral } from './CertificateShare';
 import './certificate.css';
 
 // Bản in: đúng một trang A4 ngang, không lề, để tấm chứng chỉ phủ kín trang.
@@ -18,16 +21,19 @@ const PRINT_PAGE = '@media print { @page { size: A4 landscape; margin: 0; } }';
 /** Số lần tự thử lại khi vừa học xong mà chứng nhận chưa đọc được (máy chủ ghi tiến độ chậm hơn lượt chuyển trang). */
 const CELEBRATE_RETRIES = 5;
 
-function View({ c, celebrate }: { c: CertificateDto; celebrate: boolean }) {
+/** `viewerKnown`: đã biết ai đang xem (đăng nhập xong), để người học không thấy lời mời dành cho người khác chớp lên trước. */
+function View({ c, celebrate, isLearner, viewerKnown }: { c: CertificateDto; celebrate: boolean; isLearner: boolean; viewerKnown: boolean }) {
   const data = useMemo(() => toCertificateData(c), [c]);
   const art = useCertificateArt(data);
+  const referral = useCertificateReferral(c, isLearner);
   return (
     <>
       {celebrate && <Confetti />}
       {celebrate ? <CelebrationHero c={c} /> : <VerifiedBanner c={c} />}
       <CertificateSheet art={art} />
-      <CertificateActions c={c} art={art} celebrate={celebrate} />
-      <VerifyBox c={c} />
+      <CertificateActions c={c} art={art} celebrate={celebrate} url={referral.shareUrl} />
+      {isLearner ? <CertificateReferralBlock c={c} r={referral} /> : viewerKnown && <CertificateInvite c={c} />}
+      <VerifyBox c={c} url={referral.shareUrl} />
     </>
   );
 }
@@ -66,7 +72,7 @@ export default function Page() {
             <LoadingBlock rows={3} />
           </div>
         ) : (
-          <QueryState q={q} rows={4}>{(c) => <View c={c} celebrate={celebrate} />}</QueryState>
+          <QueryState q={q} rows={4}>{(c) => <View c={c} celebrate={celebrate} isLearner={!loading && user?.id === c.learner.id} viewerKnown={!loading} />}</QueryState>
         )}
       </main>
     </div>

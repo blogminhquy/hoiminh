@@ -27,3 +27,13 @@ export function monthlyTerms(monthlyMinor: number, durationMonths: number | null
   if (!durationMonths) return `Mỗi tháng người được giới thiệu còn ở trong hội, bạn nhận ${money(monthlyMinor)}.`;
   return `Mỗi tháng người được giới thiệu còn ở trong hội, bạn nhận ${money(monthlyMinor)}, trong ${durationMonths} tháng đầu. Tổng tối đa ${money(monthlyMinor * durationMonths)} cho mỗi người.`;
 }
+
+/**
+ * Link chứng nhận để người học khoe, kèm mã giới thiệu của họ. Trang chứng nhận không nằm dưới đường dẫn của hội, nên phải
+ * kèm `hoi=<slug>` để mã được tính cho chương trình của hội đó, không phải chương trình nền tảng (xem refScopeOf).
+ * Tấm chứng chỉ (ảnh, bản in) vẫn in link gốc không có mã.
+ */
+export function certificateShareUrl(verifyUrl: string, code: string | null | undefined, communitySlug: string | null | undefined): string {
+  if (!code || !communitySlug) return verifyUrl;
+  return `${verifyUrl}?ref=${encodeURIComponent(code)}&hoi=${encodeURIComponent(communitySlug)}`;
+}
