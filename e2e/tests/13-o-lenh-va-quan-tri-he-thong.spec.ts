@@ -90,7 +90,7 @@ test.describe('điện thoại', () => {
     await login(page, USERS.admin);
     await page.goto('/he-thong/thanh-toan');
     await expect(page.getByRole('navigation', { name: 'Nhóm quản trị' }).getByRole('link')).toHaveCount(5);
-    await expect(page.getByRole('navigation', { name: 'Tiền' }).getByRole('link')).toHaveCount(2);
+    await expect(page.getByRole('navigation', { name: 'Tiền' }).getByRole('link')).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
     await page.getByRole('button', { name: 'Bạn muốn làm gì?' }).click();
