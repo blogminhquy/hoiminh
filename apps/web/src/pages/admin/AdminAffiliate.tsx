@@ -1,7 +1,9 @@
-// Hệ thống · Affiliate nền tảng (saAffiliateMain): 3 ô ví, hàng đợi rút (PayoutQueue), cấu hình hoa hồng toàn hệ thống, đối tác lớn với mức riêng.
+// Hệ thống · Affiliate nền tảng (saAffiliateMain): 3 ô ví, hàng đợi rút (PayoutQueue), cấu hình hoa hồng toàn hệ thống,
+// affiliate giới thiệu nhiều nhất. % và thời hạn riêng của đối tác chính thức chỉnh ở Hệ thống · Đối tác (AdminPartners).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Field, Input, Select, T, WalletBox, money } from '@hoiminh/ui';
-import { Download } from 'lucide-react';
+import { ChevronRight, Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { LedgerNotice, PayoutQueue, type PayoutRequest } from '@/components/PayoutQueue';
 import { QueryState } from '@/components/QueryState';
@@ -27,14 +29,14 @@ function ProgramForm({ p, onSaved }: { p: Data['program']; onSaved: () => void }
   );
 }
 
-function PartnerRow({ p, defaultBps, onSaved }: { p: Partner; defaultBps: number; onSaved: () => void }) {
-  const m = useMutation({ mutationFn: (bps: number | null) => api.patch(`/v1/admin/affiliate/accounts/${p.id}`, { commissionRateBps: bps }), onSuccess: onSaved });
+/** Một dòng affiliate giới thiệu nhiều nhất: chỉ xem. % riêng (nếu có) là của đối tác chính thức, chỉnh ở trang Đối tác. */
+function PartnerRow({ p, defaultBps }: { p: Partner; defaultBps: number }) {
   return (
-    <div className="flex items-center gap-2.5 px-5 py-2.5 text-[13px]" style={{ borderTop: `1px solid ${T.line}` }}>
+    <div className="flex items-center gap-2.5 px-5 py-2.5 text-[14px]" style={{ borderTop: `1px solid ${T.line}` }}>
       <Avatar name={p.name} src={p.avatar_url} color={p.cover_color ?? T.ink} size={28} />
       <span className="flex-grow font-medium truncate">{p.name}</span>
       <span className="muted whitespace-nowrap">{p.paid_count} chủ hội</span>
-      <Select value={p.commission_rate_bps ?? 0} disabled={m.isPending} onChange={(e) => m.mutate(Number(e.target.value) || null)} style={{ height: 28, fontSize: 12, width: 'fit-content' }}><option value={0}>{defaultBps / 100}% · chung</option>{[3000, 4000, 5000, 6000].map((b) => <option key={b} value={b}>{b / 100}% · riêng</option>)}</Select>
+      <span className="whitespace-nowrap font-semibold">{(p.commission_rate_bps ?? defaultBps) / 100}%{p.commission_rate_bps !== null ? ' · riêng' : ''}</span>
     </div>
   );
 }
@@ -61,9 +63,9 @@ export default function Page() {
             <div className="flex-1 flex flex-col gap-3">
               <ProgramForm p={d.program} onSaved={refresh} />
               <div className="card overflow-hidden">
-                <div className="flex items-center px-5 py-3.5 gap-2 flex-wrap"><span className="font-semibold">Đối tác lớn</span><span className="muted text-[12px]">hoa hồng riêng thắng mức chung</span></div>
+                <div className="flex items-center px-5 py-3.5 gap-2 flex-wrap"><span className="font-semibold">Giới thiệu nhiều nhất</span><span className="flex-grow" /><Link to="/he-thong/doi-tac" className="text-[14px] font-semibold inline-flex items-center gap-1" style={{ color: T.tealText }}>Đối tác chính thức<ChevronRight size={16} /></Link></div>
                 {d.partners.length === 0 && <div className="muted text-[13px] px-5 pb-4">Chưa có affiliate nền tảng.</div>}
-                {d.partners.map((p) => <PartnerRow key={p.id} p={p} defaultBps={d.program.commissionRateBps} onSaved={refresh} />)}
+                {d.partners.map((p) => <PartnerRow key={p.id} p={p} defaultBps={d.program.commissionRateBps} />)}
               </div>
             </div>
           </div>

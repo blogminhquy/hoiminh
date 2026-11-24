@@ -1,16 +1,18 @@
 // Tài khoản · Affiliate của tôi (affiliateWalletMain; khác với Affiliate hội là nơi chủ hội quản lý chương trình): bước 1 chọn chương trình (nền tảng, từng hội), bước 2 chọn trang muốn
 // chia sẻ, bước 3 sao chép link; rồi tới ví của chương trình đó: 4 ô ví, tài khoản nhận tiền, rút tiền, lịch sử.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { WalletBox, money } from '@hoiminh/ui';
+import { T, WalletBox, money } from '@hoiminh/ui';
+import { Handshake } from 'lucide-react';
 import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { defaultProgramId, readRememberedProgram, rememberProgram, type AffiliateProgram, type LinkTarget } from '@/lib/affiliate-link';
 import { api } from '@/lib/api';
+import { durationText } from '@/lib/partners';
 import { LinkCard, ProgramOffNotice, ProgramPicker } from './AffiliateLinkParts';
 import { CommissionsTable, PayoutProfileCard, WithdrawCard, WithdrawalsTable, type Commission, type Withdrawal } from './AffiliateWalletParts';
 
-interface Wallet { programId: string; scope: 'platform' | 'community'; enabled: boolean; commissionDurationMonths: number | null; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; codeEditable: boolean; previousCode: string | null; link: string; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; requestedMinor: number; paidMinor: number; clicks: number; signups: number; paid: number; maskedAccount: string | null; bankCode: string | null; recentCommissions: Commission[]; withdrawals: Withdrawal[] }
+interface Wallet { programId: string; scope: 'platform' | 'community'; enabled: boolean; commissionDurationMonths: number | null; /** Đối tác chính thức của Hội Mình (chỉ ở chương trình nền tảng). */ isPartner?: boolean; targets: LinkTarget[]; communityName: string; payerName: string; affiliateCode: string; codeEditable: boolean; previousCode: string | null; link: string; commissionRateBps: number; holdDays: number; minWithdrawalMinor: number; pendingMinor: number; availableMinor: number; requestedMinor: number; paidMinor: number; clicks: number; signups: number; paid: number; maskedAccount: string | null; bankCode: string | null; recentCommissions: Commission[]; withdrawals: Withdrawal[] }
 
 export default function Page() {
   const { programId } = useParams();
@@ -39,6 +41,12 @@ export default function Page() {
         <QueryState q={q} rows={3}>
           {(w) => (
             <>
+              {w.isPartner && (
+                <div className="flex items-start gap-3 rounded-[14px] px-4 py-3.5" style={{ background: T.goldSoft, color: T.goldText }} data-testid="partner-badge">
+                  <Handshake size={22} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <span className="flex flex-col gap-0.5"><strong className="text-[17px]">Đối tác chính thức của Hội Mình</strong><span className="text-[15px]">Hoa hồng riêng của bạn: {w.commissionRateBps / 100}% mỗi lần chủ hội bạn giới thiệu trả tiền, {durationText(w.commissionDurationMonths)}.</span></span>
+                </div>
+              )}
               {w.enabled && <LinkCard key={w.programId} program={{ scope: w.scope, rateBps: w.commissionRateBps, durationMonths: w.commissionDurationMonths, name: w.communityName }} targets={w.targets} code={w.affiliateCode} codeEditable={w.codeEditable} previousCode={w.previousCode} onCodeChanged={codeChanged} stats={{ clicks: w.clicks, signups: w.signups, paid: w.paid }} />}
               <div><h2 className="m-0 text-[18px] font-bold">Ví hoa hồng · {w.communityName}</h2><div className="muted text-[14px]">Mỗi chương trình có một ví riêng. {w.payerName} là người chuyển khoản hoa hồng của ví này.</div></div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

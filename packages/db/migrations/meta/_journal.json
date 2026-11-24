@@ -148,6 +148,13 @@
       "when": 1795290795896,
       "tag": "0020_feature_flags_mac_dinh",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795510024232,
+      "tag": "0021_platform_partners",
+      "breakpoints": true
     }
   ]
 }

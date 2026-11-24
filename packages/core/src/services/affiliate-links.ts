@@ -7,6 +7,7 @@ import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliateClicks, affiliateLinks, affiliatePrograms, communities, communityMembers, courses, products, workspaceMembers, type ProductKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { permissionsForRole, requireUser, type CommunityRole } from '../permissions';
+import { activePartnerOf, effectiveDurationMonths } from './partner-terms';
 
 type Program = typeof affiliatePrograms.$inferSelect;
 
@@ -49,9 +50,10 @@ export async function myPrograms(ctx: Ctx) {
     .orderBy(asc(communities.name));
   // Cùng thứ tự xét vai trò với resolveCommunityAccess: chủ không gian, rồi quản trị không gian, rồi vai trò trong hội.
   const roleOf = (r: (typeof rows)[number]): CommunityRole => (r.workspaceRole === 'owner' || isSuperAdmin ? 'owner' : r.workspaceRole ? 'admin' : r.memberRole);
+  const partner = platformAccount ? await activePartnerOf(ctx, platformAccount.id) : null;
   const community = rows.map((r) => ({ id: r.p.id, name: r.c.name, scope: 'community' as const, community: r.c, rateBps: r.accountRateBps ?? r.p.commissionRateBps, durationMonths: r.p.commissionDurationMonths, enabled: r.p.status === 'active', canManage: permissionsForRole(roleOf(r)).includes('affiliates.manage'), hasAccount: Boolean(r.accountId) }));
   return [
-    { id: platform.id, name: 'Nền tảng Hội Mình', scope: 'platform' as const, community: null, rateBps: platformAccount?.commissionRateBps ?? platform.commissionRateBps, durationMonths: platform.commissionDurationMonths, enabled: platform.status === 'active', canManage: isSuperAdmin, hasAccount: Boolean(platformAccount) },
+    { id: platform.id, name: 'Nền tảng Hội Mình', scope: 'platform' as const, community: null, rateBps: platformAccount?.commissionRateBps ?? platform.commissionRateBps, durationMonths: effectiveDurationMonths(platform.commissionDurationMonths, partner), enabled: platform.status === 'active', canManage: isSuperAdmin, hasAccount: Boolean(platformAccount), isPartner: Boolean(partner) },
     ...community.filter((p) => p.enabled),
     ...community.filter((p) => !p.enabled),
   ];
