@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 1.56.0 - 2026-11-24
+
+Thêm quản lý đối tác chính thức cho affiliate nền tảng: mỗi đối tác có % hoa hồng riêng và thời hạn nhận hoa hồng riêng (chủ dự án yêu cầu). Có migration: thêm bảng `platform_partners`.
+
+### Thêm
+
+- **Hệ thống · Đối tác (`/he-thong/doi-tac`).** Quản trị thêm đối tác bằng email tài khoản Hội Mình, đặt hoa hồng riêng (0-90%, để trống là theo mức chung) và thời hạn nhận hoa hồng riêng (theo mức chung, 6, 12, 24, 36 tháng đầu hoặc trọn đời), kèm ghi chú thỏa thuận. Mỗi đối tác có số liệu: lượt bấm link, chủ hội đăng ký, chủ hội đã trả tiền, doanh thu mang về, hoa hồng. Sửa điều khoản hay kết thúc hợp tác ngay trên thẻ đối tác; đối tác đã kết thúc nằm ở nhóm riêng và mở lại được bằng cách thêm lại. Có trong menu Tiền và ô lệnh.
+- **Đối tác thấy điều khoản riêng.** Ở Affiliate của tôi, chương trình nền tảng của đối tác có khung "Đối tác chính thức của Hội Mình" ghi % và thời hạn riêng.
+
+### Thay đổi
+
+- **Thời hạn nhận hoa hồng của affiliate nền tảng theo từng đối tác.** Khi chủ hội trả tiền gói, hoa hồng của đối tác tính theo thời hạn riêng của họ (kể cả trọn đời); người không phải đối tác vẫn theo mức chung. Điều khoản mới chỉ áp dụng cho những lần trả tiền sau đó, hoa hồng đã ghi không đổi.
+- **Trang Affiliate nền tảng.** Khung "Đối tác lớn" thành "Giới thiệu nhiều nhất", chỉ để xem, kèm lối sang trang Đối tác. % riêng chỉ còn chỉnh ở một chỗ là trang Đối tác.
+
 ## 1.55.0 - 2026-11-24
 
 Thêm trang Gói bổ sung cho chủ hội (tên miền riêng, email marketing, cả hai sắp ra mắt), bỏ tên miền riêng khỏi mọi gói, và thêm lời mời "Tạo hội của bạn, miễn phí" cho thành viên chưa làm chủ hội nào (chủ dự án yêu cầu). Không có migration.
