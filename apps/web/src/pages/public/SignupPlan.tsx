@@ -1,17 +1,17 @@
 // Bảng giá công khai (/tao-hoi/goi): các gói từ /v1/plans, tab kỳ hạn chỉ gồm kỳ đang bán (giá lớn hơn 0). Mỗi gói dùng cho một hội.
 // Không có dùng thử: ai cũng bắt đầu bằng hội miễn phí (dùng vĩnh viễn), muốn nâng gói thì nâng trong trang quản lý hội.
-// Các thẻ cao bằng nhau và cùng một danh sách tính năng (planFeatureRows): dòng nào mở có dấu tích, dòng nào khóa có ổ khóa,
-// nên các dòng thẳng hàng giữa các thẻ. Cuối thẻ ghi gói mở khóa các dòng còn khóa.
+// Các thẻ cao bằng nhau và cùng một danh sách tính năng (planFeatureRows): dòng nào mở có dấu tích, dòng nào khóa có ổ khóa;
+// trong mỗi thẻ dòng có dấu tích lên đầu. Dòng thành viên là một ô nổi, gói không giới hạn nổi bật hơn. Cuối thẻ ghi gói mở khóa.
 import { useQuery } from '@tanstack/react-query';
 import { pickCycle, soldCycles, type PlanCycle, type PlanDef } from '@hoiminh/contracts';
 import { T } from '@hoiminh/ui';
-import { Check, Lock, LockOpen, Users } from 'lucide-react';
+import { Check, Infinity as InfinityIcon, Lock, LockOpen, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { cycleLabel, cycleSaving, planFeatureRows, tierCards, type HoiPlan } from '@/lib/platform-plan';
+import { capHeadline, cycleLabel, cycleSaving, openRowsFirst, planFeatureRows, tierCards, type HoiPlan } from '@/lib/platform-plan';
 import { SignupPage, withRef } from './SignupParts';
 
 /** Người xem bảng giá chưa có hội nào: coi như đang ở gói Miễn phí để dựng bốn thẻ. */
@@ -52,7 +52,8 @@ export default function Page() {
             <div className="grid gap-x-4 gap-y-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 w-full pt-3" style={{ maxWidth: 1180 }}>
               {tierCards(list, VISITOR, 0, cycle, new Date()).map((t) => {
                 const def = list.find((p) => p.key === t.key);
-                const rows = def ? planFeatureRows(list, def) : [];
+                // Dòng có dấu tích lên đầu (chủ dự án chốt 23/11/2026). Số dòng thẻ nào cũng như nhau nên thẻ vẫn cao bằng nhau.
+                const rows = def ? openRowsFirst(planFeatureRows(list, def)) : [];
                 const lockedFrom = [...new Set(rows.filter((r) => !r.on && r.from).map((r) => r.from!))];
                 return (
                   <div key={t.key} className="relative rounded-[18px] flex flex-col gap-4 p-5" style={{ ...CARD, ...(t.popular ? { borderColor: T.gold } : {}) }}>
@@ -67,7 +68,16 @@ export default function Page() {
                       {/* Chừa đủ hai dòng cho câu giá, để dòng thành viên và danh sách tính năng bắt đầu ngang nhau ở mọi thẻ. */}
                       <span className="text-[14px]" style={{ color: T.sideText, lineHeight: '22px', minHeight: 44 }}>{t.sub}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[15px] font-semibold"><Users size={18} className="flex-shrink-0" style={{ color: T.gold }} />{t.cap}</div>
+                    {/* Dòng thành viên là một ô cao như nhau ở mọi thẻ (danh sách bên dưới bắt đầu ngang nhau). Gói không giới hạn
+                        thì ô nền vàng, biểu tượng vô cực, để điểm mạnh nhất của gói nổi lên ngay. */}
+                    {def?.memberCap === null ? (
+                      <div className="flex items-center gap-2.5 rounded-[12px] px-3" style={{ minHeight: 56, background: T.gold, color: T.invertBg }}>
+                        <InfinityIcon size={26} className="flex-shrink-0" strokeWidth={2.5} aria-hidden="true" />
+                        <span className="flex flex-col leading-tight"><span className="text-[18px] font-extrabold">Không giới hạn</span><span className="text-[13px] font-semibold">thành viên</span></span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-[12px] px-3 text-[14px] font-semibold whitespace-nowrap" style={{ minHeight: 56, background: 'rgba(255,253,249,0.06)' }}><Users size={18} className="flex-shrink-0" style={{ color: T.gold }} aria-hidden="true" />{def ? capHeadline(def.memberCap) : t.cap}</div>
+                    )}
                     <ul className="m-0 p-0 list-none flex flex-col gap-2.5">
                       {rows.map((f) => (
                         <li key={f.text} className="flex items-start gap-2.5 text-[15px] leading-[1.45]" style={{ color: f.on ? T.invertInk : T.sideMuted }} title={f.on ? undefined : f.from ? `Có từ gói ${f.from}` : undefined}>

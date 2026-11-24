@@ -1,6 +1,6 @@
 import { PLAN_DEFAULTS, type PlanDef } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { capView, compareRows, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
+import { capHeadline, capView, compareRows, openRowsFirst, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
 
 const now = new Date('2026-11-11T03:00:00Z');
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString();
@@ -46,7 +46,7 @@ describe('tierCards', () => {
     const cards = tierCards(plans, free, 87, 'yearly', now);
     expect(cards.map((c) => [c.key, c.state])).toEqual([['free', 'current'], ['starter', 'buy'], ['pro', 'buy'], ['unlimited', 'buy']]);
     expect(cards[1]).toMatchObject({ price: '82.500đ', per: 'mỗi tháng', cta: 'Chọn gói Khởi đầu' });
-    expect(cards[1]!.sub).toBe('Trả 990.000đ cho 1 năm, tặng 2 tháng.');
+    expect(cards[1]!.sub).toBe('Trả 990.000đ cho 1 năm, tiết kiệm 17%.');
     expect(cards[2]).toMatchObject({ popular: true, cap: 'Tối đa 5.000 thành viên' });
     expect(tierCards(plans, free, 87, 'quarterly', now)[1]).toMatchObject({ price: '99.000đ', sub: 'Trả 297.000đ cho 3 tháng.' });
   });
@@ -100,6 +100,22 @@ describe('upgradeSummary', () => {
   });
 });
 
+describe('capHeadline', () => {
+  it('gói có trần ghi "Giới hạn", gói không trần ghi "Không giới hạn"', () => {
+    expect(capHeadline(5_000)).toBe('Giới hạn 5.000 thành viên');
+    expect(capHeadline(100)).toBe('Giới hạn 100 thành viên');
+    expect(capHeadline(null)).toBe('Không giới hạn thành viên');
+  });
+});
+
+describe('openRowsFirst', () => {
+  it('dòng có dấu tích lên đầu, dòng khóa xuống cuối, giữ thứ tự trong từng nhóm', () => {
+    const rows = [{ text: 'A', on: true }, { text: 'B', on: false }, { text: 'C', on: true }, { text: 'D', on: false }, { text: 'E', on: true }];
+    expect(openRowsFirst(rows).map((r) => r.text)).toEqual(['A', 'C', 'E', 'B', 'D']);
+    expect(rows.map((r) => r.text)).toEqual(['A', 'B', 'C', 'D', 'E']);
+  });
+});
+
 describe('planFeatureRows', () => {
   it('mọi gói cùng các dòng, cùng thứ tự; chỉ khác mở hay khóa', () => {
     const rows = plans.map((p) => planFeatureRows(plans, p));
@@ -139,13 +155,13 @@ describe('compareRows', () => {
 
 describe('lời mời theo kỳ', () => {
   it('mọi gói lợi như nhau thì ghi đúng mức đó, khác nhau thì ghi mức cao nhất, kỳ ngắn nhất thì không ghi', () => {
-    expect(cycleSaving(plans, 'yearly')).toBe('tặng 2 tháng');
+    expect(cycleSaving(plans, 'yearly')).toBe('tiết kiệm 17%');
     expect(cycleSaving(plans, 'quarterly')).toBe('');
     expect(cycleSaving(plans, 'monthly')).toBe('');
-    // Khởi đầu so với 1 tháng 119.000đ: rẻ hơn 31%; hai gói kia so với 3 tháng và 1 năm: tặng 2 tháng (17%).
+    // Khởi đầu so với 1 tháng 119.000đ: rẻ hơn 31%; hai gói kia so với 3 tháng: rẻ hơn 17%.
     expect(cycleSaving(custom, 'yearly')).toBe('tiết kiệm tới 31%');
-    expect(cycleHint(plans, 'quarterly')).toBe('Trả 3 tháng một lần. Chọn 1 năm: tặng 2 tháng.');
-    expect(cycleHint(plans, 'yearly')).toBe('Trả 1 năm một lần, tặng 2 tháng.');
+    expect(cycleHint(plans, 'quarterly')).toBe('Trả 3 tháng một lần. Chọn 1 năm: tiết kiệm 17%.');
+    expect(cycleHint(plans, 'yearly')).toBe('Trả 1 năm một lần, tiết kiệm 17%.');
   });
 
   it('giá ghi gọn trong một câu: nhiều kỳ thì ghi "từ", gói không bán kỳ nào thì rỗng', () => {

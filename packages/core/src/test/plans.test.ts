@@ -94,9 +94,9 @@ describe('cách tính một lần mua gói (hàm thuần)', () => {
     expect(pickCycle([], 'yearly')).toBeNull();
   });
 
-  it('mức lợi của kỳ dài tính so với kỳ ngắn nhất đang bán: số tháng tròn thì ghi tặng tháng, không thì ghi phần trăm', () => {
-    // 3 tháng 897.000đ là 299.000đ mỗi tháng; 1 năm 2.990.000đ bằng tiền của 10 tháng.
-    expect(planSaving(pro, 'yearly')).toEqual({ kind: 'months', months: 2 });
+  it('mức lợi của kỳ dài tính so với kỳ ngắn nhất đang bán, luôn ghi bằng phần trăm', () => {
+    // 3 tháng 897.000đ là 299.000đ mỗi tháng; 1 năm 2.990.000đ bằng tiền của 10 tháng: rẻ hơn 17%, không ghi "tặng 2 tháng".
+    expect(planSaving(pro, 'yearly')).toEqual({ kind: 'percent', percent: 17 });
     expect(planSaving(pro, 'quarterly')).toBeNull();
     expect(planSaving(pro, 'monthly')).toBeNull();
     // Có bán 1 tháng 329.000đ: 3 tháng rẻ hơn 9%, 6 tháng rẻ hơn 14%.

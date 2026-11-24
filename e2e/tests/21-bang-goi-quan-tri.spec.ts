@@ -47,7 +47,7 @@ test('quản trị sửa giá từng kỳ và trần của một gói, bảng gi
   await expect(page.getByRole('tab')).toHaveText(['3 tháng', '6 tháng', '1 năm']);
   await page.getByRole('tab', { name: '3 tháng' }).click();
   await expect(page.getByText('Trả 349.000đ cho 3 tháng.')).toBeVisible();
-  await expect(page.getByText('Tối đa 800 thành viên')).toBeVisible();
+  await expect(page.getByText('Giới hạn 800 thành viên')).toBeVisible();
   // Kỳ 6 tháng chỉ Khởi đầu bán: hai gói còn lại (giá 6 tháng là 0) không hiện ở kỳ này.
   await page.getByRole('tab', { name: '6 tháng' }).click();
   await expect(page.getByText('Trả 649.000đ cho 6 tháng, tiết kiệm 7%.')).toBeVisible();

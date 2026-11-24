@@ -17,7 +17,7 @@ test('hội Miễn phí mua gói, rồi nâng gói được tặng ngày còn l�
   await expect(page.getByText('Dùng vĩnh viễn', { exact: true })).toBeVisible();
   // Chưa trả lần nào thì mặc định tab 1 năm: giá quy ra mỗi tháng rẻ hơn giá niêm yết.
   await expect(page.getByRole('tab', { name: '1 năm' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByText('Trả 990.000đ cho 1 năm, tặng 2 tháng.')).toBeVisible();
+  await expect(page.getByText('Trả 990.000đ cho 1 năm, tiết kiệm 17%.')).toBeVisible();
   await page.getByRole('tab', { name: '3 tháng' }).click();
   await expect(page.getByText('Trả 297.000đ cho 3 tháng.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gói đang dùng' })).toBeDisabled();
