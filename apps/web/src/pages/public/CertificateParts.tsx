@@ -16,7 +16,9 @@ export interface CertificateDto {
   learner: { id: string; name: string; handle: string };
   course: { id: string; title: string; lessonCount: number; totalDurationSeconds: number };
   owner: string | null;
-  community: { name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null } | null;
+  community: { id?: string; name: string; slug: string; logoMark: string; logoColor: string; logoUrl?: string | null } | null;
+  /** Trang bán lẻ của khóa; null khi khóa không bán lẻ. */
+  sale?: { priceMinor: number; path: string } | null;
   completedAt: string;
   verifyUrl: string;
 }
@@ -160,7 +162,8 @@ export function VerifiedBanner({ c }: { c: CertificateDto }) {
 type Notice = { tone: 'ok' | 'error'; text: string } | null;
 
 /** Các nút dưới tấm chứng chỉ. Nút nào cũng chạy thật: tải PNG, chia sẻ (kèm ảnh nếu máy cho phép), in, về khóa học. */
-export function CertificateActions({ c, art, celebrate }: { c: CertificateDto; art: CertificateArt; celebrate: boolean }) {
+/** `url`: link chứng nhận để chia sẻ, chép (người học giới thiệu được thì kèm mã của họ); mặc định là link kiểm tra gốc. */
+export function CertificateActions({ c, art, celebrate, url = c.verifyUrl }: { c: CertificateDto; art: CertificateArt; celebrate: boolean; url?: string }) {
   const [busy, setBusy] = useState<'download' | 'share' | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
@@ -180,7 +183,7 @@ export function CertificateActions({ c, art, celebrate }: { c: CertificateDto; a
   };
 
   const copyLink = async () => {
-    const ok = await copyText(c.verifyUrl);
+    const ok = await copyText(url);
     say(ok ? { tone: 'ok', text: 'Đã sao chép link chứng nhận.' } : { tone: 'error', text: 'Không sao chép được. Bạn bôi đen link ở ô bên dưới để chép.' });
   };
 
@@ -192,8 +195,8 @@ export function CertificateActions({ c, art, celebrate }: { c: CertificateDto; a
     try {
       // Ảnh đã dựng sẵn nên gọi share ngay trong lượt bấm; trình duyệt chặn share nếu chờ quá lâu sau cú bấm.
       const file = await Promise.race([art.png().catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
-      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title, text: `${text} ${c.verifyUrl}` });
-      else await navigator.share({ title, text, url: c.verifyUrl });
+      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title, text: `${text} ${url}` });
+      else await navigator.share({ title, text, url });
     } catch (e) {
       // Người dùng tự đóng bảng chia sẻ thì thôi; lỗi khác thì chép link thay thế.
       if (!(e instanceof DOMException && e.name === 'AbortError')) await copyLink();
@@ -221,11 +224,11 @@ export function CertificateActions({ c, art, celebrate }: { c: CertificateDto; a
 }
 
 /** Ô link kiểm tra có nút sao chép, thay cho dòng link dài chạy tràn trang. */
-export function VerifyBox({ c }: { c: CertificateDto }) {
+export function VerifyBox({ c, url = c.verifyUrl }: { c: CertificateDto; url?: string }) {
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
   const copy = async () => {
-    const ok = await copyText(c.verifyUrl);
+    const ok = await copyText(url);
     setCopied(ok);
     setFailed(!ok);
     if (ok) window.setTimeout(() => setCopied(false), 2000);
@@ -239,7 +242,7 @@ export function VerifyBox({ c }: { c: CertificateDto }) {
       </div>
       <div className="flex flex-col sm:flex-row items-stretch gap-2">
         <div className="flex-grow min-w-0 flex items-center px-3.5 rounded-[10px] text-[15px]" style={{ minHeight: 46, background: T.bg, border: `1px solid ${T.line2}`, color: T.ink }}>
-          <span className={failed ? 'break-all py-2 select-all' : 'truncate'} title={c.verifyUrl} data-testid="cert-link">{shortUrl(c.verifyUrl)}</span>
+          <span className={failed ? 'break-all py-2 select-all' : 'truncate'} title={url} data-testid="cert-link">{shortUrl(url)}</span>
         </div>
         <button type="button" className="btn btn-ghost flex-shrink-0" style={{ height: 46 }} onClick={() => void copy()} aria-label="Sao chép link kiểm tra">{copied ? <Check size={18} /> : <Copy size={18} />}{copied ? 'Đã chép' : 'Sao chép'}</button>
       </div>

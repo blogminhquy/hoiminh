@@ -27,15 +27,15 @@ export interface HoiPlan {
 
 export const cycleLabel = (c: PlanCycle) => PLAN_CYCLE[c].label;
 
-/** Một kỳ của một gói rẻ hơn bao nhiêu so với kỳ ngắn nhất gói đang bán: "tặng 2 tháng", "tiết kiệm 17%", hoặc rỗng. */
+/** Một kỳ của một gói rẻ hơn bao nhiêu so với kỳ ngắn nhất gói đang bán: "tiết kiệm 17%", hoặc rỗng. Luôn ghi phần trăm. */
 export function savingText(plan: Pick<PlanDef, 'prices'>, cycle: PlanCycle): string {
   const s = planSaving(plan, cycle);
-  return !s ? '' : s.kind === 'months' ? `tặng ${s.months} tháng` : `tiết kiệm ${s.percent}%`;
+  return s ? `tiết kiệm ${s.percent}%` : '';
 }
 
 /**
  * Lời mời ghi cạnh tab của một kỳ, tính trên các gói trả phí đang bán kỳ đó: mọi gói lợi như nhau thì ghi đúng mức đó
- * ("tặng 2 tháng"), khác nhau thì ghi mức cao nhất ("tiết kiệm tới 20%"), không gói nào lợi thì rỗng.
+ * ("tiết kiệm 17%"), khác nhau thì ghi mức cao nhất ("tiết kiệm tới 20%"), không gói nào lợi thì rỗng.
  */
 export function cycleSaving(plans: PlanDef[], cycle: PlanCycle): string {
   const selling = plans.filter((p) => p.key !== 'free' && planSells(p, cycle));
@@ -103,6 +103,9 @@ export function featureInline(f: PlanFeature): string {
   const label = PLAN_FEATURE_LABEL[f];
   return label === label.toLocaleUpperCase('vi') ? label : label.charAt(0).toLocaleLowerCase('vi') + label.slice(1);
 }
+
+/** Dòng thành viên trên thẻ bảng giá trang tạo hội: "Giới hạn 5.000 thành viên" đi cặp với "Không giới hạn thành viên". */
+export const capHeadline = (cap: number | null) => (cap === null ? 'Không giới hạn thành viên' : `Giới hạn ${num(cap)} thành viên`);
 
 export const capLabel = (cap: number | null) => (cap === null ? 'Không giới hạn thành viên' : `Tối đa ${num(cap)} thành viên`);
 
@@ -204,6 +207,11 @@ export function planFeatureRows(plans: PlanDef[], p: PlanDef): PlanFeatureRow[] 
     rows.push({ text: PLAN_FEATURE_LABEL[f], on, from: on ? null : lowestPlanWith(plans, f)?.name ?? null });
   }
   return rows;
+}
+
+/** Thẻ bảng giá: dòng đã mở (dấu tích) lên đầu, dòng khóa xuống cuối; trong mỗi nhóm giữ thứ tự gốc. */
+export function openRowsFirst<R extends { on: boolean }>(rows: readonly R[]): R[] {
+  return [...rows.filter((r) => r.on), ...rows.filter((r) => !r.on)];
 }
 
 export interface CompareRow { label: string; cells: Array<{ text: string; tone: 'on' | 'off' | 'plain' }> }
