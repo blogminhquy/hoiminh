@@ -1,6 +1,6 @@
 import { PLAN_DEFAULTS, type PlanDef } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { capHeadline, capView, compareRows, openRowsFirst, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
+import { capLabel, capView, compareRows, openRowsFirst, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
 
 const now = new Date('2026-11-11T03:00:00Z');
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString();
@@ -47,7 +47,7 @@ describe('tierCards', () => {
     expect(cards.map((c) => [c.key, c.state])).toEqual([['free', 'current'], ['starter', 'buy'], ['pro', 'buy'], ['unlimited', 'buy']]);
     expect(cards[1]).toMatchObject({ price: '82.500đ', per: 'mỗi tháng', cta: 'Chọn gói Khởi đầu' });
     expect(cards[1]!.sub).toBe('Trả 990.000đ cho 1 năm, tiết kiệm 17%.');
-    expect(cards[2]).toMatchObject({ popular: true, cap: 'Tối đa 5.000 thành viên' });
+    expect(cards[2]).toMatchObject({ popular: true, cap: 'Giới hạn 5.000 thành viên' });
     expect(tierCards(plans, free, 87, 'quarterly', now)[1]).toMatchObject({ price: '99.000đ', sub: 'Trả 297.000đ cho 3 tháng.' });
   });
 
@@ -82,7 +82,7 @@ describe('tierCards', () => {
     expect(cards[3]!.cta).toBe('Nâng lên Không giới hạn');
     // Hết hạn rồi mà hội vẫn đông hơn trần của gói thấp thì vẫn chưa mua được gói đó.
     const expired = tierCards(plans, { ...free, boughtKey: 'pro', boughtEndsAt: inDays(-1), full: true }, 1_240, 'quarterly', now);
-    expect(expired[1]).toMatchObject({ state: 'blocked', reason: 'Tối đa 500 thành viên, hội đang có 1.240.' });
+    expect(expired[1]).toMatchObject({ state: 'blocked', reason: 'Giới hạn 500 thành viên, hội đang có 1.240.' });
   });
 });
 
@@ -100,11 +100,11 @@ describe('upgradeSummary', () => {
   });
 });
 
-describe('capHeadline', () => {
-  it('gói có trần ghi "Giới hạn", gói không trần ghi "Không giới hạn"', () => {
-    expect(capHeadline(5_000)).toBe('Giới hạn 5.000 thành viên');
-    expect(capHeadline(100)).toBe('Giới hạn 100 thành viên');
-    expect(capHeadline(null)).toBe('Không giới hạn thành viên');
+describe('capLabel', () => {
+  it('gói có trần ghi "Giới hạn", gói không trần ghi "Không giới hạn", giống nhau ở mọi màn', () => {
+    expect(capLabel(5_000)).toBe('Giới hạn 5.000 thành viên');
+    expect(capLabel(100)).toBe('Giới hạn 100 thành viên');
+    expect(capLabel(null)).toBe('Không giới hạn thành viên');
   });
 });
 

@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { capHeadline, cycleLabel, cycleSaving, openRowsFirst, planFeatureRows, tierCards, type HoiPlan } from '@/lib/platform-plan';
+import { capLabel, cycleLabel, cycleSaving, openRowsFirst, planFeatureRows, tierCards, type HoiPlan } from '@/lib/platform-plan';
 import { SignupPage, withRef } from './SignupParts';
 
 /** Người xem bảng giá chưa có hội nào: coi như đang ở gói Miễn phí để dựng bốn thẻ. */
@@ -76,7 +76,7 @@ export default function Page() {
                         <span className="flex flex-col leading-tight"><span className="text-[18px] font-extrabold">Không giới hạn</span><span className="text-[13px] font-semibold">thành viên</span></span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 rounded-[12px] px-3 text-[14px] font-semibold whitespace-nowrap" style={{ minHeight: 56, background: 'rgba(255,253,249,0.06)' }}><Users size={18} className="flex-shrink-0" style={{ color: T.gold }} aria-hidden="true" />{def ? capHeadline(def.memberCap) : t.cap}</div>
+                      <div className="flex items-center gap-2 rounded-[12px] px-3 text-[14px] font-semibold whitespace-nowrap" style={{ minHeight: 56, background: 'rgba(255,253,249,0.06)' }}><Users size={18} className="flex-shrink-0" style={{ color: T.gold }} aria-hidden="true" />{def ? capLabel(def.memberCap) : t.cap}</div>
                     )}
                     <ul className="m-0 p-0 list-none flex flex-col gap-2.5">
                       {rows.map((f) => (

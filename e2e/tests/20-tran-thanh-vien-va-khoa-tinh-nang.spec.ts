@@ -34,7 +34,7 @@ test('hội chạm trần: người mới vào hàng chờ, bấm Duyệt thì m
   await page.locator('.modal').getByRole('button', { name: 'Duyệt', exact: true }).click();
   const card = page.getByRole('region', { name: /Nâng gói để duyệt/ });
   await expect(card).toBeVisible();
-  await expect(card.getByText(/Gói Miễn phí tối đa 12 thành viên và hội đã đủ/)).toBeVisible();
+  await expect(card.getByText(/Gói Miễn phí giới hạn 12 thành viên và hội đã đủ/)).toBeVisible();
   await expect(card.getByRole('link', { name: 'Nâng lên Khởi đầu' })).toHaveAttribute('href', /\/admin\/goi\?hoi=shopee-0d&goi=starter/);
   // Bàn điều khiển cũng nhắc việc này.
   await page.goto('/shopee-0d/hom-nay');
