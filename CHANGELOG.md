@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.53.1 - 2026-11-24
+
+Bảng gói: mức lợi của kỳ dài luôn ghi bằng phần trăm, thẻ bảng giá ghi "Giới hạn N thành viên", làm nổi gói không giới hạn và đưa dòng có dấu tích lên đầu (chủ dự án yêu cầu). Không có migration.
+
+### Thay đổi
+
+- **Mức lợi của kỳ dài luôn ghi bằng phần trăm.** Trước đây giá tròn tháng thì ghi "tặng 2 tháng", lẻ thì ghi phần trăm, nên mỗi chỗ một kiểu. Nay mọi nơi (bảng giá trang tạo hội, nhãn cạnh tab kỳ hạn, bước chọn gói, màn nâng gói) đều ghi "tiết kiệm 17%" hoặc "tiết kiệm tới 33%". Số ngày còn lại của gói cũ khi nâng gói vẫn được cộng như cũ.
+- **Bảng giá trang tạo hội.** Dòng thành viên thành một ô: gói có trần ghi "Giới hạn 5.000 thành viên", gói Không giới hạn là ô vàng có biểu tượng vô cực và chữ "Không giới hạn" to. Trong mỗi thẻ, các dòng có dấu tích đứng trước, dòng có ổ khóa xuống cuối. Các thẻ vẫn cao bằng nhau.
+
 ## 1.53.0 - 2026-11-24
 
 Màn tạo hội: tài khoản quản trị hệ thống tạo hội miễn phí không giới hạn, bước "Gói" hiện cả gói Miễn phí (xám) và ưu tiên gói Chuyên nghiệp; tên miền riêng chỉ còn ở gói Không giới hạn (chủ dự án yêu cầu). Không có migration.
