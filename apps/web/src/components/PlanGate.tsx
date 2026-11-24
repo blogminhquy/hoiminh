@@ -106,7 +106,7 @@ export function MemberCapCard({ details, who, onClose }: { details: MemberCapDet
       action={isOwner ? <Link to={planUrl(shell.community.slug, details.nextPlanKey)} className="btn btn-primary">{details.nextPlanName ? `Nâng lên ${details.nextPlanName}` : 'Xem các gói'}</Link> : <span className="text-[14px]" style={{ color: T.ink3 }}>Chỉ chủ hội nâng gói được.</span>}
       secondary={onClose ? <button type="button" className="btn btn-ghost" onClick={onClose}>Để sau</button> : undefined}
     >
-      <span>Gói {details.planName ?? 'đang dùng'} tối đa {cap} thành viên và hội đã đủ. Nâng gói xong, bạn quay lại duyệt {who ?? 'người này'} và những người đang chờ. Không ai bị xóa.</span>
+      <span>Gói {details.planName ?? 'đang dùng'} giới hạn {cap} thành viên và hội đã đủ. Nâng gói xong, bạn quay lại duyệt {who ?? 'người này'} và những người đang chờ. Không ai bị xóa.</span>
       {higher.map((p) => (
         <div key={p.key} className="flex flex-col rounded-[12px] px-4 py-2.5" style={{ background: T.bg }}>
           <span className="font-bold" style={{ color: T.ink }}>{p.name}</span>

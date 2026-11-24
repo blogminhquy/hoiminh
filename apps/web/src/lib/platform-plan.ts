@@ -104,10 +104,8 @@ export function featureInline(f: PlanFeature): string {
   return label === label.toLocaleUpperCase('vi') ? label : label.charAt(0).toLocaleLowerCase('vi') + label.slice(1);
 }
 
-/** Dòng thành viên trên thẻ bảng giá trang tạo hội: "Giới hạn 5.000 thành viên" đi cặp với "Không giới hạn thành viên". */
-export const capHeadline = (cap: number | null) => (cap === null ? 'Không giới hạn thành viên' : `Giới hạn ${num(cap)} thành viên`);
-
-export const capLabel = (cap: number | null) => (cap === null ? 'Không giới hạn thành viên' : `Tối đa ${num(cap)} thành viên`);
+/** Trần thành viên của một gói, ghi giống nhau ở mọi màn: "Giới hạn 5.000 thành viên" đi cặp với "Không giới hạn thành viên". */
+export const capLabel = (cap: number | null) => (cap === null ? 'Không giới hạn thành viên' : `Giới hạn ${num(cap)} thành viên`);
 
 export interface TierFeature { text: string; on: boolean }
 export interface TierCard {
@@ -168,7 +166,7 @@ export function tierCards(plans: PlanDef[], current: HoiPlan, members: number, c
     } else if (q.blocked === 'cap') {
       state = 'blocked';
       cta = 'Chưa mua được';
-      reason = `Tối đa ${num(p.memberCap ?? 0)} thành viên, hội đang có ${num(members)}.`;
+      reason = `Giới hạn ${num(p.memberCap ?? 0)} thành viên, hội đang có ${num(members)}.`;
     } else if (q.blocked === 'lower') {
       state = 'blocked';
       cta = 'Chưa mua được';
@@ -220,7 +218,7 @@ export interface CompareRow { label: string; cells: Array<{ text: string; tone: 
 export function compareRows(plans: PlanDef[]): CompareRow[] {
   const plain = (text: string) => ({ text, tone: 'plain' as const });
   const rows: CompareRow[] = [
-    { label: 'Thành viên tối đa', cells: plans.map((p) => plain(p.memberCap === null ? 'Không giới hạn' : num(p.memberCap))) },
+    { label: 'Giới hạn thành viên', cells: plans.map((p) => plain(p.memberCap === null ? 'Không giới hạn' : num(p.memberCap))) },
     ...soldCycles(plans).map((c) => ({ label: `Trả ${cycleLabel(c)}`, cells: plans.map((p) => (p.key === 'free' ? plain(money(0)) : planSells(p, c) ? plain(money(planPrice(p, c))) : { text: 'Không bán', tone: 'off' as const })) })),
     { label: 'Bán hàng và thu tiền', cells: plans.map(() => ({ text: 'Có', tone: 'on' as const })) },
     { label: 'Phí trên doanh thu', cells: plans.map(() => plain('0%')) },
