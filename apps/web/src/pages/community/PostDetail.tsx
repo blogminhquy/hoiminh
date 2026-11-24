@@ -13,7 +13,7 @@ import { QueryState } from '@/components/QueryState';
 import { UserAvatar, UserName, type UserLite } from '@/components/UserLink';
 import { api } from '@/lib/api';
 import { useShell } from '@/lib/community';
-import { fmtTime, timeAgo } from '@/lib/format';
+import { fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
 import { Markdown } from '@/lib/markdown';
 import { AuthorCard, EditPostModal, Related, Toc, type PostAuthor } from './PostDetailParts';
 
@@ -56,7 +56,7 @@ export function PostBody({ post, slug, bare, onDeleted, onCommentsClick }: { pos
             <span className="tag" style={{ background: cat.bg, color: cat.fg }}>{post.space.name}</span>
             {post.pinned && <span className="inline-flex items-center gap-1 font-semibold text-[12px]" style={{ color: T.goldText }}><Pin size={12} /> Đã ghim</span>}
           </div>
-          <div className="muted text-[13px]">{when}{when !== 'vừa xong' && !when.includes('phút') && !when.includes('giờ') ? `, ${fmtTime(post.createdAt)}` : ''}{bare ? '' : ` · ${post.community.name}`}{post.editedAt ? ' · đã chỉnh sửa' : ''}</div>
+          <div className="muted text-[13px]"><time dateTime={post.createdAt} title={`${fmtLongDate(post.createdAt)}, lúc ${fmtTime(post.createdAt)}`}>{when}</time>{when !== 'vừa xong' && !when.includes('phút') && !when.includes('giờ') ? `, ${fmtTime(post.createdAt)}` : ''}{bare ? '' : ` · ${post.community.name}`}{post.editedAt ? ' · đã chỉnh sửa' : ''}</div>
         </div>
         {post.access.canModerate && <Button size="sm" icon={<Pin size={14} />} loading={pin.isPending} onClick={() => pin.mutate()} aria-label={post.pinned ? 'Bỏ ghim' : 'Ghim'} style={post.pinned ? { color: T.goldText, background: T.goldSoft, borderColor: T.goldSoft } : undefined} />}
         {canEdit && (
