@@ -1,11 +1,11 @@
-// Cài đặt · Chung (generalMain): logo, ảnh bìa, tên, đường dẫn, mô tả ngắn, danh mục, hội kín hay hội mở, ảnh và video trang giới thiệu, quy tắc, câu hỏi khi tham gia, tên miền riêng, lưu trữ hội.
+// Cài đặt · Chung (generalMain): logo, ảnh bìa, tên, đường dẫn, mô tả ngắn, danh mục, hội kín hay hội mở, ảnh và video trang giới thiệu, quy tắc, câu hỏi khi tham gia, tên miền riêng (sắp ra mắt ở Gói bổ sung), lưu trữ hội.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { COMMUNITY_CATEGORY_LABELS, toSlug, type AboutMediaItem, type CommunityVisibility } from '@hoiminh/contracts';
 import { Button, CommunityMark, Field, Input, SaveBar, Select, T, Textarea } from '@hoiminh/ui';
 import { Check, Globe, Image as ImageIcon, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LockTag, hasPlanFeature } from '@/components/PlanGate';
+import { ADDONS_PATH } from '@/lib/addons';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { shellKey, useShell } from '@/lib/community';
@@ -14,12 +14,10 @@ import { JoinQuestionsCard } from './SettingsJoinQuestions';
 import { VisibilityPicker } from './SettingsVisibility';
 
 interface About { community: { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoUrl: string | null; logoMark: string; logoColor: string; coverUrl: string | null; coverColor: string; coverTagline: string; aboutMedia?: AboutMediaItem[]; customDomain: string | null; customDomainVerifiedAt: string | null; discoverable: boolean; visibility?: CommunityVisibility }; joinQuestions: Array<{ id: string; question: string; required: boolean; sortOrder: number }> }
-interface Form { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoFileId: string | null | undefined; logoUrl: string | null; coverFileId: string | null | undefined; coverUrl: string | null; customDomain: string; discoverable: boolean; visibility: CommunityVisibility }
+interface Form { name: string; slug: string; shortDescription: string; description: string; category: string; rules: string[]; logoFileId: string | null | undefined; logoUrl: string | null; coverFileId: string | null | undefined; coverUrl: string | null; discoverable: boolean; visibility: CommunityVisibility }
 
 export default function Page() {
   const shell = useShell();
-  // Tên miền riêng là tính năng trả phí: gói chưa có thì ô nhập bị khóa, tên miền đã gắn từ trước vẫn giữ.
-  const domainLocked = !hasPlanFeature(shell, 'custom_domain');
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -31,12 +29,13 @@ export default function Page() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  useEffect(() => { if (q.data && !f) { const c = q.data.community; setF({ name: c.name, slug: c.slug, shortDescription: c.shortDescription, description: c.description, category: c.category, rules: c.rules, logoFileId: undefined, logoUrl: c.logoUrl, coverFileId: undefined, coverUrl: c.coverUrl, customDomain: c.customDomain ?? '', discoverable: c.discoverable, visibility: c.visibility ?? 'private' }); } }, [q.data, f]);
+  useEffect(() => { if (q.data && !f) { const c = q.data.community; setF({ name: c.name, slug: c.slug, shortDescription: c.shortDescription, description: c.description, category: c.category, rules: c.rules, logoFileId: undefined, logoUrl: c.logoUrl, coverFileId: undefined, coverUrl: c.coverUrl, discoverable: c.discoverable, visibility: c.visibility ?? 'private' }); } }, [q.data, f]);
   const patch = (p: Partial<Form>) => setF((prev) => (prev ? { ...prev, ...p } : prev));
   const save = useMutation({
-    mutationFn: () => api.patch<{ slug: string }>(`/v1/communities/${shell.community.id}/general`, { name: f?.name.trim(), slug: f?.slug, shortDescription: f?.shortDescription.trim(), description: f?.description, category: f?.category, rules: f?.rules.filter((r) => r.trim()), customDomain: f?.customDomain.trim() || null, discoverable: f?.discoverable, visibility: f?.visibility, ...(f?.logoFileId !== undefined ? { logoFileId: f.logoFileId } : {}), ...(f?.coverFileId !== undefined ? { coverFileId: f.coverFileId } : {}) }),
+    mutationFn: () => api.patch<{ slug: string }>(`/v1/communities/${shell.community.id}/general`, { name: f?.name.trim(), slug: f?.slug, shortDescription: f?.shortDescription.trim(), description: f?.description, category: f?.category, rules: f?.rules.filter((r) => r.trim()), discoverable: f?.discoverable, visibility: f?.visibility, ...(f?.logoFileId !== undefined ? { logoFileId: f.logoFileId } : {}), ...(f?.coverFileId !== undefined ? { coverFileId: f.coverFileId } : {}) }),
     onSuccess: (c) => { setSaved(true); setTimeout(() => setSaved(false), 2000); patch({ logoFileId: undefined, coverFileId: undefined }); void qc.invalidateQueries({ queryKey: shellKey(shell.community.slug) }); void qc.invalidateQueries({ queryKey: ['about'] }); if (c.slug !== shell.community.slug) navigate(`/${c.slug}/cai-dat/chung`); },
   });
+  const domain = q.data?.community.customDomain ?? null;
   const archive = useMutation({ mutationFn: () => api.post(`/v1/communities/${shell.community.id}/archive`, {}), onSuccess: () => navigate('/admin') });
   const onLogo = async (file: File) => { setUploading(true); setUploadError(null); try { const r = await api.upload(file, 'avatar', { communityId: shell.community.id }); if (f?.logoFileId) void api.discardUpload(f.logoFileId); patch({ logoFileId: r.fileId, logoUrl: r.url }); } catch (e) { setUploadError(errorMessage(e)); } finally { setUploading(false); } };
   const onCover = async (file: File) => { setCoverUploading(true); setUploadError(null); try { const r = await api.upload(file, 'cover', { communityId: shell.community.id }); if (f?.coverFileId) void api.discardUpload(f.coverFileId); patch({ coverFileId: r.fileId, coverUrl: r.url }); } catch (e) { setUploadError(errorMessage(e)); } finally { setCoverUploading(false); } };
@@ -78,7 +77,16 @@ export default function Page() {
       <JoinQuestionsCard communityId={shell.community.id} slug={shell.community.slug} initial={q.data?.joinQuestions ?? []} />
       <div className="card flex flex-col gap-3.5" style={{ padding: '20px 24px' }}>
         <span className="font-semibold">Nâng cao</span>
-        <Field label="Tên miền riêng" hint={domainLocked ? 'Tên miền riêng có từ gói cao hơn. Nâng gói cho hội để gắn tên miền của bạn.' : 'Trỏ bản ghi CNAME về hoiminh.com, SSL cấp tự động'}><div className="flex gap-2 items-center flex-wrap"><Input value={f.customDomain} disabled={domainLocked} onChange={(e) => patch({ customDomain: e.target.value })} placeholder="hoc.tenmien.vn" style={{ width: 320, maxWidth: '100%' }} />{domainLocked && <><LockTag feature="custom_domain" />{shell.viewer.role === 'owner' && <Link to={`/admin/goi?hoi=${shell.community.slug}`} className="btn btn-ghost btn-sm">Xem các gói</Link>}</>}{q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : f.customDomain ? <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Chờ DNS</span> : null}</div></Field>
+        {/* Tên miền riêng đã rời khỏi các gói, thành gói bổ sung đang sắp ra mắt (chủ dự án chốt ngày 23/11/2026): chưa gắn
+            được tên miền mới. Hội đã gắn tên miền từ trước vẫn giữ và thấy tên miền đó ở đây. */}
+        <Field label="Tên miền riêng" hint="Tên miền riêng sắp ra mắt ở Gói bổ sung. Khi ra mắt, bạn mua và gắn tên miền của bạn ngay tại đó.">
+          <div className="flex gap-2 items-center flex-wrap" data-testid="custom-domain-soon">
+            {domain ? <span className="font-semibold text-[15px]" style={{ color: T.ink }}>{domain}</span> : null}
+            {domain && q.data?.community.customDomainVerifiedAt ? <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 26 }}><Check size={12} />DNS đã trỏ</span> : null}
+            <span className="tag" style={{ background: T.goldSoft, color: T.goldText, height: 26 }}>Sắp ra mắt</span>
+            {shell.viewer.role === 'owner' && <Link to={`${ADDONS_PATH}?hoi=${shell.community.slug}`} className="btn btn-ghost btn-sm">Xem Gói bổ sung</Link>}
+          </div>
+        </Field>
       </div>
       <div className="flex items-center gap-3 px-5 py-4 rounded-xl" style={{ border: `1px dashed ${T.line2}` }}><div className="flex-grow"><div className="font-semibold" style={{ color: T.accentText }}>Lưu trữ cộng đồng</div><div className="muted text-[12px]">Ẩn khỏi mọi người, giữ toàn bộ dữ liệu, có thể mở lại</div></div><Button size="sm" style={{ color: T.accentText }} loading={archive.isPending} onClick={() => { if (window.confirm('Lưu trữ hội này? Thành viên sẽ không vào được cho tới khi mở lại.')) archive.mutate(); }}>Lưu trữ</Button></div>
     </>

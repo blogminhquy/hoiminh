@@ -47,7 +47,7 @@ export function ownerCommands(scope: CommandScope): Command[] {
     settings && { id: 'set-general', group: 'Cài đặt hội', label: 'Đổi tên, logo, mô tả hội', to: `${b}/cai-dat/chung`, keywords: 'thong tin duong dan' },
     settings && { id: 'set-visibility', group: 'Cài đặt hội', label: 'Hội kín hay hội mở', to: `${b}/cai-dat/chung#che-do`, keywords: 'rieng tu cong khai public private ai xem duoc nguoi ngoai' },
     settings && { id: 'set-rules', group: 'Cài đặt hội', label: 'Quy tắc và câu hỏi khi tham gia', to: `${b}/cai-dat/chung`, keywords: 'noi quy' },
-    settings && { id: 'set-domain', group: 'Cài đặt hội', label: 'Tên miền riêng', to: `${b}/cai-dat/chung`, keywords: 'domain' },
+    scope.role === 'owner' && { id: 'set-domain', group: 'Cài đặt hội', label: 'Tên miền riêng', hint: 'Sắp ra mắt ở Gói bổ sung', to: `/admin/goi-bo-sung?hoi=${scope.slug}`, keywords: 'domain' },
     settings && { id: 'set-spaces', group: 'Cài đặt hội', label: 'Chuyên mục và duyệt bài', to: `${b}/cai-dat/bang-tin`, keywords: 'bang tin quyen dang' },
     settings && { id: 'set-tabs', group: 'Cài đặt hội', label: 'Bật tắt các tab của hội', hint: 'Sự kiện, Cửa hàng, Xếp hạng…', to: `${b}/cai-dat/bang-tin`, keywords: 'an hien' },
     (settings || can('billing.manage')) && { id: 'set-pricing', group: 'Cài đặt hội', label: 'Giá và gói thành viên', to: `${b}/cai-dat/gia`, keywords: 'premium vip mien phi thu phi ban hang' },

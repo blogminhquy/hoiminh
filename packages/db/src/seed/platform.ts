@@ -10,7 +10,7 @@ import type { SeedUser } from './users';
 
 /** Bốn gói Hội Mình (kế hoạch 11/11/2026; giá từng kỳ ở `cyclePrices`, 0 là không bán kỳ đó), kỳ trả tiền của các hội đang dùng gói trả phí, và các cấu hình nền tảng. */
 export async function seedPlatform(db: Database, base: Date, U: Record<string, SeedUser>, main: SeedCommunity, others: SeedCommunity[]): Promise<void> {
-  const allFeatures = ['automation', 'custom_domain', 'affiliate', 'api'];
+  const allFeatures = ['automation', 'affiliate', 'api'];
   await db
     .insert(plans)
     .values([

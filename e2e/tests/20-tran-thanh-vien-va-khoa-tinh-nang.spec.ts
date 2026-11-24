@@ -49,9 +49,11 @@ test('tính năng trả phí hiện kèm ổ khóa và lời mời nâng gói', 
   await expect(lock.getByRole('link', { name: 'Nâng lên Chuyên nghiệp' })).toHaveAttribute('href', /goi=pro/);
   await page.goto('/shopee-0d/cai-dat/cong-su');
   await expect(page.getByRole('region', { name: 'Affiliate có từ gói Chuyên nghiệp' })).toBeVisible();
-  // Tên miền riêng: ô nhập bị khóa ngay trong trang Thông tin hội.
+  // Tên miền riêng không thuộc gói nào: trang Thông tin hội ghi sắp ra mắt ở Gói bổ sung, không có ô nhập.
   await page.goto('/shopee-0d/cai-dat/chung');
-  await expect(page.getByPlaceholder('hoc.tenmien.vn')).toBeDisabled();
+  await expect(page.getByTestId('custom-domain-soon')).toContainText('Sắp ra mắt');
+  await expect(page.getByRole('link', { name: 'Xem Gói bổ sung' })).toHaveAttribute('href', '/admin/goi-bo-sung?hoi=shopee-0d');
+  await expect(page.getByPlaceholder('hoc.tenmien.vn')).toHaveCount(0);
   // Việc không thuộc gói trả phí vẫn mở bình thường.
   await page.goto('/shopee-0d/cai-dat/gia');
   await expect(page.getByRole('region', { name: /có từ gói/ })).toHaveCount(0);

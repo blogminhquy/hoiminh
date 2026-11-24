@@ -38,7 +38,7 @@ test('quản trị sửa giá từng kỳ và trần của một gói, bảng gi
   await save.click();
   await expect(page.getByText('Trần thành viên của gói Khởi đầu không được thấp hơn gói Miễn phí')).toBeVisible();
   await page.getByLabel('Trần thành viên, gói Khởi đầu').fill('800');
-  await page.getByRole('switch', { name: 'Tên miền riêng, gói Khởi đầu' }).click();
+  await page.getByRole('switch', { name: 'API, gói Khởi đầu' }).click();
   await save.click();
   await expect(page.getByText('Đã lưu bảng gói.')).toBeVisible();
 

@@ -67,11 +67,10 @@ describe('tierCards', () => {
     const [f, , pro, unlimited] = tierCards(plans, free, 10, 'yearly', now);
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: tự động hóa', on: false });
     expect(f!.features).toContainEqual({ text: 'Có từ gói Chuyên nghiệp: API', on: false });
-    // Tên miền riêng chỉ có ở gói Không giới hạn: gói thấp hơn ghi rõ có từ gói đó.
-    expect(f!.features).toContainEqual({ text: 'Có từ gói Không giới hạn: tên miền riêng', on: false });
     expect(pro!.features.filter((x) => x.on).map((x) => x.text)).toEqual(['Mọi thứ của gói Khởi đầu', 'Không phí trên doanh thu', 'Tự động hóa', 'Affiliate', 'API']);
-    expect(pro!.features).toContainEqual({ text: 'Có từ gói Không giới hạn: tên miền riêng', on: false });
-    expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu', 'Tên miền riêng']);
+    expect(unlimited!.features.map((x) => x.text)).toEqual(['Mọi thứ của gói Chuyên nghiệp', 'Không phí trên doanh thu']);
+    // Tên miền riêng không thuộc gói nào nữa (gói bổ sung, sắp ra mắt): không thẻ nào nhắc tới.
+    for (const card of [f, pro, unlimited]) expect(card!.features.some((x) => /tên miền riêng/i.test(x.text))).toBe(false);
   });
 
   it('đang ở Chuyên nghiệp với 1.240 thành viên: gói thấp hơn không mua được, cùng gói thì gia hạn, gói trên thì nâng', () => {
@@ -121,20 +120,19 @@ describe('planFeatureRows', () => {
     const rows = plans.map((p) => planFeatureRows(plans, p));
     const texts = rows.map((r) => r.map((x) => x.text));
     for (const t of texts) expect(t).toEqual(texts[0]);
-    expect(texts[0]).toEqual(['Bán khóa học, sự kiện, sản phẩm và thu tiền', 'Không phí trên doanh thu', 'Tự động hóa', 'Tên miền riêng', 'Affiliate', 'API']);
+    // Tên miền riêng không còn là dòng của bảng gói: nó là gói bổ sung, sắp ra mắt.
+    expect(texts[0]).toEqual(['Bán khóa học, sự kiện, sản phẩm và thu tiền', 'Không phí trên doanh thu', 'Tự động hóa', 'Affiliate', 'API']);
     const [freeRows, , proRows, unlimitedRows] = rows;
-    expect(freeRows!.map((x) => x.on)).toEqual([true, true, false, false, false, false]);
-    // Tên miền riêng chỉ có ở gói Không giới hạn.
-    expect(proRows!.map((x) => x.on)).toEqual([true, true, true, false, true, true]);
+    expect(freeRows!.map((x) => x.on)).toEqual([true, true, false, false, false]);
+    expect(proRows!.every((x) => x.on)).toBe(true);
     expect(unlimitedRows!.every((x) => x.on)).toBe(true);
   });
 
   it('dòng khóa ghi gói thấp nhất mở được nó, dòng mở thì không', () => {
     const freeRows = planFeatureRows(plans, plans[0]!);
     expect(freeRows.find((x) => x.text === 'API')).toEqual({ text: 'API', on: false, from: 'Chuyên nghiệp' });
-    expect(freeRows.find((x) => x.text === 'Tên miền riêng')).toEqual({ text: 'Tên miền riêng', on: false, from: 'Không giới hạn' });
     expect(freeRows[0]!.from).toBeNull();
-    expect(planFeatureRows(plans, plans[2]!).filter((x) => x.from !== null)).toEqual([{ text: 'Tên miền riêng', on: false, from: 'Không giới hạn' }]);
+    expect(planFeatureRows(plans, plans[2]!).every((x) => x.from === null)).toBe(true);
     expect(planFeatureRows(plans, plans[3]!).every((x) => x.from === null)).toBe(true);
   });
 });

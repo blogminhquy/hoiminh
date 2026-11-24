@@ -91,8 +91,8 @@ const prices = (p: Partial<PlanPricesInput>): PlanPricesInput => ({ monthly: 0, 
 export const DEFAULT_PLANS = [
   { key: 'free', prices: prices({}), memberCap: 100, features: [] },
   { key: 'starter', prices: prices({ quarterly: 297_000, yearly: 990_000 }), memberCap: 500, features: [] },
-  { key: 'pro', prices: prices({ quarterly: 897_000, yearly: 2_990_000 }), memberCap: 5_000, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
-  { key: 'unlimited', prices: prices({ quarterly: 2_397_000, yearly: 7_990_000 }), memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'pro', prices: prices({ quarterly: 897_000, yearly: 2_990_000 }), memberCap: 5_000, features: ['automation', 'affiliate', 'api'] },
+  { key: 'unlimited', prices: prices({ quarterly: 2_397_000, yearly: 7_990_000 }), memberCap: null, features: ['automation', 'affiliate', 'api'] },
 ] as const;
 
 /** Quản trị lưu bảng gói qua API; `change` sửa riêng vài gói so với bảng mặc định. */
