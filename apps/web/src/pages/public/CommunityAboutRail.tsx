@@ -14,6 +14,9 @@ import { checkoutQuery, modeChoices, promoEndLabel } from '@/lib/membership';
 import { categoryLabel, isViewerMember, type AboutPage } from './CommunityAboutParts';
 import { SITE_HOST } from '@/lib/site';
 
+/** Tên kỳ trên ô giá: "3 tháng", "1 năm", "Trọn đời". */
+const termLabel = (x: { months: number | null; unit: string }) => (x.months === null ? 'Trọn đời' : x.months === 12 ? '1 năm' : x.unit === 'tháng' ? '1 tháng' : x.unit);
+
 interface JoinResult { member: { status: string }; alreadyMember?: boolean; waitlisted?: boolean }
 
 function JoinQuestionsModal({ d, open, onClose, onSubmit, saving, error }: { d: AboutPage; open: boolean; onClose: () => void; onSubmit: (answers: Array<{ questionId: string; answer: string }>) => void; saving: boolean; error: unknown }) {
@@ -143,11 +146,33 @@ export function AboutRail({ d, refCode: ref, invite }: { d: AboutPage; refCode: 
               {others > 0 && <span className="muted text-[12px]">và {fmtCount(others)} người khác</span>}
             </div>
           )}
-          <div className="flex flex-col gap-1.5 pt-1">
-            <div className="flex items-baseline gap-2 flex-wrap">{paid && entry && entry.percentOff > 0 && <span className="muted line-through text-[14px]">{money(entry.listMinor)}</span>}<span className="serif text-[22px] font-extrabold">{priceMain}</span><span className="muted text-[13px]">{priceSub}</span></div>
+          {/* Ô giá: giá mở đầu to rõ; các kỳ dài hơn mỗi kỳ một dòng, kèm nhãn phần trăm rẻ hơn so với kỳ ngắn nhất. */}
+          <div className="flex flex-col gap-2.5 pt-1">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              {paid && entry && entry.percentOff > 0 && <span className="muted line-through text-[15px]">{money(entry.listMinor)}</span>}
+              <span className="serif text-[28px] font-extrabold leading-none" style={{ color: T.ink }}>{priceMain}</span>
+              <span className="text-[14px] font-semibold" style={{ color: T.ink3 }}>{priceSub}</span>
+            </div>
             {entry && entry.percentOff > 0 && <div className="text-[13px] font-semibold flex items-center gap-1.5" style={{ color: T.goldText }}><Tag size={14} />Đang giảm {entry.percentOff}%{promoEnd ? ` đến hết ngày ${promoEnd}` : ''}</div>}
             {d.pricing.mode === 'freemium' && entry ? <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Premium {money(entry.payMinor)}/{entry.unit} để mở toàn bộ khóa học</div> : null}
-            {longer.length > 0 && <div className="muted text-[13px] flex items-center gap-1.5"><Sparkles size={14} />Hoặc {longer.map((x) => `${money(x.payMinor)}/${x.unit}`).join(', ')}</div>}
+            {longer.length > 0 && (
+              <div className="flex flex-col rounded-[12px] overflow-hidden" style={{ background: T.bg, border: `1px solid ${T.line}` }}>
+                <div className="px-3 pt-2.5 pb-1 text-[12px] font-semibold uppercase tracking-wide" style={{ color: T.ink3 }}>Trả dài hạn, lợi hơn</div>
+                {longer.map((x, i) => (
+                  <div key={x.months ?? 'once'} className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: i ? `1px solid ${T.line}` : undefined }}>
+                    <span className="flex flex-col leading-tight gap-0.5 min-w-0">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[14px] font-semibold whitespace-nowrap" style={{ color: T.ink2 }}>{termLabel(x)}</span>
+                        {x.savingPercent > 0 && <span className="tag" style={{ background: T.tealSoft, color: T.tealText, height: 22, padding: '0 7px' }}>-{x.savingPercent}%</span>}
+                      </span>
+                      {x.months && x.months > 1 ? <span className="text-[12px] whitespace-nowrap" style={{ color: T.ink3 }}>≈ {money(Math.round(x.payMinor / x.months))}/tháng</span> : null}
+                    </span>
+                    <span className="flex-grow" />
+                    <span className="text-[15px] font-bold whitespace-nowrap" style={{ color: T.ink }}>{money(x.payMinor)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <Button variant={member ? 'dark' : 'primary'} loading={join.isPending} disabled={blocked} onClick={onJoin} style={{ height: 48, fontSize: 15, borderRadius: 12 }}>{label}</Button>
           {open && !member && <Link to={guestHome(c.slug, c.tabs)} className="btn btn-ghost" style={{ height: 44, borderRadius: 12 }}><Eye size={16} />Xem trước bên trong</Link>}

@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.54.1 - 2026-11-24
+
+Ô giá ở trang giới thiệu hội gọn và dễ so hơn (chủ dự án yêu cầu). Không có migration.
+
+### Thay đổi
+
+- **Ô giá ở trang giới thiệu hội.** Giá mở đầu to rõ ("249.000đ /tháng"). Các kỳ dài hơn không còn dồn vào một dòng "Hoặc 498.000đ/3 tháng, 2.490.000đ/năm" mà nằm trong ô "Trả dài hạn, lợi hơn", mỗi kỳ một dòng: tên kỳ kèm nhãn phần trăm rẻ hơn ("3 tháng -33%"), giá quy ra mỗi tháng ("≈ 166.000đ/tháng") và tổng tiền bên phải.
+
+## 1.54.0 - 2026-11-24
+
+Giới thiệu khóa học ngay dưới tấm chứng nhận: người học vừa xong khóa có link giới thiệu kèm số tiền nhận được, link chứng nhận họ khoe cũng kèm mã giới thiệu; người được chia sẻ thấy lời mời học khóa (chủ dự án yêu cầu). Không có migration.
+
+### Thêm
+
+- **Khối "Khóa học giúp ích cho bạn? Giới thiệu cho bạn bè" dưới tấm chứng nhận.** Chỉ chính người học thấy, khi hội đang bật affiliate: hai ô như bảng chia sẻ ở thư viện khóa học, "Giới thiệu khóa học này" (link trang bán lẻ, số tiền nhận mỗi đơn) và "Giới thiệu vào hội" (link trang hội, số tiền nhận hằng tháng), mỗi ô có nút sao chép riêng.
+- **Khoe chứng chỉ cũng là giới thiệu.** Link chứng nhận người học bấm Chia sẻ hay sao chép (nút dưới chứng chỉ và ô mã kiểm tra) kèm sẵn mã giới thiệu của họ và tên hội, để mã được tính cho chương trình của hội. Ảnh và bản in chứng chỉ vẫn in link gốc.
+- **Lời mời học khóa cho người được chia sẻ.** Người khác mở trang chứng nhận thấy "Bạn cũng muốn học khóa này?" với tên khóa, giá và nút "Xem khóa học" (trang bán lẻ) hoặc "Xem hội". Không thấy gì về hoa hồng.
+- Dữ liệu chứng nhận có thêm id hội và giá, đường dẫn trang bán lẻ của khóa.
+
 ## 1.53.1 - 2026-11-24
 
 Bảng gói: mức lợi của kỳ dài luôn ghi bằng phần trăm, thẻ bảng giá ghi "Giới hạn N thành viên", làm nổi gói không giới hạn và đưa dòng có dấu tích lên đầu (chủ dự án yêu cầu). Không có migration.

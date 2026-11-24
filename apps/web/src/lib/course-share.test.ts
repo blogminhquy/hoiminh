@@ -1,6 +1,7 @@
 import type { CourseShareOffer } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { monthlyTerms, shareAmount, shareLineLabel } from './course-share';
+import { refScopeOf } from '@hoiminh/contracts';
+import { certificateShareUrl, monthlyTerms, shareAmount, shareLineLabel } from './course-share';
 
 const offer: CourseShareOffer = { enabled: true, programId: 'p1', durationMonths: 12, monthlyCommissionMinor: 39_800, courses: [{ courseId: 'c1', priceMinor: 499_000, commissionMinor: 99_800 }] };
 
@@ -23,5 +24,15 @@ describe('chia sẻ khóa học', () => {
   it('câu tiền hằng tháng nói rõ số tháng và tổng tối đa', () => {
     expect(monthlyTerms(39_800, 12)).toContain('trong 12 tháng đầu. Tổng tối đa 477.600đ');
     expect(monthlyTerms(39_800, null)).not.toContain('tháng đầu');
+  });
+  it('link chứng nhận để khoe kèm mã và hội, để mã tính cho chương trình của hội', () => {
+    const url = certificateShareUrl('https://hoiminh.com/chung-nhan/c1/u1', 'quy123', 'minhquy');
+    expect(url).toBe('https://hoiminh.com/chung-nhan/c1/u1?ref=quy123&hoi=minhquy');
+    const u = new URL(url);
+    expect(refScopeOf(u.pathname, u.searchParams.get('hoi'))).toBe('minhquy');
+    // Thiếu `hoi` thì phạm vi là "chung-nhan", không phải hội nào, nên máy chủ tính mã cho nền tảng thay vì cho hội.
+    expect(refScopeOf('/chung-nhan/c1/u1', null)).toBe('chung-nhan');
+    expect(certificateShareUrl('https://hoiminh.com/chung-nhan/c1/u1', null, 'minhquy')).toBe('https://hoiminh.com/chung-nhan/c1/u1');
+    expect(certificateShareUrl('https://hoiminh.com/chung-nhan/c1/u1', 'quy123', null)).toBe('https://hoiminh.com/chung-nhan/c1/u1');
   });
 });

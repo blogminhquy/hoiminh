@@ -79,21 +79,25 @@ export async function getCourse(ctx: Ctx, courseId: string) {
 /**
  * Chứng nhận hoàn thành: công khai để ai có link cũng kiểm tra được. Chỉ tồn tại khi khóa bật
  * certificateEnabled và người học đã đạt 100%; dữ liệu đọc thẳng từ course_progress nên không
- * làm giả được bằng cách sửa link.
+ * làm giả được bằng cách sửa link. `sale`: giá và đường dẫn trang bán lẻ của khóa (null khi khóa không bán lẻ), để người
+ * được chia sẻ chứng chỉ có lối mua khóa; `community.id` để chính người học lấy link giới thiệu khóa ngay dưới chứng chỉ.
  */
 export async function certificate(ctx: Ctx, courseId: string, userId: string) {
   const c = await ctx.db.query.courses.findFirst({ where: and(eq(courses.id, courseId), isNull(courses.deletedAt)) });
   if (!c || !c.certificateEnabled || c.status !== 'published') throw notFound('Khóa học này không cấp chứng nhận');
   const progress = await ctx.db.query.courseProgress.findFirst({ where: and(eq(courseProgress.courseId, courseId), eq(courseProgress.userId, userId)) });
   if (!progress || progress.percent < 100 || !progress.completedAt) throw notFound('Người học chưa hoàn thành khóa này');
-  const [learner, owner, community] = await Promise.all([
+  const [learner, owner, community, product] = await Promise.all([
     ctx.db.query.users.findFirst({ where: eq(users.id, userId), columns: { id: true, name: true, handle: true } }),
     ctx.db.query.users.findFirst({ where: eq(users.id, c.ownerUserId), columns: { name: true } }),
-    c.communityId ? ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { name: true, slug: true, logoMark: true, logoColor: true, logoUrl: true } }) : null,
+    c.communityId ? ctx.db.query.communities.findFirst({ where: eq(communities.id, c.communityId), columns: { id: true, name: true, slug: true, logoMark: true, logoColor: true, logoUrl: true } }) : null,
+    // Trang bán lẻ của khóa (nếu có): người được chia sẻ chứng chỉ bấm "Xem khóa học" thì tới thẳng đó.
+    ctx.db.query.products.findFirst({ where: and(eq(products.courseId, courseId), eq(products.kind, 'course'), eq(products.status, 'published'), isNull(products.deletedAt)), columns: { slug: true, priceMinor: true }, orderBy: desc(products.salesCount) }),
   ]);
   if (!learner) throw notFound();
   const code = (await sha256Hex(`certificate:${courseId}:${userId}`)).slice(0, 12).toUpperCase();
-  return { code, learner, course: { id: c.id, title: c.title, lessonCount: c.lessonCount, totalDurationSeconds: c.totalDurationSeconds }, owner: owner?.name ?? null, community, completedAt: progress.completedAt, verifyUrl: `${ctx.env.APP_URL}/chung-nhan/${courseId}/${userId}` };
+  const sale = community && product && product.priceMinor > 0 ? { priceMinor: product.priceMinor, path: `/${community.slug}/cua-hang/${product.slug}` } : null;
+  return { code, learner, course: { id: c.id, title: c.title, lessonCount: c.lessonCount, totalDurationSeconds: c.totalDurationSeconds }, owner: owner?.name ?? null, community, sale, completedAt: progress.completedAt, verifyUrl: `${ctx.env.APP_URL}/chung-nhan/${courseId}/${userId}` };
 }
 
 /** Bài học: video nhúng, nội dung, tài liệu (signed URL nếu riêng), bài trước/sau, khóa nếu chưa có quyền. */
