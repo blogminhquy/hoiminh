@@ -1,6 +1,6 @@
 // /v1/admin: quản trị hệ thống (super admin).
 import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, dateRangeQuerySchema, paymentProviderSchema, savePlansSchema } from '@hoiminh/contracts';
-import { admin, affiliate, featureFlags, infra, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
+import { admin, affiliate, featureFlags, infra, partners, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -81,4 +81,10 @@ adminRoutes.patch('/affiliate/accounts/:id', async (c) => {
   const [row] = await ctx.db.update(affiliateAccounts).set({ commissionRateBps, updatedAt: new Date() }).where(eq(affiliateAccounts.id, c.req.param('id'))).returning();
   return c.json(row);
 });
+// Đối tác chính thức của affiliate nền tảng: % và thời hạn hoa hồng riêng, ghi chú, kết thúc hợp tác.
+const partnerTerms = z.object({ commissionRateBps: z.number().int().min(0).max(9000).nullable(), durationMode: z.enum(['program', 'months', 'lifetime']), commissionDurationMonths: z.number().int().min(1).max(120).nullable().optional(), note: z.string().max(1000).nullable().optional() });
+adminRoutes.get('/partners', async (c) => c.json(await partners.listPartners(c.get('ctx'))));
+adminRoutes.post('/partners', async (c) => c.json(await partners.addPartner(c.get('ctx'), await parse(partnerTerms.extend({ email: z.string().trim().email().max(254) }), await body(c))), 201));
+adminRoutes.patch('/partners/:id', async (c) => c.json(await partners.updatePartner(c.get('ctx'), c.req.param('id'), await parse(partnerTerms, await body(c)))));
+adminRoutes.post('/partners/:id/end', async (c) => c.json(await partners.endPartner(c.get('ctx'), c.req.param('id'))));
 adminRoutes.get('/affiliate/export.csv', async (c) => csv(c, await withdrawals.exportPayoutsCsv(c.get('ctx'), (await platformProgram(c)).id), 'cong-su-nen-tang.csv'));

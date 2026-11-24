@@ -13,6 +13,7 @@ import { audit } from './audit';
 import { notify } from './notifications';
 import { communityHasFeature, requirePlanFeature } from './plans';
 import { linkTargets, platformProgram } from './affiliate-links';
+import { activePartnerOf, effectiveDurationMonths } from './partner-terms';
 import { canonicalRefs, codeTaken, displayCode, personalCodeOf } from './referral-codes';
 
 /** Số dư ví từ sổ cái: credit + release + adjustment − hold − debit. */
@@ -255,9 +256,11 @@ export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: strin
     if (!program) return null;
     const attr = await ctx.db.query.affiliateAttributions.findFirst({ where: and(eq(affiliateAttributions.userId, p.userId), eq(affiliateAttributions.programId, program.id)), orderBy: desc(affiliateAttributions.attributedAt) });
     accountId = attr?.affiliateAccountId ?? null;
-    if (accountId && program.commissionDurationMonths) {
+    // Thời hạn nhận hoa hồng: đối tác chính thức có thể có thời hạn riêng (kể cả trọn đời), còn lại theo mức chung.
+    const months = accountId ? effectiveDurationMonths(program.commissionDurationMonths, await activePartnerOf(ctx, accountId)) : null;
+    if (accountId && months) {
       const first = await ctx.db.query.affiliateConversions.findFirst({ where: and(eq(affiliateConversions.customerUserId, p.userId), eq(affiliateConversions.programId, program.id)), orderBy: (t, { asc }) => asc(t.convertedAt) });
-      if (first && ctx.now().getTime() - first.convertedAt.getTime() > program.commissionDurationMonths * 30.5 * 86_400_000) return null;
+      if (first && ctx.now().getTime() - first.convertedAt.getTime() > months * 30.5 * 86_400_000) return null;
     }
   } else if (p.communityId) {
     program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.communityId, p.communityId) });
@@ -422,8 +425,10 @@ export async function myWallet(ctx: Ctx, programId: string) {
   const personal = await personalCodeOf(ctx, userId);
   const code = personal ?? acc.affiliateCode;
   const targets = await linkTargets(ctx, program, code);
+  // Đối tác chính thức của Hội Mình: thời hạn riêng (nếu có) và nhãn ở trang ví.
+  const partner = program.scopeType === 'platform' ? await activePartnerOf(ctx, acc.id) : null;
   return {
-    programId, programName: program.name, scope: program.scopeType, enabled: program.status === 'active', commissionDurationMonths: program.commissionDurationMonths, targets, communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: code, codeEditable: personal === null, previousCode: personal ? acc.affiliateCode : null, link: targets[0]?.url ?? link?.destinationUrl ?? '',
+    programId, programName: program.name, scope: program.scopeType, enabled: program.status === 'active', commissionDurationMonths: effectiveDurationMonths(program.commissionDurationMonths, partner), isPartner: Boolean(partner), targets, communityName: community?.name ?? 'Hội Mình', communitySlug: community?.slug ?? null, payerName: payer?.name ?? 'Hội Mình', affiliateAccountId: acc.id, affiliateCode: code, codeEditable: personal === null, previousCode: personal ? acc.affiliateCode : null, link: targets[0]?.url ?? link?.destinationUrl ?? '',
     commissionRateBps: acc.commissionRateBps ?? program.commissionRateBps, holdDays: program.holdDays, minWithdrawalMinor: program.minWithdrawalMinor,
     pendingMinor: Number(s.pending), availableMinor: Math.max(0, bal.available), requestedMinor: Number(s.requested), paidMinor: Number(s.paid), clicks: acc.clickCount, signups: acc.signupCount, paid: acc.paidCount,
     maskedAccount: pr?.masked_account ?? null, bankCode: pr?.bank_code ?? null,

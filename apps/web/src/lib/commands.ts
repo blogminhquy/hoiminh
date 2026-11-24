@@ -76,6 +76,7 @@ export function adminCommands(): Command[] {
     { id: 'a-user-reports', group: 'Hệ thống', label: 'Báo cáo người dùng', to: `${b}/bao-cao`, keywords: 'bao cao chan spam quay roi lua dao' },
     { id: 'a-payments', group: 'Hệ thống', label: 'Thanh toán và đối soát', hint: 'Ghép chuyển khoản thiếu mã', to: `${b}/thanh-toan`, keywords: 'giao dich sepay' },
     { id: 'a-affiliate', group: 'Hệ thống', label: 'Affiliate nền tảng', hint: 'Trả hoa hồng giới thiệu Hội Mình', to: `${b}/cong-su`, keywords: 'yeu cau rut' },
+    { id: 'a-partners', group: 'Hệ thống', label: 'Đối tác chính thức', hint: 'Hoa hồng và thời hạn riêng của từng đối tác', to: `${b}/doi-tac`, keywords: 'partner doi tac hat giong coach hoa hong rieng' },
     { id: 'a-plans', group: 'Hệ thống', label: 'Gói nền tảng', hint: 'Giá, trần thành viên và tính năng của bốn gói', to: `${b}/goi` },
     { id: 'a-flags', group: 'Hệ thống', label: 'Bật tắt tính năng', to: `${b}/tinh-nang`, keywords: 'co feature flag' },
     { id: 'a-infra', group: 'Hệ thống', label: 'Hạ tầng và khóa', hint: 'Khóa cổng thanh toán, email, lưu trữ', to: `${b}/ha-tang`, keywords: 'api key cau hinh' },

@@ -238,3 +238,30 @@ export const affiliateFraudFlags = pgTable('affiliate_fraud_flags', {
   metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
   createdAt: ts('created_at').notNull().defaultNow(),
 });
+
+export type PartnerDurationMode = 'program' | 'months' | 'lifetime';
+
+/**
+ * Đối tác chính thức của affiliate nền tảng (chủ dự án chốt ngày 24/11/2026): người dạy kinh doanh, coach, trưởng nhóm
+ * được Hội Mình chọn để giới thiệu chủ hội mới, có hoa hồng và thời hạn nhận hoa hồng riêng.
+ * Mỗi đối tác gắn với đúng một tài khoản affiliate nền tảng. % riêng nằm ở `affiliate_accounts.commission_rate_bps`
+ * (chỗ tính hoa hồng vẫn đọc ở đó); bảng này giữ thời hạn riêng, ghi chú và trạng thái hợp tác.
+ * Thời hạn: 'program' theo mức chung của chương trình, 'months' theo `commission_duration_months`, 'lifetime' trọn đời.
+ * Kết thúc hợp tác thì giữ dòng (status 'ended') để còn lịch sử; hoa hồng đã ghi không đổi.
+ */
+export const platformPartners = pgTable(
+  'platform_partners',
+  {
+    id: id(),
+    affiliateAccountId: uuid('affiliate_account_id').notNull().references(() => affiliateAccounts.id, { onDelete: 'cascade' }),
+    status: text('status').$type<'active' | 'ended'>().notNull().default('active'),
+    durationMode: text('duration_mode').$type<PartnerDurationMode>().notNull().default('program'),
+    commissionDurationMonths: integer('commission_duration_months'),
+    note: text('note'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    startedAt: ts('started_at').notNull().defaultNow(),
+    endedAt: ts('ended_at'),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('platform_partners_account_uq').on(t.affiliateAccountId), index('platform_partners_status_idx').on(t.status)],
+);

@@ -158,6 +158,7 @@ const adminRoutes: RouteObject = {
     { path: 'thanh-toan', element: page(() => import('@/pages/admin/AdminPayments')) },
     { path: 'goi', element: page(() => import('@/pages/admin/AdminPlans')) },
     { path: 'cong-su', element: page(() => import('@/pages/admin/AdminAffiliate')) },
+    { path: 'doi-tac', element: page(() => import('@/pages/admin/AdminPartners')) },
     { path: 'tinh-nang', element: page(() => import('@/pages/admin/AdminPlans')) },
     { path: 'phien-ban', element: page(() => import('@/pages/admin/AdminVersions')) },
     { path: 'ha-tang', element: page(() => import('@/pages/admin/AdminInfra')) },
