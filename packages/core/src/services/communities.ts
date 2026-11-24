@@ -5,14 +5,14 @@ import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { affiliatePrograms, communities, communityJoinQuestions, communitySlugAliases, communityMembers, communityPlugins, communityTiers, courses, files, offers, prices, spaces, users, workspaces, type CommunityAboutMedia } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
-import { conflict, invalid, notFound } from '../errors';
+import { conflict, invalid, invalidState, notFound } from '../errors';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { accountForCodes, resolveReferrer } from './affiliate';
 import { audit } from './audit';
 import { releaseFiles } from './files';
 import { invitePreview } from './invites';
 import { paymentsReady } from './owner-payout';
-import { ownerHasFreeCommunity, ownerHasUnlimitedFree, requirePlanFeature } from './plans';
+import { ownerHasFreeCommunity, ownerHasUnlimitedFree } from './plans';
 import { ensureWorkspace } from './workspaces';
 
 const DEFAULT_SPACES: Array<[string, string, 'everyone' | 'admins_only' | 'premium', string]> = [['Thông báo', 'thong-bao', 'admins_only', 'accent'], ['Hỏi đáp', 'hoi-dap', 'everyone', 'teal'], ['Chia sẻ', 'chia-se', 'everyone', 'accent'], ['Nhật ký', 'nhat-ky', 'everyone', 'gold'], ['Câu chuyện', 'cau-chuyen', 'premium', 'gold']];
@@ -137,8 +137,9 @@ export async function updateGeneral(ctx: Ctx, communityId: string, input: { name
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   if (input.slug) await assertSlugAvailable(ctx, input.slug, communityId);
   const before = await ctx.db.query.communities.findFirst({ where: eq(communities.id, communityId), columns: { slug: true, logoUrl: true, coverUrl: true, customDomain: true, visibility: true } });
-  // Tên miền riêng là tính năng trả phí: chỉ chặn khi gắn hoặc đổi tên miền, còn gỡ tên miền thì gói nào cũng làm được.
-  if (input.customDomain && input.customDomain !== before?.customDomain) await requirePlanFeature(ctx, communityId, 'custom_domain');
+  // Tên miền riêng đã rời khỏi các gói và thành gói bổ sung, đang sắp ra mắt (chủ dự án chốt ngày 23/11/2026): chưa gắn
+  // hay đổi được tên miền. Hội đã gắn từ trước vẫn giữ, và gỡ tên miền thì vẫn làm được.
+  if (input.customDomain && input.customDomain !== before?.customDomain) throw invalidState('Tên miền riêng sắp ra mắt ở Gói bổ sung. Hiện chưa gắn được tên miền mới.');
   const patch: Partial<typeof communities.$inferInsert> = { updatedAt: ctx.now() };
   for (const k of ['name', 'slug', 'shortDescription', 'description', 'category', 'rules', 'logoUrl', 'coverUrl', 'introVideoUrl', 'customDomain', 'discoverable', 'visibility', 'links'] as const) {
     if (input[k] !== undefined) (patch as Record<string, unknown>)[k] = input[k];

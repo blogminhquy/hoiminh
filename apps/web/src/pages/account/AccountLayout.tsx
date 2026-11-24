@@ -4,6 +4,7 @@ import { T, THEME_KEY, applyTheme, readTheme, type ThemeChoice } from '@hoiminh/
 import { ChevronLeft, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useShowsCreateInvite } from '@/components/CreateHoiInvite';
 import { useAuth } from '@/lib/auth';
 
 const CHOICES: Array<{ key: ThemeChoice; label: string; icon: typeof Sun }> = [
@@ -44,6 +45,7 @@ export default function Page() {
   const { pathname, hash } = useLocation();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const invite = useShowsCreateInvite();
   const isAccount = pathname === '/tai-khoan/ho-so' && hash === '#tai-khoan';
   const items: Array<{ label: string; to: string; on: boolean }> = [
     { label: 'Cộng đồng của tôi', to: '/admin', on: false },
@@ -65,6 +67,8 @@ export default function Page() {
         {items.map((it) => (
           <Link key={it.label} to={it.to} className={`settings-nav-item${it.on ? ' on' : ''}`}>{it.label}</Link>
         ))}
+        {/* Người chưa làm chủ hội nào: lời mời mở hội riêng, ngay dưới các mục tài khoản. */}
+        {invite && <Link to="/tao-hoi" className="settings-nav-item font-semibold" style={{ color: T.goldText }} data-testid="create-hoi-nav">Tạo hội của bạn, miễn phí</Link>}
         <ThemeItem />
         <button type="button" className="settings-nav-item inline-flex items-center gap-2 text-left" style={{ color: T.accentText }} onClick={() => { void logout().then(() => navigate('/dang-nhap')); }}><LogOut size={18} />Đăng xuất</button>
       </nav>

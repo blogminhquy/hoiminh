@@ -4,6 +4,7 @@ import { Avatar, T } from '@hoiminh/ui';
 import { Bell, ChevronRight, GraduationCap, Handshake, LayoutDashboard, LogOut, MessageCircle, Receipt, Settings, UserRound, UsersRound, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { CreateHoiInvite } from '@/components/CreateHoiInvite';
 import { useAuth, useBadges } from '@/lib/auth';
 import { useOptionalShell } from '@/lib/community';
 import { ThemeChoices } from './AccountLayout';
@@ -40,6 +41,8 @@ export default function Page() {
         <span className="flex-grow min-w-0"><span className="block serif font-extrabold text-[20px] truncate">{user?.name}</span><span className="block muted text-[14px] truncate">{user?.handle ? `@${user.handle} · ` : ''}Xem trang cá nhân</span></span>
         <ChevronRight size={20} style={{ color: T.ink3 }} />
       </Link>
+
+      <CreateHoiInvite />
 
       {shell && (canSettings || canRevenue) && (
         <nav className="card px-3 py-1 me-list" aria-label={`Quản lý ${shell.community.name}`}>

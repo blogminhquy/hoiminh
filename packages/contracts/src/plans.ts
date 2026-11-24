@@ -10,13 +10,16 @@ export const planKeySchema = z.enum(PLAN_KEYS);
 /** Gói mua được (gói Miễn phí không bán). */
 export const paidPlanKeySchema = z.enum(['starter', 'pro', 'unlimited']);
 
-/** Tính năng trả phí mà quản trị bật tắt theo gói. Bán hàng và thu tiền có ở mọi gói nên không nằm ở đây. */
-export const PLAN_FEATURES = ['automation', 'custom_domain', 'affiliate', 'api'] as const;
+/**
+ * Tính năng trả phí mà quản trị bật tắt theo gói. Bán hàng và thu tiền có ở mọi gói nên không nằm ở đây.
+ * Tên miền riêng không còn thuộc gói nào (chủ dự án chốt ngày 23/11/2026): nó là gói bổ sung, đang sắp ra mắt.
+ * Dòng gói trên database còn lưu "custom_domain" thì bị bỏ qua lúc đọc (planTable chỉ giữ tính năng có trong danh sách này).
+ */
+export const PLAN_FEATURES = ['automation', 'affiliate', 'api'] as const;
 export type PlanFeature = (typeof PLAN_FEATURES)[number];
 export const planFeatureSchema = z.enum(PLAN_FEATURES);
 export const PLAN_FEATURE_LABEL: Record<PlanFeature, string> = {
   automation: 'Tự động hóa',
-  custom_domain: 'Tên miền riêng',
   affiliate: 'Affiliate',
   api: 'API',
 };
@@ -54,7 +57,7 @@ export const PLAN_DEFAULTS: readonly PlanDef[] = [
   { key: 'free', name: 'Miễn phí', prices: { ...NO_PRICES }, memberCap: 100, features: [] },
   { key: 'starter', name: 'Khởi đầu', prices: { monthly: 0, quarterly: 297_000, semiannual: 0, yearly: 990_000 }, memberCap: 500, features: [] },
   { key: 'pro', name: 'Chuyên nghiệp', prices: { monthly: 0, quarterly: 897_000, semiannual: 0, yearly: 2_990_000 }, memberCap: 5_000, features: ['automation', 'affiliate', 'api'] },
-  { key: 'unlimited', name: 'Không giới hạn', prices: { monthly: 0, quarterly: 2_397_000, semiannual: 0, yearly: 7_990_000 }, memberCap: null, features: ['automation', 'custom_domain', 'affiliate', 'api'] },
+  { key: 'unlimited', name: 'Không giới hạn', prices: { monthly: 0, quarterly: 2_397_000, semiannual: 0, yearly: 7_990_000 }, memberCap: null, features: ['automation', 'affiliate', 'api'] },
 ];
 
 /** Thứ bậc gói: số lớn hơn là gói cao hơn. Khóa lạ (gói cũ) xếp ngang Miễn phí. */

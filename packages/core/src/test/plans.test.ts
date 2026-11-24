@@ -1,7 +1,7 @@
 // Gói Hội Mình theo kế hoạch 11/11/2026 (sửa 21/11/2026): bốn gói, mỗi gói cho một hội, bốn kỳ với giá riêng từng kỳ, không dùng thử.
 // Kiểm tra bảng gói, mua/gia hạn/nâng gói, hội miễn phí của tài khoản, trần thành viên, khóa tính năng, nhắc hạn và hết hạn.
 import { PLAN_DEFAULTS, pickCycle, planCyclesOf, planLowestPerMonth, planQuote, planSaving, soldCycles, type PlanCycle, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
-import { communities, communityMembers, platformSubscriptions } from '@hoiminh/db';
+import { communities, communityMembers, plans as plansTable, platformSubscriptions } from '@hoiminh/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register } from '../auth/service';
@@ -137,7 +137,14 @@ describe('bảng bốn gói', () => {
     // 1 tháng và 6 tháng chưa có giá nên chưa bán, cho tới khi quản trị nhập.
     expect(list.every((p) => p.prices.monthly === 0 && p.prices.semiannual === 0)).toBe(true);
     expect(list[0]!.features).toEqual([]);
-    expect(list[2]!.features).toEqual(['automation', 'custom_domain', 'affiliate', 'api']);
+    expect(list[2]!.features).toEqual(['automation', 'affiliate', 'api']);
+    expect(list[3]!.features).toEqual(['automation', 'affiliate', 'api']);
+  });
+
+  it('dòng gói trên database còn lưu tên miền riêng (bảng gói cũ) thì bỏ qua khi đọc', async () => {
+    await app.ctx.db.update(plansTable).set({ features: ['automation', 'custom_domain', 'affiliate', 'api'] }).where(eq(plansTable.key, 'unlimited'));
+    const list = await platformBilling.listPlans(app.anon());
+    expect(list.find((p) => p.key === 'unlimited')!.features).toEqual(['automation', 'affiliate', 'api']);
   });
 
   it('chỉ quản trị hệ thống lưu được bảng gói, và bảng phải hợp lý', async () => {
@@ -150,8 +157,8 @@ describe('bảng bốn gói', () => {
     // Trong một gói, kỳ dài hơn không được có tổng tiền thấp hơn kỳ ngắn hơn (gõ thiếu một số 0).
     await expect(platformBilling.savePlans(admin, patch('starter', { prices: priced({ quarterly: 297_000, yearly: 99_000 }) }))).rejects.toThrow(/giá 1 năm không được thấp hơn giá 3 tháng/);
     await expect(platformBilling.savePlans(admin, patch('pro', { memberCap: 200 }))).rejects.toThrow(/không được thấp hơn/);
-    const saved = await platformBilling.savePlans(admin, patch('starter', { prices: priced({ monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }), memberCap: 800, features: ['custom_domain'] }));
-    expect(saved.find((p) => p.key === 'starter')).toMatchObject({ prices: { monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }, memberCap: 800, features: ['custom_domain'] });
+    const saved = await platformBilling.savePlans(admin, patch('starter', { prices: priced({ monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }), memberCap: 800, features: ['api'] }));
+    expect(saved.find((p) => p.key === 'starter')).toMatchObject({ prices: { monthly: 129_000, quarterly: 349_000, semiannual: 649_000, yearly: 1_190_000 }, memberCap: 800, features: ['api'] });
     await platformBilling.savePlans(admin, { plans: defaults() });
     const stats = await platformBilling.planStats(admin);
     expect(stats.plans).toHaveLength(4);
@@ -237,10 +244,9 @@ describe('trần thành viên theo gói', () => {
 });
 
 describe('khóa tính năng trả phí theo gói', () => {
-  it('hội gói Miễn phí: tự động hóa, tên miền riêng, affiliate, API đều bị chặn với lỗi plan_locked', async () => {
+  it('hội gói Miễn phí: tự động hóa, affiliate, API đều bị chặn với lỗi plan_locked', async () => {
     const e1 = await expectCode(automation.createSource(vy, VY, { name: 'Nguồn thử' }), 'plan_locked');
     expect(e1.details).toMatchObject({ reason: 'feature', feature: 'automation', requiredPlanKey: 'pro', requiredPlanName: 'Chuyên nghiệp' });
-    await expectCode(communitiesSvc.updateGeneral(vy, VY, { customDomain: 'hoc.vy.vn' }), 'plan_locked');
     await expectCode(affiliate.updateProgram(vy, VY, { enabled: true, commissionRateBps: 3000, holdDays: 14, minWithdrawalMinor: 500_000, leaderboardVisibility: 'members', leaderboardShowMoney: true }), 'plan_locked');
     await expectCode(apiKeys.createApiKey(vy, await app.ids('workspace:thaovy'), { name: 'key', scopes: ['*'] }), 'plan_locked');
     // Việc không thuộc tính năng trả phí vẫn làm được: đổi mô tả, đọc danh sách thẻ.
@@ -248,14 +254,27 @@ describe('khóa tính năng trả phí theo gói', () => {
     expect(Array.isArray(await automation.listTags(vy, VY))).toBe(true);
   });
 
-  it('hội gói Chuyên nghiệp dùng được tự động hóa và API; tên miền riêng chỉ có ở gói Không giới hạn', async () => {
+  it('hội gói Chuyên nghiệp dùng được tự động hóa và API', async () => {
     const mq = await app.as('minhquy');
     const source = await automation.createSource(mq, KD, { name: 'Nguồn của hội chính' });
     expect(source.url).toContain('/webhooks/in/');
-    const err = await expectCode(communitiesSvc.updateGeneral(mq, KD, { customDomain: 'hoc2.minhquy.vn' }), 'plan_locked');
-    expect(err.details).toMatchObject({ reason: 'feature', feature: 'custom_domain', requiredPlanKey: 'unlimited', requiredPlanName: 'Không giới hạn' });
     const key = await apiKeys.createApiKey(mq, await app.ids('workspace:minhquy'), { name: 'key', scopes: ['*'] });
     expect(await apiKeys.authenticateApiKey(app.system(), key.raw)).toBeTruthy();
+  });
+});
+
+describe('tên miền riêng: gói bổ sung sắp ra mắt, không thuộc gói nào', () => {
+  it('chưa gắn hay đổi được tên miền ở gói nào; tên miền đã gắn từ trước vẫn giữ, gỡ thì được', async () => {
+    const err = await expectCode(communitiesSvc.updateGeneral(vy, VY, { customDomain: 'hoc.vy.vn' }), 'invalid_state');
+    expect(err.message).toContain('Gói bổ sung');
+    // Hội chính (gói Chuyên nghiệp) đã gắn hoc.minhquy.vn từ trước: lưu lại đúng tên miền đó thì được, đổi thì không.
+    const mq = await app.as('minhquy');
+    await expectCode(communitiesSvc.updateGeneral(mq, KD, { customDomain: 'hoc2.minhquy.vn' }), 'invalid_state');
+    await communitiesSvc.updateGeneral(mq, KD, { customDomain: 'hoc.minhquy.vn', shortDescription: 'Giữ tên miền cũ.' });
+    expect((await app.ctx.db.query.communities.findFirst({ where: eq(communities.id, KD) }))?.customDomain).toBe('hoc.minhquy.vn');
+    await communitiesSvc.updateGeneral(mq, KD, { customDomain: null });
+    expect((await app.ctx.db.query.communities.findFirst({ where: eq(communities.id, KD) }))?.customDomain).toBeNull();
+    await app.ctx.db.update(communities).set({ customDomain: 'hoc.minhquy.vn' }).where(eq(communities.id, KD));
   });
 });
 

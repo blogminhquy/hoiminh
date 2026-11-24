@@ -10,7 +10,7 @@ import { Check, ChevronLeft, ChevronRight, Info, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '@/lib/api';
-import { capLabel, cycleHint, cycleLabel, featureFrom, featureInline } from '@/lib/platform-plan';
+import { capLabel, cycleHint, cycleLabel, featureInline } from '@/lib/platform-plan';
 import { WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 import { Done, ModePicker, STEPS, SlugInput, StepBar, TemplatePicker, useSlugCheck, type PricingMode, type Template } from './WorkspaceCreateParts';
 import { PLANS_QUERY } from './WorkspacePlanCard';
@@ -158,7 +158,7 @@ export default function Page() {
           </Field>
         )}
         {step === 1 && (
-          <Field label="Đường dẫn" hint={`Tên miền riêng trỏ được sau trong Cài đặt hội (có từ gói ${featureFrom(plans.data, 'custom_domain')})`}>
+          <Field label="Đường dẫn" hint="Tên miền riêng sắp ra mắt ở Gói bổ sung">
             <SlugInput value={d.slug} onChange={(v) => patch({ slug: v, slugTouched: true })} check={check} />
           </Field>
         )}
