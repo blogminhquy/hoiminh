@@ -1,13 +1,14 @@
 // Thẻ bài viết trên Bảng tin: có tiêu đề + trích đoạn + lưới ảnh, hoặc status ngắn với nền màu.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CATEGORY_COLORS, T, Tag, statusBg } from '@hoiminh/ui';
-import { MessageCircle, MoreHorizontal, Pin } from 'lucide-react';
+import { MessageCircle, Pin } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { timeAgo } from '@/lib/format';
+import { fmtLongDate, fmtTime, timeAgo } from '@/lib/format';
 import { PhotoGrid, type GridImage } from './PhotoGrid';
 import { PollBox, type Poll } from './PollBox';
+import { PostMenu } from './PostMenu';
 import { ReactionButton, ReactionSummary } from './Reactions';
 import { UserAvatar, UserName, type UserLite } from '../UserLink';
 
@@ -55,8 +56,9 @@ export function useModeratePost() {
 /**
  * `onOpen`: Bảng tin mở bài trong khung bật lên thay vì chuyển trang. Các chỗ bấm vẫn là link thật tới trang riêng của bài,
  * nên bấm giữa, Ctrl bấm hay "mở trong tab mới" vẫn chạy như cũ; chỉ lượt bấm thường mới bị chặn lại để mở khung.
+ * Mốc thời gian cũng là link tới bài (như Facebook): rê chuột thấy ngày giờ đầy đủ, bấm thì mở bài.
  */
-export function PostCard({ post, slug, onMenu, canModerate, onOpen }: { post: FeedPost; slug: string; onMenu?: (post: FeedPost) => void; canModerate?: boolean; onOpen?: (post: FeedPost) => void }) {
+export function PostCard({ post, slug, canModerate, onOpen }: { post: FeedPost; slug: string; canModerate?: boolean; onOpen?: (post: FeedPost) => void }) {
   const moderate = useModeratePost();
   const pending = post.moderationStatus === 'pending';
   const cat = CATEGORY_COLORS[post.space.colorKey] ?? CATEGORY_COLORS.neutral!;
@@ -79,7 +81,7 @@ export function PostCard({ post, slug, onMenu, canModerate, onOpen }: { post: Fe
           <div className="flex items-center gap-2 flex-wrap">
             <UserName user={post.author} />
             <Tag tone="gold" style={{ height: 20, padding: '0 6px' }}>Cấp {post.authorLevel}</Tag>
-            <span className="muted text-[13px]">· {timeAgo(post.createdAt)}</span>
+            <span className="muted text-[13px]">· <Link to={href} onClick={open} className="post-time" title={`${fmtLongDate(post.createdAt)}, lúc ${fmtTime(post.createdAt)}`}><time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time></Link></span>
           </div>
           <div className="flex items-center gap-2 text-[13px]" style={{ color: T.ink3 }}>
             <span className="tag" style={{ background: cat.bg, color: cat.fg }}>{post.space.name}</span>
@@ -90,11 +92,7 @@ export function PostCard({ post, slug, onMenu, canModerate, onOpen }: { post: Fe
             )}
           </div>
         </div>
-        {onMenu && (
-          <button type="button" aria-label="Thêm" onClick={() => onMenu(post)} style={{ color: T.ink3 }}>
-            <MoreHorizontal size={20} />
-          </button>
-        )}
+        <PostMenu post={post} slug={slug} canModerate={canModerate} onOpen={onOpen} />
       </div>
       {isStatus ? (
         <Link to={href} onClick={open}>

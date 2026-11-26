@@ -635,6 +635,16 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .course-menu-title { display: block; padding: 8px 14px 10px; font-size: 16px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
 }
 
+/* Menu ba chấm trên thẻ bài ở Bảng tin: dùng chung bảng của menu khóa học. Máy tính: thả ngay dưới nút. Điện thoại: bảng trượt từ đáy như trên. */
+.post-more { width: 36px; height: 36px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink3); }
+.post-more:hover, .post-more.on { background: var(--bg); color: var(--ink); }
+.post-more:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.post-time { color: var(--ink3); }
+.post-time:hover { text-decoration: underline; color: var(--ink2); }
+@media (min-width: 768px) {
+  .course-menu.post-menu { top: 40px; right: 0; }
+}
+
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
 .chat-scroll > :first-child { margin-top: auto; }
