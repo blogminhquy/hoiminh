@@ -8,6 +8,7 @@ import { scheduleJob } from '../jobs/scheduled';
 import type { EventMeta } from './bus';
 import { raw } from '../lib/db';
 import { createCommissionForPayment, reverseCommissionForPayment, attachAttribution, defaultPlatformReferrer } from '../services/affiliate';
+import { pendingClaimOf, sendClaimEmail } from '../auth/claims';
 import { applyPendingGrantsForUser, elevated } from '../services/automation-engine';
 import { grant } from '../services/entitlements';
 import { notify } from '../services/notifications';
@@ -69,7 +70,8 @@ export function registerHandlers(app: AppContext): void {
       // Hẹn bằng delay của Queue (đi sau commit); dòng scheduled_jobs là sổ gốc, bộ quét cứu nếu message bị lọt.
       await scheduleJob(c, { kind: 'welcome_dm.send', payload: { communityId: p.communityId, userId: p.userId }, dedupeKey: `welcome_dm:${p.communityId}:${p.userId}`, runAt: new Date(c.now().getTime() + delay * 60_000) });
     }
-    await c.email.send(templates.welcomeMember(user.email, user.name, community.name, `${c.env.APP_URL}/${community.slug}/bang-tin`));
+    // Người mua bằng email chưa tạo tài khoản: email báo đã nhận tiền đã mời tạo tài khoản, link "Vào hội" lúc này chưa vào được.
+    if (!(await elevated(c, () => pendingClaimOf(c, user.id)))) await c.email.send(templates.welcomeMember(user.email, user.name, community.name, `${c.env.APP_URL}/${community.slug}/bang-tin`));
     const owner = await c.db.query.workspaces.findFirst({ where: eq(workspaces.id, community.workspaceId), columns: { ownerUserId: true } });
     if (owner && owner.ownerUserId !== p.userId) await notify(c, { userId: owner.ownerUserId, communityId: p.communityId, kind: 'member.joined', category: 'all', title: `${user.name} vừa tham gia ${community.name}`, body: p.referredByAffiliateId ? 'qua link affiliate' : '', actorUserId: p.userId, link: `/${community.slug}/thanh-vien` });
     await dispatch(c, community.workspaceId, 'member.joined', { communityId: p.communityId, userId: p.userId, memberId: p.memberId, email: user.email, name: user.name, source: p.source });
@@ -125,7 +127,10 @@ export function registerHandlers(app: AppContext): void {
       : p.targetType === 'product'
         ? (isMember ? `${c.env.APP_URL}/${community?.slug}/cua-hang/${meta.productSlug ?? ''}` : `${c.env.APP_URL}/hoc`)
         : `${c.env.APP_URL}/${community?.slug}/khoa-hoc`;
-    await c.email.send(templates.paymentSucceeded(user.email, user.name, meta.title ?? 'đơn hàng', formatMoney(p.amountMinor, p.currency as 'VND'), link));
+    // Người mua bằng email chưa tạo tài khoản (mua trước, tạo tài khoản sau): email báo đã nhận tiền kèm link tạo tài khoản
+    // để vào đúng chỗ vừa mua, thay cho email thường. Chưa tạo thì cron nhắc lại sau vài ngày.
+    const sentClaim = await elevated(c, () => sendClaimEmail(c, user, 'paid', order));
+    if (!sentClaim) await c.email.send(templates.paymentSucceeded(user.email, user.name, meta.title ?? 'đơn hàng', formatMoney(p.amountMinor, p.currency as 'VND'), link));
     await notify(c, { userId: p.userId, communityId: p.communityId, kind: 'payment.succeeded', category: 'payment', title: `Thanh toán ${formatMoney(p.amountMinor, p.currency as 'VND')} thành công · ${meta.title ?? ''}`, body: 'Quyền truy cập đã được mở', link: link.replace(c.env.APP_URL, ''), actionLabel: 'Vào học' });
     if (community) {
       const owner = await c.db.query.workspaces.findFirst({ where: eq(workspaces.id, community.workspaceId), columns: { ownerUserId: true } });

@@ -1,16 +1,22 @@
 // Bước chọn: /:slug/thanh-toan?tier=premium&months=3 hoặc ?product=<id> → chọn kỳ hạn, cách thanh toán, mã giảm giá → POST /v1/checkout.
+// Chưa đăng nhập vẫn mua được (mua trước, tạo tài khoản sau): điền tên và email → POST /v1/checkout/guest, trả xong thì
+// đặt mật khẩu ngay trên màn đơn hàng, hoặc bằng link gửi vào email đó.
 // Một cột từ trên xuống: đầu trang, chọn thời hạn, quyền lợi, cách thanh toán, mã giảm giá, bảng tiền, nút thanh toán.
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, CommunityMark, T, money } from '@hoiminh/ui';
 import { Check, Lock, ShieldCheck, Tag } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import type { Shell } from '@/lib/community';
+import { guestOrderPath, isAccountExists, looksLikeEmail, rememberGuestToken } from '@/lib/guest-order';
+import { loginPathFor } from '@/lib/join-intent';
 import { modeChoices, promoEndLabel, type TermChoice } from '@/lib/membership';
 import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
 import { CheckoutFrame, ProviderOption, RadioRow, RadioRows, Section, Totals, providerMeta, type Provider } from './CheckoutParts';
+import { Field } from './GuestParts';
 
 /** Lời giới thiệu từng cách ở bước thanh toán của hội: nói rõ tiền về thẳng chủ hội. */
 function buyerDesc(k: Provider, community: string, bankMode: 'manual' | 'auto' | null): string {
@@ -56,6 +62,13 @@ function initialChoice(list: TermChoice[], cycle: string | null, months: string 
 
 export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, initialMonths, ref }: { shell: Shell; tierKey: string | null; productId: string | null; initialCycle: string | null; initialMonths: string | null; ref: string | null }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  // Chưa đăng nhập: mua bằng tên và email, tạo tài khoản sau khi trả.
+  const guest = !user;
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const buyerOk = !guest || (buyerName.trim().length >= 2 && looksLikeEmail(buyerEmail));
   const c = shell.community;
   const premium = shell.premium;
   const choices = modeChoices(premium, c.pricingMode);
@@ -73,12 +86,21 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
   const product = productId ? products.data?.items.find((p) => p.id === productId || p.slug === productId) ?? null : null;
 
   const m = useMutation({
-    mutationFn: () => api.post<{ orderId: string }>('/v1/checkout', {
-      target: product ? { type: 'product', productId: product.id } : { type: 'tier', communityId: c.id, tierKey: tierKey ?? 'premium', ...(choice?.months ? { cycle: choice.months === 12 ? 'yearly' : 'monthly', months: choice.months } : { cycle: 'one_time' }) },
-      provider: provider ?? undefined, couponCode: applied ?? undefined, ref: ref ?? undefined,
-    }),
-    onSuccess: (r) => navigate(`/thanh-toan/${r.orderId}`),
+    mutationFn: () => {
+      const order = {
+        target: product ? { type: 'product', productId: product.id } : { type: 'tier', communityId: c.id, tierKey: tierKey ?? 'premium', ...(choice?.months ? { cycle: choice.months === 12 ? 'yearly' : 'monthly', months: choice.months } : { cycle: 'one_time' }) },
+        provider: provider ?? undefined, couponCode: applied ?? undefined, ref: ref ?? undefined,
+      };
+      return guest
+        ? api.post<{ orderId: string; guestToken: string | null }>('/v1/checkout/guest', { ...order, name: buyerName.trim(), email: buyerEmail.trim() })
+        : api.post<{ orderId: string; guestToken?: string | null }>('/v1/checkout', order);
+    },
+    onSuccess: (r) => {
+      if (r.guestToken) { rememberGuestToken(r.orderId, r.guestToken); navigate(guestOrderPath(r.orderId, r.guestToken)); return; }
+      navigate(`/thanh-toan/${r.orderId}`);
+    },
   });
+  const loginHere = `${loginPathFor(location.pathname + location.search)}${buyerEmail ? `&email=${encodeURIComponent(buyerEmail.trim())}` : ''}`;
 
   if (productId && products.isLoading) return <CheckoutFrame backTo={`/${c.slug}/cua-hang`}><LoadingBlock /></CheckoutFrame>;
   const listAmount = product ? product.priceMinor : choice?.listMinor ?? 0;
@@ -112,6 +134,15 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
           </ul>
         </Section>
       )}
+      {guest && (
+        <Section title="Thông tin của bạn">
+          <div className="card px-4 py-4 md:px-5 flex flex-col gap-4">
+            <Field label="Tên của bạn" autoComplete="name" maxLength={80} value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Ví dụ: Nguyễn Lan Anh" />
+            <Field label="Email" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false} maxLength={120} value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="email@gmail.com" hint="Trả xong, bạn đặt mật khẩu ngay trên trang này để vào hội. Link tạo tài khoản cũng được gửi vào email này." />
+            <div className="text-[15px]" style={{ color: T.ink2 }}>Đã có tài khoản Hội Mình? <Link to={loginHere} className="font-semibold underline" style={{ color: T.ink }}>Đăng nhập</Link></div>
+          </div>
+        </Section>
+      )}
       <Section title="Cách thanh toán">
         {ready ? (
           <RadioRows label="Cách thanh toán">
@@ -137,11 +168,12 @@ export function CheckoutConfigure({ shell, tierKey, productId, initialCycle, ini
           trang thì thanh nằm lại đúng chỗ của nó nên không che dòng nào. Trang này nằm ngoài khung hội, không có thanh
           điều hướng dưới để đè lên. Máy tính: nút rộng hết cột, ngay dưới bảng tiền. */}
       <div className="sticky bottom-0 z-10 -mx-4 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] flex flex-col gap-2 border-t border-[color:var(--line)] bg-[color:var(--surface)] shadow-[0_-6px_18px_rgba(8,24,23,0.07)] md:static md:mx-0 md:p-0 md:border-0 md:bg-transparent md:shadow-none">
-        {m.isError && <div role="alert" className="text-[15px] leading-snug" style={{ color: T.accentText }}>{errorMessage(m.error)}</div>}
+        {m.isError && <div role="alert" className="text-[15px] leading-snug" style={{ color: T.accentText }}>{errorMessage(m.error)}{isAccountExists(m.error) && <> <Link to={loginHere} className="font-semibold underline">Đăng nhập ngay</Link></>}</div>}
+        {guest && !buyerOk && ready && <div className="text-[15px] leading-snug" style={{ color: T.ink2 }}>Điền tên và email ở mục "Thông tin của bạn" để thanh toán.</div>}
         <div className="flex items-center gap-3">
           <div className="md:hidden flex-shrink-0"><div className="leading-tight" style={{ color: T.ink2, fontSize: 15 }}>Tổng tiền</div><div className="serif text-[20px] leading-tight font-extrabold whitespace-nowrap">{money(amount)}</div></div>
           {ready ? (
-            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount} onClick={() => m.mutate()} className="flex-1 min-w-0" style={PAY_BUTTON}>{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán ${money(amount)} bằng ${BUYER_METHOD_NAME[provider!]}`}</Button>
+            <Button variant="primary" size="lg" loading={m.isPending} disabled={!amount || !buyerOk} onClick={() => m.mutate()} className="flex-1 min-w-0" style={PAY_BUTTON}>{provider === 'sepay' ? 'Lấy mã QR chuyển khoản' : `Thanh toán ${money(amount)} bằng ${BUYER_METHOD_NAME[provider!]}`}</Button>
           ) : (
             <Button size="lg" disabled className="flex-1 min-w-0" style={PAY_BUTTON} icon={<Lock size={18} className="flex-shrink-0" />}>Hội chưa mở thanh toán</Button>
           )}

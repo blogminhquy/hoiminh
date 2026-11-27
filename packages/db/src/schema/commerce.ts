@@ -280,3 +280,28 @@ export const invoices = pgTable(
   },
   (t) => [uniqueIndex('invoices_number_uq').on(t.number), index('invoices_user_idx').on(t.userId)],
 );
+
+/**
+ * Mua trước, tạo tài khoản sau. Khách chưa đăng nhập mua bằng email: máy chủ tạo sẵn một tài khoản chờ (chưa có mật khẩu)
+ * mang email đó để đơn, quyền truy cập, hoa hồng chạy đúng như đơn thường. Dòng này còn `claimed_at` null nghĩa là
+ * khách chưa tạo mật khẩu: sau khi trả tiền khách nhận email có link tạo tài khoản, và được nhắc lại vài lần nếu chưa làm.
+ */
+export const accountClaims = pgTable(
+  'account_claims',
+  {
+    userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    /**
+     * Đơn mà trình duyệt đã tạo ra tài khoản chờ này. Chỉ trình duyệt giữ mã của đúng đơn này được đặt mật khẩu ngay trên
+     * màn thanh toán. Mua lại bằng email đã có đơn trả tiền thì phải tạo tài khoản qua link trong email.
+     */
+    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'set null' }),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'set null' }),
+    claimedAt: ts('claimed_at'),
+    /** Số email nhắc đã gửi sau email báo thanh toán thành công. */
+    remindersSent: integer('reminders_sent').notNull().default(0),
+    /** Lần gần nhất gửi email có link tạo tài khoản. Null: chưa trả tiền nên chưa gửi gì. */
+    lastEmailedAt: ts('last_emailed_at'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('account_claims_pending_idx').on(t.lastEmailedAt).where(sql`${t.claimedAt} is null`)],
+);

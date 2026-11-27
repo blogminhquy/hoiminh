@@ -81,10 +81,12 @@ export function AboutRail({ d, refCode: ref, invite }: { d: AboutPage; refCode: 
 
   const onJoin = () => {
     if (member && effect !== 'promote') { rememberCommunitySlug(c.slug); navigate(`/${c.slug}/bang-tin`); return; }
-    if (!user) { navigate(signupPathFor(c.slug, ref)); return; }
+    const checkoutTo = `/${c.slug}/thanh-toan?${checkoutQuery(entry)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`;
+    // Hội thu phí: chưa đăng nhập vẫn sang thẳng thanh toán (mua trước, tạo tài khoản sau). Lời mời thì cần đăng nhập trước.
+    if (!user) { navigate(paid && !invite ? checkoutTo : signupPathFor(c.slug, ref)); return; }
     // Được mời thì vào thẳng: không qua thanh toán (chỉ lời mời quản trị), không qua bảng câu hỏi.
     if (byInvite) { join.mutate([]); return; }
-    if (paid) { navigate(`/${c.slug}/thanh-toan?${checkoutQuery(entry)}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`); return; }
+    if (paid) { navigate(checkoutTo); return; }
     if (d.joinQuestions.length) { setAsking(true); return; }
     join.mutate([]);
   };

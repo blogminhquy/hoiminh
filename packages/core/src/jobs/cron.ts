@@ -1,8 +1,9 @@
 // Lịch chạy định kỳ, chỉ là lưới an toàn của mô hình event-driven (việc chạy nền đi theo sự kiện qua Queue, không quét):
 // 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, ảnh/tệp tin nhắn quá 30 ngày,
-// dọn bảng job, đối soát nhắc sự kiện).
+// nhắc tạo tài khoản, dọn bảng job, đối soát nhắc sự kiện).
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
+import { remindPendingAccounts } from '../auth/claims';
 import { releaseDueCommissions, snapshotLeaderboards } from '../services/affiliate';
 import { expireAutomationGrants } from '../services/automation-engine';
 import { expireEntitlements } from '../services/entitlements';
@@ -70,6 +71,10 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
     // Quyền do quy tắc tự động cấp có hạn dùng (hội viên N ngày): quá hạn thì thu hồi. Bước riêng để lỗi ở đây không chặn bước tiền.
     await step('automation', async (ctx) => {
       out.automationGrantsExpired = await expireAutomationGrants(ctx);
+    });
+    // Người đã trả tiền mà chưa tạo tài khoản: nhắc lại sau 1, 3, 7 ngày. Bước riêng để lỗi gửi email không chặn bước khác.
+    await step('pending_accounts', async (ctx) => {
+      out.pendingAccountsReminded = await remindPendingAccounts(ctx);
     });
     // Đối soát: sự kiện sắp diễn ra mà chưa có job nhắc (tạo trước khi có cơ chế hẹn lúc tạo, hoặc hẹn bị lỡ).
     await step('reconcile', async (ctx) => {

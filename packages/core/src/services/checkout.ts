@@ -78,8 +78,11 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
   return { title, subtitle: `Gói Hội Mình cho ${c.name}`, amountMinor: q.amountMinor, currency: 'VND', communityId: null, workspaceId: c.workspaceId, targetType: 'platform', targetId: plan.key, metadata: { cycle: t.cycle, planKey: plan.key, planCommunityId: c.id, communitySlug: c.slug, title: `${title} · ${c.name}` }, enabledProviders: ['sepay', 'momo', 'vnpay', 'paypal'], itemName: `${title} · ${c.name}` };
 }
 
-/** Tạo đơn + thanh toán + hướng dẫn (QR hoặc redirect). Đơn chờ hết hạn sau 30 phút (24 giờ với đơn chủ hội tự bấm xác nhận). */
-export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Promise<CheckoutSession> {
+/**
+ * Tạo đơn + thanh toán + hướng dẫn (QR hoặc redirect). Đơn chờ hết hạn sau 30 phút (24 giờ với đơn chủ hội tự bấm xác nhận).
+ * `opts.returnUrl`: trang cổng thanh toán đưa người mua về, tính theo id đơn vừa tạo (người mua chưa đăng nhập cần mã đơn trên link).
+ */
+export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput, opts: { returnUrl?: (orderId: string) => Promise<string> } = {}): Promise<CheckoutSession> {
   const userId = requireUser(ctx);
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
@@ -133,7 +136,7 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput): Prom
     await tx.insert(orderItems).values({ orderId: o!.id, resourceType: r.targetType, resourceId: r.targetId, name: r.itemName, unitMinor: r.amountMinor, totalMinor: total });
     return o!;
   });
-  const returnUrl = input.returnUrl ?? `${ctx.env.APP_URL}/thanh-toan/${order.id}`;
+  const returnUrl = input.returnUrl ?? (opts.returnUrl ? await opts.returnUrl(order.id) : `${ctx.env.APP_URL}/thanh-toan/${order.id}`);
   const gatewayInput = { reference, orderId: order.id, amountMinor: total, currency: r.currency, description: `${r.itemName} - Hoi Minh`, customerEmail: user.email, returnUrl };
   // Đơn của hội trả bằng chuyển khoản: không gọi cổng nào, chỉ dựng mã QR chuyển khoản tới tài khoản của chủ hội.
   // Đơn của hội trả qua cổng: gọi cổng bằng khóa của chủ hội, cổng báo về địa chỉ riêng của cổng đó.

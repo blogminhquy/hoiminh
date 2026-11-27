@@ -8,10 +8,11 @@ import { templates } from '@hoiminh/email';
 import { and, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { automationGrants, automationRules, automationRuns, communities, communityMembers, communityTiers, contactClaims, contacts, courses, entitlements, users, workspaces, type AutomationAction, type AutomationActionResult, type AutomationTrigger } from '@hoiminh/db';
 import type { AuthProvider } from '../auth/providers';
-import { registerVerified } from '../auth/service';
+import { pendingClaimOf } from '../auth/claims';
+import { claimPendingAccount, registerVerified } from '../auth/service';
 import type { Ctx } from '../context';
 import { forbidden, invalid } from '../errors';
-import { raw } from '../lib/db';
+import { elevated } from '../lib/elevated';
 import { hasRoomForMember, workspaceHasFeature } from './plans';
 
 type Contact = typeof contacts.$inferSelect;
@@ -21,21 +22,7 @@ type User = typeof users.$inferSelect;
 
 export const CLAIM_TTL_DAYS = 30;
 
-/**
- * Chạy `fn` với quyền hệ thống ngay trong transaction hiện tại, xong trả lại biến phiên cũ. Dùng cho các đường
- * người lạ đi vào bằng link trong email (kích hoạt, xác minh email): họ không thuộc workspace nào nên policy RLS
- * không cho đọc bảng liên hệ, trong khi chính link đó là bằng chứng họ được phép.
- */
-export async function elevated<T>(ctx: Ctx, fn: () => Promise<T>): Promise<T> {
-  const [prev] = await raw<{ v: string | null }>(ctx.db, sql`select current_setting('app.bypass', true) as v`);
-  await ctx.db.execute(sql`select set_config('app.bypass', 'on', true)`);
-  try {
-    return await fn();
-  } finally {
-    // Transaction đã hỏng (fn ném lỗi SQL) thì câu này cũng lỗi: bỏ qua để lỗi gốc đi ra ngoài.
-    await ctx.db.execute(sql`select set_config('app.bypass', ${prev?.v || 'off'}, true)`).then(() => null, () => null);
-  }
-}
+export { elevated } from '../lib/elevated';
 
 /** Tài khoản đủ điều kiện nhận quyền ngay: trùng email, đang hoạt động và email đã xác minh. */
 async function verifiedUserFor(ctx: Ctx, email: string): Promise<User | null> {
@@ -324,7 +311,9 @@ export async function activationInfo(ctx: Ctx, token: string) {
     const items: string[] = [];
     for (const g of pending) items.push(await grantTitle(ctx, g));
     const sender = await senderName(ctx, contact.workspaceId, pending.find((g) => g.communityId)?.communityId);
-    return { email: contact.email, name: contact.name, sender, hasAccount: Boolean(user), used: Boolean(claim.consumedAt), items };
+    // Tài khoản chờ của người mua bằng email (chưa có mật khẩu) chưa tính là có tài khoản: trang kích hoạt hỏi đặt mật khẩu.
+    const hasAccount = Boolean(user) && !(await pendingClaimOf(ctx, user!.id));
+    return { email: contact.email, name: contact.name, sender, hasAccount, used: Boolean(claim.consumedAt), items };
   });
 }
 
@@ -339,7 +328,14 @@ export async function activate(ctx: Ctx, provider: AuthProvider, token: string, 
     let user = await ctx.db.query.users.findFirst({ where: eq(users.email, contact.email) });
     let session: AuthSession | null = null;
     if (user && user.status !== 'active') throw forbidden('Tài khoản đã bị tạm khóa');
-    if (!user) {
+    if (user && (await pendingClaimOf(ctx, user.id))) {
+      // Email này đã mua ở hội khác mà chưa tạo tài khoản: đặt mật khẩu ở đây cũng là tạo tài khoản đó (link chứng minh email).
+      if (claim.consumedAt) throw invalid('Link kích hoạt đã được dùng');
+      if (!input.password || input.password.length < 8) throw invalid('Mật khẩu cần ít nhất 8 ký tự');
+      const claimed = await claimPendingAccount(ctx, provider, user, { name: input.name ?? null, password: input.password, emailVerified: true }, meta);
+      user = claimed.user;
+      session = claimed.session;
+    } else if (!user) {
       if (claim.consumedAt) throw invalid('Link kích hoạt đã được dùng');
       if (!input.password || input.password.length < 8) throw invalid('Mật khẩu cần ít nhất 8 ký tự');
       const name = (input.name ?? '').trim() || contact.name || contact.email.split('@')[0]!;

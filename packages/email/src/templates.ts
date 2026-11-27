@@ -89,6 +89,23 @@ export const templates = {
     make('welcome_member', to, `Chào mừng bạn đến với ${community}`, `Chào mừng ${name}`, `<p>Bạn đã là thành viên của <strong>${h(community)}</strong>. Bắt đầu ở Bảng tin, học module 1 miễn phí và đặt câu hỏi ở Hỏi đáp.</p>`, { label: 'Vào hội', url }),
   paymentSucceeded: (to: string, name: string, item: string, amount: string, url: string) =>
     make('payment_succeeded', to, `Đã nhận thanh toán ${amount} · ${item}`, 'Thanh toán thành công', `<p>Chào ${h(name)}, chúng tôi đã nhận <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong>. Quyền truy cập đã được mở.</p>`, { label: 'Vào học ngay', url }),
+  /**
+   * Khách mua khi chưa có tài khoản (mua trước, tạo tài khoản sau): báo đã nhận tiền và mời tạo tài khoản bằng link riêng
+   * để vào đúng hội vừa mua. `reminder` > 0 là email nhắc lần thứ mấy, gửi khi khách chưa tạo tài khoản sau vài ngày.
+   */
+  accountClaim: (to: string, p: { name: string; item: string; place: string; amount: string | null; reference: string | null; url: string; reminder: number }) =>
+    make(
+      'account_claim',
+      to,
+      p.reminder > 0 ? `Bạn chưa vào ${p.place}: tạo tài khoản để bắt đầu` : `Đã nhận thanh toán · Tạo tài khoản để vào ${p.place}`,
+      p.reminder > 0 ? 'Quyền truy cập của bạn vẫn đang chờ' : 'Thanh toán thành công',
+      (p.reminder > 0
+        ? `<p>Chào ${h(p.name)}, bạn đã mua <strong>${h(p.item)}</strong> tại <strong>${h(p.place)}</strong> nhưng chưa tạo tài khoản, nên chưa vào được bên trong.</p>`
+        : `<p>Chào ${h(p.name)}, chúng tôi đã nhận ${p.amount ? `<strong>${h(p.amount)}</strong>` : 'thanh toán'} cho <strong>${h(p.item)}</strong> tại <strong>${h(p.place)}</strong>. Quyền truy cập đã mở sẵn cho email này.</p>`)
+        + `<p>Bấm nút dưới đây, đặt mật khẩu một lần là vào thẳng ${h(p.place)}. Link này là của riêng bạn, đừng chuyển cho người khác.</p>`
+        + (p.reference ? `<p style="margin:0;">Mã đơn của bạn: <strong>${h(p.reference)}</strong></p>` : ''),
+      { label: 'Tạo tài khoản và vào hội', url: p.url },
+    ),
   /** `note`: tiền hoàn về bằng đường nào (cổng tự hoàn, hay người bán tự chuyển lại), xem refundRouteNote ở @hoiminh/contracts. */
   paymentRefunded: (to: string, name: string, item: string, amount: string, note: string) =>
     make('payment_refunded', to, `Đã hoàn tiền ${amount} · ${item}`, 'Hoàn tiền', `<p>Chào ${h(name)}, khoản <strong>${h(amount)}</strong> cho <strong>${h(item)}</strong> đã được ghi nhận hoàn tiền.</p><p>${h(note)}</p>`),

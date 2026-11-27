@@ -43,6 +43,7 @@ const publicRoutes: RouteObject[] = [
   { path: '/dat-lai-mat-khau', element: page(() => import('@/pages/public/ResetPassword')) },
   { path: '/xac-minh-email', element: page(() => import('@/pages/public/VerifyEmail')) },
   { path: '/kich-hoat', element: page(() => import('@/pages/public/Activate')) },
+  { path: '/tao-tai-khoan', element: page(() => import('@/pages/public/ClaimAccount')) },
   { path: '/vao', element: page(() => import('@/pages/public/LoginLink')) },
   { path: '/auth/callback', element: page(() => import('@/pages/public/AuthCallback')) },
   { path: '/tao-hoi', element: page(() => import('@/pages/public/SignupLanding')) },

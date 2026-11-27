@@ -1,6 +1,6 @@
 // /v1/auth: đăng ký, đăng nhập, Google, làm mới, đăng xuất, xác minh email, quên/đặt lại mật khẩu.
-import { forgotPasswordSchema, joinRefs, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from '@hoiminh/contracts';
-import { auth, loginLinks, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core';
+import { claimAccountSchema, forgotPasswordSchema, joinRefs, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from '@hoiminh/contracts';
+import { auth, guestCheckout, loginLinks, SupabaseAuthProvider, requireUser, AppError } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { rateLimit } from '../middleware/rate-limit';
@@ -78,6 +78,21 @@ authRoutes.post('/resend-verification', rateLimit('auth'), async (c) => {
   const ctx = c.get('ctx');
   await auth.resendVerification(ctx, requireUser(ctx));
   return c.json({ ok: true });
+});
+
+/**
+ * Tạo tài khoản sau khi mua (mua trước, tạo tài khoản sau). Bằng chứng là link trong email (`token`), hoặc mã đơn của
+ * trình duyệt vừa mua (`orderId` + `orderToken`). GET đọc thông tin để vẽ trang, POST đặt mật khẩu và đăng nhập luôn.
+ */
+authRoutes.get('/claim', async (c) => {
+  const q = { token: c.req.query('token') || undefined, orderId: c.req.query('orderId') || undefined, orderToken: c.req.query('t') || c.req.header('x-order-token') || undefined };
+  return c.json(await guestCheckout.claimInfo(c.get('ctx'), q));
+});
+authRoutes.post('/claim', rateLimit('auth'), async (c) => {
+  const input = await parse(claimAccountSchema, await body(c));
+  const r = await guestCheckout.claimAccount(c.get('ctx'), c.get('app').auth, { ...input, ref: getCookie(c.req.header('cookie'), 'hm_ref') ?? null }, { userAgent: c.req.header('user-agent') });
+  const session = (await respondSession(c, r.session).json()) as Record<string, unknown>;
+  return c.json({ session, redirect: r.redirect, email: r.email });
 });
 
 authRoutes.post('/forgot-password', rateLimit('auth'), async (c) => {

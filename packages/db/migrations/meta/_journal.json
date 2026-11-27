@@ -169,6 +169,13 @@
       "when": 1795769902924,
       "tag": "0023_file_community_message_media_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795776421457,
+      "tag": "0024_guest_checkout",
+      "breakpoints": true
     }
   ]
 }

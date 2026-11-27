@@ -36,6 +36,8 @@ describe('email', () => {
       templates.invite('a@b.vn', evil, evil, 'https://hoiminh.com/x'),
       templates.ownerTransferReported('a@b.vn', { ownerName: evil, buyerName: evil, item: evil, community: evil, amount: '1đ', reference: 'HM ABCDE', url: 'https://hoiminh.com/x/tien' }),
       templates.ownerOrderPaid('a@b.vn', { ownerName: evil, buyerName: evil, item: evil, community: evil, amount: '1đ', reference: 'HM ABCDE', url: 'https://hoiminh.com/x/tien' }),
+      templates.accountClaim('a@b.vn', { name: evil, item: evil, place: evil, amount: '1đ', reference: 'HM ABCDE', url: 'https://hoiminh.com/tao-tai-khoan?token=x', reminder: 0 }),
+      templates.accountClaim('a@b.vn', { name: evil, item: evil, place: evil, amount: null, reference: null, url: 'https://hoiminh.com/tao-tai-khoan?token=x', reminder: 2 }),
     ];
     for (const m of all) {
       expect(m.html).not.toContain('<a href="https://lua-dao.example"');

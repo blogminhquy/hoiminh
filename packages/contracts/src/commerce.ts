@@ -1,6 +1,6 @@
 // Hợp đồng thương mại: sản phẩm, offer, checkout, thanh toán, hoàn tiền, gói nền tảng.
 import { z } from 'zod';
-import { amountMinorSchema, billingCycleSchema, currencySchema, idSchema, paymentProviderSchema } from './common';
+import { amountMinorSchema, billingCycleSchema, currencySchema, emailSchema, idSchema, paymentProviderSchema } from './common';
 import { bankCodeSchema } from './affiliate';
 import { paidPlanKeySchema, planCycleSchema } from './plans';
 
@@ -102,6 +102,29 @@ export const createCheckoutSchema = z.object({
   returnUrl: z.string().url().optional(),
 });
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
+
+/**
+ * Mua khi chưa đăng nhập (mua trước, tạo tài khoản sau): như checkout thường, thêm email và tên người mua. Chỉ cho gói
+ * thành viên của hội và sản phẩm cửa hàng; gói Hội Mình cho hội thì chủ hội phải đăng nhập.
+ */
+export const guestCheckoutSchema = createCheckoutSchema.extend({
+  email: emailSchema,
+  name: z.string().trim().min(2).max(80),
+});
+export type GuestCheckoutInput = z.infer<typeof guestCheckoutSchema>;
+
+/**
+ * Tạo tài khoản cho người đã mua bằng email. Một trong hai bằng chứng: `token` là link trong email (chứng minh được email),
+ * hoặc `orderId` + `orderToken` là mã đơn mà chính trình duyệt này vừa tạo (màn thanh toán xong).
+ */
+export const claimAccountSchema = z.object({
+  token: z.string().max(200).optional(),
+  orderId: idSchema.optional(),
+  orderToken: z.string().max(200).optional(),
+  name: z.string().trim().min(2).max(80).optional(),
+  password: z.string().min(8).max(128),
+}).refine((v) => Boolean(v.token) || Boolean(v.orderId && v.orderToken), { message: 'Thiếu link tạo tài khoản' });
+export type ClaimAccountInput = z.infer<typeof claimAccountSchema>;
 
 /** Hướng dẫn thanh toán trả về cho client theo từng cổng. */
 export const paymentInstructionSchema = z.discriminatedUnion('kind', [

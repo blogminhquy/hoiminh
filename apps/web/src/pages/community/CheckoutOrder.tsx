@@ -3,6 +3,9 @@
 // - đã bấm báo chuyển khoản: màn cảm ơn và chờ xác nhận, có thẻ chủ hội để nhắn tin, mở lại được thông tin chuyển khoản;
 // - đã trả: màn thành công với nút vào thẳng thứ vừa mua; hết hạn, đã hủy, đã hoàn: báo rõ.
 // Trang tự hỏi lại máy chủ 3 giây một lần khi đơn còn chờ, nên tự chuyển màn khi tiền về hoặc chủ hội xác nhận.
+// Người mua chưa đăng nhập (mua trước, tạo tài khoản sau) mở trang bằng mã đơn: trả xong thì đặt mật khẩu ngay ở đây
+// để vào hội, hoặc mở link tạo tài khoản đã gửi vào email.
+import type { AuthSession } from '@hoiminh/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, ErrorBox, T, money } from '@hoiminh/ui';
 import { Check, ChevronDown, ExternalLink, MessageCircle, UserRound } from 'lucide-react';
@@ -12,11 +15,14 @@ import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { BankQrCard, CheckoutFrame, Notice, ProviderLine, Section, Spinner, TransferSteps, Waiting, fmtClockDay, providerMeta, type Instruction } from './CheckoutParts';
+import { ClaimForm } from './GuestParts';
 import { MessageModal } from './MessageModal';
 
 /** Hội và chủ hội bán đơn này (chỉ thông tin công khai trên hồ sơ). Đơn mua gói Hội Mình thì không có. */
 interface Seller { communityId: string; communityName: string; communitySlug: string; owner: { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; acceptsMessages: boolean } }
-interface Order { orderId: string; status: 'pending' | 'paid' | 'refunded' | 'expired' | 'cancelled'; paidAt: string | null; reference: string; amountMinor: number; provider: string | null; paymentStatus: string | null; instruction: Instruction | null; title: string; nextUrl: string; expiresAt: string | null; targetType?: 'tier' | 'product' | 'platform'; seller?: Seller | null }
+/** Tài khoản của người mua chưa đăng nhập: đã có mật khẩu chưa, và trình duyệt này có được đặt mật khẩu ngay không. */
+interface GuestAccount { email: string; name: string; hasAccount: boolean; canCreateHere: boolean }
+interface Order { account?: GuestAccount; orderId: string; status: 'pending' | 'paid' | 'refunded' | 'expired' | 'cancelled'; paidAt: string | null; reference: string; amountMinor: number; provider: string | null; paymentStatus: string | null; instruction: Instruction | null; title: string; nextUrl: string; expiresAt: string | null; targetType?: 'tier' | 'product' | 'platform'; seller?: Seller | null }
 
 /** Tóm tắt đơn gọn trong một khối: tên món, mã đơn, tổng tiền trên một hàng, hạn giữ chỗ. `extra` là các dòng thêm của từng màn. */
 function OrderSummary({ o, extra, sub }: { o: Order; extra?: ReactNode; /** Khối này nằm dưới một tiêu đề lớn khác của trang. */ sub?: boolean }) {
@@ -55,8 +61,55 @@ function PaidView({ o }: { o: Order }) {
   );
 }
 
+/**
+ * Đã nhận tiền, người mua chưa có tài khoản: đặt mật khẩu ngay tại đây là vào thẳng hội. Trình duyệt không được đặt
+ * (email đã có đơn mua trước đó) thì mời mở link trong email; đã có tài khoản thì mời đăng nhập.
+ */
+function GuestPaidView({ o, token }: { o: Order; token: string }) {
+  const { setSession } = useAuth();
+  const acc = o.account;
+  const place = o.seller?.communityName ?? 'hội';
+  const claim = useMutation({
+    mutationFn: (v: { name: string; password: string }) => api.post<{ session: AuthSession; redirect: string }>('/v1/auth/claim', { orderId: o.orderId, orderToken: token, name: v.name || undefined, password: v.password }),
+    onSuccess: (r) => { setSession(r.session); window.location.assign(r.redirect); },
+  });
+  const resend = useMutation({ mutationFn: () => api.post('/v1/auth/forgot-password', { email: acc?.email ?? '' }) });
+  const lead = acc?.canCreateHere
+    ? `Quyền truy cập đã mở cho ${acc.email}. Còn một bước: đặt mật khẩu để vào ${place}.`
+    : acc?.hasAccount
+      ? 'Quyền truy cập đã mở. Đăng nhập để vào.'
+      : `Quyền truy cập đã mở cho ${acc?.email ?? 'email của bạn'}.`;
+  return (
+    <>
+      <div className="card px-5 py-7 flex flex-col items-center text-center gap-2.5" style={{ background: T.tealSoft, borderColor: T.tealSoft }}>
+        <span className="w-14 h-14 rounded-full inline-flex items-center justify-center" style={{ background: T.teal, color: T.invertInk }}><Check size={30} /></span>
+        <h1 className="serif text-[24px] leading-tight font-extrabold">Đã nhận thanh toán</h1>
+        <div className="text-[16px] leading-snug" style={{ color: T.tealText, overflowWrap: 'anywhere' }}>{lead}</div>
+      </div>
+      {acc?.canCreateHere && (
+        <Section title={`Tạo tài khoản để vào ${place}`}>
+          <div className="card px-4 py-5 md:px-5">
+            <ClaimForm email={acc.email} defaultName={acc.name} cta="Tạo tài khoản và vào hội" pending={claim.isPending} error={claim.error} onSubmit={(v) => claim.mutate(v)} />
+          </div>
+        </Section>
+      )}
+      {acc && !acc.hasAccount && !acc.canCreateHere && (
+        <div className="card px-4 py-5 md:px-5 flex flex-col gap-3">
+          <div className="text-[17px] font-bold">Mở email để tạo tài khoản</div>
+          <div className="text-[15px] leading-snug" style={{ color: T.ink2, overflowWrap: 'anywhere' }}>Chúng tôi đã gửi link tạo tài khoản tới <strong style={{ color: T.ink }}>{acc.email}</strong>. Mở email "Tạo tài khoản và vào hội", đặt mật khẩu một lần là vào thẳng {place}. Không thấy thì xem cả mục Quảng cáo hoặc Thư rác.</div>
+          <Button size="lg" className="w-full" style={{ minHeight: 52 }} loading={resend.isPending} disabled={resend.isSuccess} onClick={() => resend.mutate()}>{resend.isSuccess ? 'Đã gửi lại, bạn kiểm tra hộp thư nhé' : 'Gửi lại email'}</Button>
+        </div>
+      )}
+      {acc?.hasAccount && (
+        <Link to={`/dang-nhap?next=${encodeURIComponent(o.nextUrl)}&email=${encodeURIComponent(acc.email)}`} className="btn btn-primary btn-lg w-full" style={{ minHeight: 56 }}>Đăng nhập để vào</Link>
+      )}
+      <OrderSummary o={o} sub />
+    </>
+  );
+}
+
 /** Thẻ chủ hội ở màn chờ: người mua biết đang chờ ai, và nhắn thẳng cho người đó khi chờ lâu. */
-function OwnerCard({ seller }: { seller: Seller }) {
+function OwnerCard({ seller, guest }: { seller: Seller; /** Người mua chưa đăng nhập: chưa nhắn tin được, chỉ mở hồ sơ. */ guest?: boolean }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const owner = seller.owner;
@@ -72,7 +125,7 @@ function OwnerCard({ seller }: { seller: Seller }) {
             <div className="text-[15px] leading-snug" style={{ color: T.ink2 }}>Chủ hội {seller.communityName}</div>
           </div>
         </div>
-        {!isSelf && (owner.acceptsMessages ? (
+        {!isSelf && (owner.acceptsMessages && !guest ? (
           <>
             <Button variant="dark" size="lg" className="w-full" style={{ minHeight: 52 }} icon={<MessageCircle size={20} />} onClick={() => setOpen(true)}>Nhắn tin cho chủ hội</Button>
             <div className="text-[15px] leading-snug" style={{ color: T.ink2 }}>Gửi ảnh chụp giao dịch nếu chờ lâu, chủ hội sẽ dễ đối chiếu hơn.</div>
@@ -80,7 +133,7 @@ function OwnerCard({ seller }: { seller: Seller }) {
         ) : (
           <>
             <Link to={`/u/${owner.handle}`} className="btn btn-ghost btn-lg w-full" style={{ minHeight: 52 }}><UserRound size={20} />Xem hồ sơ chủ hội</Link>
-            <div className="text-[15px] leading-snug" style={{ color: T.ink2 }}>Chủ hội đang tắt nhận tin nhắn riêng. Nếu chờ lâu, bạn xem hồ sơ để tìm cách liên hệ khác.</div>
+            <div className="text-[15px] leading-snug" style={{ color: T.ink2 }}>{guest ? 'Nếu chờ lâu, bạn xem hồ sơ chủ hội để tìm cách liên hệ. Gửi kèm mã đơn để chủ hội dễ đối chiếu.' : 'Chủ hội đang tắt nhận tin nhắn riêng. Nếu chờ lâu, bạn xem hồ sơ để tìm cách liên hệ khác.'}</div>
           </>
         ))}
       </div>
@@ -93,7 +146,7 @@ function OwnerCard({ seller }: { seller: Seller }) {
  * Màn cảm ơn và chờ xác nhận, sau khi người mua bấm "Tôi đã chuyển khoản". Đơn chủ hội tự xác nhận thì chờ chủ hội,
  * các đơn còn lại chờ ngân hàng báo về. Trang vẫn tự hỏi lại nên tự sang màn thành công khi đơn được xác nhận.
  */
-function WaitingView({ o, ownerManual }: { o: Order; ownerManual: boolean }) {
+function WaitingView({ o, ownerManual, guest }: { o: Order; ownerManual: boolean; guest?: boolean }) {
   const bank = o.instruction?.kind === 'bank_qr' ? o.instruction : null;
   const seller = o.seller ?? null;
   return (
@@ -111,7 +164,7 @@ function WaitingView({ o, ownerManual }: { o: Order; ownerManual: boolean }) {
       <Section title="Đơn của bạn">
         <OrderSummary o={o} sub extra={bank ? <div className="text-[15px]" style={{ color: T.ink2 }}>Nội dung chuyển khoản <strong style={{ color: T.ink }}>{bank.transferContent}</strong></div> : undefined} />
       </Section>
-      {seller && <OwnerCard seller={seller} />}
+      {seller && <OwnerCard seller={seller} guest={guest} />}
       {bank && (
         <details className="card overflow-hidden group">
           <summary className="flex items-center gap-2 px-4 md:px-5 font-semibold text-[16px] cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden" style={{ minHeight: 56 }}><span className="flex-grow">Xem lại thông tin chuyển khoản</span><ChevronDown size={20} className="flex-shrink-0 transition-transform group-open:rotate-180" /></summary>
@@ -128,9 +181,11 @@ function WaitingView({ o, ownerManual }: { o: Order; ownerManual: boolean }) {
 function PayView({ o, ownerManual, onTransferred, sending, error }: { o: Order; ownerManual: boolean; onTransferred: () => void; sending: boolean; error: string | null }) {
   const p = providerMeta(o.provider);
   const failed = o.paymentStatus === 'failed' || o.paymentStatus === 'cancelled';
+  const acc = o.account;
   return (
     <>
       <OrderSummary o={o} extra={<div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[15px]" style={{ color: T.ink2 }}>Cách thanh toán <ProviderLine p={p} /></div>} />
+      {acc && !acc.hasAccount && <div className="text-[15px] leading-snug px-1" style={{ color: T.ink2, overflowWrap: 'anywhere' }}>Trả xong, {acc.canCreateHere ? 'bạn đặt mật khẩu ngay trên trang này để vào hội' : 'bạn mở email để tạo tài khoản và vào hội'}. Link tạo tài khoản cũng được gửi tới <strong style={{ color: T.ink }}>{acc.email}</strong>.</div>}
       {failed && <ErrorBox message="Cổng thanh toán báo giao dịch chưa thành công. Bạn thử lại bên dưới, hoặc quay lại tạo đơn mới với cách thanh toán khác." />}
       {o.instruction?.kind === 'bank_qr' && (
         <>
@@ -154,25 +209,30 @@ function PayView({ o, ownerManual, onTransferred, sending, error }: { o: Order; 
   );
 }
 
-export function OrderView({ orderId }: { orderId: string }) {
+/** `guestToken`: người mua chưa đăng nhập, mở đơn bằng mã đơn của trình duyệt đã mua. */
+export function OrderView({ orderId, guestToken }: { orderId: string; guestToken?: string }) {
   const qc = useQueryClient();
+  const key = guestToken ? ['guest-order', orderId] : ['order', orderId];
+  const base = guestToken ? `/v1/guest-orders/${orderId}` : `/v1/orders/${orderId}`;
+  const t = guestToken ? `?t=${guestToken}` : '';
   // Đơn còn `pending` (kể cả khi thanh toán đã ở trạng thái đang xử lý) thì hỏi lại 3 giây một lần.
-  const q = useQuery({ queryKey: ['order', orderId], queryFn: () => api.get<Order>(`/v1/orders/${orderId}`), refetchInterval: (query) => (query.state.data?.status === 'pending' ? 3000 : false) });
-  const processing = useMutation({ mutationFn: () => api.post<Order>(`/v1/orders/${orderId}/processing`, {}), onSuccess: (o) => { qc.setQueryData(['order', orderId], o); window.scrollTo({ top: 0 }); } });
+  const q = useQuery({ queryKey: key, queryFn: () => api.get<Order>(`${base}${t}`), refetchInterval: (query) => (query.state.data?.status === 'pending' ? 3000 : false) });
+  const processing = useMutation({ mutationFn: () => api.post<Order>(`${base}/processing${t}`, {}), onSuccess: (o) => { qc.setQueryData(key, o); window.scrollTo({ top: 0 }); } });
   const o = q.data;
   useEffect(() => {
-    if (o?.status === 'paid') { const t = setTimeout(() => { window.location.assign(o.nextUrl); }, 2500); return () => clearTimeout(t); }
+    // Người mua chưa có tài khoản ở lại trang để đặt mật khẩu, không tự chuyển đi.
+    if (o?.status === 'paid' && !guestToken) { const timer = setTimeout(() => { window.location.assign(o.nextUrl); }, 2500); return () => clearTimeout(timer); }
     return undefined;
-  }, [o?.status, o?.nextUrl]);
+  }, [o?.status, o?.nextUrl, guestToken]);
   if (q.isLoading) return <CheckoutFrame backTo="/"><LoadingBlock /></CheckoutFrame>;
   if (q.isError || !o) return <CheckoutFrame backTo="/"><ErrorBox message={errorMessage(q.error)} onRetry={() => void q.refetch()} /></CheckoutFrame>;
   // Đơn trả thẳng chủ hội mà chủ hội tự bấm xác nhận: không có gì tự đối chiếu, người mua chờ chủ hội.
   const ownerManual = o.instruction?.kind === 'bank_qr' && o.instruction.payee === 'owner' && o.instruction.confirmMode !== 'auto';
   return (
     <CheckoutFrame backTo={o.nextUrl}>
-      {o.status === 'paid' && <PaidView o={o} />}
+      {o.status === 'paid' && (guestToken ? <GuestPaidView o={o} token={guestToken} /> : <PaidView o={o} />)}
       {o.status === 'pending' && (o.paymentStatus === 'processing'
-        ? <WaitingView o={o} ownerManual={ownerManual} />
+        ? <WaitingView o={o} ownerManual={ownerManual} guest={Boolean(guestToken)} />
         : <PayView o={o} ownerManual={ownerManual} onTransferred={() => processing.mutate()} sending={processing.isPending} error={processing.isError ? errorMessage(processing.error) : null} />)}
       {o.status !== 'paid' && o.status !== 'pending' && (
         <>
