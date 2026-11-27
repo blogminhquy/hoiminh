@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.61.0 - 2026-11-27
+
+Mua trước, tạo tài khoản sau, theo yêu cầu của chủ dự án ngày 27/11/2026: ưu tiên dòng tiền, khách trả tiền trước rồi mới tạo tài khoản. Có migration `0024_guest_checkout` (bảng `account_claims`), phải áp lên database thật trước khi merge.
+
+### Thêm
+
+- **Mua khi chưa có tài khoản.** Ở trang thanh toán của hội (gói thành viên) và của sản phẩm, người chưa đăng nhập chỉ cần điền tên và email rồi trả tiền luôn, không phải đăng ký trước. Nút "Tham gia" của hội thu phí ở trang giới thiệu hội cũng đưa người chưa đăng nhập sang thẳng thanh toán. Email đã có tài khoản thì được mời đăng nhập để mua.
+- **Tạo tài khoản ngay sau khi trả.** Trả xong (quét QR, cổng thanh toán báo về, hoặc chủ hội xác nhận), màn đơn hàng chuyển sang "Đã nhận thanh toán" kèm khung đặt mật khẩu. Đặt xong là đăng nhập và vào thẳng hội vừa mua.
+- **Email có link tạo tài khoản.** Thay cho email "Thanh toán thành công" thường lệ, người mua chưa có tài khoản nhận email "Đã nhận thanh toán · Tạo tài khoản để vào <hội>", kèm mã đơn và nút "Tạo tài khoản và vào hội". Link là của riêng người đó, mở trang `/tao-tai-khoan`, đặt mật khẩu một lần là vào đúng hội đã mua (email coi như đã xác minh).
+- **Nhắc tạo tài khoản.** Người đã trả tiền mà chưa tạo tài khoản được nhắc lại sau 1 ngày, 3 ngày và 7 ngày (cron hằng ngày, bước `pending_accounts`), rồi thôi. Đơn đã hoàn tiền thì không nhắc.
+- **Lối thoát khi quên link.** Người mua chưa tạo tài khoản mà bấm "Quên mật khẩu" hoặc đăng ký lại bằng email đó thì nhận lại link tạo tài khoản. Đăng nhập thì được báo rõ "đã mua hàng nhưng chưa tạo mật khẩu" thay vì "sai mật khẩu". Đăng nhập bằng Google cùng email thì nhận luôn tài khoản và quyền đã mua.
+
+### Thay đổi
+
+- **Email "Chào mừng" khi vào hội** không gửi cho người chưa tạo tài khoản: email báo đã nhận tiền đã mời tạo tài khoản, link "Vào hội" lúc đó chưa vào được.
+
 ## 1.60.2 - 2026-11-27
 
 Sửa chữ của nút bị chìm vào nền khi rê chuột, và làm rõ trạng thái rê chuột, bấm, chọn bằng bàn phím của các nút, theo yêu cầu của chủ dự án ngày 27/11/2026. Không có migration.
