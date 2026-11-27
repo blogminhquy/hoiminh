@@ -46,20 +46,32 @@ html { color-scheme: light; }
 html[data-theme='dark'] { color-scheme: dark; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: var(--teal); text-decoration: none; }
-a:hover { color: var(--teal-text); }
+/* Link chữ đậm màu khi rê chuột. Nút làm bằng link (<a class="btn ...">) giữ màu chữ của nút: không thì chữ xanh đậm
+   chìm vào nền nút xanh ngọc. :where() để độ ưu tiên vẫn như `a:hover`, các mục tự đặt màu rê chuột (nav-item...) vẫn thắng. */
+a:where(:not(.btn)):hover { color: var(--teal-text); }
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: 0; padding: 0; }
 .serif { letter-spacing: -0.015em; font-family: var(--font-display); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: filter .12s, background .12s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: filter .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .08s; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
-.btn:not(:disabled):hover { filter: brightness(0.96); }
+/* Nút không thuộc loại nào (tự đặt màu nền): tối đi một chút khi rê chuột. Các loại nút bên dưới có màu rê chuột riêng. */
+.btn:not(:disabled):hover { filter: brightness(0.94); }
+/* Bấm: nút nhích xuống 1px. Dùng bàn phím: viền rõ quanh nút đang chọn. */
+.btn:not(:disabled):active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .btn-primary { background: var(--primary); color: var(--on-primary); }
 .btn-ghost { background: var(--surface); border-color: var(--line2); color: var(--ink); }
 .btn-dark { background: var(--ink); color: var(--surface); }
 /* Nút vàng: việc nên làm ngay hôm nay. Nút nhạt: việc phụ bên cạnh một dòng. */
 .btn-gold { background: var(--gold); color: #1F1B17; }
 .btn-soft { background: var(--primary-soft); color: var(--primary-text); }
+/* Rê chuột: nền đậm hơn thấy rõ, chữ giữ nguyên màu (đủ tương phản ở cả giao diện sáng và tối). */
+.btn-primary:not(:disabled):hover { background: color-mix(in srgb, var(--primary) 84%, #000); filter: none; }
+.btn-ghost:not(:disabled):hover { background: var(--bg); border-color: var(--ink3); filter: none; }
+.btn-dark:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 82%, var(--surface)); filter: none; }
+.btn-gold:not(:disabled):hover { background: color-mix(in srgb, var(--gold) 88%, #000); filter: none; }
+.btn-soft:not(:disabled):hover { background: color-mix(in srgb, var(--primary-soft) 78%, var(--primary)); filter: none; }
 .btn-sm { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 9px; }
 /* Nút chỉ có icon (sửa, xóa, sao chép): vuông, luôn kèm aria-label. */
 .btn-icon { width: 40px; height: 40px; padding: 0 !important; flex-shrink: 0; }
@@ -495,6 +507,7 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .card-invert { --teal: #8FE0E4; --teal-text: #BFE3E1; --ink2: #D6E7E6; --ink3: #A9C6C7; --line: rgba(255, 255, 255, 0.16); --line2: rgba(255, 255, 255, 0.26); }
 /* Nút chính trên thẻ nền tối dùng vàng: ngọc trên ngọc đậm thì chìm. */
 .card-invert .btn-primary { background: var(--gold); color: #1F1B17; }
+.card-invert .btn-primary:not(:disabled):hover { background: color-mix(in srgb, var(--gold) 88%, #000); }
 .card-invert .muted { color: color-mix(in srgb, var(--invert-ink) 62%, transparent); }
 
 /* Trình phát YouTube của bài học (apps/web/src/components/YouTubePlayer.tsx). Màu cố định vì luôn nằm trên nền video tối. */
