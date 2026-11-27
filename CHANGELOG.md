@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.60.0 - 2026-11-27
+
+Ảnh và tệp trong tin nhắn riêng tự xóa sau 30 ngày, theo yêu cầu của chủ dự án ngày 27/11/2026, để tin nhắn không thành kho chứa tệp. Ảnh và tệp trong hội (bài viết, bình luận, khóa học, cửa hàng) vẫn giữ vĩnh viễn. Không có migration.
+
+### Thêm
+
+- **Ảnh và tệp trong tin nhắn tự xóa sau 30 ngày.** Mỗi đêm (01:00 giờ Việt Nam) hệ thống gỡ ảnh và tệp người dùng tải lên trong tin nhắn đã quá 30 ngày, rồi xóa khỏi kho nếu không còn nơi nào khác dùng. Chữ của tin nhắn giữ nguyên. Nhãn dán và GIF không bị xóa. Ảnh, tệp gửi trước ngày 01/12/2026 được tính 30 ngày kể từ ngày đó, để không ai mất đồ đột ngột.
+- **Báo trước trong khung tin nhắn.** Đầu mỗi hội thoại có dòng "Ảnh và tệp trong tin nhắn tự xóa sau 30 ngày. Tải về nếu cần giữ."; cạnh giờ gửi của mỗi ảnh, tệp có nhãn "Tự xóa sau N ngày"; nút gửi ảnh và đính kèm tệp ghi rõ thời hạn.
+- **Ảnh, tệp đã hết hạn hiện rõ ràng.** Thay cho ô ảnh hỏng là "Ảnh đã hết hạn"; tệp vẫn ghi tên và "Tệp đã hết hạn", bấm không tải được. Tin trả lời vẫn hiện "[Hình ảnh]" khi trích ảnh đã hết hạn. Bảng "Thông tin hội thoại" không liệt kê tệp đã hết hạn.
+
 ## 1.59.0 - 2026-11-27
 
 Hạn mức dung lượng tệp theo gói của từng hội, theo yêu cầu của chủ dự án ngày 27/11/2026. Không có migration.
