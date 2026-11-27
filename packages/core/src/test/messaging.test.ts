@@ -1,5 +1,5 @@
 // Tin nhắn kiểu Zalo: trả lời trích dẫn, thả cảm xúc, thu hồi, ghim hội thoại, tin chỉ có ảnh, "Bạn: ..." ở dòng xem trước.
-import { sendMessageSchema } from '@hoiminh/contracts';
+import { MESSAGE_MEDIA_EXPIRY_START, sendMessageSchema } from '@hoiminh/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Ctx } from '../context';
 import * as filesSvc from '../services/files';
@@ -221,5 +221,40 @@ describe('tin nhắn: thông tin thành viên ở bảng "Thông tin hội tho�
 
   it('hội thoại không gắn với hội nào thì không có thông tin thành viên', async () => {
     expect((await thread(duy)).panel).toBeNull();
+  });
+});
+
+describe('ảnh và tệp trong tin nhắn tự xóa sau 30 ngày', () => {
+  const DAY = 86_400_000;
+  /** Ngữ cảnh hệ thống ở thời điểm `days` ngày sau ngày bắt đầu tính hạn. */
+  const at = (days: number): Ctx => ({ ...app.system(), now: () => new Date(Date.parse(MESSAGE_MEDIA_EXPIRY_START) + days * DAY) });
+
+  it('quá hạn thì gỡ ảnh và tệp, giữ chữ và tên tệp, xóa tệp khỏi kho; nhãn dán, GIF và tin chưa tới hạn không bị đụng', async () => {
+    const img = await filesSvc.requestUpload(duy, { fileName: 'anh.webp', mimeType: 'image/webp', sizeBytes: 100, purpose: 'message_image' });
+    await filesSvc.completeUpload(duy, img.fileId, { width: 10, height: 10 });
+    const withImage = await messaging.send(duy, { conversationId: convoId, body: 'Ảnh hóa đơn đây', imageUrl: img.url });
+    const docId = await uploadFor(duy, 'Hợp đồng.pdf', 'application/pdf', 2048);
+    const withFile = await messaging.send(duy, { conversationId: convoId, body: '', fileId: docId });
+    const sticker = await messaging.send(duy, { conversationId: convoId, body: '', imageUrl: 'https://cdn.test/sticker.webp', mediaKind: 'sticker' });
+    const reply = await messaging.send(cong, { conversationId: convoId, body: 'Ok', replyToId: withImage.id });
+
+    // Tin gửi trước ngày bắt đầu được tính 30 ngày kể từ ngày đó: ngày thứ 29 chưa có gì bị xóa.
+    expect(await messaging.expireMessageMedia(at(29))).toBe(0);
+    const live = (await thread(cong)).items;
+    expect(live.find((m) => m.id === withImage.id)).toMatchObject({ imageUrl: img.url, imageExpired: false });
+
+    expect(await messaging.expireMessageMedia(at(31))).toBeGreaterThanOrEqual(2);
+    const items = (await thread(cong)).items;
+    expect(items.find((m) => m.id === withImage.id)).toMatchObject({ body: 'Ảnh hóa đơn đây', imageUrl: null, mediaKind: null, imageExpired: true });
+    expect(items.find((m) => m.id === withFile.id)?.file).toEqual({ name: 'Hợp đồng.pdf', sizeBytes: 2048, expired: true });
+    expect(items.find((m) => m.id === sticker.id)).toMatchObject({ imageUrl: 'https://cdn.test/sticker.webp', mediaKind: 'sticker', imageExpired: false });
+    // Tin trả lời vẫn biết tin gốc từng là ảnh.
+    expect(items.find((m) => m.id === reply.id)?.replyTo).toMatchObject({ hasImage: true, mediaKind: null });
+    // Không còn lấy được link tải, và báo rõ là đã hết hạn.
+    await expect(messaging.messageFileUrl(cong, withFile.id)).rejects.toThrow(/hết hạn/);
+    // Hai tệp đã ra khỏi bảng files (việc xóa trên R2 đã vào hàng đợi); chạy lại không còn gì để gỡ.
+    const left = await app.ctx.db.query.files.findMany({ where: (f, { inArray }) => inArray(f.id, [img.fileId, docId]) });
+    expect(left).toEqual([]);
+    expect(await messaging.expireMessageMedia(at(31))).toBe(0);
   });
 });

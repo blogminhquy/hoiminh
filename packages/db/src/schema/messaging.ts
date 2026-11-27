@@ -2,6 +2,9 @@
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { id, ts } from './_helpers';
 import type { MediaKind } from './content';
+
+/** Ảnh của tin nhắn: như bình luận (nhãn dán, GIF), thêm 'expired' là ảnh tải lên đã tự xóa sau 30 ngày (image_url đã gỡ). */
+export type MessageMediaKind = MediaKind | 'expired';
 import { communities } from './tenant';
 import { users } from './users';
 
@@ -46,8 +49,11 @@ export const messages = pgTable(
     senderUserId: uuid('sender_user_id').notNull().references(() => users.id),
     body: text('body').notNull(),
     imageUrl: text('image_url'),
-    /** Ảnh ở image_url là gì: null là ảnh người dùng tải lên, 'sticker' là nhãn dán, 'gif' là ảnh động GIPHY. */
-    mediaKind: text('media_kind').$type<MediaKind>(),
+    /**
+     * Ảnh ở image_url là gì: null là ảnh người dùng tải lên, 'sticker' là nhãn dán, 'gif' là ảnh động GIPHY.
+     * 'expired': ảnh tải lên đã quá 30 ngày nên đã gỡ (image_url null), web hiện "Ảnh đã hết hạn".
+     */
+    mediaKind: text('media_kind').$type<MessageMediaKind>(),
     automated: boolean('automated').notNull().default(false),
     /** Tin đang được trả lời (trích dẫn). */
     replyToId: uuid('reply_to_id').references((): AnyPgColumn => messages.id, { onDelete: 'set null' }),
@@ -55,7 +61,10 @@ export const messages = pgTable(
     reactions: jsonb('reactions').$type<Record<string, string>>().notNull().default({}),
     /** Đã thu hồi: nội dung không còn trả về cho ai. */
     recalledAt: ts('recalled_at'),
-    /** Tệp đính kèm (tối đa 5MB): object key của tệp riêng trong kho, tên gốc và dung lượng chép lại lúc gửi. */
+    /**
+     * Tệp đính kèm (tối đa 5MB): object key của tệp riêng trong kho, tên gốc và dung lượng chép lại lúc gửi.
+     * Quá 30 ngày thì file_url bị gỡ, còn tên và dung lượng giữ lại để web hiện "Tệp đã hết hạn".
+     */
     fileUrl: text('file_url'),
     fileName: text('file_name'),
     fileSize: integer('file_size'),

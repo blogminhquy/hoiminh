@@ -2,20 +2,22 @@
 // và bảng "Thông tin hội thoại" bên phải (xem hồ sơ, thông tin thành viên, ảnh, tệp, link đã gửi).
 import { MESSAGE_REACTIONS, type MessageReaction } from '@hoiminh/contracts';
 import { Avatar, T, money } from '@hoiminh/ui';
-import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, Link2, MoreHorizontal, Pin, PinOff, Quote, Sparkles, Undo2, User, Users, X } from 'lucide-react';
+import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, FileX, ImageOff, Link2, MoreHorizontal, Pin, PinOff, Quote, Sparkles, Undo2, User, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { EMOJI_ONLY } from '@/components/media/emoji-data';
 import { MediaImage } from '@/components/media/MediaImage';
 import type { MediaKind } from '@/components/media/types';
-import { convoPreview, fileSizeLabel, linkParts, reactionSummary } from '@/lib/chat';
+import { convoPreview, fileSizeLabel, linkParts, mediaTtlLabel, MEDIA_TTL_NOTICE, reactionSummary } from '@/lib/chat';
 import { fmtDate, fmtTime, timeAgo } from '@/lib/format';
 
 export interface Person { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; lastSeenAt?: string | null }
 export interface Conversation { id: string; other: Person; community: { id: string; name: string; slug: string } | null; preview: string | null; lastMessageAt: string | null; automated: boolean; unreadCount: number; pinned: boolean; archived: boolean; lastFromMe: boolean }
 export interface ReplyRef { id: string; senderUserId: string; body: string; hasImage: boolean; mediaKind?: MediaKind | null; fileName: string | null; recalled: boolean }
-export interface MessageFile { name: string; sizeBytes: number }
-export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; mediaKind?: MediaKind | null; automated: boolean; deliveredAt: string | null; readAt: string | null; createdAt: string; recalled: boolean; reactions: Record<string, string>; replyTo: ReplyRef | null; file: MessageFile | null; pending?: boolean }
+/** `expired`: tệp đã tự xóa sau 30 ngày, chỉ còn tên và dung lượng để hiện "Tệp đã hết hạn". */
+export interface MessageFile { name: string; sizeBytes: number; expired?: boolean }
+/** `imageExpired`: ảnh tải lên đã tự xóa sau 30 ngày (imageUrl đã null). */
+export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; mediaKind?: MediaKind | null; imageExpired?: boolean; automated: boolean; deliveredAt: string | null; readAt: string | null; createdAt: string; recalled: boolean; reactions: Record<string, string>; replyTo: ReplyRef | null; file: MessageFile | null; pending?: boolean }
 /** `status`, giá gói, `learning`, `referrer` chỉ có khi người xem quản lý thành viên của hội; người khác nhận null. */
 export interface Panel { memberId: string; role: string; status: string | null; tier: { key: string; name: string; monthlyMinor: number | null } | null; joinedAt: string; learning: { title: string; percent: number } | null; referrer: string | null }
 
@@ -95,6 +97,8 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
   // Tin chỉ có 1-3 emoji, hoặc chỉ có một nhãn dán: không khung bong bóng (như Zalo).
   const big = !m.recalled && !m.imageUrl && !m.file && !m.replyTo && EMOJI_ONLY.test(m.body);
   const stickerOnly = !m.recalled && m.mediaKind === 'sticker' && !m.body && !m.file && !m.replyTo;
+  // Hạn tự xóa chỉ áp cho ảnh và tệp người dùng tải lên (không phải nhãn dán, GIF), còn đang có.
+  const ttl = !m.recalled && !m.pending && ((m.imageUrl && !m.mediaKind) || (m.file && !m.file.expired)) ? mediaTtlLabel(m.createdAt) : null;
   const copy = () => { void navigator.clipboard?.writeText(m.body).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
   const react = (e: MessageReaction | null) => (ev: { currentTarget: HTMLElement }) => { ev.currentTarget.blur(); onReact(e); };
   return (
@@ -114,13 +118,20 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
               {m.imageUrl && (m.mediaKind
                 ? <span className="chat-image"><MediaImage url={m.imageUrl} kind={m.mediaKind} onLoad={onImageLoad} /></span>
                 : <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="chat-image"><img src={m.imageUrl} alt="Ảnh trong tin nhắn" onLoad={onImageLoad} /></a>)}
-              {m.file && (
-                <button type="button" className="chat-file" disabled={m.pending} aria-label={`Tải tệp ${m.file.name}, ${fileSizeLabel(m.file.sizeBytes)}`} title="Tải về" onClick={onDownload}>
-                  <i><FileText size={22} /></i>
-                  <span className="min-w-0"><b>{m.file.name}</b><span>{fileSizeLabel(m.file.sizeBytes)}</span></span>
-                  <Download size={18} className="flex-shrink-0" />
-                </button>
-              )}
+              {m.imageExpired && <span className="chat-expired"><ImageOff size={18} />Ảnh đã hết hạn</span>}
+              {m.file && (m.file.expired
+                ? (
+                  <span className="chat-file expired" title={MEDIA_TTL_NOTICE}>
+                    <i><FileX size={22} /></i>
+                    <span className="min-w-0"><b>{m.file.name}</b><span>Tệp đã hết hạn</span></span>
+                  </span>
+                ) : (
+                  <button type="button" className="chat-file" disabled={m.pending} aria-label={`Tải tệp ${m.file.name}, ${fileSizeLabel(m.file.sizeBytes)}`} title="Tải về" onClick={onDownload}>
+                    <i><FileText size={22} /></i>
+                    <span className="min-w-0"><b>{m.file.name}</b><span>{fileSizeLabel(m.file.sizeBytes)}</span></span>
+                    <Download size={18} className="flex-shrink-0" />
+                  </button>
+                ))}
               {m.body && <RichText text={m.body} />}
             </>
           )}
@@ -128,6 +139,7 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
         {/* Hàng dưới bong bóng: giờ gửi, trạng thái, cảm xúc đã thả; rê chuột (hoặc chạm vào tin) thì hiện thêm nút thao tác và thanh cảm xúc. */}
         <div className="chat-meta">
           <span className="chat-time">{fmtTime(m.createdAt)}</span>
+          {ttl && <span className="chat-ttl" title={MEDIA_TTL_NOTICE}>{ttl}</span>}
           {status && <span className="chat-status">{status !== 'Đang gửi' && <CheckCheck size={14} />}{status}</span>}
           {sum.total > 0 && <span className="chat-react-sum" aria-label={`${sum.total} lượt cảm xúc`}>{sum.emojis.slice(0, 3).join(' ')}{sum.total > 1 && <b>{sum.total}</b>}</span>}
           {canAct && (
