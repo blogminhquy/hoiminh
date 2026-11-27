@@ -5,11 +5,12 @@ import { MESSAGE_FILE_MAX_BYTES, validateUpload, webpKeyFor } from '@hoiminh/med
 import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import { files } from '@hoiminh/db';
 import type { Ctx } from '../context';
-import { AppError, conflict, invalid, notFound } from '../errors';
+import { AppError, conflict, forbidden, invalid, notFound } from '../errors';
 import { FILE_DELETE_JOB } from '../jobs/kinds';
 import { scheduleJob } from '../jobs/scheduled';
 import { raw } from '../lib/db';
-import { requireSuperAdmin, requireUser } from '../permissions';
+import { requireSuperAdmin, requireUser, resolveCommunityAccess } from '../permissions';
+import { assertStorageRoom } from './plans';
 
 /** Bước 1: xin presigned URL. Ảnh bài viết/avatar là public; tài liệu khóa học, tệp số là private. */
 export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'message_file' | 'comment_image' | 'sticker'; communityId?: string | null; workspaceId?: string | null }) {
@@ -29,6 +30,14 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
     if (v.kind !== 'document') throw invalid('Tệp đính kèm nhận PDF, Word, Excel, PowerPoint, văn bản và zip. Ảnh thì gửi bằng nút ảnh.');
     if (input.sizeBytes > MESSAGE_FILE_MAX_BYTES) throw invalid('Tệp đính kèm trong tin nhắn tối đa 5MB');
   }
+  // Hạn mức dung lượng tính theo hội nên tệp gắn với hội phải do người trong hội tải lên: không thì người ngoài gắn tệp rác
+  // vào hội khác để làm đầy dung lượng của hội đó. Tài liệu bài học và tệp sản phẩm luôn thuộc một hội, phải nói rõ hội nào.
+  if ((input.purpose === 'lesson_resource' || input.purpose === 'digital_product') && !input.communityId) throw invalid('Tài liệu bài học và tệp sản phẩm phải gắn với một hội (communityId)');
+  if (input.communityId) {
+    const access = await resolveCommunityAccess(ctx, input.communityId);
+    if (access.role === 'guest') throw forbidden('Chỉ thành viên của hội mới tải tệp lên hội này');
+    await assertStorageRoom(ctx, input.communityId, { sizeBytes: input.sizeBytes, kind: v.kind });
+  }
   const visibility = input.purpose === 'lesson_resource' || input.purpose === 'digital_product' || input.purpose === 'message_file' ? 'private' : 'public';
   // Ảnh công khai lưu ở dạng WebP: tệp đã là WebP, hoặc máy chủ chuyển được JPEG/PNG lúc nhận tệp (xem route PUT /files/upload).
   const ext = visibility === 'public' && webpKeyFor(input.mimeType, ctx.media.convertsToWebp) ? 'webp' : input.fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? 'bin';
@@ -39,8 +48,17 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
 }
 
 /**
- * Máy chủ vừa chuyển ảnh sang WebP lúc nhận tệp: ghi lại loại tệp và dung lượng thật đang nằm trong kho.
- * Chỉ đụng tới dòng còn `pending` (chưa xác nhận) của đúng object key đó.
+ * Lượt tải lên đang chờ của một object key: loại tệp và dung lượng đã khai (đã qua validateUpload, trần theo gói) lúc xin URL.
+ * Null khi không có (key lạ, hoặc tệp đã xác nhận xong thì không cho ghi đè nữa).
+ */
+export async function pendingUpload(ctx: Ctx, objectKey: string): Promise<{ mimeType: string; sizeBytes: number } | null> {
+  const [row] = await ctx.db.select({ mimeType: files.mimeType, sizeBytes: files.sizeBytes }).from(files).where(and(eq(files.objectKey, objectKey), eq(files.status, 'pending'))).limit(1);
+  return row ?? null;
+}
+
+/**
+ * API vừa nhận xong tệp: ghi loại tệp (đổi khi máy chủ chuyển ảnh sang WebP) và dung lượng thật đang nằm trong kho,
+ * thay cho con số client tự khai lúc xin URL. Chỉ đụng tới dòng còn `pending` (chưa xác nhận) của đúng object key đó.
  */
 export async function recordStoredObject(ctx: Ctx, objectKey: string, stored: { mimeType: string; sizeBytes: number }): Promise<void> {
   await ctx.db.update(files).set({ mimeType: stored.mimeType, sizeBytes: stored.sizeBytes }).where(and(eq(files.objectKey, objectKey), eq(files.status, 'pending')));

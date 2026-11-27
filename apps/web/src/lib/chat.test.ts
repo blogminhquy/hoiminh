@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MESSAGES_PATH, MESSAGE_FILE_MAX_BYTES, checkAttachment, conversationPath, convoPreview, deliveryStatus, fileSizeLabel, linkParts, linksIn, messagesButtonLabel, reactionSummary, sameGroup, seenLabel } from './chat';
+import { MESSAGE_MEDIA_EXPIRY_START, messageMediaExpiresAt } from '@hoiminh/contracts';
+import { MEDIA_TTL_NOTICE, MESSAGES_PATH, MESSAGE_FILE_MAX_BYTES, checkAttachment, conversationPath, convoPreview, deliveryStatus, fileSizeLabel, linkParts, linksIn, messagesButtonLabel, mediaTtlLabel, reactionSummary, sameGroup, seenLabel } from './chat';
 
 describe('linkParts', () => {
   it('tách link khỏi chữ, bỏ dấu câu sát cuối', () => {
@@ -95,5 +96,22 @@ describe('bảng tin nhắn nổi', () => {
     expect(messagesButtonLabel(-2)).toBe('Tin nhắn');
     expect(messagesButtonLabel(3)).toBe('Tin nhắn, 3 tin chưa đọc');
     expect(messagesButtonLabel(120)).toBe('Tin nhắn, 120 tin chưa đọc');
+  });
+});
+
+describe('hạn tự xóa của ảnh và tệp trong tin nhắn', () => {
+  const DAY = 86_400_000;
+  const start = Date.parse(MESSAGE_MEDIA_EXPIRY_START);
+  it('30 ngày sau khi gửi; tin gửi trước ngày bắt đầu thì tính từ ngày bắt đầu', () => {
+    const later = new Date(start + 10 * DAY).toISOString();
+    expect(messageMediaExpiresAt(later).getTime()).toBe(start + 40 * DAY);
+    expect(messageMediaExpiresAt('2026-11-20T03:00:00Z').getTime()).toBe(start + 30 * DAY);
+  });
+  it('nhãn dưới ảnh, tệp: còn bao nhiêu ngày, ngày cuối là hôm nay', () => {
+    const sent = new Date(start + DAY).toISOString();
+    expect(mediaTtlLabel(sent, new Date(start + DAY))).toBe('Tự xóa sau 30 ngày');
+    expect(mediaTtlLabel(sent, new Date(start + 25.5 * DAY))).toBe('Tự xóa sau 6 ngày');
+    expect(mediaTtlLabel(sent, new Date(start + 31 * DAY))).toBe('Tự xóa hôm nay');
+    expect(MEDIA_TTL_NOTICE).toBe('Ảnh và tệp trong tin nhắn tự xóa sau 30 ngày. Tải về nếu cần giữ.');
   });
 });

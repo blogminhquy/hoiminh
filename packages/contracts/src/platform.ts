@@ -77,6 +77,28 @@ export const updateWebhookSchema = z.object({
 });
 
 /** Sáu cảm xúc thả được lên tin nhắn (bộ quen thuộc của Zalo). */
+/**
+ * Ảnh và tệp người dùng tải lên trong tin nhắn riêng tự xóa sau 30 ngày (chủ dự án yêu cầu ngày 27/11/2026), để tin nhắn
+ * không thành kho chứa tệp. Chữ của tin vẫn giữ. Nhãn dán và GIF không bị xóa. Ảnh, tệp trong hội thì giữ vĩnh viễn.
+ */
+export const MESSAGE_MEDIA_TTL_DAYS = 30;
+/**
+ * Ngày bắt đầu tính hạn: ảnh, tệp gửi trước ngày này được tính 30 ngày kể từ ngày này, để không ai mất đồ đột ngột khi
+ * tính năng ra mắt. Tính năng ra sau ngày này thì đổi thành ngày ra mắt.
+ */
+export const MESSAGE_MEDIA_EXPIRY_START = '2026-12-01T00:00:00+07:00';
+
+/** Thời điểm ảnh, tệp của một tin nhắn hết hạn. */
+export function messageMediaExpiresAt(createdAt: Date | string): Date {
+  const start = Date.parse(MESSAGE_MEDIA_EXPIRY_START);
+  return new Date(Math.max(new Date(createdAt).getTime(), start) + MESSAGE_MEDIA_TTL_DAYS * 86_400_000);
+}
+
+/** Số ngày còn lại trước khi ảnh, tệp của tin nhắn tự xóa (làm tròn lên; 0 là trong hôm nay). */
+export function messageMediaDaysLeft(createdAt: Date | string, now: Date = new Date()): number {
+  return Math.max(0, Math.ceil((messageMediaExpiresAt(createdAt).getTime() - now.getTime()) / 86_400_000));
+}
+
 export const MESSAGE_REACTIONS = ['👍', '❤️', '😆', '😮', '😭', '😡'] as const;
 export type MessageReaction = (typeof MESSAGE_REACTIONS)[number];
 

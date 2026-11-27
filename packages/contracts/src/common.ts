@@ -35,7 +35,7 @@ export type ApiError = z.infer<typeof apiErrorSchema>;
 
 export const ERROR_CODES = [
   'unauthorized', 'forbidden', 'not_found', 'validation_error', 'conflict', 'rate_limited',
-  'payment_error', 'insufficient_balance', 'invalid_state', 'plan_locked', 'member_cap', 'feature_disabled', 'internal_error',
+  'payment_error', 'insufficient_balance', 'invalid_state', 'plan_locked', 'member_cap', 'storage_quota', 'feature_disabled', 'internal_error',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

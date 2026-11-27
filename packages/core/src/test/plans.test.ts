@@ -1,7 +1,7 @@
 // Gói Hội Mình theo kế hoạch 11/11/2026 (sửa 21/11/2026): bốn gói, mỗi gói cho một hội, bốn kỳ với giá riêng từng kỳ, không dùng thử.
 // Kiểm tra bảng gói, mua/gia hạn/nâng gói, hội miễn phí của tài khoản, trần thành viên, khóa tính năng, nhắc hạn và hết hạn.
-import { PLAN_DEFAULTS, pickCycle, planCyclesOf, planLowestPerMonth, planQuote, planSaving, soldCycles, type PlanCycle, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
-import { communities, communityMembers, plans as plansTable, platformSubscriptions } from '@hoiminh/db';
+import { PLAN_DEFAULTS, PLAN_STORAGE, nextPlanForStorage, pickCycle, planCyclesOf, planLowestPerMonth, planQuote, planSaving, soldCycles, type PlanCycle, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
+import { communities, communityMembers, files, plans as plansTable, platformSubscriptions } from '@hoiminh/db';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { register } from '../auth/service';
@@ -13,6 +13,7 @@ import * as automation from '../services/automation';
 import * as checkout from '../services/checkout';
 import * as communitiesSvc from '../services/communities';
 import * as courses from '../services/courses';
+import * as filesSvc from '../services/files';
 import * as members from '../services/members';
 import * as paymentsSvc from '../services/payments';
 import * as platformBilling from '../services/platform-billing';
@@ -275,6 +276,56 @@ describe('tên miền riêng: gói bổ sung sắp ra mắt, không thuộc gói
     await communitiesSvc.updateGeneral(mq, KD, { customDomain: null });
     expect((await app.ctx.db.query.communities.findFirst({ where: eq(communities.id, KD) }))?.customDomain).toBeNull();
     await app.ctx.db.update(communities).set({ customDomain: 'hoc.minhquy.vn' }).where(eq(communities.id, KD));
+  });
+});
+
+describe('dung lượng tệp theo gói', () => {
+  const MB = 1024 * 1024;
+  const GB = 1024 * MB;
+  it('bảng dung lượng đã chốt: Miễn phí 1GB (tài liệu 20MB), Khởi đầu 10GB, Chuyên nghiệp 50GB, Không giới hạn 200GB (tài liệu 50MB)', () => {
+    expect(PLAN_STORAGE).toEqual({
+      free: { bytes: 1 * GB, documentMaxBytes: 20 * MB },
+      starter: { bytes: 10 * GB, documentMaxBytes: 50 * MB },
+      pro: { bytes: 50 * GB, documentMaxBytes: 50 * MB },
+      unlimited: { bytes: 200 * GB, documentMaxBytes: 50 * MB },
+    });
+    expect(nextPlanForStorage(PLAN_DEFAULTS, 'free')?.key).toBe('starter');
+    expect(nextPlanForStorage(PLAN_DEFAULTS, 'pro')?.key).toBe('unlimited');
+    expect(nextPlanForStorage(PLAN_DEFAULTS, 'unlimited')).toBeNull();
+  });
+
+  it('hội gói Miễn phí: tài liệu trên 20MB và tệp vượt 1GB bị chặn với storage_quota kèm gói gợi ý; tệp đã có giữ nguyên', async () => {
+    const ask = (ctx: Ctx, input: Partial<Parameters<typeof filesSvc.requestUpload>[1]>) => filesSvc.requestUpload(ctx, { fileName: 'tai-lieu.pdf', mimeType: 'application/pdf', sizeBytes: 1 * MB, purpose: 'lesson_resource', communityId: VY, ...input });
+    // Tài liệu lớn nhất mỗi tệp theo gói: 20MB ở gói Miễn phí, dù quy định chung cho tài liệu là 50MB.
+    const big = await expectCode(ask(vy, { sizeBytes: 25 * MB }), 'storage_quota');
+    expect(big.status).toBe(409);
+    expect(big.message).toContain('20 MB');
+    expect(big.details).toMatchObject({ reason: 'file_size', planKey: 'free', nextPlanKey: 'starter' });
+    expect((await ask(vy, { sizeBytes: 20 * MB })).fileId).toBeTruthy();
+
+    // Hội đã có gần 1GB tệp: tệp mới làm vượt trần thì bị chặn, ảnh nhỏ còn vừa thì vẫn qua.
+    const ownerId = await app.ids('user:thaovy');
+    const before = (await platformBilling.communityPlanStatus(vy, VY)).storage.usedBytes;
+    // `before` đã tính cả tài liệu 20MB vừa xin URL ở trên (tệp đang chờ vẫn giữ chỗ).
+    const filler = 1 * GB - before - 2 * MB;
+    await app.ctx.db.insert(files).values({ communityId: VY, ownerUserId: ownerId, objectKey: `private/lesson_resource/2026-11-27/lap-day-${Date.now()}.pdf`, mimeType: 'application/pdf', sizeBytes: filler, originalName: 'lap-day.pdf', visibility: 'private', status: 'ready' });
+    const status = await platformBilling.communityPlanStatus(vy, VY);
+    expect(status.storage).toEqual({ usedBytes: 1 * GB - 2 * MB, capBytes: 1 * GB, documentMaxBytes: 20 * MB });
+    const full = await expectCode(ask(vy, { sizeBytes: 3 * MB }), 'storage_quota');
+    expect(full.message).toContain('Ảnh và tệp đã có vẫn được giữ');
+    expect(full.details).toMatchObject({ reason: 'quota', capBytes: 1 * GB, nextPlanKey: 'starter', nextPlanName: 'Khởi đầu' });
+    expect((await ask(vy, { fileName: 'anh.webp', mimeType: 'image/webp', sizeBytes: 1 * MB, purpose: 'post_image' })).fileId).toBeTruthy();
+    await app.ctx.db.delete(files).where(and(eq(files.communityId, VY), eq(files.originalName, 'lap-day.pdf')));
+  });
+
+  it('người ngoài hội không gắn được tệp vào hội đó; tài liệu bài học và tệp sản phẩm phải nói rõ thuộc hội nào', async () => {
+    await expectCode(filesSvc.requestUpload(duc, { fileName: 'rac.pdf', mimeType: 'application/pdf', sizeBytes: 1024, purpose: 'lesson_resource', communityId: VY }), 'forbidden');
+    await expectCode(filesSvc.requestUpload(duc, { fileName: 'rac.webp', mimeType: 'image/webp', sizeBytes: 1024, purpose: 'post_image', communityId: VY }), 'forbidden');
+    for (const purpose of ['lesson_resource', 'digital_product'] as const) {
+      await expectCode(filesSvc.requestUpload(vy, { fileName: 'a.pdf', mimeType: 'application/pdf', sizeBytes: 1024, purpose }), 'validation_error');
+    }
+    // Tệp của riêng người dùng (avatar, tin nhắn) không gắn với hội nào thì không tính vào hạn mức hội.
+    expect((await filesSvc.requestUpload(vy, { fileName: 'me.webp', mimeType: 'image/webp', sizeBytes: 1024, purpose: 'avatar' })).fileId).toBeTruthy();
   });
 });
 
