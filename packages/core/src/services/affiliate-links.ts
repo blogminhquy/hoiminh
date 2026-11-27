@@ -2,7 +2,7 @@
 // trình của tôi kể cả hội chưa bật, những trang lấy link được trong một chương trình (trang hội, từng sản phẩm), và
 // đếm lượt bấm của các link đó.
 import { BUSINESS, sha256Hex } from '@hoiminh/config';
-import { refCodes } from '@hoiminh/contracts';
+import { classifyTrafficSource, placementOf, refCodes } from '@hoiminh/contracts';
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliateClicks, affiliateLinks, affiliatePrograms, communities, communityMembers, courses, products, workspaceMembers, type ProductKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -86,6 +86,22 @@ export async function linkTargets(ctx: Ctx, program: Program, code: string): Pro
   ];
 }
 
+/** Độ dài tối đa của địa chỉ trang đích và trang giới thiệu được lưu: đủ dài để giữ nguyên các tham số trên link. */
+const URL_KEEP = 2000;
+
+/**
+ * Các trường nguồn của một lượt bấm: nguồn đã phân loại, mã chỗ đặt của Hội Mình (`pl`), và địa chỉ trang đích,
+ * trang giới thiệu được cắt gọn để lưu. Dùng chung cho link `?ref=` (recordLandingClick) và link `/r/<mã>` (trackClick).
+ */
+export function clickSourceFields(ctx: Ctx, meta: { userAgent?: string; landingUrl?: string; referrer?: string }) {
+  return {
+    source: classifyTrafficSource({ referrer: meta.referrer, landingUrl: meta.landingUrl, userAgent: meta.userAgent, appUrl: ctx.env.APP_URL }),
+    placement: placementOf(meta.landingUrl),
+    landingUrl: meta.landingUrl?.slice(0, URL_KEEP) ?? null,
+    referrer: meta.referrer?.slice(0, URL_KEEP) ?? null,
+  };
+}
+
 /** Cùng một người xem mở lại cùng một mã trong khoảng này (tải lại trang, mở lại link) thì không đếm thêm. */
 export const CLICK_REPEAT_MINUTES = 30;
 
@@ -118,7 +134,7 @@ export async function recordLandingClick(ctx: Ctx, ref: string, meta: { visitorI
   const recent = await ctx.db.query.affiliateClicks.findFirst({ where: and(eq(affiliateClicks.affiliateAccountId, acc.id), gt(affiliateClicks.clickedAt, new Date(now.getTime() - CLICK_REPEAT_MINUTES * 60_000)), sameViewer), columns: { id: true } });
   if (recent) return false;
   const link = await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, acc.id), columns: { id: true } });
-  await ctx.db.insert(affiliateClicks).values({ affiliateAccountId: acc.id, linkId: link?.id ?? null, visitorId: meta.visitorId, ipHash, userAgentHash, landingUrl: meta.landingUrl?.slice(0, 500) ?? null, referrer: meta.referrer?.slice(0, 500) ?? null, clickedAt: now });
+  await ctx.db.insert(affiliateClicks).values({ affiliateAccountId: acc.id, linkId: link?.id ?? null, visitorId: meta.visitorId, ipHash, userAgentHash, ...clickSourceFields(ctx, meta), clickedAt: now });
   await ctx.db.update(affiliateAccounts).set({ clickCount: sql`${affiliateAccounts.clickCount} + 1` }).where(eq(affiliateAccounts.id, acc.id));
   await ctx.events.emit('affiliate.clicked', { affiliateAccountId: acc.id, visitorId: meta.visitorId });
   return true;

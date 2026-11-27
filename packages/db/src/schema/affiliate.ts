@@ -97,6 +97,10 @@ export const affiliateClicks = pgTable(
     userAgentHash: text('user_agent_hash'),
     landingUrl: text('landing_url'),
     referrer: text('referrer'),
+    /** Nguồn đã phân loại lúc ghi (xem classifyTrafficSource); dòng cũ trước khi có cột này là null. */
+    source: text('source'),
+    /** Mã chỗ đặt link của chính Hội Mình (tham số `pl`), null với link thường. */
+    placement: text('placement'),
     clickedAt: ts('clicked_at').notNull().defaultNow(),
   },
   (t) => [index('affiliate_clicks_account_idx').on(t.affiliateAccountId, t.clickedAt), index('affiliate_clicks_visitor_idx').on(t.visitorId)],
@@ -130,9 +134,14 @@ export const affiliateConversions = pgTable(
     grossMinor: money('gross_minor').notNull().default(0),
     currency: text('currency').notNull().default('VND'),
     status: text('status').$type<'pending' | 'confirmed' | 'reversed'>().notNull().default('confirmed'),
+    /** Lượt bấm đã dẫn tới đơn này (lượt bấm cuối của đúng affiliate từ cùng người xem), null khi không tìm được. */
+    clickId: uuid('click_id').references(() => affiliateClicks.id, { onDelete: 'set null' }),
+    /** Chép nguồn và chỗ đặt của lượt bấm lúc tạo đơn, để báo cáo vẫn đúng khi lượt bấm cũ bị dọn. */
+    source: text('source'),
+    placement: text('placement'),
     convertedAt: ts('converted_at').notNull().defaultNow(),
   },
-  (t) => [index('affiliate_conversions_account_idx').on(t.affiliateAccountId, t.convertedAt), index('affiliate_conversions_customer_idx').on(t.customerUserId), index('affiliate_conversions_order_idx').on(t.orderId)],
+  (t) => [index('affiliate_conversions_account_idx').on(t.affiliateAccountId, t.convertedAt), index('affiliate_conversions_customer_idx').on(t.customerUserId), index('affiliate_conversions_order_idx').on(t.orderId), index('affiliate_conversions_click_idx').on(t.clickId)],
 );
 
 export const affiliateCommissions = pgTable(
