@@ -1,6 +1,7 @@
 // Hợp đồng cấp nền tảng: API key, webhook gửi đi, quản trị hệ thống, tin nhắn, thông báo, hồ sơ.
 import { z } from 'zod';
 import { emailSchema, handleSchema, idSchema } from './common';
+import { gifIdSchema } from './content';
 
 export const API_SCOPES = [
   'communities:read', 'communities:write', 'members:read', 'members:write', 'posts:write', 'posts:moderate', 'courses:read',
@@ -89,7 +90,13 @@ export const sendMessageSchema = z.object({
   /** Tệp đính kèm (đã tải lên với purpose `message_file`, tối đa 5MB). */
   fileId: idSchema.nullable().optional(),
   replyToId: idSchema.nullable().optional(),
-}).refine((v) => v.body.length > 0 || Boolean(v.imageFileId) || Boolean(v.fileId), { message: 'Tin nhắn chưa có nội dung', path: ['body'] });
+  /** Nhãn dán (id trong bảng stickers). */
+  stickerId: idSchema.nullable().optional(),
+  /** Ảnh động GIPHY (id của GIPHY). */
+  gifId: gifIdSchema.nullable().optional(),
+  /** Nhãn dán động lấy từ GIPHY (id của GIPHY). */
+  giphyStickerId: gifIdSchema.nullable().optional(),
+}).refine((v) => v.body.length > 0 || Boolean(v.imageFileId) || Boolean(v.fileId) || Boolean(v.stickerId) || Boolean(v.gifId) || Boolean(v.giphyStickerId), { message: 'Tin nhắn chưa có nội dung', path: ['body'] });
 export const archiveConversationSchema = z.object({ archived: z.boolean().default(true) });
 export const USER_REPORT_REASONS = ['spam', 'harassment', 'scam', 'inappropriate', 'other'] as const;
 export const reportUserSchema = z.object({ userId: idSchema, conversationId: idSchema.nullable().optional(), reason: z.enum(USER_REPORT_REASONS), detail: z.string().trim().max(1000).default('') });

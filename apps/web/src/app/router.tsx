@@ -162,6 +162,7 @@ const adminRoutes: RouteObject = {
     { path: 'tinh-nang', element: page(() => import('@/pages/admin/AdminPlans')) },
     { path: 'phien-ban', element: page(() => import('@/pages/admin/AdminVersions')) },
     { path: 'ha-tang', element: page(() => import('@/pages/admin/AdminInfra')) },
+    { path: 'nhan-dan', element: page(() => import('@/pages/admin/AdminStickers')) },
     { path: 'nhat-ky', element: page(() => import('@/pages/admin/AdminLogs')) },
     { path: 'ho-tro', element: page(() => import('@/pages/admin/AdminCommunities')) },
     { path: 'bao-cao', element: page(() => import('@/pages/admin/AdminUserReports')) },

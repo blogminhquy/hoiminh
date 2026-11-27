@@ -1,6 +1,6 @@
 // /v1/me: tài khoản, hồ sơ, badge, khu học tập, gói và thanh toán, hội của tôi, affiliate (ví, rút tiền), thông báo, tin nhắn.
 import { archiveConversationSchema, changePasswordSchema, notificationPrefsSchema, payoutProfileInputSchema, pinConversationSchema, reactMessageSchema, reportUserSchema, requestWithdrawalSchema, sendMessageSchema, setReferralCodeSchema, updateProfileSchema, workspaceTeamInviteSchema } from '@hoiminh/contracts';
-import { affiliate, auth, featureFlags, learner, messaging, notifications, paymentsService, push, referralCodes, safety, shell, subscriptions, totp, users, withdrawals, workspaces, notFound, requireUser } from '@hoiminh/core';
+import { affiliate, attachments, auth, featureFlags, learner, messaging, notifications, paymentsService, push, referralCodes, safety, shell, subscriptions, totp, users, withdrawals, workspaces, requireUser } from '@hoiminh/core';
 import { files } from '@hoiminh/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -138,10 +138,8 @@ meRoutes.post('/conversations/:id/archive', async (c) => {
 meRoutes.post('/messages', async (c) => {
   const input = await parse(sendMessageSchema, await body(c));
   const ctx = c.get('ctx');
-  let imageUrl: string | null = null;
-  if (input.imageFileId) imageUrl = (await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null;
-  if (!input.body && !imageUrl && !input.fileId) throw notFound('Không tìm thấy ảnh đã tải lên');
-  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, imageUrl, replyToId: input.replyToId ?? null, fileId: input.fileId ?? null });
+  const media = await attachments.resolveAttachment(ctx, input);
+  const msg = await messaging.send(ctx, { recipientUserId: input.recipientUserId, conversationId: input.conversationId, communityId: input.communityId ?? null, body: input.body, ...media, replyToId: input.replyToId ?? null, fileId: input.fileId ?? null });
   return c.json(msg, 201);
 });
 meRoutes.post('/messages/:id/reaction', async (c) => {

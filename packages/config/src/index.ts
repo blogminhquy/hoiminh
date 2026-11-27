@@ -36,6 +36,8 @@ export const envSchema = z.object({
   /** Tùy chọn: API key của YouTube Data API v3, để lấy mô tả và thời lượng video chắc chắn khi nhập bài từ link. */
   YOUTUBE_API_KEY: z.string().default(''),
   EMAIL_FROM: z.string().default('Hội Mình <no-reply@hoiminh.com>'),
+  /** Tùy chọn: API key của GIPHY để tìm GIF trong ô bình luận và ô chat. Thiếu thì tab GIF tự ẩn. Nhập được ở Hệ thống · Hạ tầng. */
+  GIPHY_API_KEY: z.string().default(''),
 
   /**
    * Tùy chọn: cặp khóa VAPID để gửi thông báo đẩy (Web Push). Tạo bằng `node scripts/generate-vapid.mjs`.
@@ -183,4 +185,6 @@ export const RESERVED_SLUGS = new Set([
   'static', 'hoiminh', 'www', 'app', 'mail', 'support', 'help',
   // Hai trang pháp lý (Điều khoản sử dụng, Chính sách quyền riêng tư).
   'dieu-khoan', 'quyen-rieng-tu',
+  // Thư mục ảnh nhãn dán có sẵn (apps/web/public/stickers), thêm ngày 27/11/2026.
+  'stickers',
 ]);

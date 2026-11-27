@@ -4,7 +4,7 @@
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { normalizeWelcomeTemplate, type MessageReaction } from '@hoiminh/contracts';
 import { MESSAGE_FILE_MAX_BYTES, MESSAGE_FILE_PREFIX } from '@hoiminh/media';
-import { communities, communityMembers, communityPlugins, communityTiers, conversationParticipants, conversations, courseProgress, courses, files, messages, users } from '@hoiminh/db';
+import { communities, communityMembers, communityPlugins, communityTiers, conversationParticipants, conversations, courseProgress, courses, files, messages, users, type MediaKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
 import { forbidden, notFound } from '../errors';
@@ -17,6 +17,8 @@ const userCols = { id: users.id, name: users.name, handle: users.handle, avatarU
 /** Dòng xem trước của tin chỉ có ảnh và của tin đã thu hồi. */
 const IMAGE_PREVIEW = '[Hình ảnh]';
 const FILE_PREVIEW = '[Tệp]';
+const STICKER_PREVIEW = '[Nhãn dán]';
+const GIF_PREVIEW = '[GIF]';
 const RECALLED_PREVIEW = 'Tin nhắn đã được thu hồi';
 /** Thu hồi được trong 24 giờ sau khi gửi (như Zalo): đủ để sửa lỗi gửi nhầm, không đủ để xóa dấu vết cũ. */
 export const RECALL_WINDOW_MS = 24 * 60 * 60_000;
@@ -33,7 +35,7 @@ export async function getOrCreateConversation(ctx: Ctx, a: string, b: string, co
 }
 
 /** Gửi tin nhắn (người dùng hoặc hệ thống thay mặt chủ hội với automated = true). */
-export async function sendMessage(ctx: Ctx, input: { senderUserId: string; recipientUserId?: string; conversationId?: string; communityId?: string | null; body: string; imageUrl?: string | null; automated?: boolean; replyToId?: string | null; fileId?: string | null }) {
+export async function sendMessage(ctx: Ctx, input: { senderUserId: string; recipientUserId?: string; conversationId?: string; communityId?: string | null; body: string; imageUrl?: string | null; mediaKind?: MediaKind | null; automated?: boolean; replyToId?: string | null; fileId?: string | null }) {
   let convo = input.conversationId ? await ctx.db.query.conversations.findFirst({ where: eq(conversations.id, input.conversationId) }) : null;
   if (!convo) {
     if (!input.recipientUserId) throw notFound('Cần người nhận');
@@ -61,8 +63,8 @@ export async function sendMessage(ctx: Ctx, input: { senderUserId: string; recip
   // Kiểm ở đây vì fileId do client gửi: không kiểm thì gắn được tệp riêng của người khác (tệp số đã bán) và lấy link tải.
   const file = input.fileId ? await ctx.db.query.files.findFirst({ where: and(eq(files.id, input.fileId), eq(files.ownerUserId, input.senderUserId), eq(files.status, 'ready')) }) : null;
   if (input.fileId && (!file || !file.objectKey.startsWith(MESSAGE_FILE_PREFIX) || file.sizeBytes > MESSAGE_FILE_MAX_BYTES)) throw notFound('Không tìm thấy tệp đính kèm đã tải lên');
-  const [msg] = await ctx.db.insert(messages).values({ conversationId: convo.id, senderUserId: input.senderUserId, body: input.body, imageUrl: input.imageUrl ?? null, automated: input.automated ?? false, replyToId: replyTo?.id ?? null, fileUrl: file?.objectKey ?? null, fileName: file?.originalName ?? null, fileSize: file?.sizeBytes ?? null }).returning();
-  const preview = input.body.slice(0, 120) || (input.imageUrl ? IMAGE_PREVIEW : file ? `${FILE_PREVIEW} ${file.originalName}`.slice(0, 120) : '');
+  const [msg] = await ctx.db.insert(messages).values({ conversationId: convo.id, senderUserId: input.senderUserId, body: input.body, imageUrl: input.imageUrl ?? null, mediaKind: input.imageUrl ? input.mediaKind ?? null : null, automated: input.automated ?? false, replyToId: replyTo?.id ?? null, fileUrl: file?.objectKey ?? null, fileName: file?.originalName ?? null, fileSize: file?.sizeBytes ?? null }).returning();
+  const preview = input.body.slice(0, 120) || (input.imageUrl ? (input.mediaKind === 'sticker' ? STICKER_PREVIEW : input.mediaKind === 'gif' ? GIF_PREVIEW : IMAGE_PREVIEW) : file ? `${FILE_PREVIEW} ${file.originalName}`.slice(0, 120) : '');
   await ctx.db.update(conversations).set({ lastMessageAt: msg!.createdAt, lastMessagePreview: preview, lastMessageAutomated: input.automated ?? false, lastMessageSenderId: input.senderUserId, archivedAt: null }).where(eq(conversations.id, convo.id));
   await ctx.db.update(conversationParticipants).set({ unreadCount: sql`${conversationParticipants.unreadCount} + 1`, archivedAt: null }).where(and(eq(conversationParticipants.conversationId, convo.id), sql`${conversationParticipants.userId} <> ${input.senderUserId}`));
   await ctx.db.update(conversationParticipants).set({ lastReadAt: msg!.createdAt }).where(and(eq(conversationParticipants.conversationId, convo.id), eq(conversationParticipants.userId, input.senderUserId)));
@@ -72,7 +74,7 @@ export async function sendMessage(ctx: Ctx, input: { senderUserId: string; recip
 }
 
 /** Người dùng gửi tin. */
-export async function send(ctx: Ctx, input: { recipientUserId?: string; conversationId?: string; communityId?: string | null; body: string; imageUrl?: string | null; replyToId?: string | null; fileId?: string | null }) {
+export async function send(ctx: Ctx, input: { recipientUserId?: string; conversationId?: string; communityId?: string | null; body: string; imageUrl?: string | null; mediaKind?: MediaKind | null; replyToId?: string | null; fileId?: string | null }) {
   const userId = requireUser(ctx);
   return sendMessage(ctx, { ...input, senderUserId: userId });
 }
@@ -101,11 +103,11 @@ function messageView(m: MessageRow, replies: Map<string, MessageRow>) {
   const recalled = Boolean(m.recalledAt);
   const r = m.replyToId ? replies.get(m.replyToId) : undefined;
   return {
-    id: m.id, senderUserId: m.senderUserId, body: recalled ? '' : m.body, imageUrl: recalled ? null : m.imageUrl, automated: m.automated, deliveredAt: m.deliveredAt, readAt: m.readAt, createdAt: m.createdAt,
+    id: m.id, senderUserId: m.senderUserId, body: recalled ? '' : m.body, imageUrl: recalled ? null : m.imageUrl, mediaKind: recalled ? null : m.mediaKind, automated: m.automated, deliveredAt: m.deliveredAt, readAt: m.readAt, createdAt: m.createdAt,
     // Chỉ tên và dung lượng: link tải lấy riêng lúc bấm (messageFileUrl), có hạn ngắn.
     file: !recalled && m.fileUrl ? { name: m.fileName ?? 'Tệp đính kèm', sizeBytes: m.fileSize ?? 0 } : null,
     recalled, reactions: recalled ? {} : m.reactions,
-    replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.recalledAt ? '' : r.body.slice(0, 160), hasImage: !r.recalledAt && Boolean(r.imageUrl), fileName: r.recalledAt ? null : r.fileName, recalled: Boolean(r.recalledAt) } : null,
+    replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.recalledAt ? '' : r.body.slice(0, 160), hasImage: !r.recalledAt && Boolean(r.imageUrl), mediaKind: r.recalledAt ? null : r.mediaKind, fileName: r.recalledAt ? null : r.fileName, recalled: Boolean(r.recalledAt) } : null,
   };
 }
 
@@ -188,7 +190,7 @@ export async function recallMessage(ctx: Ctx, messageId: string) {
   if (msg.senderUserId !== userId) throw forbidden('Chỉ thu hồi được tin của chính mình');
   if (msg.recalledAt) return;
   if (ctx.now().getTime() - msg.createdAt.getTime() > RECALL_WINDOW_MS) throw forbidden('Chỉ thu hồi được tin nhắn trong 24 giờ sau khi gửi');
-  await ctx.db.update(messages).set({ recalledAt: ctx.now(), body: '', imageUrl: null, fileUrl: null, fileName: null, fileSize: null, reactions: {} }).where(eq(messages.id, msg.id));
+  await ctx.db.update(messages).set({ recalledAt: ctx.now(), body: '', imageUrl: null, mediaKind: null, fileUrl: null, fileName: null, fileSize: null, reactions: {} }).where(eq(messages.id, msg.id));
   // Ảnh và tệp của tin đã thu hồi cũng xóa khỏi kho (nếu không còn nơi nào khác dùng), không thì ai giữ link cũ vẫn mở được.
   // Ảnh là tệp công khai (tìm theo URL); tệp đính kèm là tệp riêng, cột lưu object key nên phải tìm ra id của nó.
   const attached = msg.fileUrl ? await ctx.db.query.files.findFirst({ where: eq(files.objectKey, msg.fileUrl), columns: { id: true } }) : null;

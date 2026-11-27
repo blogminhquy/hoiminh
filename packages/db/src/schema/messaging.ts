@@ -1,6 +1,7 @@
 // Tin nhắn không realtime (polling) và thông báo trong app.
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { id, ts } from './_helpers';
+import type { MediaKind } from './content';
 import { communities } from './tenant';
 import { users } from './users';
 
@@ -45,6 +46,8 @@ export const messages = pgTable(
     senderUserId: uuid('sender_user_id').notNull().references(() => users.id),
     body: text('body').notNull(),
     imageUrl: text('image_url'),
+    /** Ảnh ở image_url là gì: null là ảnh người dùng tải lên, 'sticker' là nhãn dán, 'gif' là ảnh động GIPHY. */
+    mediaKind: text('media_kind').$type<MediaKind>(),
     automated: boolean('automated').notNull().default(false),
     /** Tin đang được trả lời (trích dẫn). */
     replyToId: uuid('reply_to_id').references((): AnyPgColumn => messages.id, { onDelete: 'set null' }),

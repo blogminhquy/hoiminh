@@ -1,11 +1,16 @@
 // Khung chat của một hội thoại (kiểu Zalo): đầu khung có trạng thái truy cập, luồng tin dồn về đáy, thao tác trên từng tin
-// (trả lời, cảm xúc, sao chép, thu hồi), ô nhập nhiều dòng có thanh công cụ (ảnh, tệp đính kèm tối đa 5MB, biểu tượng cảm xúc),
+// (trả lời, cảm xúc, sao chép, thu hồi), ô nhập nhiều dòng có thanh công cụ (ảnh, tệp đính kèm tối đa 5MB, emoji, nhãn dán, GIF;
+// gõ chữ trùng từ khóa của nhãn thì hiện nhãn gợi ý),
 // dán / thả ảnh và tệp để gửi, menu ba chấm (xem hồ sơ, chặn, báo cáo). Nút gửi luôn ở góc phải, mờ khi chưa gõ gì.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MessageReaction } from '@hoiminh/contracts';
 import { Avatar, T } from '@hoiminh/ui';
-import { ArrowDown, ArrowLeft, Image as ImageIcon, PanelRight, Paperclip, Send, Smile, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, Image as ImageIcon, PanelRight, Paperclip, Send, Smile, Sticker as StickerIcon, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react';
+import { MediaPicker, type PickerTab } from '@/components/media/MediaPicker';
+import { StickerSuggest } from '@/components/media/StickerSuggest';
+import { useStickers } from '@/components/media/stickers';
+import { mediaPayload, type MediaKind, type PickedMedia } from '@/components/media/types';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { ATTACHMENT_ACCEPT, checkAttachment, deliveryStatus, linksIn, sameGroup, seenLabel } from '@/lib/chat';
@@ -14,9 +19,8 @@ import { ChatMenu, ReportDialog } from './MessagesMenus';
 import { DayDivider, InfoPanel, MessageItem, replySnippet, type Message, type MessageFile, type Panel, type Person } from './MessagesParts';
 
 interface Thread { items: Message[]; other: Person | null; community: { id: string; name: string; slug: string } | null; panel: Panel | null; pinned: boolean; archived: boolean; blocked: { byMe: boolean; byThem: boolean } }
-interface Outgoing { body: string; imageFileId?: string; imageUrl?: string | null; fileId?: string; file?: MessageFile | null; replyTo: Message | null }
+interface Outgoing { body: string; imageFileId?: string; imageUrl?: string | null; mediaKind?: MediaKind | null; media?: ReturnType<typeof mediaPayload>['body']; fileId?: string; file?: MessageFile | null; replyTo: Message | null }
 
-const EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '😘', '😎', '🤔', '😅', '😢', '😭', '😡', '👍', '👎', '👏', '🙏', '💪', '🎉', '🔥', '❤️', '💯', '✅', '🌹'];
 /** Cách đáy dưới ngần này thì coi như đang đọc tin mới nhất: có tin tới sẽ tự cuộn theo. */
 const STICK_PX = 80;
 
@@ -25,7 +29,9 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
   const key = useMemo(() => ['thread', id], [id]);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [emoji, setEmoji] = useState(false);
+  const [picker, setPicker] = useState<PickerTab | null>(null);
+  const [pickerAnchor, setPickerAnchor] = useState<HTMLElement | null>(null);
+  const gifOn = Boolean(useStickers().data?.gifEnabled);
   const [uploading, setUploading] = useState<'' | 'ảnh' | 'tệp'>('');
   const [reporting, setReporting] = useState(false);
   const [problem, setProblem] = useState('');
@@ -44,13 +50,13 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
 
   // Gửi: tin hiện ngay trong khung với trạng thái "Đang gửi", máy chủ trả lời xong thì thay bằng tin thật.
   const send = useMutation({
-    mutationFn: (p: Outgoing) => api.post(`/v1/me/messages`, { conversationId: id, body: p.body, imageFileId: p.imageFileId, fileId: p.fileId, replyToId: p.replyTo?.id }),
+    mutationFn: (p: Outgoing) => api.post(`/v1/me/messages`, { conversationId: id, body: p.body, imageFileId: p.imageFileId, fileId: p.fileId, replyToId: p.replyTo?.id, ...p.media }),
     onMutate: async (p) => {
       await qc.cancelQueries({ queryKey: key });
       const tmpId = `tmp-${Date.now()}`;
       const r = p.replyTo;
       stick.current = true;
-      patch((items) => [...items, { id: tmpId, senderUserId: meId, body: p.body, imageUrl: p.imageUrl ?? null, automated: false, deliveredAt: null, readAt: null, createdAt: new Date().toISOString(), recalled: false, reactions: {}, replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.body.slice(0, 160), hasImage: Boolean(r.imageUrl), fileName: r.file?.name ?? null, recalled: false } : null, file: p.file ?? null, pending: true }]);
+      patch((items) => [...items, { id: tmpId, senderUserId: meId, body: p.body, imageUrl: p.imageUrl ?? null, mediaKind: p.mediaKind ?? null, automated: false, deliveredAt: null, readAt: null, createdAt: new Date().toISOString(), recalled: false, reactions: {}, replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.body.slice(0, 160), hasImage: Boolean(r.imageUrl), mediaKind: r.mediaKind ?? null, fileName: r.file?.name ?? null, recalled: false } : null, file: p.file ?? null, pending: true }]);
       return { tmpId };
     },
     onError: (err, p, c) => { patch((items) => items.filter((m) => m.id !== c?.tmpId)); setProblem(errorMessage(err)); setText((t) => t || p.body); },
@@ -79,7 +85,8 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
   useEffect(() => { if (!loaded) return; void qc.invalidateQueries({ queryKey: ['conversations'] }); void qc.invalidateQueries({ queryKey: ['badges'] }); }, [loaded, qc]);
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 1600); return () => clearTimeout(t); }, [flash]);
 
-  const images = useMemo(() => (items ?? []).flatMap((m) => (m.imageUrl && !m.pending ? [m.imageUrl] : [])).reverse(), [items]);
+  // Ảnh đã gửi ở bảng thông tin: chỉ ảnh tải lên, không tính nhãn dán và GIF.
+  const images = useMemo(() => (items ?? []).flatMap((m) => (m.imageUrl && !m.mediaKind && !m.pending ? [m.imageUrl] : [])).reverse(), [items]);
   const files = useMemo(() => (items ?? []).flatMap((m) => (m.file && !m.pending ? [{ id: m.id, ...m.file }] : [])).reverse(), [items]);
   const links = useMemo(() => [...new Set((items ?? []).flatMap((m) => linksIn(m.body)).reverse())], [items]);
 
@@ -90,7 +97,16 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
   const firstName = other.name.trim().split(/\s+/).pop() ?? other.name;
   const seen = seenLabel(other.lastSeenAt);
 
-  const submit = () => { const body = text.trim(); if (!body || send.isPending) return; setProblem(''); setEmoji(false); send.mutate({ body, replyTo }); setText(''); setReplyTo(null); };
+  const submit = () => { const body = text.trim(); if (!body || send.isPending) return; setProblem(''); setPicker(null); send.mutate({ body, replyTo }); setText(''); setReplyTo(null); };
+  // Nhãn dán, GIF gửi ngay khi chọn. Chọn từ dải gợi ý thì nhãn thay cho chữ vừa gõ (như Zalo).
+  const sendMedia = (m: PickedMedia, clearText = false) => {
+    const p = mediaPayload(m);
+    setProblem(''); setPicker(null);
+    send.mutate({ body: '', imageUrl: p.imageUrl, mediaKind: p.mediaKind, media: p.body, replyTo });
+    setReplyTo(null);
+    if (clearText) setText('');
+  };
+  const openPicker = (tab: PickerTab, el: HTMLElement) => { if (picker === tab) { setPicker(null); return; } setPickerAnchor(el); setPicker(tab); };
   const sendImage = async (file: File | undefined) => {
     if (!file || !file.type.startsWith('image/') || uploading) return;
     setProblem(''); setUploading('ảnh');
@@ -193,9 +209,12 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { void sendImage(e.target.files?.[0]); e.target.value = ''; }} />
               <button type="button" className="chat-icon" aria-label="Đính kèm tệp (tối đa 5MB)" title="Đính kèm tệp (tối đa 5MB)" disabled={Boolean(uploading)} onClick={() => docRef.current?.click()}><Paperclip size={20} /></button>
               <input ref={docRef} type="file" accept={ATTACHMENT_ACCEPT} hidden onChange={(e) => { void sendFile(e.target.files?.[0]); e.target.value = ''; }} />
-              <button type="button" className={`chat-icon${emoji ? ' on' : ''}`} aria-label="Chèn biểu tượng cảm xúc" aria-expanded={emoji} title="Biểu tượng cảm xúc" onClick={() => setEmoji((v) => !v)}><Smile size={20} /></button>
-              {emoji && <div className="chat-emoji" role="group" aria-label="Biểu tượng cảm xúc">{EMOJIS.map((ch) => <button key={ch} type="button" aria-label={`Chèn ${ch}`} onClick={() => addEmoji(ch)}>{ch}</button>)}</div>}
+              <button type="button" className={`chat-icon${picker === 'emoji' ? ' on' : ''}`} aria-label="Chèn biểu tượng cảm xúc" aria-expanded={picker === 'emoji'} title="Emoji" onClick={(e) => openPicker('emoji', e.currentTarget)}><Smile size={20} /></button>
+              <button type="button" className={`chat-icon${picker === 'sticker' ? ' on' : ''}`} aria-label="Gửi nhãn dán" aria-expanded={picker === 'sticker'} title="Nhãn dán" onClick={(e) => openPicker('sticker', e.currentTarget)}><StickerIcon size={20} /></button>
+              {gifOn && <button type="button" className={`chat-icon${picker === 'gif' ? ' on' : ''}`} aria-label="Gửi GIF" aria-expanded={picker === 'gif'} title="GIF" onClick={(e) => openPicker('gif', e.currentTarget)}><span className="comment-tool-gif">GIF</span></button>}
+              {picker && <MediaPicker tab={picker} onTab={setPicker} anchor={pickerAnchor} onEmoji={addEmoji} onPick={(m) => sendMedia(m)} onClose={() => setPicker(null)} />}
             </div>
+            <div className="px-3"><StickerSuggest text={text} onPick={(st) => sendMedia({ kind: 'sticker', sticker: st }, true)} /></div>
             <div className="chat-inputrow">
               <textarea ref={inputRef} className="chat-input" rows={1} value={text} maxLength={4000} placeholder={`Nhập tin nhắn tới ${firstName}`} aria-label={`Nhập tin nhắn tới ${other.name}`} onChange={(e) => setText(e.target.value)} onKeyDown={onKeyDown} onPaste={onPaste} />
               <button type="button" className="chat-send" aria-label="Gửi" title="Gửi (Enter)" disabled={!text.trim() || send.isPending} onClick={submit}><Send size={20} /></button>
