@@ -10,6 +10,7 @@ export interface Infra {
   env: string;
   email: InfraSection & { provider: string };
   release: InfraSection & { configured: boolean };
+  gif: InfraSection & { configured: boolean };
   storage: { label: string; kind: 'r2' | 'local'; bucket: string; publicBaseUrl: string | null };
   secrets: { authJwtSecret: boolean; encryptionKey: boolean; database: 'postgres' | 'pglite' };
 }

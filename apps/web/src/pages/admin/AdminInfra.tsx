@@ -1,8 +1,8 @@
-// Hệ thống · Hạ tầng và khóa: đổi key Resend và token Cloudflare ngay trên web (lưu mã hóa, chỉ hiện 4 ký tự
+// Hệ thống · Hạ tầng và khóa: đổi key Resend, token Cloudflare và key GIPHY (GIF, nhãn dán động) ngay trên web (lưu mã hóa, chỉ hiện 4 ký tự
 // cuối, ưu tiên hơn secret của Worker); xem R2 và bí mật hệ thống. Chữ tối thiểu 16px để đọc tốt trên điện thoại.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, T } from '@hoiminh/ui';
-import { ArrowRight, CheckCircle2, Cloud, HardDrive, Mail, PlugZap, Send, ShieldCheck, Wallet } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Cloud, HardDrive, Mail, PlugZap, Send, ShieldCheck, Sticker, Wallet } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
@@ -12,7 +12,7 @@ import { CheckLine, ExtLink, Guide, Panel, Row, SecretInput, SourceTag, StatusPi
 
 const KEY = ['admin', 'infra'];
 
-type Section = 'email' | 'release';
+type Section = 'email' | 'release' | 'gif';
 interface FieldSpec { name: string; label: string; secret?: boolean; placeholder: string; hint: string; mono?: boolean }
 
 /**
@@ -182,6 +182,35 @@ function ReleasePanel({ d }: { d: Infra }) {
   );
 }
 
+// GIF và nhãn dán động (GIPHY)
+
+const GIF_FIELDS: FieldSpec[] = [
+  { name: 'apiKey', label: 'API key GIPHY', secret: true, placeholder: 'Chuỗi 32 ký tự chữ và số', hint: 'Dán key mới để thay. Để trống là giữ nguyên.', mono: true },
+];
+
+function GifPanel({ d }: { d: Infra }) {
+  const form = useSectionForm('gif', d.gif, GIF_FIELDS);
+  return (
+    <Panel icon={<Sticker size={22} />} title="GIF và nhãn dán động (GIPHY)" sub="Tab GIF và ô tìm nhãn dán GIPHY trong ô bình luận, ô chat." status={<StatusPill ok={d.gif.configured}>{d.gif.configured ? 'Đang bật' : 'Chưa bật'}</StatusPill>}>
+      {!d.gif.configured && <div className="rounded-xl px-4 py-3 text-[16px]" style={{ background: T.goldSoft, color: T.goldText }}>Chưa có key nên tab GIF đang ẩn. Bộ nhãn dán của Hội Mình (Hệ thống · Nhãn dán) vẫn dùng bình thường.</div>}
+      <Fields section="gif" specs={GIF_FIELDS} data={d.gif} form={form} />
+      <SaveRow form={form} updatedAt={d.gif.updatedAt} />
+      <div className="flex items-center gap-3 flex-wrap">
+        <Link to="/he-thong/nhan-dan" className="inline-flex items-center gap-1.5 text-[16px] font-semibold" style={{ color: T.tealText }}>Quản lý bộ nhãn dán <ArrowRight size={18} /></Link>
+      </div>
+      <Guide
+        title="Cách lấy API key GIPHY"
+        steps={[
+          <>Vào <ExtLink href="https://developers.giphy.com/dashboard/">developers.giphy.com</ExtLink>, đăng nhập (tạo tài khoản miễn phí nếu chưa có).</>,
+          <>Bấm Create an API Key, chọn <strong>API</strong> (không chọn SDK), đặt tên ứng dụng là Hội Mình.</>,
+          <>Sao chép key và dán vào ô ở trên, bấm Lưu thay đổi. Mở một bài viết, bấm nút GIF ở ô bình luận để thử.</>,
+          <>Key mới tạo là key thử, giới hạn số lần gọi mỗi giờ. Khi nhiều người dùng, vào lại trang Dashboard bấm <strong>Upgrade to Production</strong> (miễn phí, GIPHY duyệt trong vài ngày).</>,
+        ]}
+      />
+    </Panel>
+  );
+}
+
 // Chỉ xem: R2, bí mật hệ thống, cổng thanh toán
 
 /** Thiếu ở production là lỗi; ở máy dev thì chỉ lưu ý. */
@@ -226,6 +255,7 @@ export default function Page() {
           <>
             <EmailPanel d={d} />
             <ReleasePanel d={d} />
+            <GifPanel d={d} />
             <StoragePanel d={d} />
             <SecretsPanel d={d} />
             <Link to="/he-thong/thanh-toan" className="card flex items-center gap-3 p-5 md:p-6" style={{ color: T.ink }}>

@@ -34,6 +34,9 @@ const RULES: Record<InfraSection, Record<string, [RegExp, string]>> = {
     accountId: [/^[a-f0-9]{32}$/i, 'Account ID gồm 32 ký tự chữ và số, xem ở trang Overview của Cloudflare (cột phải).'],
     webScript: [/^[a-z0-9][a-z0-9-]{0,62}$/, 'Tên Worker chỉ gồm chữ thường, số và dấu gạch nối.'],
   },
+  gif: {
+    apiKey: [/^[A-Za-z0-9]{20,64}$/, 'API key GIPHY là một chuỗi chữ và số (thường 32 ký tự), sao chép ở trang Dashboard của developers.giphy.com.'],
+  },
 };
 
 function fieldView(ctx: Ctx, saved: Record<string, string> | undefined, name: string, section: InfraSection): InfraFieldView {
@@ -59,6 +62,7 @@ export async function getInfra(ctx: Ctx) {
     env: ctx.env.APP_ENV,
     email: { ...section('email'), provider: emailProviderLabel(ctx.email) },
     release: { ...section('release'), configured: Boolean(ctx.env.CF_RELEASE_API_TOKEN && ctx.env.CF_RELEASE_ACCOUNT_ID) },
+    gif: { ...section('gif'), configured: Boolean(ctx.env.GIPHY_API_KEY?.trim()) },
     storage: { label: ctx.media.label, kind: ctx.media.kind, bucket: ctx.env.R2_BUCKET, publicBaseUrl: ctx.env.R2_PUBLIC_BASE_URL || null },
     secrets,
   };

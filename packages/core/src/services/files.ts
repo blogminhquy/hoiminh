@@ -9,10 +9,10 @@ import { AppError, conflict, invalid, notFound } from '../errors';
 import { FILE_DELETE_JOB } from '../jobs/kinds';
 import { scheduleJob } from '../jobs/scheduled';
 import { raw } from '../lib/db';
-import { requireUser } from '../permissions';
+import { requireSuperAdmin, requireUser } from '../permissions';
 
 /** Bước 1: xin presigned URL. Ảnh bài viết/avatar là public; tài liệu khóa học, tệp số là private. */
-export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'message_file' | 'comment_image'; communityId?: string | null; workspaceId?: string | null }) {
+export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeType: string; sizeBytes: number; purpose: 'post_image' | 'avatar' | 'cover' | 'lesson_resource' | 'digital_product' | 'message_image' | 'message_file' | 'comment_image' | 'sticker'; communityId?: string | null; workspaceId?: string | null }) {
   const userId = requireUser(ctx);
   // Provider local ghi tệp bằng node:fs. Cloudflare Workers không có hệ tệp nên tệp "tải xong"
   // rồi biến mất ngay (đã xảy ra với avatar quản trị ngày 16/09). Chặn sớm và nói đúng nguyên nhân.
@@ -21,7 +21,9 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
   }
   const v = validateUpload(input.mimeType, input.sizeBytes);
   if (!v.ok) throw invalid(v.reason);
-  if (['post_image', 'avatar', 'cover', 'message_image', 'comment_image'].includes(input.purpose) && v.kind !== 'image') throw invalid('Mục này chỉ nhận ảnh');
+  if (['post_image', 'avatar', 'cover', 'message_image', 'comment_image', 'sticker'].includes(input.purpose) && v.kind !== 'image') throw invalid('Mục này chỉ nhận ảnh');
+  // Nhãn dán dùng chung cho mọi hội: chỉ quản trị hệ thống tải lên (Hệ thống · Nhãn dán).
+  if (input.purpose === 'sticker') requireSuperAdmin(ctx);
   // Tệp đính kèm tin nhắn: chỉ tài liệu (ảnh đi đường gửi ảnh), tối đa 5MB, và là tệp riêng: chỉ hai người trong hội thoại lấy được link tải.
   if (input.purpose === 'message_file') {
     if (v.kind !== 'document') throw invalid('Tệp đính kèm nhận PDF, Word, Excel, PowerPoint, văn bản và zip. Ảnh thì gửi bằng nút ảnh.');
@@ -88,6 +90,7 @@ export const FILE_REFERENCES = [
   { table: 'products', column: 'digital_file_ids', kind: 'id-array' },
   { table: 'product_pages', column: 'cover_image_url', kind: 'url' },
   { table: 'comments', column: 'image_url', kind: 'url' },
+  { table: 'stickers', column: 'image_url', kind: 'url' },
   { table: 'messages', column: 'image_url', kind: 'url' },
   { table: 'messages', column: 'file_url', kind: 'url' },
   { table: 'post_images', column: 'url', kind: 'url' },

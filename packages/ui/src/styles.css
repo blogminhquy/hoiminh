@@ -645,6 +645,91 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .course-menu.post-menu { top: 40px; right: 0; }
 }
 
+/* Nút ba chấm cạnh bình luận: máy tính chỉ hiện khi rê chuột vào bình luận (hoặc khi đang mở, đang được chọn bằng bàn phím);
+   màn cảm ứng không rê chuột được nên luôn hiện. */
+.comment-more { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink3); }
+.comment-more:hover, .comment-more.on { background: var(--bg); color: var(--ink); }
+.comment-more:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (hover: hover) {
+  .comment-row .comment-more { opacity: 0; }
+  .comment-row:hover .comment-more, .comment-row .comment-more.on, .comment-row .comment-more:focus-visible { opacity: 1; }
+}
+
+/* Khung chọn Nhãn dán / Emoji / GIF dùng chung cho ô bình luận và ô chat. Máy tính: bảng nổi 344x400 cạnh nút đã mở nó
+   (vị trí tính bằng JS). Điện thoại: bảng trượt từ đáy màn hình, chữ và nút to cho dễ chạm. */
+.media-picker-backdrop { position: fixed; inset: 0; z-index: 60; cursor: default; background: transparent; }
+.media-picker { position: fixed; z-index: 61; width: 344px; height: 400px; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(8, 24, 23, 0.18); overflow: hidden; }
+.media-picker-tabs { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.media-picker-tabs [role='tab'] { flex: 1 1 0; height: 44px; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--ink3); border-bottom: 2px solid transparent; }
+.media-picker-tabs [role='tab'].on { color: var(--primary); border-bottom-color: var(--primary); }
+.media-picker-close { width: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink3); }
+.media-picker-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 10px 10px; }
+.media-picker-sec { font-size: 13px; font-weight: 700; color: var(--ink2); padding: 8px 2px 6px; }
+.media-picker-empty { padding: 24px 8px; text-align: center; color: var(--ink3); font-size: 14px; }
+.media-picker-nav { flex-shrink: 0; display: flex; gap: 2px; overflow-x: auto; padding: 4px 6px; border-top: 1px solid var(--line); scrollbar-width: none; }
+.media-picker-nav button { flex-shrink: 0; width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--ink2); }
+.media-picker-nav button:hover { background: var(--bg); }
+.media-picker-nav img { width: 28px; height: 28px; object-fit: contain; }
+.media-picker-giphy { font-size: 9px; font-weight: 800; letter-spacing: .02em; }
+.sticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.sticker-grid button { aspect-ratio: 1; border-radius: 10px; padding: 4px; display: flex; align-items: center; justify-content: center; }
+.sticker-grid button:hover, .sticker-grid button:focus-visible { background: var(--bg); }
+.sticker-grid img { width: 100%; height: 100%; object-fit: contain; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); }
+.emoji-grid button { aspect-ratio: 1; border-radius: 8px; font-size: 24px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.emoji-grid button:hover, .emoji-grid button:focus-visible { background: var(--bg); }
+.gif-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border-radius: 999px; background: var(--bg); margin-bottom: 4px; }
+.gif-search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 15px; }
+.gif-search button { color: var(--ink3); display: inline-flex; }
+.gif-grid { columns: 2; column-gap: 6px; }
+.gif-grid button { display: block; width: 100%; margin-bottom: 6px; border-radius: 8px; overflow: hidden; background: var(--bg); break-inside: avoid; }
+.gif-grid img { display: block; width: 100%; height: auto; }
+.gif-credit { text-align: center; font-size: 12px; color: var(--ink3); padding: 8px 0 2px; }
+@media (max-width: 767px) {
+  .media-picker-backdrop { background: rgba(0, 0, 0, 0.4); }
+  .media-picker { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; height: min(62vh, 460px); border-radius: 16px 16px 0 0; border: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .media-picker-tabs [role='tab'] { height: 48px; font-size: 15px; }
+  .sticker-grid { grid-template-columns: repeat(4, 1fr); }
+  .emoji-grid button { font-size: 28px; }
+}
+
+/* Dải gợi ý nhãn khi chữ đang gõ trùng từ khóa (như Zalo). */
+.sticker-suggest { display: flex; align-items: center; gap: 4px; padding: 6px 8px; margin-bottom: 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(8, 24, 23, 0.12); overflow-x: auto; scrollbar-width: none; }
+.sticker-suggest button { flex-shrink: 0; width: 64px; height: 64px; border-radius: 10px; padding: 3px; }
+.sticker-suggest button:hover { background: var(--bg); }
+.sticker-suggest img { width: 100%; height: 100%; object-fit: contain; }
+.sticker-suggest .sticker-suggest-close { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink3); margin-left: auto; }
+
+/* Nhãn dán, GIF, ảnh trong bình luận và tin nhắn. */
+.media-sticker { display: block; width: 128px; height: 128px; object-fit: contain; }
+.media-gif { position: relative; display: inline-block; max-width: 240px; border-radius: 12px; overflow: hidden; vertical-align: top; }
+.media-gif img { display: block; width: 100%; height: auto; }
+.media-gif-tag { position: absolute; left: 6px; bottom: 6px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800; color: #fff; background: rgba(0, 0, 0, 0.55); }
+.media-photo { display: block; max-width: 260px; border-radius: 10px; }
+
+/* Ô bình luận có thanh công cụ (emoji, ảnh, GIF, nhãn dán) dưới ô gõ, như Facebook. */
+.comment-box.comment-box-rich { flex-direction: column; align-items: stretch; gap: 0; padding: 6px 6px 4px 14px; border-radius: 18px; }
+.comment-box-rich textarea { width: 100%; }
+.comment-tools { display: flex; align-items: center; gap: 2px; margin-left: -8px; }
+.comment-tool { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink3); }
+.comment-tool:hover:not(:disabled), .comment-tool.on { background: var(--bg); color: var(--ink); }
+.comment-tool:disabled { opacity: .5; }
+.comment-tool-gif { font-size: 10px; font-weight: 800; border: 1.6px solid currentColor; border-radius: 4px; padding: 0 3px; line-height: 14px; }
+.comment-attach { position: relative; align-self: flex-start; margin: 4px 0 2px; }
+.comment-attach img { display: block; max-height: 96px; max-width: 160px; border-radius: 10px; }
+.comment-attach button { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--ink); color: var(--surface); }
+
+/* Hệ thống · Nhãn dán: ô kéo thả và lưới nhãn (chữ tối thiểu 16px). */
+.admin-sticker-drop { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 20px 16px; border: 2px dashed var(--line2); border-radius: 14px; cursor: pointer; color: var(--ink2); }
+.admin-sticker-drop.on, .admin-sticker-drop:hover { border-color: var(--primary); background: var(--primary-soft); }
+.admin-sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.admin-sticker { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
+.admin-sticker img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--bg); border-radius: 8px; }
+.admin-sticker input { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 16px; }
+.admin-sticker button { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--ink2); }
+.admin-sticker button:hover:not(:disabled) { background: var(--bg); }
+.admin-sticker button:disabled { opacity: .35; }
+
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
 .chat-scroll > :first-child { margin-top: auto; }
@@ -711,9 +796,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-composer { position: relative; flex-shrink: 0; background: var(--surface); border-top: 1px solid var(--line); }
 .chat-composer:focus-within { border-top-color: var(--primary); }
 .chat-tools { position: relative; display: flex; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
-.chat-emoji { position: absolute; left: 8px; bottom: 100%; z-index: 3; display: grid; grid-template-columns: repeat(8, 40px); padding: 8px; margin-bottom: 6px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(8, 24, 23, 0.16); }
-.chat-emoji button { width: 40px; height: 40px; border-radius: 8px; font-size: 22px; line-height: 1; }
-.chat-emoji button:hover { background: var(--bg); }
 .chat-inputrow { display: flex; align-items: flex-end; gap: 8px; padding: 6px 8px 8px 16px; }
 .chat-input { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; padding: 8px 0; max-height: 132px; }
 .chat-input::placeholder { color: var(--ink3); }
@@ -766,8 +848,6 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .chat-convo:hover .chat-convo-time, .chat-convo:focus-within .chat-convo-time { visibility: visible; }
   .chat-actions button { width: 40px; height: 40px; }
   .chat-react-bar button { width: 38px; height: 38px; font-size: 24px; }
-  .chat-emoji { grid-template-columns: repeat(6, 44px); }
-  .chat-emoji button { width: 44px; height: 44px; }
 }
 
 /* Thông báo: dòng thông báo dùng chung cho bảng nổi ở nút chuông và trang /thong-bao. Chưa đọc có chấm, chữ đậm, nền

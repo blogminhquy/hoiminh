@@ -73,9 +73,10 @@ describe('searchCommands', () => {
 });
 
 describe('adminCommands', () => {
-  it('đủ 12 màn của khu quản trị hệ thống và tìm được không dấu', () => {
+  it('đủ các màn của khu quản trị hệ thống và tìm được không dấu', () => {
     const list = adminCommands();
-    expect(list.filter((c) => c.group === 'Hệ thống')).toHaveLength(13);
+    expect(list.filter((c) => c.group === 'Hệ thống')).toHaveLength(14);
+    expect(searchCommands(list, 'nhan dan')[0]?.to).toBe('/he-thong/nhan-dan');
     expect(searchCommands(list, 'bao cao nguoi dung')[0]?.to).toBe('/he-thong/bao-cao');
     expect(searchCommands(list, 'doi soat')[0]?.to).toBe('/he-thong/thanh-toan');
     expect(searchCommands(list, 'nhat ky')[0]?.to).toBe('/he-thong/nhat-ky');

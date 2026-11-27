@@ -1,8 +1,6 @@
 // Bảng tin, bài viết, bình chọn, bình luận, phản ứng.
 import { createCommentSchema, createPostSchema, feedQuerySchema, toggleReactionSchema, updateCommentSchema, updatePostSchema, voteSchema } from '@hoiminh/contracts';
-import { comments, posts } from '@hoiminh/core';
-import { files } from '@hoiminh/db';
-import { eq } from 'drizzle-orm';
+import { attachments, comments, gifs, posts, stickers } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -41,9 +39,12 @@ contentRoutes.get('/comments', async (c) => {
 contentRoutes.post('/comments', requireAuth, rateLimit('write', { scope: 'comment' }), async (c) => {
   const input = await parse(targetSchema.merge(createCommentSchema), await body(c));
   const ctx = c.get('ctx');
-  const imageUrl = input.imageFileId ? ((await ctx.db.query.files.findFirst({ where: eq(files.id, input.imageFileId) }))?.url ?? null) : null;
-  return c.json(await comments.createComment(ctx, input.targetType, input.targetId, { contentMd: input.contentMd, parentCommentId: input.parentCommentId ?? null, imageUrl }), 201);
+  const media = await attachments.resolveAttachment(ctx, input);
+  return c.json(await comments.createComment(ctx, input.targetType, input.targetId, { contentMd: input.contentMd, parentCommentId: input.parentCommentId ?? null, ...media }), 201);
 });
+// Nhãn dán và GIF cho ô bình luận, ô chat (cần đăng nhập).
+contentRoutes.get('/stickers', requireAuth, async (c) => c.json(await stickers.listStickers(c.get('ctx'))));
+contentRoutes.get('/gifs', requireAuth, async (c) => c.json(await gifs.searchGifs(c.get('ctx'), String(query(c).q ?? ''), { type: query(c).type === 'stickers' ? 'stickers' : 'gifs' })));
 contentRoutes.patch('/comments/:id', requireAuth, async (c) => c.json(await comments.updateComment(c.get('ctx'), c.req.param('id'), await parse(updateCommentSchema, await body(c)))));
 contentRoutes.post('/comments/:id/pin', requireAuth, async (c) => {
   const { pinned } = await parse(z.object({ pinned: z.boolean() }), await body(c));

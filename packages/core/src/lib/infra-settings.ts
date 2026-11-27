@@ -1,4 +1,4 @@
-// Khóa hạ tầng nhập ở Hệ thống · Hạ tầng (email Resend, phát hành web qua Cloudflare).
+// Khóa hạ tầng nhập ở Hệ thống · Hạ tầng (email Resend, phát hành web qua Cloudflare, GIF qua GIPHY).
 //
 // Lưu mã hóa trong provider_accounts (provider = infra_email / infra_release, như credential cổng thanh
 // toán) nên không cần migration. Giá trị đã lưu được ưu tiên hơn secret của Worker; ô nào chưa lưu thì
@@ -9,7 +9,7 @@ import { providerAccounts, type Database, type DbExecutor } from '@hoiminh/db';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from '../context';
 
-export type InfraSection = 'email' | 'release';
+export type InfraSection = 'email' | 'release' | 'gif';
 
 export interface InfraField {
   env: keyof Env;
@@ -27,9 +27,12 @@ export const INFRA_FIELDS: Record<InfraSection, Record<string, InfraField>> = {
     accountId: { env: 'CF_RELEASE_ACCOUNT_ID', secret: false },
     webScript: { env: 'CF_RELEASE_WEB_SCRIPT', secret: false },
   },
+  gif: {
+    apiKey: { env: 'GIPHY_API_KEY', secret: true },
+  },
 };
 
-export const INFRA_PROVIDER: Record<InfraSection, string> = { email: 'infra_email', release: 'infra_release' };
+export const INFRA_PROVIDER: Record<InfraSection, string> = { email: 'infra_email', release: 'infra_release', gif: 'infra_gif' };
 const SECTION_OF = Object.fromEntries(Object.entries(INFRA_PROVIDER).map(([s, p]) => [p, s as InfraSection])) as Record<string, InfraSection>;
 
 export type InfraValues = Partial<Record<InfraSection, Record<string, string>>>;

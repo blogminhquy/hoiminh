@@ -29,7 +29,7 @@ platformRoutes.delete('/workspaces/:id/webhooks/:webhookId', requireAuth, async 
   return c.json({ ok: true });
 });
 
-const uploadSchema = z.object({ fileName: z.string().min(1).max(200), mimeType: z.string(), sizeBytes: z.number().int().positive(), purpose: z.enum(['post_image', 'avatar', 'cover', 'lesson_resource', 'digital_product', 'message_image', 'message_file', 'comment_image']), communityId: z.string().uuid().nullable().optional(), workspaceId: z.string().uuid().nullable().optional() });
+const uploadSchema = z.object({ fileName: z.string().min(1).max(200), mimeType: z.string(), sizeBytes: z.number().int().positive(), purpose: z.enum(['post_image', 'avatar', 'cover', 'lesson_resource', 'digital_product', 'message_image', 'message_file', 'comment_image', 'sticker']), communityId: z.string().uuid().nullable().optional(), workspaceId: z.string().uuid().nullable().optional() });
 platformRoutes.post('/files/upload-url', requireAuth, async (c) => c.json(await filesService.requestUpload(c.get('ctx'), await parse(uploadSchema, await body(c))), 201));
 /** Bỏ ảnh vừa tải lên mà chưa dùng (chủ tệp; tệp đang được dùng thì 409). */
 platformRoutes.delete('/files/:id', requireAuth, async (c) => {

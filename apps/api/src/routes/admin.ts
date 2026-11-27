@@ -1,6 +1,6 @@
 // /v1/admin: quản trị hệ thống (super admin).
-import { adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, dateRangeQuerySchema, paymentProviderSchema, savePlansSchema } from '@hoiminh/contracts';
-import { admin, affiliate, featureFlags, infra, partners, platformBilling, releases, requireSuperAdmin, safety, withdrawals } from '@hoiminh/core';
+import { addStickersSchema, adminCommunityActionSchema, adminMatchReconciliationSchema, adminProviderUpdateSchema, adminUserActionSchema, dateRangeQuerySchema, paymentProviderSchema, savePlansSchema, stickerOrderSchema, stickerPackSchema, stickerPackUpdateSchema, updateStickerSchema } from '@hoiminh/contracts';
+import { admin, affiliate, featureFlags, infra, partners, platformBilling, releases, requireSuperAdmin, safety, stickers, withdrawals } from '@hoiminh/core';
 import { affiliatePrograms } from '@hoiminh/db';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -46,7 +46,7 @@ adminRoutes.post('/email/test', async (c) => c.json(await admin.sendTestEmail(c.
 // Hạ tầng: khóa Resend và Cloudflare đổi được trên web (lưu mã hóa, ưu tiên hơn secret của Worker).
 const infraUpdateSchema = z.object({ values: z.record(z.string().max(500)).optional(), clear: z.array(z.string()).optional() });
 adminRoutes.get('/infra', async (c) => c.json(await infra.getInfra(c.get('ctx'))));
-adminRoutes.put('/infra/:section', async (c) => c.json(await infra.updateInfra(c.get('ctx'), await parse(z.enum(['email', 'release']), c.req.param('section')), await parse(infraUpdateSchema, await body(c)))));
+adminRoutes.put('/infra/:section', async (c) => c.json(await infra.updateInfra(c.get('ctx'), await parse(z.enum(['email', 'release', 'gif']), c.req.param('section')), await parse(infraUpdateSchema, await body(c)))));
 adminRoutes.post('/infra/release/test', async (c) => c.json(await infra.testRelease(c.get('ctx'))));
 adminRoutes.get('/plans', async (c) => c.json(await platformBilling.planStats(c.get('ctx'))));
 adminRoutes.put('/plans', async (c) => c.json(await platformBilling.savePlans(c.get('ctx'), await parse(savePlansSchema, await body(c)))));
@@ -88,3 +88,14 @@ adminRoutes.post('/partners', async (c) => c.json(await partners.addPartner(c.ge
 adminRoutes.patch('/partners/:id', async (c) => c.json(await partners.updatePartner(c.get('ctx'), c.req.param('id'), await parse(partnerTerms, await body(c)))));
 adminRoutes.post('/partners/:id/end', async (c) => c.json(await partners.endPartner(c.get('ctx'), c.req.param('id'))));
 adminRoutes.get('/affiliate/export.csv', async (c) => csv(c, await withdrawals.exportPayoutsCsv(c.get('ctx'), (await platformProgram(c)).id), 'cong-su-nen-tang.csv'));
+
+// Nhãn dán dùng chung cho mọi hội (Hệ thống · Nhãn dán)
+adminRoutes.get('/sticker-packs', async (c) => c.json(await stickers.adminListPacks(c.get('ctx'))));
+adminRoutes.post('/sticker-packs', async (c) => c.json(await stickers.createPack(c.get('ctx'), await parse(stickerPackSchema, await body(c))), 201));
+adminRoutes.post('/sticker-packs/reorder', async (c) => { await stickers.reorderPacks(c.get('ctx'), (await parse(stickerOrderSchema, await body(c))).ids); return c.json({ ok: true }); });
+adminRoutes.patch('/sticker-packs/:id', async (c) => c.json(await stickers.updatePack(c.get('ctx'), c.req.param('id'), await parse(stickerPackUpdateSchema, await body(c)))));
+adminRoutes.delete('/sticker-packs/:id', async (c) => { await stickers.deletePack(c.get('ctx'), c.req.param('id')); return c.json({ ok: true }); });
+adminRoutes.post('/sticker-packs/:id/stickers', async (c) => c.json(await stickers.addStickers(c.get('ctx'), c.req.param('id'), (await parse(addStickersSchema, await body(c))).items), 201));
+adminRoutes.post('/sticker-packs/:id/reorder', async (c) => { await stickers.reorderStickers(c.get('ctx'), c.req.param('id'), (await parse(stickerOrderSchema, await body(c))).ids); return c.json({ ok: true }); });
+adminRoutes.patch('/stickers/:id', async (c) => c.json(await stickers.updateSticker(c.get('ctx'), c.req.param('id'), await parse(updateStickerSchema, await body(c)))));
+adminRoutes.delete('/stickers/:id', async (c) => { await stickers.deleteSticker(c.get('ctx'), c.req.param('id')); return c.json({ ok: true }); });

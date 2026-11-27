@@ -1,10 +1,10 @@
 // Bình luận lồng nhau (bài viết, bài học, sự kiện), ghim, thích; phản ứng cho bài viết.
 import type { ReactionKind } from '@hoiminh/contracts';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { comments, communityMembers, events, lessons, posts, reactions, users } from '@hoiminh/db';
+import { comments, communityMembers, events, lessons, posts, reactions, users, type MediaKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
-import { forbidden, notFound } from '../errors';
+import { forbidden, invalid, notFound } from '../errors';
 import { mentions } from '../lib/markdown';
 import { requireCommunityPermission, requireUser, resolveCommunityAccess } from '../permissions';
 import { releaseFiles } from './files';
@@ -48,8 +48,9 @@ export async function listComments(ctx: Ctx, targetType: 'post' | 'lesson' | 'ev
 }
 
 /** Tạo bình luận hoặc trả lời; cập nhật đếm; phát comment.created kèm @mention. */
-export async function createComment(ctx: Ctx, targetType: 'post' | 'lesson' | 'event', targetId: string, input: { contentMd: string; parentCommentId?: string | null; imageUrl?: string | null }) {
+export async function createComment(ctx: Ctx, targetType: 'post' | 'lesson' | 'event', targetId: string, input: { contentMd: string; parentCommentId?: string | null; imageUrl?: string | null; mediaKind?: MediaKind | null }) {
   const userId = requireUser(ctx);
+  if (!input.contentMd.trim() && !input.imageUrl) throw invalid('Bình luận chưa có nội dung');
   const communityId = await communityOfTarget(ctx, targetType, targetId);
   if (!communityId) throw notFound();
   await requireCommunityPermission(ctx, communityId, 'post.create');
@@ -59,7 +60,7 @@ export async function createComment(ctx: Ctx, targetType: 'post' | 'lesson' | 'e
     if (!parent || parent.targetId !== targetId) throw notFound('Bình luận gốc không tồn tại');
     parentId = parent.parentCommentId ?? parent.id;
   }
-  const [row] = await ctx.db.insert(comments).values({ communityId, targetType, targetId, authorUserId: userId, parentCommentId: parentId, contentMd: input.contentMd, imageUrl: input.imageUrl ?? null }).returning();
+  const [row] = await ctx.db.insert(comments).values({ communityId, targetType, targetId, authorUserId: userId, parentCommentId: parentId, contentMd: input.contentMd, imageUrl: input.imageUrl ?? null, mediaKind: input.imageUrl ? input.mediaKind ?? null : null }).returning();
   if (parentId) await ctx.db.update(comments).set({ replyCount: sql`${comments.replyCount} + 1` }).where(eq(comments.id, parentId));
   if (targetType === 'post') await ctx.db.update(posts).set({ commentCount: sql`${posts.commentCount} + 1`, lastCommentAt: ctx.now() }).where(eq(posts.id, targetId));
   await ctx.events.emit('comment.created', { commentId: row!.id, communityId, authorUserId: userId, targetType, targetId, parentCommentId: parentId, mentionedHandles: mentions(input.contentMd) });
@@ -72,6 +73,8 @@ export async function updateComment(ctx: Ctx, commentId: string, input: { conten
   if (!c) throw notFound();
   const access = await resolveCommunityAccess(ctx, c.communityId);
   if (!(ctx.actor.type === 'user' && ctx.actor.userId === c.authorUserId) && !access.permissions.has('post.moderate')) throw forbidden();
+  // Bình luận chỉ có ảnh, nhãn dán hay GIF thì được để trống chữ; bình luận chỉ có chữ thì không.
+  if (!input.contentMd.trim() && !c.imageUrl) throw invalid('Bình luận chưa có nội dung');
   const [row] = await ctx.db.update(comments).set({ contentMd: input.contentMd, updatedAt: ctx.now() }).where(eq(comments.id, commentId)).returning();
   return row!;
 }

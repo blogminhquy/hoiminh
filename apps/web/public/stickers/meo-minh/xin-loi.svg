@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 -8 220 220" width="240" height="240">
+<style>
+.char{animation:bounce 1.4s ease-in-out infinite;transform-origin:120px 200px}
+.bounce-fast .char{animation-duration:.7s}
+.shake .char{animation:shake .5s ease-in-out infinite}
+.sway .char{animation:sway 2.6s ease-in-out infinite}
+.bow .char{animation:bow 1.8s ease-in-out infinite}
+.blink{animation:blink 3.2s infinite;transform-origin:120px 96px}
+.tail{animation:wag 1.2s ease-in-out infinite;transform-origin:160px 168px}
+.wave{animation:wave .9s ease-in-out infinite}
+.cheer-l{animation:cheerl .6s ease-in-out infinite}
+.cheer-r{animation:cheerr .6s ease-in-out infinite}
+.pump{animation:pump .7s ease-in-out infinite}
+.wiggle{animation:wiggle .8s ease-in-out infinite}
+.beat{animation:beat .8s ease-in-out infinite}
+.twinkle{animation:twinkle 1.6s ease-in-out infinite}
+.float{animation:float 2.2s ease-in infinite}
+.drop{animation:drop 1s ease-in infinite}
+.slide{animation:slide 1.6s ease-in infinite}
+.zz{animation:zz 2.4s ease-in-out infinite}
+.zz2{animation-delay:1.2s}
+.q1{animation:hop .9s ease-in-out infinite}
+.q2{animation:hop .9s ease-in-out .45s infinite}
+.burst{animation:fade 1s ease-in-out infinite}
+.puff{animation:puff 1.2s ease-out infinite}
+.confetti{animation:confetti 1.8s linear infinite}
+.flutter{animation:wiggle .5s ease-in-out infinite}
+.tick{animation:spin 2s steps(8) infinite;transform-origin:0 0}
+.bob{animation:bob 1.6s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes bow{0%,30%,100%{transform:rotate(0)}55%,75%{transform:rotate(9deg) translateY(4px)}}
+@keyframes blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.12)}}
+@keyframes wag{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+@keyframes wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-22deg)}}
+@keyframes cheerl{0%,100%{transform:rotate(0)}50%{transform:rotate(14deg)}}
+@keyframes cheerr{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+@keyframes pump{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes wiggle{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+@keyframes beat{0%,100%{transform:scale(1)}30%{transform:scale(1.18)}60%{transform:scale(.96)}}
+@keyframes twinkle{0%,100%{transform:scale(.6) rotate(0);opacity:.5}50%{transform:scale(1.15) rotate(20deg);opacity:1}}
+@keyframes float{0%{transform:translateY(10px) scale(.6);opacity:0}25%{opacity:1}100%{transform:translateY(-30px) scale(1);opacity:0}}
+@keyframes drop{0%{transform:translateY(-6px);opacity:0}20%{opacity:1}100%{transform:translateY(26px);opacity:0}}
+@keyframes slide{0%{transform:translateY(-4px);opacity:0}25%{opacity:1}100%{transform:translateY(16px);opacity:0}}
+@keyframes zz{0%{transform:translate(0,8px);opacity:0}30%{opacity:1}100%{transform:translate(8px,-14px);opacity:0}}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes fade{0%,100%{opacity:.2}50%{opacity:1}}
+@keyframes puff{0%{transform:translate(0,0) scale(.6);opacity:0}30%{opacity:1}100%{transform:translate(-10px,-14px) scale(1.1);opacity:0}}
+@keyframes confetti{0%{transform:translateY(-10px) rotate(0);opacity:0}15%{opacity:1}100%{transform:translateY(150px) rotate(300deg);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px) rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>
+<g class="bow">
+<g class="char">
+  <path class="tail" d="M160 168 C196 166 204 130 190 112" fill="none" stroke="#3B2A20" stroke-width="15" stroke-linecap="round"/>
+  <path class="tail" d="M160 168 C196 166 204 130 190 112" fill="none" stroke="#F5A04A" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="96" cy="184" rx="16" ry="11" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <ellipse cx="144" cy="184" rx="16" ry="11" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <ellipse cx="120" cy="152" rx="50" ry="36" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <ellipse cx="120" cy="160" rx="26" ry="18" fill="#FFFFFF" opacity=".85"/>
+  <path d="M60 74 L66 22 L108 50 Z" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M71 60 L74 36 L95 50 Z" fill="#FF9AA2"/>
+  <path d="M180 74 L174 22 L132 50 Z" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M169 60 L166 36 L145 50 Z" fill="#FF9AA2"/>
+  <clipPath id="hc"><ellipse cx="120" cy="98" rx="72" ry="60"/></clipPath>
+  <ellipse cx="120" cy="98" rx="72" ry="60" fill="#FFF6EA"/>
+  <g clip-path="url(#hc)">
+    <path d="M82 38 Q120 22 158 38 Q148 62 132 58 Q120 70 108 58 Q92 62 82 38 Z" fill="#F5A04A"/>
+    <path d="M42 90 Q58 84 66 96 Q56 106 42 104 Z" fill="#F5A04A"/>
+  </g>
+  <ellipse cx="120" cy="98" rx="72" ry="60" fill="none" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M112 40 L114 54 M120 38 L120 54 M128 40 L126 54" stroke="#3B2A20" stroke-width="3.5" stroke-linecap="round" opacity=".55"/>
+  <path d="M46 112 L72 116 M46 124 L72 122 M194 112 L168 116 M194 124 L168 122" stroke="#3B2A20" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+<path class="slide" d="M176 50 Q166 66 176 72 Q186 66 176 50 Z" fill="#7CC7F2" stroke="#3B2A20" stroke-width="3"/>
+<ellipse cx="80" cy="116" rx="12" ry="7" fill="#FF9AA2" opacity="0.75"/><ellipse cx="160" cy="116" rx="12" ry="7" fill="#FF9AA2" opacity="0.75"/>
+<g class="blink"><ellipse cx="95" cy="98" rx="7.6499999999999995" ry="10.2" fill="#3B2A20"/><circle cx="97.55" cy="94.6" r="3.06" fill="#fff"/><circle cx="92.45" cy="101.4" r="1.36" fill="#fff"/><ellipse cx="145" cy="98" rx="7.6499999999999995" ry="10.2" fill="#3B2A20"/><circle cx="147.55" cy="94.6" r="3.06" fill="#fff"/><circle cx="142.45" cy="101.4" r="1.36" fill="#fff"/></g><path d="M82 84 L106 76 M158 84 L134 76" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M114 108 L126 108 L120 115 Z" fill="#FF9AA2" stroke="#3B2A20" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M104 127 Q110 121 116 127 Q122 133 128 127 Q134 121 138 127" fill="none" stroke="#3B2A20" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<ellipse cx="111" cy="146" rx="11" ry="19" transform="rotate(-14 111 146)" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="129" cy="146" rx="11" ry="19" transform="rotate(14 129 146)" fill="#FFF6EA" stroke="#3B2A20" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/><path d="M106 134 L108 128 M134 134 L132 128" stroke="#3B2A20" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</g>
+</svg>

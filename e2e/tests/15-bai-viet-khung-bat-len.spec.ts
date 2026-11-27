@@ -32,7 +32,9 @@ test('máy tính: mở bài trong khung, bình luận ở ô ghim đáy, đóng 
   await expect(box).toBeInViewport();
   const dialogBox = (await dialog.boundingBox())!;
   const inputBox = (await box.boundingBox())!;
-  expect(dialogBox.y + dialogBox.height - (inputBox.y + inputBox.height)).toBeLessThan(40);
+  // Đo cả khung soạn (ô gõ cùng thanh emoji, ảnh, GIF, nhãn dán bên dưới): đáy khung soạn sát đáy khung bật lên.
+  const composerBox = (await dialog.locator('.post-popup-foot .comment-box').boundingBox())!;
+  expect(dialogBox.y + dialogBox.height - (composerBox.y + composerBox.height)).toBeLessThan(40);
   await dialog.locator('.post-popup-body').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await expect(box).toBeInViewport();
   expect(Math.round((await box.boundingBox())!.y)).toBe(Math.round(inputBox.y));

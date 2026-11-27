@@ -5,23 +5,23 @@ import { Avatar, T, money } from '@hoiminh/ui';
 import { Archive, ArchiveRestore, BookOpen, Calendar, Check, CheckCheck, ChevronDown, Copy, Download, FileText, Link2, MoreHorizontal, Pin, PinOff, Quote, Sparkles, Undo2, User, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { EMOJI_ONLY } from '@/components/media/emoji-data';
+import { MediaImage } from '@/components/media/MediaImage';
+import type { MediaKind } from '@/components/media/types';
 import { convoPreview, fileSizeLabel, linkParts, reactionSummary } from '@/lib/chat';
 import { fmtDate, fmtTime, timeAgo } from '@/lib/format';
 
 export interface Person { id: string; name: string; handle: string; avatarUrl: string | null; coverColor: string | null; lastSeenAt?: string | null }
 export interface Conversation { id: string; other: Person; community: { id: string; name: string; slug: string } | null; preview: string | null; lastMessageAt: string | null; automated: boolean; unreadCount: number; pinned: boolean; archived: boolean; lastFromMe: boolean }
-export interface ReplyRef { id: string; senderUserId: string; body: string; hasImage: boolean; fileName: string | null; recalled: boolean }
+export interface ReplyRef { id: string; senderUserId: string; body: string; hasImage: boolean; mediaKind?: MediaKind | null; fileName: string | null; recalled: boolean }
 export interface MessageFile { name: string; sizeBytes: number }
-export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; automated: boolean; deliveredAt: string | null; readAt: string | null; createdAt: string; recalled: boolean; reactions: Record<string, string>; replyTo: ReplyRef | null; file: MessageFile | null; pending?: boolean }
+export interface Message { id: string; senderUserId: string; body: string; imageUrl: string | null; mediaKind?: MediaKind | null; automated: boolean; deliveredAt: string | null; readAt: string | null; createdAt: string; recalled: boolean; reactions: Record<string, string>; replyTo: ReplyRef | null; file: MessageFile | null; pending?: boolean }
 /** `status`, giá gói, `learning`, `referrer` chỉ có khi người xem quản lý thành viên của hội; người khác nhận null. */
 export interface Panel { memberId: string; role: string; status: string | null; tier: { key: string; name: string; monthlyMinor: number | null } | null; joinedAt: string; learning: { title: string; percent: number } | null; referrer: string | null }
 
 /** Thu hồi được trong 24 giờ (khớp RECALL_WINDOW_MS ở máy chủ; máy chủ vẫn là nơi quyết định). */
 const RECALL_WINDOW_MS = 24 * 60 * 60_000;
-/** Tin chỉ gồm 1 đến 3 biểu tượng cảm xúc thì hiện to, không khung (như Zalo). */
-const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}️?(?:‍\p{Extended_Pictographic}️?)*\s*){1,3}$/u;
-
-export const replySnippet = (r: { body: string; hasImage: boolean; fileName?: string | null; recalled: boolean }) => (r.recalled ? 'Tin nhắn đã được thu hồi' : r.body || (r.hasImage ? '[Hình ảnh]' : r.fileName ? `[Tệp] ${r.fileName}` : ''));
+export const replySnippet = (r: { body: string; hasImage: boolean; mediaKind?: MediaKind | null; fileName?: string | null; recalled: boolean }) => (r.recalled ? 'Tin nhắn đã được thu hồi' : r.body || (r.hasImage ? (r.mediaKind === 'sticker' ? '[Nhãn dán]' : r.mediaKind === 'gif' ? '[GIF]' : '[Hình ảnh]') : r.fileName ? `[Tệp] ${r.fileName}` : ''));
 
 export function ConvoRow({ c, on, onClick, onPin, onArchive }: { c: Conversation; on: boolean; onClick: () => void; onPin: () => void; onArchive: () => void }) {
   const [menu, setMenu] = useState(false);
@@ -92,7 +92,9 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
   const sum = reactionSummary(m.reactions);
   const canAct = !m.recalled && !m.pending;
   const canRecall = mine && canAct && Date.now() - new Date(m.createdAt).getTime() < RECALL_WINDOW_MS;
+  // Tin chỉ có 1-3 emoji, hoặc chỉ có một nhãn dán: không khung bong bóng (như Zalo).
   const big = !m.recalled && !m.imageUrl && !m.file && !m.replyTo && EMOJI_ONLY.test(m.body);
+  const stickerOnly = !m.recalled && m.mediaKind === 'sticker' && !m.body && !m.file && !m.replyTo;
   const copy = () => { void navigator.clipboard?.writeText(m.body).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
   const react = (e: MessageReaction | null) => (ev: { currentTarget: HTMLElement }) => { ev.currentTarget.blur(); onReact(e); };
   return (
@@ -100,7 +102,7 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
       {!mine && <span className="chat-avatar">{first && <Avatar name={other.name} src={other.avatarUrl} color={other.coverColor ?? T.ink} size={36} />}</span>}
       <div className="chat-body">
         {m.automated && first && <span className="tag" style={{ background: T.surface, color: T.ink3, border: `1px solid ${T.line}` }}><Sparkles size={12} />Tin nhắn chào tự động</span>}
-        <div className={`chat-bubble${big ? ' big' : ''}${m.recalled ? ' recalled' : ''}${m.pending ? ' pending' : ''}`}>
+        <div className={`chat-bubble${big || stickerOnly ? ' big' : ''}${m.recalled ? ' recalled' : ''}${m.pending ? ' pending' : ''}`}>
           {m.recalled ? 'Tin nhắn đã được thu hồi' : (
             <>
               {m.replyTo && (
@@ -109,7 +111,9 @@ export function MessageItem({ m, mine, myId, other, first, status, flash, active
                   <span>{replySnippet(m.replyTo)}</span>
                 </button>
               )}
-              {m.imageUrl && <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="chat-image"><img src={m.imageUrl} alt="Ảnh trong tin nhắn" onLoad={onImageLoad} /></a>}
+              {m.imageUrl && (m.mediaKind
+                ? <span className="chat-image"><MediaImage url={m.imageUrl} kind={m.mediaKind} onLoad={onImageLoad} /></span>
+                : <a href={m.imageUrl} target="_blank" rel="noopener noreferrer" className="chat-image"><img src={m.imageUrl} alt="Ảnh trong tin nhắn" onLoad={onImageLoad} /></a>)}
               {m.file && (
                 <button type="button" className="chat-file" disabled={m.pending} aria-label={`Tải tệp ${m.file.name}, ${fileSizeLabel(m.file.sizeBytes)}`} title="Tải về" onClick={onDownload}>
                   <i><FileText size={22} /></i>

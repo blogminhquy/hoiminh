@@ -1,5 +1,5 @@
 // Nội dung: chuyên mục, bài viết (Markdown), ảnh, bình luận lồng nhau, phản ứng, bình chọn.
-import { boolean, index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps, ts } from './_helpers';
 import { communities } from './tenant';
 import { users } from './users';
@@ -76,6 +76,8 @@ export const comments = pgTable(
     parentCommentId: uuid('parent_comment_id'),
     contentMd: text('content_md').notNull(),
     imageUrl: text('image_url'),
+    /** Ảnh ở image_url là gì: null là ảnh người dùng tải lên, 'sticker' là nhãn dán, 'gif' là ảnh động GIPHY. */
+    mediaKind: text('media_kind').$type<MediaKind>(),
     pinned: boolean('pinned').notNull().default(false),
     likeCount: integer('like_count').notNull().default(0),
     replyCount: integer('reply_count').notNull().default(0),
@@ -83,6 +85,39 @@ export const comments = pgTable(
     ...timestamps(),
   },
   (t) => [index('comments_target_idx').on(t.targetType, t.targetId, t.createdAt), index('comments_parent_idx').on(t.parentCommentId), index('comments_author_idx').on(t.authorUserId)],
+);
+
+/** Loại ảnh đính kèm của bình luận và tin nhắn ngoài ảnh tải lên: nhãn dán hoặc GIF. */
+export type MediaKind = 'sticker' | 'gif';
+
+/** Bộ nhãn dán dùng chung cho mọi hội. Quản trị hệ thống tạo, sửa, tải nhãn lên ở Hệ thống · Nhãn dán. */
+export const stickerPacks = pgTable(
+  'sticker_packs',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    /** Tắt thì bộ không hiện trong khung chọn; bình luận, tin nhắn đã gửi vẫn giữ nhãn. */
+    active: boolean('active').notNull().default(true),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [index('sticker_packs_order_idx').on(t.sortOrder)],
+);
+
+export const stickers = pgTable(
+  'stickers',
+  {
+    id: id(),
+    packId: uuid('pack_id').notNull().references(() => stickerPacks.id, { onDelete: 'cascade' }),
+    imageUrl: text('image_url').notNull(),
+    /** Từ khóa gợi ý: gõ đúng từ này trong ô bình luận hay ô chat thì nhãn hiện lên để chọn (như Zalo). */
+    keywords: jsonb('keywords').$type<string[]>().notNull().default([]),
+    width: integer('width'),
+    height: integer('height'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [index('stickers_pack_idx').on(t.packId, t.sortOrder)],
 );
 
 export const reactions = pgTable(
