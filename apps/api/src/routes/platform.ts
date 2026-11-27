@@ -1,7 +1,7 @@
 // Gói nền tảng, API key, webhook gửi đi, tệp, hồ sơ công khai, sức khỏe.
 import { createApiKeySchema, createWebhookSchema, updateWebhookSchema } from '@hoiminh/contracts';
 import { apiKeys, filesService, platformBilling, users, webhooksOut } from '@hoiminh/core';
-import { ProxiedMediaProvider, attachmentDisposition, maxBytesForKey, webpTarget } from '@hoiminh/media';
+import { ProxiedMediaProvider, attachmentDisposition, baseMime, contentMatchesMime, maxUploadBytes, servingHeaders, webpTarget } from '@hoiminh/media';
 import { z } from 'zod';
 import { body, parse, router } from '../lib/hono';
 import { requireAuth } from '../middleware/auth';
@@ -57,11 +57,22 @@ localFilesRoutes.put('/upload/*', async (c) => {
   const key = c.req.path.replace(/^\/files\/upload\//, '');
   const u = new URL(c.req.url);
   if (!(await media.verify(key, u.searchParams.get('expires') ?? '', u.searchParams.get('sig') ?? ''))) return c.json({ code: 'forbidden', message: 'URL tải lên không hợp lệ hoặc đã hết hạn' }, 403);
-  const type = c.req.header('content-type') ?? 'application/octet-stream';
+  // Loại tệp và dung lượng lúc xin URL là do client tự khai, header của lượt PUT này cũng vậy. Chỉ tin dòng `files` tạo lúc
+  // xin URL (đã qua validateUpload) và byte thật nhận được: tệp phải đúng loại đã khai, không thì một trang HTML đội lốt ảnh
+  // sẽ được phát lại như trang web trên tên miền Hội Mình.
+  const ctx = c.get('ctx');
+  const declared = await filesService.pendingUpload(ctx, key);
+  if (!declared) return c.json({ code: 'not_found', message: 'Không có lượt tải lên nào đang chờ cho tệp này' }, 404);
+  const type = baseMime(declared.mimeType);
+  if (baseMime(c.req.header('content-type') ?? '') !== type) return c.json({ code: 'validation_error', message: 'Loại tệp gửi lên khác loại đã khai lúc xin URL' }, 415);
+  const cap = maxUploadBytes(type, key);
+  if (cap === null) return c.json({ code: 'validation_error', message: 'Loại tệp không được hỗ trợ' }, 415);
+  const tooBig = () => c.json({ code: 'validation_error', message: `Tệp vượt ${Math.round(cap / 1024 / 1024)}MB` }, 413);
+  // Từ chối sớm theo Content-Length, trước khi đọc cả tệp vào bộ nhớ của Worker.
+  if (Number(c.req.header('content-length') ?? 0) > cap) return tooBig();
   let bytes: Uint8Array = new Uint8Array(await c.req.arrayBuffer());
-  // Dung lượng khai lúc xin URL là do client tự báo; ở đây mới là byte thật, nên giới hạn 5MB của tệp đính kèm tin nhắn phải kiểm lại.
-  const cap = maxBytesForKey(key);
-  if (cap !== null && bytes.byteLength > cap) return c.json({ code: 'validation_error', message: `Tệp vượt ${Math.round(cap / 1024 / 1024)}MB` }, 413);
+  if (bytes.byteLength > cap) return tooBig();
+  if (!contentMatchesMime(type, bytes)) return c.json({ code: 'validation_error', message: 'Nội dung tệp không đúng loại đã khai' }, 415);
   let stored = type;
   // Ảnh công khai còn là JPEG/PNG (trình duyệt không đổi được sang WebP, client cũ, gọi API trực tiếp): chuyển sang WebP trước khi ghi vào kho.
   // Không chuyển được (hết hạn mức Images, ảnh hỏng) thì lưu đúng tệp nhận được, lượt tải lên vẫn thành công.
@@ -72,7 +83,7 @@ localFilesRoutes.put('/upload/*', async (c) => {
   }
   if (media.store) await media.store.put(key, bytes, stored);
   else await persistLocal(key, bytes, stored);
-  if (stored !== type) await filesService.recordStoredObject(c.get('ctx'), key, { mimeType: stored, sizeBytes: bytes.byteLength });
+  await filesService.recordStoredObject(ctx, key, { mimeType: stored, sizeBytes: bytes.byteLength });
   return c.json({ ok: true, key, bytes: bytes.byteLength, contentType: stored });
 });
 localFilesRoutes.get('/*', async (c) => {
@@ -91,7 +102,7 @@ localFilesRoutes.get('/*', async (c) => {
   if (media.store) {
     const obj = await media.store.get(key);
     if (!obj) return c.json({ code: 'not_found', message: 'Không có tệp' }, 404);
-    const headers: Record<string, string> = { 'Content-Type': obj.contentType, 'Cache-Control': cache, ...disposition };
+    const headers: Record<string, string> = { ...servingHeaders(obj.contentType), 'Cache-Control': cache, ...disposition };
     if (obj.size !== null) headers['Content-Length'] = String(obj.size);
     if (obj.etag) headers.ETag = obj.etag;
     return c.body(obj.body as ReadableStream, 200, headers);
@@ -99,7 +110,7 @@ localFilesRoutes.get('/*', async (c) => {
   const f = await loadLocal(key);
   if (!f) return c.json({ code: 'not_found', message: 'Không có tệp' }, 404);
   const buf = f.bytes.buffer.slice(f.bytes.byteOffset, f.bytes.byteOffset + f.bytes.byteLength) as ArrayBuffer;
-  return c.body(buf, 200, { 'Content-Type': f.type, 'Cache-Control': cache, ...disposition });
+  return c.body(buf, 200, { ...servingHeaders(f.type), 'Cache-Control': cache, ...disposition });
 });
 
 async function persistLocal(key: string, bytes: Uint8Array, type: string): Promise<void> {
