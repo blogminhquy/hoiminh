@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS "messages_live_media_idx" ON "messages" USING btree ("created_at") WHERE "messages"."recalled_at" is null and (("messages"."image_url" is not null and "messages"."media_kind" is null) or "messages"."file_url" is not null);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "files_community_idx" ON "files" USING btree ("community_id");
