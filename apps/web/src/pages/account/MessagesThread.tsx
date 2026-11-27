@@ -206,9 +206,9 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
               </div>
             )}
             <div className="chat-tools">
-              <button type="button" className="chat-icon" aria-label="Gửi ảnh (tự xóa sau 30 ngày)" title="Gửi ảnh (tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => fileRef.current?.click()}><ImageIcon size={20} /></button>
+              <button type="button" className="chat-icon" aria-label="Gửi ảnh" title="Gửi ảnh (tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => fileRef.current?.click()}><ImageIcon size={20} /></button>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { void sendImage(e.target.files?.[0]); e.target.value = ''; }} />
-              <button type="button" className="chat-icon" aria-label="Đính kèm tệp (tối đa 5MB, tự xóa sau 30 ngày)" title="Đính kèm tệp (tối đa 5MB, tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => docRef.current?.click()}><Paperclip size={20} /></button>
+              <button type="button" className="chat-icon" aria-label="Đính kèm tệp (tối đa 5MB)" title="Đính kèm tệp (tối đa 5MB, tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => docRef.current?.click()}><Paperclip size={20} /></button>
               <input ref={docRef} type="file" accept={ATTACHMENT_ACCEPT} hidden onChange={(e) => { void sendFile(e.target.files?.[0]); e.target.value = ''; }} />
               <button type="button" className={`chat-icon${picker === 'emoji' ? ' on' : ''}`} aria-label="Chèn biểu tượng cảm xúc" aria-expanded={picker === 'emoji'} title="Emoji" onClick={(e) => openPicker('emoji', e.currentTarget)}><Smile size={20} /></button>
               <button type="button" className={`chat-icon${picker === 'sticker' ? ' on' : ''}`} aria-label="Gửi nhãn dán" aria-expanded={picker === 'sticker'} title="Nhãn dán" onClick={(e) => openPicker('sticker', e.currentTarget)}><StickerIcon size={20} /></button>
