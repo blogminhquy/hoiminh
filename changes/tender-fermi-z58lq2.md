@@ -2,7 +2,7 @@
 bump: minor
 ---
 
-Mua trước, tạo tài khoản sau, theo yêu cầu của chủ dự án ngày 27/11/2026: ưu tiên dòng tiền, khách trả tiền trước rồi mới tạo tài khoản. Có migration `0023_guest_checkout` (bảng `account_claims`), phải áp lên database thật trước khi merge.
+Mua trước, tạo tài khoản sau, theo yêu cầu của chủ dự án ngày 27/11/2026: ưu tiên dòng tiền, khách trả tiền trước rồi mới tạo tài khoản. Có migration `0024_guest_checkout` (bảng `account_claims`), phải áp lên database thật trước khi merge.
 
 ### Thêm
 
