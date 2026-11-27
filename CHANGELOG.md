@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## 1.59.0 - 2026-11-27
+
+Hạn mức dung lượng tệp theo gói của từng hội, theo yêu cầu của chủ dự án ngày 27/11/2026. Không có migration.
+
+### Thêm
+
+- **Dung lượng tệp theo gói.** Mỗi hội có trần tổng dung lượng ảnh và tệp: Miễn phí 1 GB, Khởi đầu 10 GB, Chuyên nghiệp 50 GB, Không giới hạn 200 GB (mức dùng hợp lý). Tài liệu lớn nhất mỗi tệp: 20 MB ở gói Miễn phí, 50 MB ở các gói trả phí. Chạm trần thì giống trần thành viên: không xóa gì, ảnh và tệp đã có vẫn giữ, chỉ không tải thêm được, kèm lời mời nâng lên gói kế tiếp (lỗi `storage_quota`, mã 409).
+- **Ảnh trong bình luận tính vào dung lượng của hội.** Khung bình luận gửi kèm hội đang mở khi tải ảnh.
+- **Trang gói của hội hiện "Dung lượng tệp".** Dưới số thành viên có thêm thanh dung lượng đã dùng so với trần của gói, và mức tài liệu lớn nhất mỗi tệp.
+
+### Thay đổi
+
+- **Tệp gắn với hội phải do người trong hội tải lên.** Người ngoài hội không gắn được tệp vào hội đó (403), để không ai làm đầy dung lượng của hội khác bằng tệp rác.
+- **Tài liệu bài học và tệp sản phẩm số phải nói rõ thuộc hội nào** (`communityId`). Giao diện vốn đã gửi; API key và MCP thiếu thì nhận lỗi rõ ràng.
+- **Tệp gửi lên không được lớn hơn dung lượng đã khai lúc xin URL.** Trần theo gói xét trên con số khai, nên con số đó phải đúng. Trình duyệt luôn khai đúng kích thước của chính tệp nó gửi.
+
+## 1.58.1 - 2026-11-27
+
+Chặn tệp đội lốt khi tải lên và khi phát lại, theo yêu cầu của chủ dự án sau khi rà soát phần lưu tệp trên R2. Không có migration.
+
+### Sửa
+
+- **Tệp tải lên không còn đổi được loại so với lúc xin URL.** Trước đây chữ ký của URL tải lên chỉ khóa tên tệp và thời hạn, còn loại tệp lấy theo header người gửi tự đặt. Kẻ xấu có thể xin URL cho một "ảnh" rồi gửi lên một trang HTML, và trang đó được phát lại ngay trên tên miền Hội Mình, chạy mã bằng phiên đăng nhập của người bấm vào. Nay API chỉ nhận đúng loại đã khai lúc xin URL, và chỉ nhận khi tệp còn đang chờ (chưa xác nhận xong).
+- **Kiểm vài byte đầu của tệp.** Ảnh phải đúng là JPEG, PNG, GIF hoặc WebP; PDF phải có dấu `%PDF-`; zip, Word, Excel, PowerPoint phải đúng là tệp zip; tệp văn bản phải là chữ UTF-8. Video đổi đuôi thành tài liệu hay trang web đội lốt ảnh đều bị từ chối.
+- **Phát tệp kèm header chặn chạy mã.** Mọi tệp có `X-Content-Type-Options: nosniff`; mọi tệp trừ PDF có thêm `Content-Security-Policy: default-src 'none'; sandbox`. Tệp cũ lưu với loại lạ (trước khi có kiểm tra) được phát như tệp tải về, không mở trong trang.
+- **Ghi dung lượng thật của mọi tệp.** Trước đây bảng `files` giữ con số client tự khai (trừ ảnh được chuyển sang WebP). Nay API ghi số byte thật nhận được, làm nền cho hạn mức dung lượng theo gói về sau.
+
+### Thay đổi
+
+- **Tài liệu tối đa 50MB một tệp** (trước là 100MB). 100MB chạm đúng giới hạn request của Cloudflare ở gói tên miền miễn phí, trong khi Worker đọc cả tệp vào bộ nhớ 128MB, nên tệp từ 80 đến 100MB lỗi lúc được lúc không. API từ chối sớm theo header `Content-Length`, trước khi đọc thân request. Ảnh vẫn 10MB, tệp đính kèm tin nhắn vẫn 5MB.
+
 ## 1.58.0 - 2026-11-27
 
 Menu ba chấm cho bình luận; ô bình luận và ô chat có emoji, ảnh, nhãn dán động, GIF, theo yêu cầu của chủ dự án. Có migration 0022 (bảng sticker_packs, stickers, cột media_kind của comments và messages, bộ nhãn khởi đầu).

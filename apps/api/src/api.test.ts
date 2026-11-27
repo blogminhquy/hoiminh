@@ -2,9 +2,11 @@
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '@hoiminh/config';
 import { createApp, type App, type InMemoryQueue } from '@hoiminh/core';
+import { files } from '@hoiminh/db';
 import { SEED_BANK_WEBHOOK_TOKEN } from '@hoiminh/db/seed';
 import { openSeededTestDb } from '@hoiminh/db/testing';
-import { fakeBucket, fakeImages } from '@hoiminh/media/testing';
+import { fakeBucket, fakeImages, sampleFile } from '@hoiminh/media/testing';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHonoApp, fetchWithSharedHono } from './app';
 import { resetMemoryLimits, TIERS } from './middleware/rate-limit';
@@ -306,7 +308,7 @@ describe('API', () => {
   it('tệp: production mà chưa nối R2 → 503 nói rõ nguyên nhân; có binding R2 → tải lên và phát lại qua API', async () => {
     const dbHandle = (app.ctx as { db: unknown }).db as never;
     const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
-    const body = JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: 5, purpose: 'post_image', communityId });
+    const body = JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: sampleFile('image/png', 4).byteLength, purpose: 'post_image', communityId });
 
     const noR2 = await createApp({ env: loadEnv(base), db: dbHandle });
     const h0 = createHonoApp(noR2);
@@ -323,7 +325,15 @@ describe('API', () => {
     expect(r.upload.url.startsWith('https://api.test/files/upload/public/post_image/')).toBe(true);
     expect(r.url.startsWith('https://api.test/files/public/post_image/')).toBe(true);
 
-    const put = await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) });
+    const png = sampleFile('image/png', 4);
+    // Tệp phải đúng loại đã khai lúc xin URL: đổi header, hay gửi trang HTML dưới header ảnh, đều bị từ chối và không vào kho.
+    const html = new TextEncoder().encode('<html><script>fetch("/v1/me")</script></html>');
+    expect((await h1.request(r.upload.url, { method: 'PUT', headers: { 'Content-Type': 'text/html' }, body: html })).status).toBe(415);
+    expect((await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: html })).status).toBe(415);
+    expect(bucket.objects.size).toBe(0);
+    // Tệp lớn hơn dung lượng đã khai lúc xin URL (trần theo gói xét trên con số khai) bị từ chối.
+    expect((await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/png', 5) })).status).toBe(413);
+    const put = await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: png });
     expect(put.status).toBe(200);
     expect(bucket.objects.size).toBe(1);
 
@@ -333,10 +343,23 @@ describe('API', () => {
     const get = await h1.request(r.url);
     expect(get.status).toBe(200);
     expect(get.headers.get('content-type')).toBe('image/png');
-    expect(new Uint8Array(await get.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+    expect(get.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(get.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
+    expect(new Uint8Array(await get.arrayBuffer())).toEqual(png);
 
     const done = await h1.request(`/v1/files/${r.fileId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ width: 1, height: 1 }) });
     expect(done.status).toBe(200);
+    // Dung lượng trong bảng files là số byte thật nhận được, không phải 5 byte client khai lúc xin URL.
+    const [row] = await withR2.ctx.db.select({ sizeBytes: files.sizeBytes }).from(files).where(eq(files.id, r.fileId));
+    expect(row?.sizeBytes).toBe(png.byteLength);
+    // Đã xác nhận xong thì URL cũ (còn hạn) không ghi đè được tệp nữa.
+    expect((await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/png', 9) })).status).toBe(404);
+    expect(new Uint8Array(await (await h1.request(r.url)).arrayBuffer())).toEqual(png);
+    // Tệp cũ lưu với loại lạ (trước khi có kiểm tra) phát như tệp tải về, không thành trang web.
+    await bucket.put('public/post_image/2026-11-01/cu.webp', html, { httpMetadata: { contentType: 'text/html' } });
+    const legacy = await h1.request('/files/public/post_image/2026-11-01/cu.webp');
+    expect(legacy.headers.get('content-type')).toBe('application/octet-stream');
+    expect(legacy.headers.get('content-disposition')).toBe('attachment');
 
     // Tệp riêng: không có chữ ký thì bị chặn, dù tệp có trong bucket.
     await bucket.put('private/digital_product/x.pdf', new Uint8Array([1]), { httpMetadata: { contentType: 'application/pdf' } });
@@ -351,12 +374,14 @@ describe('API', () => {
     const images = fakeImages();
     const h = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket, images }));
     const auth = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-    const ask = (fileName: string, mimeType: string, purpose = 'post_image') => h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName, mimeType, sizeBytes: 5, purpose, communityId }) });
+    // Khai đúng dung lượng của tệp mẫu sẽ gửi: API từ chối tệp lớn hơn con số đã khai lúc xin URL.
+    const sizeOf = (mimeType: string) => { try { return sampleFile(mimeType).byteLength; } catch { return 5; } };
+    const ask = (fileName: string, mimeType: string, purpose = 'post_image') => h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName, mimeType, sizeBytes: sizeOf(mimeType), purpose, ...(purpose === 'message_file' ? {} : { communityId }) }) });
     type Asked = { fileId: string; upload: { url: string; headers: Record<string, string> }; url: string };
     /** Tải một tệp 5 byte như trình duyệt: xin URL, PUT, xác nhận. Trả về URL công khai và kết quả PUT. */
     const upload = async (fileName: string, mimeType: string, purpose = 'post_image') => {
       const r = (await (await ask(fileName, mimeType, purpose)).json()) as Asked;
-      const put = (await (await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) })).json()) as { contentType: string; bytes: number };
+      const put = (await (await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile(mimeType) })).json()) as { contentType: string; bytes: number };
       const done = (await (await h.request(`/v1/files/${r.fileId}/complete`, { method: 'POST', headers: auth, body: JSON.stringify({ width: 10, height: 10 }) })).json()) as { url: string };
       return { url: done.url, put };
     };
@@ -368,7 +393,8 @@ describe('API', () => {
     expect(new URL(doc.upload.url).pathname).toContain('/files/upload/private/message_file/');
     expect(doc.url).toBeNull();
     expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: new Uint8Array(5 * 1024 * 1024 + 1) })).status).toBe(413);
-    expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: new Uint8Array([1, 2, 3]) })).status).toBe(200);
+    expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: new Uint8Array([1, 2, 3]) })).status).toBe(415);
+    expect((await h.request(doc.upload.url, { method: 'PUT', headers: doc.upload.headers, body: sampleFile('application/pdf') })).status).toBe(200);
     const declaredTooBig = await h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName: 'to.pdf', mimeType: 'application/pdf', sizeBytes: 5 * 1024 * 1024 + 1, purpose: 'message_file' }) });
     expect(declaredTooBig.status).toBe(422);
 
@@ -405,12 +431,12 @@ describe('API', () => {
     // Cloudflare từ chối chuyển (hết hạn mức): lượt tải lên vẫn thành công, ảnh lưu đúng dạng nhận được.
     const failing = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket, images: fakeImages({ fail: true }) }));
     const r = (await (await failing.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName: 'a.jpg', mimeType: 'image/jpeg', sizeBytes: 5, purpose: 'post_image', communityId }) })).json()) as Asked;
-    const put = await failing.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3, 4, 5]) });
+    const put = await failing.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/jpeg') });
     expect(put.status).toBe(200);
     expect(((await put.json()) as { contentType: string }).contentType).toBe('image/jpeg');
     const back = await failing.request(r.url);
     expect(back.headers.get('content-type')).toBe('image/jpeg');
-    expect(new Uint8Array(await back.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+    expect(new Uint8Array(await back.arrayBuffer())).toEqual(sampleFile('image/jpeg'));
 
     // Không có binding Images (cấu hình cũ): JPEG giữ đuôi và định dạng như trước.
     const plain = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket }));
@@ -426,9 +452,9 @@ describe('API', () => {
     const call = (path: string, init: RequestInit = {}, auth: string | null = token) => h.request(path, { ...init, headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${auth}` } : {}), ...(init.headers ?? {}) } });
     /** Tải một ảnh avatar như trình duyệt: xin URL, PUT, xác nhận. */
     const uploadAvatar = async () => {
-      const ask = await call('/v1/files/upload-url', { method: 'POST', body: JSON.stringify({ fileName: 'me.jpg', mimeType: 'image/jpeg', sizeBytes: 3, purpose: 'avatar' }) });
+      const ask = await call('/v1/files/upload-url', { method: 'POST', body: JSON.stringify({ fileName: 'me.jpg', mimeType: 'image/jpeg', sizeBytes: sampleFile('image/jpeg').byteLength, purpose: 'avatar' }) });
       const r = (await ask.json()) as { fileId: string; upload: { url: string; headers: Record<string, string> } };
-      await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: new Uint8Array([1, 2, 3]) });
+      await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/jpeg') });
       await call(`/v1/files/${r.fileId}/complete`, { method: 'POST', body: JSON.stringify({ width: 10, height: 10 }) });
       return { fileId: r.fileId, key: new URL(r.upload.url).pathname.replace('/files/upload/', '') };
     };

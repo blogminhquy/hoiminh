@@ -7,6 +7,7 @@ import { Camera, SendHorizontal, Smile, Sticker as StickerIcon, X } from 'lucide
 import { useRef, useState, type ClipboardEvent } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useOptionalShell } from '@/lib/community';
 import { MediaPicker, type PickerTab } from './media/MediaPicker';
 import { StickerSuggest } from './media/StickerSuggest';
 import { useStickers } from './media/stickers';
@@ -19,6 +20,7 @@ export function CommentComposer({ onSubmit, placeholder, loading, autoFocus, com
   const [text, setText] = useState('');
   const [image, setImage] = useState<{ fileId: string; url: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const shell = useOptionalShell();
   const [problem, setProblem] = useState('');
   const [picker, setPicker] = useState<PickerTab | null>(null);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -44,7 +46,8 @@ export function CommentComposer({ onSubmit, placeholder, loading, autoFocus, com
     if (!file.type.startsWith('image/')) { setProblem('Chỉ đính kèm được ảnh'); return; }
     setProblem(''); setUploading(true);
     try {
-      const r = await api.upload(file, 'comment_image');
+      // Gắn ảnh với hội đang mở để tính vào dung lượng tệp của hội (hạn mức theo gói).
+      const r = await api.upload(file, 'comment_image', { communityId: shell?.community.id ?? null });
       if (image) void api.discardUpload(image.fileId);
       setImage({ fileId: r.fileId, url: r.url ?? URL.createObjectURL(file) });
       area.current?.focus();

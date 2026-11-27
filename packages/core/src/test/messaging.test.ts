@@ -99,7 +99,9 @@ describe('tin nhắn: trả lời, cảm xúc, thu hồi, ghim', () => {
 
 /** Tải một tệp lên cho tin nhắn (xin URL, coi như đã PUT xong, xác nhận). */
 async function uploadFor(ctx: Ctx, name: string, mimeType: string, sizeBytes: number, purpose: 'message_file' | 'digital_product' = 'message_file'): Promise<string> {
-  const up = await filesSvc.requestUpload(ctx, { fileName: name, mimeType, sizeBytes, purpose });
+  // Tệp sản phẩm số luôn thuộc một hội (hạn mức dung lượng tính theo hội): gắn vào hội chính, nơi người tải là thành viên.
+  const communityId = purpose === 'digital_product' ? await app.ids('community:kd') : null;
+  const up = await filesSvc.requestUpload(ctx, { fileName: name, mimeType, sizeBytes, purpose, communityId });
   await filesSvc.completeUpload(ctx, up.fileId, {});
   return up.fileId;
 }
