@@ -12,7 +12,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryState } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
 import { BUYER_METHOD_NAME, initialMethod } from '@/lib/payment-methods';
-import { capView, compareRows, cycleHint, cycleLabel, cycleSaving, num, planBadge, tierCards, upgradeSummary, type HoiPlan, type TierCard } from '@/lib/platform-plan';
+import { capView, compareRows, storageView, cycleHint, cycleLabel, cycleSaving, num, planBadge, tierCards, upgradeSummary, type HoiPlan, type TierCard } from '@/lib/platform-plan';
 import { WS_HOME_KEY, type WorkspaceHome } from './WorkspaceHomeParts';
 
 type Provider = PaymentProvider;
@@ -20,6 +20,8 @@ type Provider = PaymentProvider;
 export interface PlanStatus {
   community: { id: string; name: string; slug: string; memberCount: number; status: string; isFreeSlot: boolean };
   plan: HoiPlan;
+  /** Dung lượng tệp của hội so với trần của gói. Thiếu khi máy chủ là bản cũ. */
+  storage?: { usedBytes: number; capBytes: number; documentMaxBytes: number };
   cycle: PlanCycle | null;
   plans: PlanDef[];
   canBuy: boolean;
@@ -40,6 +42,24 @@ function CycleTabs({ cycles, cycle, onPick, note }: { cycles: PlanCycle[]; cycle
         <button key={c} type="button" role="tab" aria-selected={cycle === c} className={cycle === c ? 'on' : undefined} onClick={() => onPick(c)}>{cycleLabel(c)}</button>
       ))}
       {note && <Tag tone="gold" className="seg-note">{capitalize(note)}</Tag>}
+    </div>
+  );
+}
+
+/** Dung lượng tệp so với trần của gói: chạm trần thì không tải thêm tệp được, tệp đã có vẫn giữ. */
+function StorageRow({ storage }: { storage: NonNullable<PlanStatus['storage']> }) {
+  const view = storageView(storage.usedBytes, storage.capBytes, storage.documentMaxBytes);
+  return (
+    <div className="flex flex-col gap-2 mt-2">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[15px] font-semibold">Dung lượng tệp</span>
+        <span className="flex-grow" />
+        <span className="text-[15px] font-bold">{view.text}</span>
+      </div>
+      <div className="h-2.5 rounded-full overflow-hidden" style={{ background: T.bg }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={view.percent} aria-label="Dung lượng tệp so với trần của gói">
+        <div className="h-full rounded-full" style={{ width: `${view.percent}%`, background: view.full ? T.accent : view.percent >= 80 ? T.gold : T.teal }} />
+      </div>
+      <span className="text-[14px]" style={{ color: view.full ? T.accentText : T.ink3 }}>{view.note}</span>
     </div>
   );
 }
@@ -71,6 +91,7 @@ function HoiHeader({ s }: { s: PlanStatus }) {
             </div>
           )}
           <span className="text-[14px]" style={{ color: cap.full ? T.accentText : T.ink3 }}>{cap.note}</span>
+          {s.storage && <StorageRow storage={s.storage} />}
         </div>
       )}
     </div>

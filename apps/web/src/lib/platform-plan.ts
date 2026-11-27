@@ -2,7 +2,7 @@
 // (1 tháng, 3 tháng, 6 tháng, 1 năm) với giá riêng từng kỳ. Kỳ nào có giá 0 thì không bán và không hiện ở đây.
 // Hàm thuần dựng dữ liệu hiển thị cho thẻ ở Hội của tôi, trang chọn gói và màn nâng gói. Luật giá và ngày tặng
 // nằm ở @hoiminh/contracts (API dùng chung), ở đây chỉ đổi kết quả đó ra chữ.
-import { PLAN_CYCLE, PLAN_FEATURES, PLAN_FEATURE_LABEL, lowestPlanWith, planCyclesOf, planLowestPerMonth, planPerMonth, planPrice, planQuote, planRank, planSaving, planSells, soldCycles, type PlanCycle, type PlanDef, type PlanFeature, type PlanKey, type PlanQuote } from '@hoiminh/contracts';
+import { PLAN_CYCLE, PLAN_FEATURES, PLAN_FEATURE_LABEL, formatBytes, lowestPlanWith, planCyclesOf, planLowestPerMonth, planPerMonth, planPrice, planQuote, planRank, planSaving, planSells, soldCycles, type PlanCycle, type PlanDef, type PlanFeature, type PlanKey, type PlanQuote } from '@hoiminh/contracts';
 import { fmtDate, money } from './format';
 
 /** Số đầy đủ kiểu Việt Nam (5.000), không viết tắt thành 5k: trần thành viên phải đọc được chính xác. */
@@ -83,6 +83,20 @@ export function planBadge(p: HoiPlan): PlanBadge {
 }
 
 export interface CapView { text: string; percent: number; left: number | null; full: boolean; note: string }
+
+/** Dung lượng tệp của hội so với trần của gói, cùng dạng với capView để vẽ chung một kiểu thanh. */
+export function storageView(used: number, cap: number, documentMax: number): CapView {
+  const full = used >= cap;
+  return {
+    text: `${formatBytes(used)} trên ${formatBytes(cap)}`,
+    percent: cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0,
+    left: Math.max(cap - used, 0),
+    full,
+    note: full
+      ? 'Hội đã dùng hết dung lượng tệp của gói. Ảnh và tệp đã có vẫn được giữ; nâng gói để tải thêm.'
+      : `Ảnh, tài liệu bài học và tệp sản phẩm của hội. Tài liệu tối đa ${formatBytes(documentMax)} mỗi tệp.`,
+  };
+}
 
 /** Số thành viên so với trần của gói. */
 export function capView(members: number, cap: number | null): CapView {

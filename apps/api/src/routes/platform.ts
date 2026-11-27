@@ -73,6 +73,9 @@ localFilesRoutes.put('/upload/*', async (c) => {
   let bytes: Uint8Array = new Uint8Array(await c.req.arrayBuffer());
   if (bytes.byteLength > cap) return tooBig();
   if (!contentMatchesMime(type, bytes)) return c.json({ code: 'validation_error', message: 'Nội dung tệp không đúng loại đã khai' }, 415);
+  // Trần theo gói (tài liệu lớn nhất mỗi tệp, dung lượng còn lại của hội) xét theo dung lượng khai lúc xin URL, nên tệp gửi lên
+  // không được lớn hơn con số đó. Trình duyệt khai đúng `file.size` của chính tệp nó gửi.
+  if (bytes.byteLength > declared.sizeBytes) return c.json({ code: 'validation_error', message: 'Tệp lớn hơn dung lượng đã khai lúc xin URL' }, 413);
   let stored = type;
   // Ảnh công khai còn là JPEG/PNG (trình duyệt không đổi được sang WebP, client cũ, gọi API trực tiếp): chuyển sang WebP trước khi ghi vào kho.
   // Không chuyển được (hết hạn mức Images, ảnh hỏng) thì lưu đúng tệp nhận được, lượt tải lên vẫn thành công.

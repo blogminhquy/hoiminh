@@ -2,7 +2,7 @@
 // và 1 năm với giá riêng từng kỳ (0 là không bán kỳ đó), không dùng thử.
 // Mua, gia hạn, nâng gói (tặng ngày còn lại), nhắc hạn 7/3/1 ngày, hết hạn thì hội về gói Miễn phí, không xóa dữ liệu.
 import { BUSINESS } from '@hoiminh/config';
-import { NO_PRICES, PLAN_CYCLE, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_KEYS, planCyclesOf, planDaysLeft, planPerMonth, planQuote, planRank, effectivePlanKey, type PlanCycle, type PlanDef, type PlanKey, type SavePlansInput } from '@hoiminh/contracts';
+import { NO_PRICES, PLAN_CYCLE, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_KEYS, PLAN_STORAGE, planCyclesOf, planDaysLeft, planPerMonth, planQuote, planRank, effectivePlanKey, type PlanCycle, type PlanDef, type PlanKey, type SavePlansInput } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { communities, platformSubscriptions, plans, users, workspaces } from '@hoiminh/db';
@@ -12,7 +12,7 @@ import { invalid, notFound } from '../errors';
 import { requireCommunityPermission, requireSuperAdmin } from '../permissions';
 import { audit } from './audit';
 import { grant } from './entitlements';
-import { planOfCommunity, planTable } from './plans';
+import { planOfCommunity, planTable, storageUsedByCommunities } from './plans';
 import { platformPaymentMethods } from './platform-methods';
 
 /** Bảng gói công khai (trang giá, trang chọn gói): luôn đủ bốn gói theo thứ bậc. */
@@ -20,21 +20,24 @@ export async function listPlans(ctx: Ctx): Promise<PlanDef[]> {
   return planTable(ctx);
 }
 
-/** Trang "Gói cho hội": gói đang dùng, số thành viên so với trần, bảng gói để chọn. */
+/** Trang "Gói cho hội": gói đang dùng, số thành viên và dung lượng tệp so với trần, bảng gói để chọn. */
 export async function communityPlanStatus(ctx: Ctx, communityId: string) {
   await requireCommunityPermission(ctx, communityId, 'settings.manage');
   const c = await ctx.db.query.communities.findFirst({ where: and(eq(communities.id, communityId), isNull(communities.deletedAt)) });
   if (!c) throw notFound('Hội không tồn tại');
-  const [table, sub, ws] = await Promise.all([
+  const [table, sub, ws, used] = await Promise.all([
     planTable(ctx),
     ctx.db.query.platformSubscriptions.findFirst({ where: eq(platformSubscriptions.communityId, c.id) }),
     ctx.db.query.workspaces.findFirst({ where: eq(workspaces.id, c.workspaceId), columns: { ownerUserId: true } }),
+    storageUsedByCommunities(ctx, [c.id]),
   ]);
   const plan = planOfCommunity(c, table, ctx.now());
   const isOwner = ctx.actor.type === 'user' && (ctx.actor.userId === ws?.ownerUserId);
   return {
     community: { id: c.id, name: c.name, slug: c.slug, memberCount: c.memberCount, status: c.status, isFreeSlot: c.isFreeSlot },
     plan: { ...plan, daysLeft: planDaysLeft(plan.endsAt, ctx.now()) },
+    /** Dung lượng tệp của hội so với trần của gói đang dùng (PLAN_STORAGE). */
+    storage: { usedBytes: used.get(c.id) ?? 0, capBytes: PLAN_STORAGE[plan.key].bytes, documentMaxBytes: PLAN_STORAGE[plan.key].documentMaxBytes },
     cycle: sub?.status === 'active' ? sub.billingCycle : null,
     plans: table,
     /** Chỉ chủ workspace mua được gói; quản trị viên chỉ xem. */

@@ -1,8 +1,8 @@
 // Gói của từng hội (kế hoạch 11/11/2026): tra bảng gói, gói đang có hiệu lực của một hội, trần thành viên, tính năng trả phí.
 // Mọi chỗ cần hỏi "hội này được làm gì" đều đi qua đây, để luật chỉ nằm một nơi.
-import { NO_PRICES, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_FEATURES, PLAN_FEATURE_LABEL, effectivePlanKey, isPlanKey, lowestPlanWith, nextPlanFor, type PlanDef, type PlanFeature, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
-import { and, eq, isNull, ne } from 'drizzle-orm';
-import { communities, users, workspaces, type plans } from '@hoiminh/db';
+import { NO_PRICES, PLAN_CYCLES, PLAN_DEFAULTS, PLAN_FEATURES, PLAN_FEATURE_LABEL, PLAN_STORAGE, effectivePlanKey, formatBytes, isPlanKey, lowestPlanWith, nextPlanFor, nextPlanForStorage, type PlanDef, type PlanFeature, type PlanKey, type PlanPrices } from '@hoiminh/contracts';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { communities, files, users, workspaces, type plans } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, notFound } from '../errors';
 
@@ -106,6 +106,35 @@ export async function hasRoomForMember(ctx: Ctx, communityId: string): Promise<b
 export async function assertRoomForMember(ctx: Ctx, communityId: string): Promise<void> {
   const p = await communityPlan(ctx, communityId);
   if (p.full) throw memberCapError(p, await planTable(ctx), communityId);
+}
+
+/**
+ * Tổng dung lượng tệp đang gắn với các hội (byte thật, ghi lúc API nhận tệp), tính cả tệp đang tải dở: tệp tải dở bỏ quá
+ * vài giờ được bộ dọn xóa, còn trong lúc chờ thì vẫn giữ chỗ để nhiều lượt tải song song không cùng lọt qua trần.
+ */
+export async function storageUsedByCommunities(ctx: Ctx, communityIds: string[]): Promise<Map<string, number>> {
+  if (communityIds.length === 0) return new Map();
+  const rows = await ctx.db.select({ communityId: files.communityId, used: sql<string>`coalesce(sum(${files.sizeBytes}), 0)` }).from(files).where(inArray(files.communityId, communityIds)).groupBy(files.communityId);
+  return new Map(rows.map((r) => [r.communityId!, Number(r.used)]));
+}
+
+/**
+ * Chặn tệp mới khi hội đã dùng hết dung lượng của gói, hoặc tài liệu lớn hơn mức gói cho phép mỗi tệp. Giống trần thành
+ * viên: không xóa gì, chỉ không nhận thêm, kèm gói nên nâng để giao diện mời nâng gói.
+ */
+export async function assertStorageRoom(ctx: Ctx, communityId: string, upload: { sizeBytes: number; kind: 'image' | 'document' }): Promise<void> {
+  const p = await communityPlan(ctx, communityId);
+  const limit = PLAN_STORAGE[p.key];
+  const details = (extra: Record<string, unknown>, next: { key: string; name: string } | null) => ({ communityId, planKey: p.key, planName: p.name, nextPlanKey: next?.key ?? null, nextPlanName: next?.name ?? null, ...extra });
+  if (upload.kind === 'document' && upload.sizeBytes > limit.documentMaxBytes) {
+    const next = nextPlanForStorage(await planTable(ctx), p.key);
+    throw new AppError('storage_quota', `Gói ${p.name} nhận tài liệu tối đa ${formatBytes(limit.documentMaxBytes)} mỗi tệp.${next ? ` Nâng lên gói ${next.name} để tải tệp lớn hơn.` : ''}`, undefined, details({ reason: 'file_size', maxBytes: limit.documentMaxBytes }, next));
+  }
+  const used = (await storageUsedByCommunities(ctx, [communityId])).get(communityId) ?? 0;
+  if (used + upload.sizeBytes > limit.bytes) {
+    const next = nextPlanForStorage(await planTable(ctx), p.key);
+    throw new AppError('storage_quota', `Hội đã dùng ${formatBytes(used)} trên ${formatBytes(limit.bytes)} dung lượng tệp của gói ${p.name}. Ảnh và tệp đã có vẫn được giữ.${next ? ` Nâng lên gói ${next.name} để tải thêm.` : ' Gỡ bớt tệp không còn dùng để tải thêm.'}`, undefined, details({ reason: 'quota', usedBytes: used, capBytes: limit.bytes }, next));
+  }
 }
 
 function featureError(feature: PlanFeature, table: PlanDef[], communityId: string | null): AppError {
