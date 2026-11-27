@@ -1,4 +1,5 @@
 // Tin nhắn không realtime (polling) và thông báo trong app.
+import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { id, ts } from './_helpers';
 import type { MediaKind } from './content';
@@ -73,7 +74,14 @@ export const messages = pgTable(
     readAt: ts('read_at'),
     createdAt: ts('created_at').notNull().defaultNow(),
   },
-  (t) => [index('messages_conversation_idx').on(t.conversationId, t.createdAt)],
+  (t) => [
+    index('messages_conversation_idx').on(t.conversationId, t.createdAt),
+    // Bộ dọn ảnh, tệp tin nhắn quá 30 ngày tìm theo created_at. Chỉ mục một phần: chỉ giữ tin còn ảnh tải lên hoặc tệp
+    // đính kèm, gỡ xong thì tin tự ra khỏi chỉ mục, nên chỉ mục luôn nhỏ dù bảng messages lớn. Điều kiện phải khớp truy vấn.
+    index('messages_live_media_idx')
+      .on(t.createdAt)
+      .where(sql`${t.recalledAt} is null and ((${t.imageUrl} is not null and ${t.mediaKind} is null) or ${t.fileUrl} is not null)`),
+  ],
 );
 
 /** Chặn một người: hai bên không nhắn được cho nhau cho tới khi người chặn bỏ chặn. */

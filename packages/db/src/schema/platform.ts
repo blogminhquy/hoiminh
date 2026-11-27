@@ -152,7 +152,8 @@ export const files = pgTable(
     status: text('status').$type<'pending' | 'ready'>().notNull().default('pending'),
     createdAt: ts('created_at').notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('files_object_key_uq').on(t.objectKey), index('files_owner_idx').on(t.ownerUserId)],
+  // files_community_idx: cộng dung lượng tệp của từng hội (hạn mức dung lượng theo gói) mỗi lượt xin URL tải lên.
+  (t) => [uniqueIndex('files_object_key_uq').on(t.objectKey), index('files_owner_idx').on(t.ownerUserId), index('files_community_idx').on(t.communityId)],
 );
 
 export const auditLogs = pgTable(

@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 1.60.2 - 2026-11-27
+
+Sửa chữ của nút bị chìm vào nền khi rê chuột, và làm rõ trạng thái rê chuột, bấm, chọn bằng bàn phím của các nút, theo yêu cầu của chủ dự án ngày 27/11/2026. Không có migration.
+
+### Sửa
+
+- **Chữ của nút không còn chìm vào nền khi rê chuột.** Quy tắc chung cho link (`a:hover`, đổi chữ sang xanh đậm) đè lên màu chữ của các nút làm bằng link, như nút "Tạo hội của bạn": chữ xanh đậm nằm trên nền xanh ngọc. Nút đen ("Đăng bài") và, ở giao diện tối, nút vàng ("Nâng gói") còn khó đọc hơn. Nay quy tắc đó chỉ áp cho link chữ, nút giữ đúng màu chữ của nó.
+
+### Thay đổi
+
+- **Rê chuột vào nút thấy rõ hơn.** Nút xanh, đen, vàng và nút nhạt đậm nền lên rõ ràng (trước đây chỉ tối đi 4%, gần như không thấy); nút viền có nền xám nhẹ và viền đậm hơn. Màu chữ giữ nguyên, đủ tương phản ở cả giao diện sáng và tối.
+- **Bấm nút thấy nút nhích xuống**, và dùng bàn phím (phím Tab) thì nút đang chọn có viền rõ.
+
+## 1.60.1 - 2026-11-27
+
+Thêm hai chỉ mục database để hạn mức dung lượng và bộ dọn ảnh, tệp tin nhắn chạy nhanh khi dữ liệu lớn, theo yêu cầu của chủ dự án ngày 27/11/2026. **Có migration** (`0023_file_community_message_media_indexes`): áp lên database thật trước khi merge.
+
+### Thay đổi
+
+- **Chỉ mục `files_community_idx`** trên `files.community_id`: cộng dung lượng tệp của một hội (hạn mức dung lượng theo gói, chạy mỗi lượt xin URL tải lên) không còn phải đọc cả bảng `files`.
+- **Chỉ mục một phần `messages_live_media_idx`** trên `messages.created_at`, chỉ gồm tin chưa thu hồi còn ảnh tải lên hoặc tệp đính kèm: bộ dọn ảnh, tệp tin nhắn quá 30 ngày tìm thẳng tin tới hạn. Gỡ ảnh, tệp xong thì tin tự ra khỏi chỉ mục, nên chỉ mục luôn nhỏ dù bảng `messages` lớn.
+
+### Sửa
+
+- **Trang Phiên bản không còn tràn ngang trên điện thoại khi ghi chú có chuỗi dài.** Tên kỹ thuật dài không có khoảng trắng (như tên migration của chính bản này) làm đoạn ghi chú rộng hơn màn hình 390px. Nay chuỗi dài được ngắt dòng.
+
 ## 1.60.0 - 2026-11-27
 
 Ảnh và tệp trong tin nhắn riêng tự xóa sau 30 ngày, theo yêu cầu của chủ dự án ngày 27/11/2026, để tin nhắn không thành kho chứa tệp. Ảnh và tệp trong hội (bài viết, bình luận, khóa học, cửa hàng) vẫn giữ vĩnh viễn. Không có migration.
