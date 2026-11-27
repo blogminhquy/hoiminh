@@ -162,6 +162,13 @@
       "when": 1795758005427,
       "tag": "0022_sticker_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795770241805,
+      "tag": "0023_guest_checkout",
+      "breakpoints": true
     }
   ]
 }

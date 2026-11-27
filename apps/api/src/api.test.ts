@@ -89,6 +89,31 @@ describe('API', () => {
     const list = await courses.json();
     expect(list.items.find((c: { title: string }) => c.title === 'Funnel Money Model 2026').locked).toBe(false);
   });
+  it('mua trước, tạo tài khoản sau qua HTTP: mua không đăng nhập, xem đơn bằng mã đơn, trả xong đặt mật khẩu là đăng nhập', async () => {
+    const email = 'khach.http@example.com';
+    const co = await json('/v1/checkout/guest', { method: 'POST', body: JSON.stringify({ target: { type: 'tier', communityId, tierKey: 'premium', cycle: 'monthly' }, provider: 'sepay', email, name: 'Khách HTTP' }) });
+    expect(co.status).toBe(201);
+    const s = await co.json();
+    expect(s.guestToken).toMatch(/^[0-9a-f]{40}$/);
+    // Không có mã thì không xem được đơn; có mã thì xem được kể cả khi chưa đăng nhập.
+    expect((await json(`/v1/guest-orders/${s.orderId}`)).status).toBe(404);
+    expect((await json(`/v1/orders/${s.orderId}`)).status).toBe(401);
+    const pending = await (await json(`/v1/guest-orders/${s.orderId}?t=${s.guestToken}`)).json();
+    expect(pending).toMatchObject({ status: 'pending', account: { email, hasAccount: false, canCreateHere: true } });
+    await json(`/webhooks/bank/${SEED_BANK_WEBHOOK_TOKEN}`, { method: 'POST', body: JSON.stringify({ id: 777002, gateway: 'Vietcombank', transactionDate: '2026-09-14 09:03:11', accountNumber: '0071000123456', code: null, content: `KHACH ck ${s.reference}`, transferType: 'in', transferAmount: s.amountMinor, accumulated: 0, subAccount: null, referenceCode: 'X2', description: '' }) });
+    expect((await (await json(`/v1/guest-orders/${s.orderId}?t=${s.guestToken}`)).json()).status).toBe('paid');
+    const info = await (await json(`/v1/auth/claim?orderId=${s.orderId}&t=${s.guestToken}`)).json();
+    expect(info).toMatchObject({ email, claimed: false, paid: true });
+    const claim = await json('/v1/auth/claim', { method: 'POST', body: JSON.stringify({ orderId: s.orderId, orderToken: s.guestToken, password: 'matkhau123' }) });
+    expect(claim.status).toBe(200);
+    const r = await claim.json();
+    expect(r.redirect).toMatch(/\/khoa-hoc$/);
+    expect(r.session.user.email).toBe(email);
+    // Đã có tài khoản: mua tiếp khi chưa đăng nhập thì được mời đăng nhập.
+    const again = await json('/v1/checkout/guest', { method: 'POST', body: JSON.stringify({ target: { type: 'tier', communityId, tierKey: 'premium', cycle: 'monthly' }, provider: 'sepay', email, name: 'Khách HTTP' }) });
+    expect(again.status).toBe(409);
+    expect((await again.json()).details).toMatchObject({ reason: 'account_exists' });
+  });
   it('quản lý khóa tại thư viện: sắp thứ tự và nhân bản qua HTTP, người chưa đăng nhập bị chặn', async () => {
     const list = async () => (await (await json(`/v1/communities/${communityId}/courses`, { auth: token })).json()).items as Array<{ id: string; title: string; status: string }>;
     const before = await list();

@@ -187,4 +187,6 @@ export const RESERVED_SLUGS = new Set([
   'dieu-khoan', 'quyen-rieng-tu',
   // Thư mục ảnh nhãn dán có sẵn (apps/web/public/stickers), thêm ngày 27/11/2026.
   'stickers',
+  // Trang tạo tài khoản sau khi mua (mua trước, tạo tài khoản sau), thêm ngày 27/11/2026.
+  'tao-tai-khoan',
 ]);

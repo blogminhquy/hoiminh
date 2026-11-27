@@ -3,9 +3,11 @@ import { randomCode, sha256Hex, timingSafeEqual } from '@hoiminh/config';
 import { toSlug, type AuthSession, type AuthUser, type LoginInput, type RegisterInput } from '@hoiminh/contracts';
 import { templates } from '@hoiminh/email';
 import { and, eq, gt, isNull, ne } from 'drizzle-orm';
-import { authSessions, emailVerifications, passwordResets, users } from '@hoiminh/db';
+import { accountClaims, authSessions, emailVerifications, passwordResets, users } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { AppError, conflict, invalid, notFound, unauthorized } from '../errors';
+import { elevated } from '../lib/elevated';
+import { pendingClaimOf, sendClaimEmail } from './claims';
 import { hashToken, newRefreshToken, signAccessToken, signTwoFactorTicket, verifyAccessToken, verifyTwoFactorTicket } from './tokens';
 import type { AuthProvider } from './providers';
 import * as totp from './totp';
@@ -51,7 +53,18 @@ export async function issueSession(ctx: Ctx, provider: AuthProvider, user: typeo
 /** Đăng ký tài khoản, gửi mã xác minh, phát user.registered (attribution affiliate xử lý ở handler). */
 export async function register(ctx: Ctx, provider: AuthProvider, input: RegisterInput, meta?: { userAgent?: string }): Promise<AuthSession> {
   const existing = await ctx.db.query.users.findFirst({ where: eq(users.email, input.email) });
-  if (existing) throw conflict('Email đã được đăng ký, hãy đăng nhập');
+  if (existing) {
+    // Email của người đã mua mà chưa tạo tài khoản (mua trước, tạo tài khoản sau).
+    const claim = await elevated(ctx, () => pendingClaimOf(ctx, existing.id));
+    if (!claim) throw conflict('Email đã được đăng ký, hãy đăng nhập');
+    // Đã trả tiền: quyền đang chờ ở tài khoản này, chỉ chủ hộp thư được nhận, nên gửi lại link tạo tài khoản vào email.
+    if (await elevated(ctx, () => sendClaimEmail(ctx, existing, 'resend'))) {
+      throw new AppError('conflict', 'Email này đã mua ở Hội Mình. Chúng tôi vừa gửi link tạo tài khoản vào hộp thư của bạn: mở email và bấm "Tạo tài khoản và vào hội".', undefined, { reason: 'claim_email_sent' });
+    }
+    // Chưa trả đồng nào (bỏ dở lúc thanh toán): không có gì phải giữ, đăng ký bình thường trên chính tài khoản chờ đó.
+    const { session } = await claimPendingAccount(ctx, provider, existing, { name: input.name, password: input.password, emailVerified: false, ref: input.ref ?? null, communitySlug: input.communitySlug ?? null }, meta);
+    return session;
+  }
   const handle = await uniqueHandle(ctx, input.name);
   const [user] = await ctx.db.insert(users).values({ email: input.email, name: input.name, handle }).returning();
   const identity = await provider.signUp(input.email, input.password, { name: input.name, userId: user!.id }, ctx.db);
@@ -76,12 +89,40 @@ export async function registerVerified(ctx: Ctx, provider: AuthProvider, input: 
 }
 
 /**
+ * Người đã mua bằng email (tài khoản chờ, chưa có mật khẩu) đặt mật khẩu: tài khoản chờ thành tài khoản thật, giữ nguyên
+ * đơn và quyền đã có. `emailVerified`: đi vào bằng link trong email hoặc Google đã xác minh email; không thì gửi mã 6 số
+ * như đăng ký thường. Hai lượt cùng lúc thì chỉ một lượt thắng (cập nhật có điều kiện).
+ */
+export async function claimPendingAccount(
+  ctx: Ctx,
+  provider: AuthProvider,
+  user: typeof users.$inferSelect,
+  input: { name?: string | null; password: string; emailVerified: boolean; ref?: string | null; communitySlug?: string | null },
+  meta?: { userAgent?: string },
+): Promise<{ user: typeof users.$inferSelect; session: AuthSession }> {
+  if (user.status !== 'active') throw new AppError('forbidden', 'Tài khoản đã bị tạm khóa');
+  const [won] = await elevated(ctx, () => ctx.db.update(accountClaims).set({ claimedAt: ctx.now() }).where(and(eq(accountClaims.userId, user.id), isNull(accountClaims.claimedAt))).returning());
+  if (!won) throw conflict('Tài khoản của email này đã được tạo. Bạn đăng nhập nhé.');
+  const name = input.name?.trim() || user.name;
+  const identity = await provider.signUp(user.email, input.password, { name, userId: user.id }, ctx.db);
+  const [row] = await ctx.db.update(users).set({ name, authProviderId: identity.providerUserId, emailVerifiedAt: user.emailVerifiedAt ?? (input.emailVerified ? ctx.now() : null), updatedAt: ctx.now() }).where(eq(users.id, user.id)).returning();
+  await ctx.events.emit('user.registered', { userId: row!.id, email: row!.email, ref: input.ref ?? null, communitySlug: input.communitySlug ?? null });
+  if (row!.emailVerifiedAt) await ctx.events.emit('user.email_verified', { userId: row!.id, email: row!.email });
+  else await sendVerificationCode(ctx, row!);
+  return { user: row!, session: await issueSession(ctx, provider, row!, true, meta) };
+}
+
+/**
  * Đăng nhập email + mật khẩu. Tài khoản bật xác thực hai lớp thì chưa cấp phiên mà trả
  * về vé bước hai; web gọi tiếp `verifyTwoFactor` với mã từ ứng dụng.
  */
 export async function login(ctx: Ctx, provider: AuthProvider, input: LoginInput, meta?: { userAgent?: string }): Promise<AuthSession | TwoFactorChallenge> {
   const user = await ctx.db.query.users.findFirst({ where: eq(users.email, input.email) });
   const identity = await provider.signIn(input.email, input.password, user?.id ?? null, ctx.db);
+  if (user && !identity && (await elevated(ctx, () => pendingClaimOf(ctx, user.id)))) {
+    // Người mua bằng email chưa đặt mật khẩu nên không có mật khẩu nào đúng: chỉ đường cho họ thay vì báo sai mật khẩu.
+    throw unauthorized('Email này đã mua hàng nhưng chưa tạo mật khẩu. Mở email "Tạo tài khoản và vào hội", hoặc bấm Quên mật khẩu để nhận lại link.');
+  }
   if (!user || !identity) throw unauthorized('Email hoặc mật khẩu không đúng');
   if (user.status === 'suspended') throw new AppError('forbidden', 'Tài khoản đã bị tạm khóa');
   if (await totp.isEnabledFor(ctx, user.id)) {
@@ -108,6 +149,13 @@ export async function loginWithIdentity(ctx: Ctx, provider: AuthProvider, identi
     [user] = await ctx.db.insert(users).values({ email: identity.email.toLowerCase(), name, handle: await uniqueHandle(ctx, name), authProviderId: identity.providerUserId, emailVerifiedAt: identity.emailVerified ? ctx.now() : null }).returning();
     // Đăng ký bằng Google cũng là đăng ký tài khoản mới: mã giới thiệu trong cookie được tính như đăng ký bằng email.
     await ctx.events.emit('user.registered', { userId: user!.id, email: user!.email, ref: opts.ref ?? null, communitySlug: null });
+  } else if (await elevated(ctx, () => pendingClaimOf(ctx, user!.id))) {
+    // Người đã mua bằng email này đăng nhập bằng Google: Google đã chứng minh email, tài khoản chờ thành tài khoản thật.
+    const existing = user;
+    await elevated(ctx, () => ctx.db.update(accountClaims).set({ claimedAt: ctx.now() }).where(and(eq(accountClaims.userId, existing.id), isNull(accountClaims.claimedAt))));
+    [user] = await ctx.db.update(users).set({ authProviderId: identity.providerUserId, emailVerifiedAt: existing.emailVerifiedAt ?? (identity.emailVerified ? ctx.now() : null), updatedAt: ctx.now() }).where(eq(users.id, existing.id)).returning();
+    await ctx.events.emit('user.registered', { userId: existing.id, email: existing.email, ref: opts.ref ?? null, communitySlug: null });
+    if (user!.emailVerifiedAt) await ctx.events.emit('user.email_verified', { userId: existing.id, email: existing.email });
   } else if (!user.authProviderId) {
     await ctx.db.update(users).set({ authProviderId: identity.providerUserId }).where(eq(users.id, user.id));
   }
@@ -180,6 +228,11 @@ export async function verifyEmail(ctx: Ctx, userId: string, code: string): Promi
 export async function forgotPassword(ctx: Ctx, email: string): Promise<{ token?: string }> {
   const user = await ctx.db.query.users.findFirst({ where: eq(users.email, email) });
   if (!user) return {};
+  // Người mua bằng email chưa có mật khẩu để đặt lại: gửi lại link tạo tài khoản (chưa trả đồng nào thì đăng ký là được).
+  if (await elevated(ctx, () => pendingClaimOf(ctx, user.id))) {
+    await elevated(ctx, () => sendClaimEmail(ctx, user, 'resend'));
+    return {};
+  }
   const raw = randomCode(40, 'abcdefghijklmnopqrstuvwxyz0123456789');
   await ctx.db.insert(passwordResets).values({ userId: user.id, tokenHash: await sha256Hex(raw), expiresAt: new Date(Date.now() + 30 * 60_000) });
   await ctx.email.send(templates.resetPassword(user.email, user.name, `${ctx.env.APP_URL}/dat-lai-mat-khau?token=${raw}`));
