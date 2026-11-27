@@ -1,6 +1,6 @@
-import { PLAN_DEFAULTS, type PlanDef } from '@hoiminh/contracts';
+import { PLAN_DEFAULTS, formatBytes, type PlanDef } from '@hoiminh/contracts';
 import { describe, expect, it } from 'vitest';
-import { capLabel, capView, compareRows, openRowsFirst, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
+import { capLabel, capView, compareRows, storageView, openRowsFirst, cycleHint, cycleSaving, planBadge, planFeatureRows, priceLine, tierCards, upgradeSummary, type HoiPlan } from './platform-plan';
 
 const now = new Date('2026-11-11T03:00:00Z');
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString();
@@ -29,6 +29,22 @@ describe('planBadge', () => {
     expect(planBadge({ ...free, boughtKey: 'pro', boughtEndsAt: inDays(-2) }).note).toMatch(/đã hết hạn/);
     expect(planBadge({ ...free, isFreeSlot: false, needsPlan: true, full: true })).toMatchObject({ label: 'Chờ thanh toán', tone: 'accent' });
     expect(planBadge({ ...free, isFreeSlot: false, needsPlan: true, full: true, boughtKey: 'starter', boughtEndsAt: inDays(-2) })).toMatchObject({ label: 'Gói đã hết hạn' });
+  });
+});
+
+describe('storageView', () => {
+  const MB = 1024 * 1024;
+  const GB = 1024 * MB;
+  it('dung lượng tệp so với trần: chữ đọc được, phần trăm, chạm trần thì báo tệp cũ vẫn giữ', () => {
+    expect(formatBytes(850 * MB)).toBe('850 MB');
+    expect(formatBytes(1.25 * GB)).toBe('1,3 GB');
+    expect(formatBytes(50 * GB)).toBe('50 GB');
+    expect(formatBytes(300)).toBe('1 KB');
+    expect(storageView(512 * MB, 1 * GB, 20 * MB)).toMatchObject({ text: '512 MB trên 1 GB', percent: 50, full: false });
+    expect(storageView(512 * MB, 1 * GB, 20 * MB).note).toContain('Tài liệu tối đa 20 MB mỗi tệp');
+    const full = storageView(1 * GB, 1 * GB, 20 * MB);
+    expect(full).toMatchObject({ full: true, percent: 100, left: 0 });
+    expect(full.note).toContain('vẫn được giữ');
   });
 });
 

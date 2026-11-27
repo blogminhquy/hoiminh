@@ -251,12 +251,13 @@ export function createMediaProvider(opts: { r2: Partial<R2Config>; r2Bucket?: R2
 }
 
 /**
- * Kiểm tra loại tệp cho phép và giới hạn dung lượng (mục 80). Chỉ nhận ảnh và tài liệu: không nhận tệp video ở bất kỳ
+ * Kiểm tra loại tệp cho phép và giới hạn dung lượng (mục 54). Chỉ nhận ảnh và tài liệu: không nhận tệp video ở bất kỳ
  * mục nào, video đưa vào bài viết và bài học bằng cách dán link (YouTube, TikTok, Facebook, Loom, Vimeo, Bunny).
+ * Tài liệu tối đa 50MB: Cloudflare (gói tên miền miễn phí) chặn request trên 100MB, còn Worker đọc cả tệp vào 128MB bộ nhớ.
  */
 export const UPLOAD_RULES = {
   image: { mimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], maxBytes: 10 * 1024 * 1024 },
-  document: { mimes: ['application/pdf', 'text/plain', 'application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], maxBytes: 100 * 1024 * 1024 },
+  document: { mimes: ['application/pdf', 'text/plain', 'application/zip', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], maxBytes: 50 * 1024 * 1024 },
 } as const;
 
 /** Tệp đính kèm trong tin nhắn: tối đa 5MB (chủ dự án đặt ngày 11/11), nhỏ hơn hẳn tài liệu khóa học vì ai cũng gửi được cho ai. */
@@ -282,4 +283,87 @@ export function validateUpload(mime: string, size: number): { ok: true; kind: 'i
   }
   if (mime.startsWith('video/')) return { ok: false, reason: 'Không nhận tệp video. Hãy dán link video (YouTube, TikTok, Facebook…) thay vì tải tệp lên.' };
   return { ok: false, reason: 'Loại tệp không được hỗ trợ' };
+}
+
+/** Loại tệp ở dạng so sánh được: chữ thường, bỏ tham số như `; charset=utf-8`. */
+export function baseMime(mime: string): string {
+  return (mime.split(';')[0] ?? '').trim().toLowerCase();
+}
+
+/**
+ * Dung lượng tối đa API nhận cho một tệp loại `mime` lưu ở `objectKey`: trần theo loại (UPLOAD_RULES), hạ thêm theo nơi lưu
+ * (tệp đính kèm tin nhắn 5MB). Null khi loại tệp không được nhận.
+ */
+export function maxUploadBytes(mime: string, objectKey: string): number | null {
+  const m = baseMime(mime);
+  const rule = Object.values(UPLOAD_RULES).find((r) => (r.mimes as readonly string[]).includes(m));
+  if (!rule) return null;
+  const cap = maxBytesForKey(objectKey);
+  return cap === null ? rule.maxBytes : Math.min(rule.maxBytes, cap);
+}
+
+const OOXML_MIMES = new Set(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']);
+
+function startsWith(bytes: Uint8Array, sig: readonly number[], offset = 0): boolean {
+  return bytes.length >= offset + sig.length && sig.every((b, i) => bytes[offset + i] === b);
+}
+
+function ascii(s: string): number[] {
+  return [...s].map((ch) => ch.charCodeAt(0));
+}
+
+/** Chữ UTF-8 hợp lệ, không có byte 0 (tệp nhị phân đổi đuôi thành .txt). Chỉ xét 64KB đầu để không tốn CPU với tệp lớn. */
+function looksLikeText(bytes: Uint8Array): boolean {
+  const head = bytes.subarray(0, 64 * 1024);
+  if (head.includes(0)) return false;
+  try {
+    // stream: true để một ký tự nhiều byte bị cắt ngang ở mép 64KB không bị coi là lỗi.
+    new TextDecoder('utf-8', { fatal: true }).decode(head, { stream: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Vài byte đầu của tệp có đúng là loại `mime` không. Loại tệp do client tự khai (lúc xin URL và trong header của lượt PUT),
+ * nên chỉ tin byte thật: chặn trang HTML đội lốt ảnh (sẽ chạy mã trên tên miền Hội Mình) và video đổi đuôi thành tài liệu.
+ */
+export function contentMatchesMime(mime: string, bytes: Uint8Array): boolean {
+  const m = baseMime(mime);
+  if (m === 'image/jpeg') return startsWith(bytes, [0xff, 0xd8, 0xff]);
+  if (m === 'image/png') return startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (m === 'image/gif') return startsWith(bytes, ascii('GIF87a')) || startsWith(bytes, ascii('GIF89a'));
+  if (m === 'image/webp') return startsWith(bytes, ascii('RIFF')) && startsWith(bytes, ascii('WEBP'), 8);
+  // Chuẩn PDF cho phép vài byte rác trước dấu %PDF-, trình đọc tìm nó trong 1024 byte đầu.
+  if (m === 'application/pdf') {
+    const head = bytes.subarray(0, 1024);
+    const sig = ascii('%PDF-');
+    for (let i = 0; i + sig.length <= head.length; i++) if (startsWith(head, sig, i)) return true;
+    return false;
+  }
+  // Word, Excel, PowerPoint đời mới đều là tệp zip.
+  if (m === 'application/zip' || OOXML_MIMES.has(m)) return startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) || startsWith(bytes, [0x50, 0x4b, 0x05, 0x06]) || startsWith(bytes, [0x50, 0x4b, 0x07, 0x08]);
+  if (m === 'text/plain') return looksLikeText(bytes);
+  return false;
+}
+
+/** Loại tệp được phát lại đúng như đã lưu: các loại nhận lúc tải lên. */
+const SERVABLE_MIMES: ReadonlySet<string> = new Set([...UPLOAD_RULES.image.mimes, ...UPLOAD_RULES.document.mimes]);
+
+/**
+ * Header khi phát một tệp người dùng tải lên. `nosniff` buộc trình duyệt theo đúng loại tệp; CSP `sandbox` (mọi loại trừ PDF,
+ * vì trình xem PDF của trình duyệt không chạy trong sandbox) để dù tệp có lọt qua kiểm tra cũng không chạy được mã trên
+ * tên miền Hội Mình. Tệp cũ lưu với loại lạ (trước khi có kiểm tra lúc tải lên) phát như tệp tải về, không mở trong trang.
+ */
+export function servingHeaders(storedType: string): Record<string, string> {
+  const m = baseMime(storedType);
+  const known = SERVABLE_MIMES.has(m);
+  const headers: Record<string, string> = {
+    'Content-Type': !known ? 'application/octet-stream' : m === 'text/plain' ? 'text/plain; charset=utf-8' : m,
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (m !== 'application/pdf') headers['Content-Security-Policy'] = "default-src 'none'; sandbox";
+  if (!known) headers['Content-Disposition'] = 'attachment';
+  return headers;
 }

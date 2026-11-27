@@ -1,5 +1,6 @@
 // Lịch chạy định kỳ, chỉ là lưới an toàn của mô hình event-driven (việc chạy nền đi theo sự kiện qua Queue, không quét):
-// 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, nhắc tạo tài khoản, dọn bảng job, đối soát nhắc sự kiện).
+// 10 phút (xếp hạng + bộ quét thưa), hằng ngày (hold, churn, gói nền tảng, tệp tải dở, ảnh/tệp tin nhắn quá 30 ngày,
+// nhắc tạo tài khoản, dọn bảng job, đối soát nhắc sự kiện).
 import { systemCtx, type AppContext, type Ctx } from '../context';
 import { withSystemScope } from '../lib/tenant-scope';
 import { remindPendingAccounts } from '../auth/claims';
@@ -8,6 +9,7 @@ import { expireAutomationGrants } from '../services/automation-engine';
 import { expireEntitlements } from '../services/entitlements';
 import { reconcileEventReminders } from '../services/event-reminders';
 import { sweepAbandonedUploads } from '../services/files';
+import { expireMessageMedia } from '../services/messaging';
 import { runPlatformBillingCron } from '../services/platform-billing';
 import { churnExpired } from '../services/subscriptions';
 import { cleanupJobRecords } from './cleanup';
@@ -77,6 +79,10 @@ export async function runCron(app: AppContext, name: CronName): Promise<Record<s
     // Đối soát: sự kiện sắp diễn ra mà chưa có job nhắc (tạo trước khi có cơ chế hẹn lúc tạo, hoặc hẹn bị lỡ).
     await step('reconcile', async (ctx) => {
       out.remindersReconciled = await reconcileEventReminders(ctx);
+    });
+    // Ảnh và tệp trong tin nhắn riêng tự xóa sau 30 ngày. Bước riêng để lỗi ở đây không chặn bước tiền.
+    await step('messageMedia', async (ctx) => {
+      out.messageMediaExpired = await expireMessageMedia(ctx);
     });
     await step('cleanup', async (ctx) => {
       const cleaned = await cleanupJobRecords(ctx);

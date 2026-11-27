@@ -1,5 +1,15 @@
 // Phần tính toán thuần của màn Tin nhắn (không đụng DOM): tách link, gom nhóm tin liền nhau, trạng thái truy cập, đếm cảm xúc,
-// kiểm tệp đính kèm trước khi tải lên, trạng thái đã gửi / đã nhận / đã xem.
+// kiểm tệp đính kèm trước khi tải lên, trạng thái đã gửi / đã nhận / đã xem, hạn tự xóa của ảnh và tệp.
+import { MESSAGE_MEDIA_TTL_DAYS, messageMediaDaysLeft } from '@hoiminh/contracts';
+
+/** Dòng báo đầu hội thoại: ảnh và tệp trong tin nhắn riêng tự xóa sau 30 ngày (máy chủ là nơi xóa thật). */
+export const MEDIA_TTL_NOTICE = `Ảnh và tệp trong tin nhắn tự xóa sau ${MESSAGE_MEDIA_TTL_DAYS} ngày. Tải về nếu cần giữ.`;
+
+/** Nhãn hạn ở dưới một ảnh hoặc tệp đã gửi: "Tự xóa sau 23 ngày", ngày cuối là "Tự xóa hôm nay". */
+export function mediaTtlLabel(createdAt: string, now: Date = new Date()): string {
+  const days = messageMediaDaysLeft(createdAt, now);
+  return days <= 0 ? 'Tự xóa hôm nay' : `Tự xóa sau ${days} ngày`;
+}
 
 export interface ChatMessageLike { senderUserId: string; createdAt: string; automated: boolean }
 

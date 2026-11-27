@@ -171,6 +171,8 @@ test('máy tính: tệp đính kèm 5MB, đã gửi / đã nhận / đã xem, ta
   const thread = page.getByRole('region', { name: 'Hội thoại với Hoàng Vũ' });
   await expect(thread.locator('.chat-row').first()).toBeVisible();
   await expectNoSideScrollInChat(page);
+  // Đầu hội thoại báo trước: ảnh và tệp trong tin nhắn tự xóa sau 30 ngày.
+  await expect(thread.getByRole('note')).toHaveText('Ảnh và tệp trong tin nhắn tự xóa sau 30 ngày. Tải về nếu cần giữ.');
 
   // Tệp đính kèm: quá 5MB và loại không hỗ trợ bị chặn ngay tại máy, có nói lý do.
   const attach = thread.locator('.chat-tools input[type="file"]').nth(1);
@@ -186,6 +188,8 @@ test('máy tính: tệp đính kèm 5MB, đã gửi / đã nhận / đã xem, ta
   await expect(card).toBeEnabled();
   await expect(card).toContainText('Bảng giá 2026.pdf');
   await expect(card).toContainText('28 B');
+  // Ảnh, tệp vừa gửi có nhãn hạn tự xóa cạnh giờ gửi.
+  await expect(thread.locator('.chat-row.mine').last().locator('.chat-ttl')).toHaveText(/^Tự xóa sau \d+ ngày$/);
   // Kiểm tên tải về ở header máy chủ trả (tên trình duyệt gợi ý còn tùy locale của máy chạy test).
   const [served] = await Promise.all([page.waitForResponse((r) => r.url().includes('/files/private/message_file/')), page.waitForEvent('download'), card.click()]);
   expect(served.status()).toBe(200);
