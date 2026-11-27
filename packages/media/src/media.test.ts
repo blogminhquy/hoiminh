@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AVATAR_MAX_SIDE, MESSAGE_FILE_MAX_BYTES, attachmentDisposition, maxBytesForKey, CloudflareImageOptimizer, IMAGE_MAX_SIDE, LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, WEBP_QUALITY, createMediaProvider, validateUpload, webpKeyFor, webpTarget, type ImageTransformerLike, type ImagesBindingLike } from './index';
-import { fakeBucket, fakeImages } from './testing';
+import { AVATAR_MAX_SIDE, MESSAGE_FILE_MAX_BYTES, UPLOAD_RULES, attachmentDisposition, baseMime, contentMatchesMime, maxBytesForKey, maxUploadBytes, servingHeaders, CloudflareImageOptimizer, IMAGE_MAX_SIDE, LocalMediaProvider, R2BindingProvider, R2BucketStore, R2Provider, WEBP_QUALITY, createMediaProvider, validateUpload, webpKeyFor, webpTarget, type ImageTransformerLike, type ImagesBindingLike } from './index';
+import { fakeBucket, fakeImages, sampleFile } from './testing';
 
 describe('media', () => {
   it('local provider ký và xác minh URL', async () => {
@@ -146,5 +146,55 @@ describe('tệp đính kèm tin nhắn', () => {
     const signed = new URL(await s3.getSignedUrl('private/message_file/x.pdf', 300, 'Báo giá.pdf'));
     expect(signed.searchParams.get('response-content-disposition')).toContain("filename*=UTF-8''");
     expect(signed.searchParams.get('X-Amz-SignedHeaders')).toBeTruthy();
+  });
+});
+
+describe('kiểm tệp lúc nhận và lúc phát', () => {
+  const enc = (t: string) => new TextEncoder().encode(t);
+  it('tài liệu tối đa 50MB, ảnh 10MB, tệp đính kèm tin nhắn 5MB; loại tệp không nhận thì không có trần', () => {
+    expect(UPLOAD_RULES.document.maxBytes).toBe(50 * 1024 * 1024);
+    expect(validateUpload('application/pdf', 50 * 1024 * 1024).ok).toBe(true);
+    expect(validateUpload('application/pdf', 50 * 1024 * 1024 + 1).ok).toBe(false);
+    expect(maxUploadBytes('application/pdf', 'private/lesson_resource/2026-11-27/a.pdf')).toBe(50 * 1024 * 1024);
+    expect(maxUploadBytes('application/pdf', 'private/message_file/2026-11-27/a.pdf')).toBe(MESSAGE_FILE_MAX_BYTES);
+    expect(maxUploadBytes('IMAGE/PNG; x=1', 'public/post_image/2026-11-27/a.webp')).toBe(10 * 1024 * 1024);
+    expect(maxUploadBytes('text/html', 'public/post_image/2026-11-27/a.webp')).toBeNull();
+    expect(baseMime(' Text/Plain; charset=UTF-8 ')).toBe('text/plain');
+  });
+  it('byte đầu phải đúng loại đã khai: mọi tệp mẫu khớp loại của nó', () => {
+    for (const mime of ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/zip', 'text/plain']) {
+      expect(contentMatchesMime(mime, sampleFile(mime, 3))).toBe(true);
+    }
+    // Word, Excel, PowerPoint đời mới là tệp zip.
+    expect(contentMatchesMime('application/vnd.openxmlformats-officedocument.wordprocessingml.document', sampleFile('application/zip'))).toBe(true);
+    // PDF có vài byte rác trước %PDF- vẫn hợp lệ.
+    expect(contentMatchesMime('application/pdf', enc('\n\n%PDF-1.7'))).toBe(true);
+  });
+  it('trang HTML, SVG đội lốt ảnh và video đổi đuôi đều bị từ chối', () => {
+    const html = enc('<html><script>fetch("/v1/me")</script></html>');
+    for (const mime of ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/zip']) expect(contentMatchesMime(mime, html)).toBe(false);
+    expect(contentMatchesMime('image/png', enc('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>'))).toBe(false);
+    // MP4: "....ftyp" ở byte 4.
+    const mp4 = new Uint8Array([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d]);
+    for (const mime of ['application/pdf', 'application/zip', 'text/plain', 'image/jpeg']) expect(contentMatchesMime(mime, mp4)).toBe(false);
+    // Loại không nằm trong danh sách nhận thì không bao giờ khớp.
+    expect(contentMatchesMime('text/html', html)).toBe(false);
+    expect(contentMatchesMime('image/webp', enc('RIFF0000WAVE'))).toBe(false);
+  });
+  it('tệp văn bản: chữ UTF-8 có dấu được, tệp nhị phân thì không', () => {
+    expect(contentMatchesMime('text/plain', enc('Ghi chú bài học: Nguyễn Văn Ánh'))).toBe(true);
+    expect(contentMatchesMime('text/plain', new Uint8Array([0x61, 0x00, 0x62]))).toBe(false);
+    expect(contentMatchesMime('text/plain', new Uint8Array([0xc3, 0x28]))).toBe(false);
+    // Ký tự nhiều byte bị cắt ngang ở mép 64KB không bị coi là lỗi.
+    const big = enc('a'.repeat(64 * 1024 - 1) + 'ệ');
+    expect(contentMatchesMime('text/plain', big)).toBe(true);
+  });
+  it('phát tệp: nosniff cho mọi tệp, CSP sandbox cho mọi loại trừ PDF, loại lạ thành tệp tải về', () => {
+    expect(servingHeaders('image/webp')).toEqual({ 'Content-Type': 'image/webp', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+    expect(servingHeaders('application/pdf')).toEqual({ 'Content-Type': 'application/pdf', 'X-Content-Type-Options': 'nosniff' });
+    expect(servingHeaders('text/plain')['Content-Type']).toBe('text/plain; charset=utf-8');
+    for (const odd of ['text/html', 'image/svg+xml', 'application/javascript', '']) {
+      expect(servingHeaders(odd)).toEqual({ 'Content-Type': 'application/octet-stream', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox", 'Content-Disposition': 'attachment' });
+    }
   });
 });

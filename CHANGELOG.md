@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 1.58.1 - 2026-11-27
+
+Chặn tệp đội lốt khi tải lên và khi phát lại, theo yêu cầu của chủ dự án sau khi rà soát phần lưu tệp trên R2. Không có migration.
+
+### Sửa
+
+- **Tệp tải lên không còn đổi được loại so với lúc xin URL.** Trước đây chữ ký của URL tải lên chỉ khóa tên tệp và thời hạn, còn loại tệp lấy theo header người gửi tự đặt. Kẻ xấu có thể xin URL cho một "ảnh" rồi gửi lên một trang HTML, và trang đó được phát lại ngay trên tên miền Hội Mình, chạy mã bằng phiên đăng nhập của người bấm vào. Nay API chỉ nhận đúng loại đã khai lúc xin URL, và chỉ nhận khi tệp còn đang chờ (chưa xác nhận xong).
+- **Kiểm vài byte đầu của tệp.** Ảnh phải đúng là JPEG, PNG, GIF hoặc WebP; PDF phải có dấu `%PDF-`; zip, Word, Excel, PowerPoint phải đúng là tệp zip; tệp văn bản phải là chữ UTF-8. Video đổi đuôi thành tài liệu hay trang web đội lốt ảnh đều bị từ chối.
+- **Phát tệp kèm header chặn chạy mã.** Mọi tệp có `X-Content-Type-Options: nosniff`; mọi tệp trừ PDF có thêm `Content-Security-Policy: default-src 'none'; sandbox`. Tệp cũ lưu với loại lạ (trước khi có kiểm tra) được phát như tệp tải về, không mở trong trang.
+- **Ghi dung lượng thật của mọi tệp.** Trước đây bảng `files` giữ con số client tự khai (trừ ảnh được chuyển sang WebP). Nay API ghi số byte thật nhận được, làm nền cho hạn mức dung lượng theo gói về sau.
+
+### Thay đổi
+
+- **Tài liệu tối đa 50MB một tệp** (trước là 100MB). 100MB chạm đúng giới hạn request của Cloudflare ở gói tên miền miễn phí, trong khi Worker đọc cả tệp vào bộ nhớ 128MB, nên tệp từ 80 đến 100MB lỗi lúc được lúc không. API từ chối sớm theo header `Content-Length`, trước khi đọc thân request. Ảnh vẫn 10MB, tệp đính kèm tin nhắn vẫn 5MB.
+
 ## 1.58.0 - 2026-11-27
 
 Menu ba chấm cho bình luận; ô bình luận và ô chat có emoji, ảnh, nhãn dán động, GIF, theo yêu cầu của chủ dự án. Có migration 0022 (bảng sticker_packs, stickers, cột media_kind của comments và messages, bộ nhãn khởi đầu).

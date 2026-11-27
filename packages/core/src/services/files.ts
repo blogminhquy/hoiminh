@@ -39,8 +39,17 @@ export async function requestUpload(ctx: Ctx, input: { fileName: string; mimeTyp
 }
 
 /**
- * Máy chủ vừa chuyển ảnh sang WebP lúc nhận tệp: ghi lại loại tệp và dung lượng thật đang nằm trong kho.
- * Chỉ đụng tới dòng còn `pending` (chưa xác nhận) của đúng object key đó.
+ * Lượt tải lên đang chờ của một object key: loại tệp đã khai (và đã qua validateUpload) lúc xin URL.
+ * Null khi không có (key lạ, hoặc tệp đã xác nhận xong thì không cho ghi đè nữa).
+ */
+export async function pendingUpload(ctx: Ctx, objectKey: string): Promise<{ mimeType: string } | null> {
+  const [row] = await ctx.db.select({ mimeType: files.mimeType }).from(files).where(and(eq(files.objectKey, objectKey), eq(files.status, 'pending'))).limit(1);
+  return row ?? null;
+}
+
+/**
+ * API vừa nhận xong tệp: ghi loại tệp (đổi khi máy chủ chuyển ảnh sang WebP) và dung lượng thật đang nằm trong kho,
+ * thay cho con số client tự khai lúc xin URL. Chỉ đụng tới dòng còn `pending` (chưa xác nhận) của đúng object key đó.
  */
 export async function recordStoredObject(ctx: Ctx, objectKey: string, stored: { mimeType: string; sizeBytes: number }): Promise<void> {
   await ctx.db.update(files).set({ mimeType: stored.mimeType, sizeBytes: stored.sizeBytes }).where(and(eq(files.objectKey, objectKey), eq(files.status, 'pending')));

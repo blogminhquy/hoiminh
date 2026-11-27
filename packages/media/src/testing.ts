@@ -26,6 +26,29 @@ export function fakeBucket(): FakeBucket {
   };
 }
 
+/**
+ * Tệp mẫu nhỏ nhất có đúng vài byte đầu của loại `mime` (API kiểm byte đầu lúc nhận tệp), nối thêm `extra` byte 0x01
+ * để test phân biệt được các tệp. JPEG mẫu dài đúng 5 byte khi không có `extra`.
+ */
+export function sampleFile(mime: string, extra = 0): Uint8Array<ArrayBuffer> {
+  const ascii = (s: string) => [...s].map((ch) => ch.charCodeAt(0));
+  const heads: Record<string, number[]> = {
+    'image/jpeg': [0xff, 0xd8, 0xff, 0xe0, 0x00],
+    'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    'image/gif': ascii('GIF89a'),
+    'image/webp': [...ascii('RIFF'), 0x04, 0x00, 0x00, 0x00, ...ascii('WEBP')],
+    'application/pdf': ascii('%PDF-1.4\n'),
+    'application/zip': [0x50, 0x4b, 0x03, 0x04],
+    'text/plain': ascii('ghi chu'),
+  };
+  const head = heads[mime];
+  if (!head) throw new Error(`Chưa có tệp mẫu cho ${mime}`);
+  const out = new Uint8Array(new ArrayBuffer(head.length + extra));
+  out.set(head);
+  out.fill(1, head.length);
+  return out;
+}
+
 export interface FakeImages extends ImagesBindingLike {
   /** Mỗi lượt chuyển đổi: tham số transform, tham số output và số byte đầu vào. */
   calls: Array<{ transform: Record<string, unknown>; output: { format: string; quality?: number }; inputBytes: number }>;
