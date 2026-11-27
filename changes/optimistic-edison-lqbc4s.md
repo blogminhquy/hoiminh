@@ -2,10 +2,12 @@
 bump: minor
 ---
 
-Ô bình luận và ô chat có emoji, ảnh, nhãn dán động, GIF, theo yêu cầu của chủ dự án. Có migration 0022 (bảng sticker_packs, stickers, cột media_kind của comments và messages, bộ nhãn khởi đầu).
+Menu ba chấm cho bình luận; ô bình luận và ô chat có emoji, ảnh, nhãn dán động, GIF, theo yêu cầu của chủ dự án. Có migration 0022 (bảng sticker_packs, stickers, cột media_kind của comments và messages, bộ nhãn khởi đầu).
 
 ### Thêm
 
+- **Menu ba chấm cạnh mỗi bình luận** (bài viết, bài học, sự kiện). Ai cũng thấy: Chép nội dung. Người viết thấy thêm: Sửa bình luận. Quản trị viên thấy thêm: Ghim / Bỏ ghim (bình luận gốc). Người viết và quản trị viên thấy thêm: Xóa bình luận (hỏi lại trước khi xóa). Máy tính: nút hiện khi rê chuột vào bình luận. Điện thoại: nút luôn hiện, menu trượt từ đáy màn hình.
+- **Sửa bình luận ngay tại chỗ.** Trước đây chưa có cách sửa, gõ sai phải xóa rồi viết lại (mất luôn lượt thích và trả lời). Nay bấm Sửa bình luận, chỉnh rồi bấm Lưu (hoặc Ctrl Enter); Hủy hoặc Esc để bỏ.
 - **Ô bình luận có thanh công cụ như Facebook:** emoji, đính kèm ảnh (chọn tệp hoặc dán thẳng vào ô, có xem trước), GIF, nhãn dán. Nhãn dán và GIF gửi ngay khi chọn; bình luận chỉ có ảnh, nhãn hay GIF thì không cần chữ.
 - **Khung chọn chung cho ô bình luận và ô chat:** ba tab Nhãn dán, Emoji, GIF; tab nào cũng có mục Gần đây; hàng nút dưới đáy nhảy nhanh tới từng bộ nhãn, nhóm emoji. Emoji 2D chia 8 nhóm. Điện thoại: khung trượt từ đáy màn hình.
 - **Gợi ý nhãn khi gõ (như Zalo):** gõ chữ trùng từ khóa của nhãn ("cảm ơn", "haha", "ok", gõ không dấu cũng được) thì dải nhãn gợi ý hiện ngay trên ô soạn; chạm là gửi nhãn thay cho chữ.
@@ -15,6 +17,7 @@ bump: minor
 
 ### Thay đổi
 
+- **Dưới bình luận chỉ còn Thích và Trả lời.** Ghim và Xóa chuyển vào menu ba chấm, đỡ bấm nhầm Xóa trên điện thoại.
 - **Ô chat:** bảng emoji cũ (24 emoji) thay bằng khung chọn chung; thêm nút nhãn dán và GIF; tin chỉ có một nhãn dán hiện không khung bong bóng. Danh sách hội thoại ghi [Nhãn dán], [GIF] cho tin chỉ có nhãn hay GIF.
 
 ## Quyết định
