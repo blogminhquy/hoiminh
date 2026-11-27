@@ -85,7 +85,7 @@ describe('khách mua khi chưa có tài khoản', () => {
   });
 
   it('chưa tạo tài khoản: đăng nhập báo rõ, quên mật khẩu và đăng ký trùng email gửi lại link tạo tài khoản', async () => {
-    const login = await expectCode(authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123' }), 'unauthorized');
+    const login = await expectCode(authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123', remember: true }), 'unauthorized');
     expect(login.message).toContain('chưa tạo mật khẩu');
     await authSvc.forgotPassword(app.anon(), EMAIL);
     expect(mails(EMAIL, 'reset_password')).toHaveLength(0);
@@ -123,7 +123,7 @@ describe('khách mua khi chưa có tài khoản', () => {
     expect(mails(EMAIL, 'verify_code')).toHaveLength(1);
     expect((await claimOf(r.session.user.id))?.claimedAt).not.toBeNull();
     // Từ giờ là tài khoản thường: đăng nhập bằng mật khẩu vừa đặt, không nhắc nữa, không tạo lại được.
-    expect(await authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123' })).toHaveProperty('accessToken');
+    expect(await authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123', remember: true })).toHaveProperty('accessToken');
     expect(await remindPendingAccounts(later(60))).toBe(0);
     const again = await expectCode(guest.claimAccount(app.anon(), app.auth, { orderId, orderToken: token, password: 'matkhau456' }), 'conflict');
     expect(again.details).toMatchObject({ reason: 'already_claimed' });
@@ -164,7 +164,7 @@ describe('chặn chiếm quyền', () => {
     const session = await authSvc.register(app.anon(), app.auth, { name: 'Minh Bỏ Dở', email: EMAIL, password: 'matkhau123', acceptTerms: true });
     expect(session.user).toMatchObject({ email: EMAIL, name: 'Minh Bỏ Dở' });
     expect((await claimOf(session.user.id))?.claimedAt).not.toBeNull();
-    expect(await authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123' })).toHaveProperty('accessToken');
+    expect(await authSvc.login(app.anon(), app.auth, { email: EMAIL, password: 'matkhau123', remember: true })).toHaveProperty('accessToken');
   });
 
   it('mua lại sau lần bỏ dở: trình duyệt mua lần này được tạo tài khoản', async () => {
