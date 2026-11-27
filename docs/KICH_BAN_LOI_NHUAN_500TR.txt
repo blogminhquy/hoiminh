@@ -161,3 +161,67 @@ Cách này cần khoảng 2.500 hội trả phí thay vì 4.091, tức bớt g�
 
 Ba con số cần đo sớm nhất khi mở bán: tỷ lệ hội miễn phí lên trả phí, CAC thật, tỷ lệ rời bỏ tháng.
 Có ba số này sau 60-90 ngày thì thay vào bảng trên để biết đang đi kịch bản nào.
+
+
+==================================================
+7. SO SÁNH: THU PHẦN TRĂM TRÊN GIAO DỊCH (bổ sung 27/11/2026)
+==================================================
+
+Trạng thái: [CHỜ CHỐT]. Mô hình này đi ngược quyết định "0% mọi gói" ở docs/KE_HOACH_GOI_VA_GIA.txt
+và mục 72 của DECISIONS.md (chủ hội nhận tiền qua cổng của chính mình).
+
+Giả định:
+  Thuế trên phần phí Hội Mình thu    7%
+  Tiền kéo khách                      10% phần phí thu được
+  Chi phí cố định                     150 triệu/tháng (thêm người đối soát, chi hộ, kế toán thuế)
+  Phí 9Pay                            chưa có bảng giá; tính hai trường hợp:
+                                        người bán chịu phí cổng (ghi riêng như Stripe), hoặc Hội Mình chịu 1%
+
+Doanh số đi qua Hội Mình (GMV) cần có mỗi tháng để lãi 500 triệu:
+
+  Mức phí   Người bán chịu phí 9Pay        Hội Mình chịu 1%
+  3%        26,1 tỷ  (1.740 hội bán)        43,6 tỷ  (2.908 hội bán)
+  5%        15,7 tỷ  (1.044 hội bán)        20,6 tỷ  (1.376 hội bán)
+  8%         9,8 tỷ  (653 hội bán)          11,5 tỷ  (768 hội bán)
+  10%        7,8 tỷ  (522 hội bán)           8,9 tỷ  (594 hội bán)
+  (số hội bán tính theo bình quân 15 triệu doanh số mỗi hội mỗi tháng)
+
+Kết hợp hai mô hình (giống cách Skool, Teachable làm):
+  Gói trả phí: thu tiền gói như cũ, phí giao dịch 0%.
+  Gói Miễn phí: không thu tiền gói, thu 5% mỗi giao dịch.
+  2.000 hội trả phí (lãi khoảng 265 triệu) cộng khoảng 9,3 tỷ doanh số từ hội Miễn phí là đủ 500 triệu.
+  Phí 5% chính là lý do để hội Miễn phí bán tốt tự nâng lên gói trả phí.
+
+Điểm mạnh:
+  Gói Miễn phí sinh lời. Chủ hội không mất gì khi bắt đầu, đúng tư duy "kiếm được tiền trước".
+  Hội Mình lớn theo doanh số của chủ hội, không phải đi kéo từng hội.
+  Thu được tiền vì phí bị trừ trước khi chi tiền cho chủ hội, không phải đi đòi.
+
+Ba điều kiện bắt buộc trước khi làm:
+  1. Tiền phải đi qua đơn vị có giấy phép thu hộ, chi hộ (như 9Pay), không về tài khoản Hội Mình.
+     Theo Nghị định 52/2024, dịch vụ hỗ trợ thu hộ, chi hộ là dịch vụ trung gian thanh toán, phải có giấy phép
+     của Ngân hàng Nhà nước. Cần 9Pay xác nhận bằng hợp đồng rằng họ chia tiền cho nhiều người bán
+     và giữ lại phí cho nền tảng.
+  2. Nghĩa vụ thuế thay người bán. Theo Nghị định 117/2025 (hiệu lực 01/7/2025), sàn thương mại điện tử
+     có chức năng thanh toán phải khấu trừ, kê khai, nộp thuế thay hộ và cá nhân kinh doanh trên sàn.
+     Hội Mình nhiều khả năng rơi vào diện này. Cần luật sư hoặc kế toán thuế xác nhận trước.
+  3. Chặn đi đường vòng. Chủ hội có thể bảo người mua chuyển khoản thẳng để né phí.
+     Hội Mình chỉ tự mở quyền cho đơn trả qua Hội Mình; gói Miễn phí không có nút "đã nhận tiền" bằng tay.
+
+Phần đã kiểm về 9Pay (qua tìm kiếm, chưa đọc được trang 9pay.vn trực tiếp):
+  Có thu hộ, có thu qua tài khoản định danh (hợp tác Techcombank 6/2024).
+  Có chi hộ qua API hoặc cổng quản lý, có thông báo tự động qua API.
+  Phí tính theo từng giao dịch, tùy phương thức và sản lượng, không công bố bảng giá.
+  Thông cáo báo chí có nhắc "sàn thương mại điện tử có cơ chế chia thanh toán", nhưng chưa thấy
+  tài liệu kỹ thuật cho tính năng chia tiền.
+  Người đăng ký phải là doanh nghiệp hoặc hộ kinh doanh có kênh bán hợp pháp.
+
+Câu hỏi cần gửi 9Pay:
+  1. Có hỗ trợ mô hình nền tảng nhiều người bán không: mỗi chủ hội một tài khoản định danh hay ví con,
+     tiền người mua vào 9Pay, 9Pay tự trừ phí nền tảng rồi chi phần còn lại cho chủ hội?
+  2. Chủ hội là cá nhân (chưa có hộ kinh doanh) có nhận chi hộ được không, cần định danh gì?
+  3. Phí thu hộ theo từng phương thức (QR chuyển khoản, thẻ, ví) và phí chi hộ mỗi lệnh, theo mức sản lượng.
+  4. Thời gian tiền về và thời gian chi (T+0, T+1), có chi 24/7 không.
+  5. Hoàn tiền và tranh chấp xử lý thế nào, ai chịu.
+  6. 9Pay có hỗ trợ khấu trừ thuế thay người bán theo Nghị định 117/2025 không.
+  7. Tài liệu API thu hộ, chi hộ và IPN, có môi trường thử không.
