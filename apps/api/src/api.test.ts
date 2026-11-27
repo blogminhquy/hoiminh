@@ -308,7 +308,7 @@ describe('API', () => {
   it('tệp: production mà chưa nối R2 → 503 nói rõ nguyên nhân; có binding R2 → tải lên và phát lại qua API', async () => {
     const dbHandle = (app.ctx as { db: unknown }).db as never;
     const base = { APP_ENV: 'production' as const, DATABASE_URL: 'pglite://memory', API_URL: 'https://api.test', APP_URL: 'https://test', AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret', ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' };
-    const body = JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: 5, purpose: 'post_image', communityId });
+    const body = JSON.stringify({ fileName: 'anh.png', mimeType: 'image/png', sizeBytes: sampleFile('image/png', 4).byteLength, purpose: 'post_image', communityId });
 
     const noR2 = await createApp({ env: loadEnv(base), db: dbHandle });
     const h0 = createHonoApp(noR2);
@@ -331,6 +331,8 @@ describe('API', () => {
     expect((await h1.request(r.upload.url, { method: 'PUT', headers: { 'Content-Type': 'text/html' }, body: html })).status).toBe(415);
     expect((await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: html })).status).toBe(415);
     expect(bucket.objects.size).toBe(0);
+    // Tệp lớn hơn dung lượng đã khai lúc xin URL (trần theo gói xét trên con số khai) bị từ chối.
+    expect((await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/png', 5) })).status).toBe(413);
     const put = await h1.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: png });
     expect(put.status).toBe(200);
     expect(bucket.objects.size).toBe(1);
@@ -372,7 +374,9 @@ describe('API', () => {
     const images = fakeImages();
     const h = createHonoApp(await createApp({ env: loadEnv(base), db: dbHandle, r2Bucket: bucket, images }));
     const auth = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-    const ask = (fileName: string, mimeType: string, purpose = 'post_image') => h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName, mimeType, sizeBytes: 5, purpose, communityId }) });
+    // Khai đúng dung lượng của tệp mẫu sẽ gửi: API từ chối tệp lớn hơn con số đã khai lúc xin URL.
+    const sizeOf = (mimeType: string) => { try { return sampleFile(mimeType).byteLength; } catch { return 5; } };
+    const ask = (fileName: string, mimeType: string, purpose = 'post_image') => h.request('/v1/files/upload-url', { method: 'POST', headers: auth, body: JSON.stringify({ fileName, mimeType, sizeBytes: sizeOf(mimeType), purpose, ...(purpose === 'message_file' ? {} : { communityId }) }) });
     type Asked = { fileId: string; upload: { url: string; headers: Record<string, string> }; url: string };
     /** Tải một tệp 5 byte như trình duyệt: xin URL, PUT, xác nhận. Trả về URL công khai và kết quả PUT. */
     const upload = async (fileName: string, mimeType: string, purpose = 'post_image') => {
@@ -448,7 +452,7 @@ describe('API', () => {
     const call = (path: string, init: RequestInit = {}, auth: string | null = token) => h.request(path, { ...init, headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${auth}` } : {}), ...(init.headers ?? {}) } });
     /** Tải một ảnh avatar như trình duyệt: xin URL, PUT, xác nhận. */
     const uploadAvatar = async () => {
-      const ask = await call('/v1/files/upload-url', { method: 'POST', body: JSON.stringify({ fileName: 'me.jpg', mimeType: 'image/jpeg', sizeBytes: 3, purpose: 'avatar' }) });
+      const ask = await call('/v1/files/upload-url', { method: 'POST', body: JSON.stringify({ fileName: 'me.jpg', mimeType: 'image/jpeg', sizeBytes: sampleFile('image/jpeg').byteLength, purpose: 'avatar' }) });
       const r = (await ask.json()) as { fileId: string; upload: { url: string; headers: Record<string, string> } };
       await h.request(r.upload.url, { method: 'PUT', headers: r.upload.headers, body: sampleFile('image/jpeg') });
       await call(`/v1/files/${r.fileId}/complete`, { method: 'POST', body: JSON.stringify({ width: 10, height: 10 }) });

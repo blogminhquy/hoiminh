@@ -216,6 +216,35 @@ export function nextPlanFor(plans: ReadonlyArray<Pick<PlanDef, 'key' | 'name' | 
   return hit ? { key: hit.key, name: hit.name } : null;
 }
 
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+
+/**
+ * Dung lượng tệp mỗi hội theo gói, và tài liệu lớn nhất mỗi tệp (chủ dự án chốt ngày 27/11/2026). R2 rẻ (khoảng 390đ mỗi GB
+ * mỗi tháng) nên hạn mức để chặn lạm dụng, không phải để tiết kiệm. Gói Không giới hạn không giới hạn thành viên, còn dung
+ * lượng tệp là mức dùng hợp lý 200GB. Chưa sửa được ở Hệ thống: muốn đổi thì sửa ở đây.
+ */
+export const PLAN_STORAGE: Readonly<Record<PlanKey, { bytes: number; documentMaxBytes: number }>> = {
+  free: { bytes: 1 * GB, documentMaxBytes: 20 * MB },
+  starter: { bytes: 10 * GB, documentMaxBytes: 50 * MB },
+  pro: { bytes: 50 * GB, documentMaxBytes: 50 * MB },
+  unlimited: { bytes: 200 * GB, documentMaxBytes: 50 * MB },
+};
+
+/** Gói cao hơn gần nhất đang bán có nhiều dung lượng hơn (hoặc nhận tài liệu lớn hơn) gói hiện tại. Null khi không còn gói nào. */
+export function nextPlanForStorage(plans: ReadonlyArray<Pick<PlanDef, 'key' | 'name'> & { prices?: PlanPrices }>, currentKey: PlanKey): { key: PlanKey; name: string } | null {
+  const now = PLAN_STORAGE[currentKey];
+  const hit = [...plans].sort((a, b) => planRank(a.key) - planRank(b.key)).find((p) => planRank(p.key) > planRank(currentKey) && onSale(p) && (PLAN_STORAGE[p.key].bytes > now.bytes || PLAN_STORAGE[p.key].documentMaxBytes > now.documentMaxBytes));
+  return hit ? { key: hit.key, name: hit.name } : null;
+}
+
+/** Dung lượng dạng người đọc: "850 MB", "1,2 GB". */
+export function formatBytes(bytes: number): string {
+  if (bytes >= GB) return `${(bytes / GB).toLocaleString('vi-VN', { maximumFractionDigits: bytes >= 10 * GB ? 0 : 1 })} GB`;
+  if (bytes >= MB) return `${Math.round(bytes / MB).toLocaleString('vi-VN')} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('vi-VN')} KB`;
+}
+
 const priceSchema = z.number().int().min(0).max(1_000_000_000);
 export const planPricesSchema = z.object({ monthly: priceSchema, quarterly: priceSchema, semiannual: priceSchema, yearly: priceSchema });
 
