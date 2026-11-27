@@ -765,6 +765,13 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
 .chat-file span > * { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 1.4; }
 .chat-file span > span { color: var(--ink3); }
 .chat-file:disabled { cursor: progress; }
+/* Ảnh, tệp trong tin nhắn tự xóa sau 30 ngày: dòng báo đầu hội thoại, nhãn hạn cạnh giờ gửi, ô thay cho ảnh/tệp đã hết hạn. */
+.chat-file.expired { cursor: default; color: var(--ink2); }
+.chat-file.expired:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.chat-file.expired i { color: var(--ink3); }
+.chat-expired { display: flex; width: max-content; max-width: 100%; align-items: center; gap: 6px; margin-bottom: 4px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line); font-size: 14px; color: var(--ink3); }
+.chat-ttl { white-space: nowrap; color: var(--ink3); }
+.chat-notice { align-self: center; max-width: 420px; margin: 4px auto 12px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 5%, transparent); text-align: center; font-size: 14px; line-height: 1.45; color: var(--ink3); }
 /* Đã chặn: thay ô nhập bằng một dòng báo, người chặn có nút bỏ chặn. */
 .chat-blocked { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 12px; padding: 16px; text-align: center; font-size: 15px; color: var(--ink2); }
 .chat-quote { display: flex; flex-direction: column; width: 100%; margin-bottom: 6px; padding: 6px 10px; border-left: 3px solid var(--primary); border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); text-align: left; font-size: 14px; line-height: 1.4; white-space: normal; }

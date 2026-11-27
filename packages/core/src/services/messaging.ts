@@ -1,8 +1,8 @@
 // Tin nhắn 1-1: gửi (kèm trả lời trích dẫn, ảnh, tệp đính kèm), ba trạng thái đã gửi / đã nhận / đã xem, thả cảm xúc, thu hồi,
 // ghim, lưu trữ và bỏ lưu trữ, tin nhắn chào tự động.
 // Có kênh thời gian thực thì báo ngay cho hai bên; không có thì web hỏi lại mỗi 15 giây.
-import { and, asc, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
-import { normalizeWelcomeTemplate, type MessageReaction } from '@hoiminh/contracts';
+import { and, asc, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { MESSAGE_MEDIA_EXPIRY_START, MESSAGE_MEDIA_TTL_DAYS, normalizeWelcomeTemplate, type MessageReaction } from '@hoiminh/contracts';
 import { MESSAGE_FILE_MAX_BYTES, MESSAGE_FILE_PREFIX } from '@hoiminh/media';
 import { communities, communityMembers, communityPlugins, communityTiers, conversationParticipants, conversations, courseProgress, courses, files, messages, users, type MediaKind } from '@hoiminh/db';
 import type { Ctx } from '../context';
@@ -102,12 +102,15 @@ type MessageRow = typeof messages.$inferSelect;
 function messageView(m: MessageRow, replies: Map<string, MessageRow>) {
   const recalled = Boolean(m.recalledAt);
   const r = m.replyToId ? replies.get(m.replyToId) : undefined;
+  // Ảnh, tệp đã tự xóa sau 30 ngày: không còn link, web hiện "Ảnh/Tệp đã hết hạn" (tệp vẫn ghi tên để người xem biết là tệp gì).
+  const imageExpired = !recalled && m.mediaKind === 'expired';
+  const fileExpired = !recalled && !m.fileUrl && Boolean(m.fileName);
   return {
-    id: m.id, senderUserId: m.senderUserId, body: recalled ? '' : m.body, imageUrl: recalled ? null : m.imageUrl, mediaKind: recalled ? null : m.mediaKind, automated: m.automated, deliveredAt: m.deliveredAt, readAt: m.readAt, createdAt: m.createdAt,
+    id: m.id, senderUserId: m.senderUserId, body: recalled ? '' : m.body, imageUrl: recalled ? null : m.imageUrl, mediaKind: recalled || imageExpired ? null : m.mediaKind, imageExpired, automated: m.automated, deliveredAt: m.deliveredAt, readAt: m.readAt, createdAt: m.createdAt,
     // Chỉ tên và dung lượng: link tải lấy riêng lúc bấm (messageFileUrl), có hạn ngắn.
-    file: !recalled && m.fileUrl ? { name: m.fileName ?? 'Tệp đính kèm', sizeBytes: m.fileSize ?? 0 } : null,
+    file: !recalled && (m.fileUrl || fileExpired) ? { name: m.fileName ?? 'Tệp đính kèm', sizeBytes: m.fileSize ?? 0, ...(fileExpired ? { expired: true } : {}) } : null,
     recalled, reactions: recalled ? {} : m.reactions,
-    replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.recalledAt ? '' : r.body.slice(0, 160), hasImage: !r.recalledAt && Boolean(r.imageUrl), mediaKind: r.recalledAt ? null : r.mediaKind, fileName: r.recalledAt ? null : r.fileName, recalled: Boolean(r.recalledAt) } : null,
+    replyTo: r ? { id: r.id, senderUserId: r.senderUserId, body: r.recalledAt ? '' : r.body.slice(0, 160), hasImage: !r.recalledAt && (Boolean(r.imageUrl) || r.mediaKind === 'expired'), mediaKind: r.recalledAt || r.mediaKind === 'expired' ? null : r.mediaKind, fileName: r.recalledAt ? null : r.fileName, recalled: Boolean(r.recalledAt) } : null,
   };
 }
 
@@ -163,10 +166,38 @@ export async function reactToMessage(ctx: Ctx, messageId: string, emoji: Message
   await publishToAll(ctx, msg.conversationId);
 }
 
+/**
+ * Ảnh và tệp tải lên trong tin nhắn riêng tự xóa sau 30 ngày (MESSAGE_MEDIA_TTL_DAYS, tính từ MESSAGE_MEDIA_EXPIRY_START
+ * với tin gửi trước ngày đó). Gỡ khỏi tin (chữ giữ nguyên, tệp giữ tên để hiện "Tệp đã hết hạn") rồi giải phóng qua
+ * releaseFiles trong cùng transaction: chỉ xóa trên R2 khi không còn nơi nào khác dùng. Nhãn dán, GIF không đụng tới.
+ * Chạy trong cron hằng ngày, mỗi lần tối đa `limit` tin; còn tồn thì lần sau làm tiếp. Trả về số tin đã gỡ.
+ */
+export async function expireMessageMedia(ctx: Ctx, opts: { limit?: number } = {}): Promise<number> {
+  const cutoff = new Date(ctx.now().getTime() - MESSAGE_MEDIA_TTL_DAYS * 86_400_000);
+  // Tin gửi trước ngày bắt đầu được tính hạn từ ngày đó: chưa qua đủ 30 ngày kể từ ngày bắt đầu thì chưa tin nào hết hạn.
+  if (cutoff.getTime() < Date.parse(MESSAGE_MEDIA_EXPIRY_START)) return 0;
+  const due = await ctx.db
+    .select({ id: messages.id, senderUserId: messages.senderUserId, imageUrl: messages.imageUrl, mediaKind: messages.mediaKind, fileUrl: messages.fileUrl })
+    .from(messages)
+    .where(and(isNull(messages.recalledAt), lt(messages.createdAt, cutoff), or(and(isNotNull(messages.imageUrl), isNull(messages.mediaKind)), isNotNull(messages.fileUrl))))
+    .limit(opts.limit ?? 1000);
+  if (!due.length) return 0;
+  const withImage = due.filter((m) => m.imageUrl && !m.mediaKind);
+  const withFile = due.filter((m) => m.fileUrl);
+  if (withImage.length) await ctx.db.update(messages).set({ imageUrl: null, mediaKind: 'expired' }).where(inArray(messages.id, withImage.map((m) => m.id)));
+  if (withFile.length) await ctx.db.update(messages).set({ fileUrl: null }).where(inArray(messages.id, withFile.map((m) => m.id)));
+  // Ảnh là tệp công khai (tìm theo URL); tệp đính kèm là tệp riêng, cột lưu object key nên phải tìm ra id của nó.
+  const keys = withFile.map((m) => m.fileUrl!);
+  const attached = keys.length ? await ctx.db.select({ id: files.id }).from(files).where(inArray(files.objectKey, keys)) : [];
+  await releaseFiles(ctx, { urls: withImage.map((m) => m.imageUrl), fileIds: attached.map((f) => f.id) }, { ownerUserIds: [...new Set(due.map((m) => m.senderUserId))] });
+  return due.length;
+}
+
 /** Thu hồi tin của chính mình trong 24 giờ: xóa hẳn nội dung và ảnh, hai bên chỉ còn thấy "Tin nhắn đã được thu hồi". */
 /** Link tải tệp đính kèm của một tin: chỉ người trong hội thoại lấy được, link sống 5 phút và tải về với đúng tên gốc. */
 export async function messageFileUrl(ctx: Ctx, messageId: string): Promise<{ url: string; name: string }> {
   const { msg } = await messageForMe(ctx, messageId);
+  if (!msg.recalledAt && !msg.fileUrl && msg.fileName) throw notFound(`Tệp đã hết hạn: ảnh và tệp trong tin nhắn tự xóa sau ${MESSAGE_MEDIA_TTL_DAYS} ngày`);
   if (msg.recalledAt || !msg.fileUrl) throw notFound('Tin nhắn này không có tệp đính kèm');
   const name = msg.fileName ?? 'tep-dinh-kem';
   return { url: await ctx.media.getSignedUrl(msg.fileUrl, 300, name), name };

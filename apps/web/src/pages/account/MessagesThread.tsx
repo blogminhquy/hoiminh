@@ -13,7 +13,7 @@ import { useStickers } from '@/components/media/stickers';
 import { mediaPayload, type MediaKind, type PickedMedia } from '@/components/media/types';
 import { LoadingBlock } from '@/components/QueryState';
 import { api, errorMessage } from '@/lib/api';
-import { ATTACHMENT_ACCEPT, checkAttachment, deliveryStatus, linksIn, sameGroup, seenLabel } from '@/lib/chat';
+import { ATTACHMENT_ACCEPT, MEDIA_TTL_NOTICE, checkAttachment, deliveryStatus, linksIn, sameGroup, seenLabel } from '@/lib/chat';
 import { usePollInterval } from '@/lib/realtime';
 import { ChatMenu, ReportDialog } from './MessagesMenus';
 import { DayDivider, InfoPanel, MessageItem, replySnippet, type Message, type MessageFile, type Panel, type Person } from './MessagesParts';
@@ -87,7 +87,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
 
   // Ảnh đã gửi ở bảng thông tin: chỉ ảnh tải lên, không tính nhãn dán và GIF.
   const images = useMemo(() => (items ?? []).flatMap((m) => (m.imageUrl && !m.mediaKind && !m.pending ? [m.imageUrl] : [])).reverse(), [items]);
-  const files = useMemo(() => (items ?? []).flatMap((m) => (m.file && !m.pending ? [{ id: m.id, ...m.file }] : [])).reverse(), [items]);
+  const files = useMemo(() => (items ?? []).flatMap((m) => (m.file && !m.file.expired && !m.pending ? [{ id: m.id, ...m.file }] : [])).reverse(), [items]);
   const links = useMemo(() => [...new Set((items ?? []).flatMap((m) => linksIn(m.body)).reverse())], [items]);
 
   if (q.isLoading) return <section className="chat-main"><div className="p-6"><LoadingBlock /></div></section>;
@@ -174,6 +174,7 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
           <ChatMenu other={other} blockedByMe={d.blocked.byMe} pinned={d.pinned} archived={d.archived} onPin={() => pin.mutate(!d.pinned)} onArchive={() => archive.mutate(!d.archived)} onBlock={onBlock} onReport={() => setReporting(true)} />
         </header>
         <div className="chat-scroll" ref={scroller} onScroll={onScroll}>
+          <div className="chat-notice" role="note">{MEDIA_TTL_NOTICE}</div>
           {d.items.length === 0 && <div className="chat-empty">Chưa có tin nhắn nào. Gửi lời chào tới {firstName} nhé.</div>}
           {d.items.map((m, i) => {
             const prev = d.items[i - 1];
@@ -205,9 +206,9 @@ export function ThreadView({ id, meId, info, onInfo, onBack, onArchived }: { id:
               </div>
             )}
             <div className="chat-tools">
-              <button type="button" className="chat-icon" aria-label="Gửi ảnh" title="Gửi ảnh" disabled={Boolean(uploading)} onClick={() => fileRef.current?.click()}><ImageIcon size={20} /></button>
+              <button type="button" className="chat-icon" aria-label="Gửi ảnh (tự xóa sau 30 ngày)" title="Gửi ảnh (tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => fileRef.current?.click()}><ImageIcon size={20} /></button>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { void sendImage(e.target.files?.[0]); e.target.value = ''; }} />
-              <button type="button" className="chat-icon" aria-label="Đính kèm tệp (tối đa 5MB)" title="Đính kèm tệp (tối đa 5MB)" disabled={Boolean(uploading)} onClick={() => docRef.current?.click()}><Paperclip size={20} /></button>
+              <button type="button" className="chat-icon" aria-label="Đính kèm tệp (tối đa 5MB, tự xóa sau 30 ngày)" title="Đính kèm tệp (tối đa 5MB, tự xóa sau 30 ngày)" disabled={Boolean(uploading)} onClick={() => docRef.current?.click()}><Paperclip size={20} /></button>
               <input ref={docRef} type="file" accept={ATTACHMENT_ACCEPT} hidden onChange={(e) => { void sendFile(e.target.files?.[0]); e.target.value = ''; }} />
               <button type="button" className={`chat-icon${picker === 'emoji' ? ' on' : ''}`} aria-label="Chèn biểu tượng cảm xúc" aria-expanded={picker === 'emoji'} title="Emoji" onClick={(e) => openPicker('emoji', e.currentTarget)}><Smile size={20} /></button>
               <button type="button" className={`chat-icon${picker === 'sticker' ? ' on' : ''}`} aria-label="Gửi nhãn dán" aria-expanded={picker === 'sticker'} title="Nhãn dán" onClick={(e) => openPicker('sticker', e.currentTarget)}><StickerIcon size={20} /></button>
