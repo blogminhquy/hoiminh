@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS "stickers" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "comments" ADD COLUMN "media_kind" text;--> statement-breakpoint
-ALTER TABLE "messages" ADD COLUMN "media_kind" text;--> statement-breakpoint
+ALTER TABLE "comments" ADD COLUMN IF NOT EXISTS "media_kind" text;--> statement-breakpoint
+ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "media_kind" text;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "stickers" ADD CONSTRAINT "stickers_pack_id_sticker_packs_id_fk" FOREIGN KEY ("pack_id") REFERENCES "public"."sticker_packs"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
