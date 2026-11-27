@@ -1,0 +1,227 @@
+KỊCH BẢN LỢI NHUẬN HỘI MÌNH: MỤC TIÊU 500 TRIỆU LỢI NHUẬN MỖI THÁNG
+Lập ngày 27/11/2026. Dựa trên bảng gói đã chốt ở docs/KE_HOACH_GOI_VA_GIA.txt.
+Đây là bản tính để định hướng, các con số giả định cần thay bằng số thật khi có dữ liệu.
+
+
+==================================================
+1. ĐẦU VÀO
+==================================================
+
+Giá gói (quy ra mỗi tháng, mỗi gói cho 1 hội):
+  Khởi đầu         3 tháng 99.000đ    1 năm 82.500đ    trần 500 thành viên
+  Chuyên nghiệp    3 tháng 299.000đ   1 năm 249.167đ   trần 5.000 thành viên
+  Không giới hạn   3 tháng 799.000đ   1 năm 665.833đ   không giới hạn
+
+Giả định một nửa khách mua 3 tháng, một nửa mua 1 năm. Doanh thu bình quân mỗi hội mỗi tháng:
+  Khởi đầu 90.750đ, Chuyên nghiệp 274.083đ, Không giới hạn 732.417đ.
+
+Hội Mình không thu % doanh thu của chủ hội, nên lợi nhuận chỉ đến từ tiền gói và phần thu thêm.
+
+Chi phí giả định:
+  Thuế                      7% doanh thu (ước theo hộ kinh doanh dịch vụ, cần kế toán xác nhận)
+  Phí cổng thanh toán       1% doanh thu (đa số chuyển khoản QR)
+  Hạ tầng                   2% doanh thu (Cloudflare, Supabase, R2, Resend)
+  Hoa hồng giới thiệu       30% trên phần doanh thu đến từ người giới thiệu
+  Chi phí có 1 hội trả phí  (CAC) tiền quảng cáo và tư vấn để có 1 hội trả phí mới
+  Cố định                   120 triệu/tháng (đội hỗ trợ, phát triển, công cụ)
+  Thu thêm                  +10% trên tiền gói (dịch vụ dựng hội, tên miền riêng, gói email sau này)
+
+Công thức:
+  Lãi mỗi hội mỗi tháng = doanh thu hội x (1 - thuế - phí cổng - hạ tầng - hoa hồng)
+                          - (tỷ lệ rời bỏ tháng x CAC)
+  Số hội trả phí cần có = (500 triệu + 120 triệu cố định) / lãi mỗi hội mỗi tháng
+
+
+==================================================
+2. BA KỊCH BẢN
+==================================================
+
+KỊCH BẢN A: BÌNH DÂN (bán nhiều gói Khởi đầu)
+  Tỷ lệ gói              60% Khởi đầu, 35% Chuyên nghiệp, 5% Không giới hạn
+  Rời bỏ mỗi tháng       5%      CAC 1,2 triệu      40% khách qua người giới thiệu
+  Doanh thu mỗi hội      205.700đ (gồm thu thêm)
+  Lãi mỗi hội            100.446đ
+  Cần                    6.173 hội trả phí (3.704 Khởi đầu, 2.161 Chuyên nghiệp, 309 Không giới hạn)
+  Doanh thu tháng        khoảng 1,27 tỷ
+  Hội mới mỗi tháng chỉ để bù rời bỏ: 309
+  Hội miễn phí cần có (8% chuyển lên trả phí): khoảng 77.000
+
+KỊCH BẢN B: CÂN BẰNG
+  Tỷ lệ gói              45% Khởi đầu, 43% Chuyên nghiệp, 12% Không giới hạn
+  Rời bỏ mỗi tháng       4%      CAC 1,5 triệu      40% khách qua người giới thiệu
+  Doanh thu mỗi hội      271.242đ
+  Lãi mỗi hội            151.569đ
+  Cần                    4.091 hội trả phí (1.841 Khởi đầu, 1.759 Chuyên nghiệp, 491 Không giới hạn)
+  Doanh thu tháng        khoảng 1,11 tỷ
+  Hội mới mỗi tháng chỉ để bù rời bỏ: 164
+  Hội miễn phí cần có: khoảng 51.000
+
+KỊCH BẢN C: CAO CẤP (tập trung chuyên gia, KOL, doanh nghiệp đào tạo)
+  Tỷ lệ gói              20% Khởi đầu, 50% Chuyên nghiệp, 30% Không giới hạn
+  Rời bỏ mỗi tháng       3%      CAC 2,5 triệu      30% khách qua người giới thiệu
+  Doanh thu mỗi hội      412.408đ
+  Lãi mỗi hội            259.051đ
+  Cần                    2.394 hội trả phí (479 Khởi đầu, 1.197 Chuyên nghiệp, 718 Không giới hạn)
+  Doanh thu tháng        khoảng 987 triệu
+  Hội mới mỗi tháng chỉ để bù rời bỏ: 72
+  Hội miễn phí cần có: khoảng 30.000
+
+Nhận xét: cùng 500 triệu lợi nhuận, kịch bản C cần ít hơn 2,6 lần số hội so với A.
+Mỗi hội Không giới hạn đem lãi gấp khoảng 8 lần một hội Khởi đầu.
+Nên đòn bẩy lớn nhất không phải kéo thật nhiều hội, mà là đưa hội lên gói cao.
+
+
+==================================================
+3. LỘ TRÌNH: CẦN BAO NHIÊU HỘI TRẢ PHÍ MỚI MỖI THÁNG
+==================================================
+
+Tính cả phần rời bỏ trong lúc đang tăng.
+
+                  Đạt sau 12 tháng   18 tháng   24 tháng
+  Kịch bản A           672             512        436
+  Kịch bản B           423             314        262
+  Kịch bản C           235             170        138
+
+Ví dụ kịch bản B trong 18 tháng: mỗi tháng có thêm khoảng 314 hội trả phí,
+tức khoảng 10 hội mỗi ngày, cần khoảng 3.900 hội miễn phí mới mỗi tháng nếu tỷ lệ chuyển 8%.
+
+Lưu ý quan trọng: trong lúc tăng, tiền kéo khách trả cho toàn bộ hội mới (314 hội x 1,5 triệu
+= 471 triệu mỗi tháng), không chỉ phần bù rời bỏ. Nên lãi 500 triệu chỉ đến khi đã đủ số hội
+và giảm tốc độ kéo khách về mức giữ (164 hội mới mỗi tháng).
+
+Dòng tiền kịch bản B, 18 tháng, kéo khách bằng quảng cáo:
+  Tháng   Hội trả phí   Lãi trong tháng   Lũy kế
+  1           314           -525 triệu      -525 triệu
+  3           905           -400 triệu      -1,39 tỷ
+  6         1.705           -230 triệu      -2,24 tỷ
+  10        2.631            -34 triệu      -2,66 tỷ  (đáy, cần chuẩn bị số vốn này)
+  11        2.840            +10 triệu      hòa vốn theo tháng
+  12        3.040            +52 triệu      -2,60 tỷ
+  18        4.085           +273 triệu      -1,49 tỷ
+  19        4.085           +498 triệu      -0,99 tỷ  (chuyển sang chế độ giữ)
+  24        4.085           +498 triệu      +1,50 tỷ  (hòa vốn lũy kế khoảng tháng 22)
+
+Nghĩa là: đi đường quảng cáo thuần thì cần khoảng 2,7 tỷ vốn trước khi có lãi.
+Muốn bớt vốn thì phải thay quảng cáo bằng kênh rẻ hơn: cộng sự giới thiệu, nội dung, chính hội của anh.
+
+
+==================================================
+4. NĂM ĐÒN BẨY LÀM GIẢM SỐ HỘI CẦN CÓ
+==================================================
+
+1. Đẩy gói 1 năm. Thu tiền trước 12 tháng, rời bỏ giảm mạnh (khách mua năm hiếm khi bỏ giữa chừng).
+   Rời bỏ từ 4% xuống 2,5% thì kịch bản B chỉ cần bù 102 hội mỗi tháng thay vì 164.
+
+2. Thiết kế đường lên gói. Trần 500 thành viên của gói Khởi đầu là điểm chạm tự nhiên.
+   Màn hình nâng gói khi duyệt thành viên (đã chốt) phải dẫn thẳng lên Chuyên nghiệp.
+   Mỗi 10% hội chuyển từ Khởi đầu lên Chuyên nghiệp giảm khoảng 9% số hội cần có
+   (kịch bản B: từ 4.091 xuống 3.706 hội).
+
+3. Dịch vụ dựng hội trọn gói (5-15 triệu, làm một lần): khách cao cấp, chốt luôn gói 1 năm
+   Không giới hạn. 20 khách mỗi tháng giá 10 triệu là thêm 200 triệu doanh thu,
+   lãi khoảng 100 triệu sau công làm. Phần này là tiền tươi cho giai đoạn đầu khi số hội còn ít.
+
+4. Chương trình cộng sự giới thiệu Hội Mình. Hoa hồng 30% rẻ hơn quảng cáo vì chỉ trả khi có tiền.
+   Chính các chủ hội đang dùng là người giới thiệu tốt nhất.
+
+5. Gói email marketing bán riêng (đang chờ chốt). Lãi gộp ước 67-74%.
+   1.000 hội mua gói 449.000đ là thêm khoảng 449 triệu doanh thu, lãi gộp khoảng 300 triệu.
+   Đây có thể là phần lợi nhuận lớn nhất sau tiền gói.
+
+
+==================================================
+5. KỊCH BẢN KẾT HỢP ĐỀ XUẤT
+==================================================
+
+Thay vì dồn hết vào số hội, chia 500 triệu thành bốn nguồn:
+
+  Tiền gói nền tảng      2.500 hội trả phí theo tỷ lệ B         lãi khoảng 331 triệu
+  Gói email marketing    1.000 hội mua, bình quân 300.000đ      lãi khoảng 186 triệu
+  Dịch vụ dựng hội       20 khách mỗi tháng, giá 10 triệu      lãi khoảng 84 triệu
+  Tên miền riêng, thêm khác                                        lãi khoảng 20 triệu
+  Trừ chi phí cố định                                              -120 triệu
+  Cộng                                                           khoảng 500 triệu
+
+Cách tính: tiền gói lãi 132.335đ mỗi hội (không cộng phần thu thêm để khỏi tính hai lần).
+Email lãi gộp 70% trừ thuế và phí cổng. Dịch vụ dựng hội lãi 50% sau công làm, trừ thuế và phí cổng.
+
+Cách này cần khoảng 2.500 hội trả phí thay vì 4.091, tức bớt gần 40%.
+Điều kiện: 40% số hội mua gói email, nên gói email phải xây xong và bán được.
+
+
+==================================================
+6. ĐỘ NHẠY: GIẢ ĐỊNH NÀO ĐỔI THÌ KẾT QUẢ ĐỔI MẠNH
+==================================================
+
+  Gốc (kịch bản B):                           cần 4.091 hội
+  CAC tăng gấp đôi (3 triệu):                  lãi mỗi hội còn khoảng 91.600đ, cần khoảng 6.770 hội
+  Rời bỏ 6% thay vì 4%:                        cần khoảng 5.100 hội
+  Bỏ phần thu thêm 10%:                        cần khoảng 4.690 hội
+  Không ai mua qua người giới thiệu:           cần khoảng 3.370 hội (hoa hồng bằng 0 nhưng CAC thật sẽ cao hơn)
+
+Ba con số cần đo sớm nhất khi mở bán: tỷ lệ hội miễn phí lên trả phí, CAC thật, tỷ lệ rời bỏ tháng.
+Có ba số này sau 60-90 ngày thì thay vào bảng trên để biết đang đi kịch bản nào.
+
+
+==================================================
+7. SO SÁNH: THU PHẦN TRĂM TRÊN GIAO DỊCH (bổ sung 27/11/2026)
+==================================================
+
+Trạng thái: [CHỜ CHỐT]. Mô hình này đi ngược quyết định "0% mọi gói" ở docs/KE_HOACH_GOI_VA_GIA.txt
+và mục 72 của DECISIONS.md (chủ hội nhận tiền qua cổng của chính mình).
+
+Giả định:
+  Thuế trên phần phí Hội Mình thu    7%
+  Tiền kéo khách                      10% phần phí thu được
+  Chi phí cố định                     150 triệu/tháng (thêm người đối soát, chi hộ, kế toán thuế)
+  Phí 9Pay                            chưa có bảng giá; tính hai trường hợp:
+                                        người bán chịu phí cổng (ghi riêng như Stripe), hoặc Hội Mình chịu 1%
+
+Doanh số đi qua Hội Mình (GMV) cần có mỗi tháng để lãi 500 triệu:
+
+  Mức phí   Người bán chịu phí 9Pay        Hội Mình chịu 1%
+  3%        26,1 tỷ  (1.740 hội bán)        43,6 tỷ  (2.908 hội bán)
+  5%        15,7 tỷ  (1.044 hội bán)        20,6 tỷ  (1.376 hội bán)
+  8%         9,8 tỷ  (653 hội bán)          11,5 tỷ  (768 hội bán)
+  10%        7,8 tỷ  (522 hội bán)           8,9 tỷ  (594 hội bán)
+  (số hội bán tính theo bình quân 15 triệu doanh số mỗi hội mỗi tháng)
+
+Kết hợp hai mô hình (giống cách Skool, Teachable làm):
+  Gói trả phí: thu tiền gói như cũ, phí giao dịch 0%.
+  Gói Miễn phí: không thu tiền gói, thu 5% mỗi giao dịch.
+  2.000 hội trả phí (lãi khoảng 265 triệu) cộng khoảng 9,3 tỷ doanh số từ hội Miễn phí là đủ 500 triệu.
+  Phí 5% chính là lý do để hội Miễn phí bán tốt tự nâng lên gói trả phí.
+
+Điểm mạnh:
+  Gói Miễn phí sinh lời. Chủ hội không mất gì khi bắt đầu, đúng tư duy "kiếm được tiền trước".
+  Hội Mình lớn theo doanh số của chủ hội, không phải đi kéo từng hội.
+  Thu được tiền vì phí bị trừ trước khi chi tiền cho chủ hội, không phải đi đòi.
+
+Ba điều kiện bắt buộc trước khi làm:
+  1. Tiền phải đi qua đơn vị có giấy phép thu hộ, chi hộ (như 9Pay), không về tài khoản Hội Mình.
+     Theo Nghị định 52/2024, dịch vụ hỗ trợ thu hộ, chi hộ là dịch vụ trung gian thanh toán, phải có giấy phép
+     của Ngân hàng Nhà nước. Cần 9Pay xác nhận bằng hợp đồng rằng họ chia tiền cho nhiều người bán
+     và giữ lại phí cho nền tảng.
+  2. Nghĩa vụ thuế thay người bán. Theo Nghị định 117/2025 (hiệu lực 01/7/2025), sàn thương mại điện tử
+     có chức năng thanh toán phải khấu trừ, kê khai, nộp thuế thay hộ và cá nhân kinh doanh trên sàn.
+     Hội Mình nhiều khả năng rơi vào diện này. Cần luật sư hoặc kế toán thuế xác nhận trước.
+  3. Chặn đi đường vòng. Chủ hội có thể bảo người mua chuyển khoản thẳng để né phí.
+     Hội Mình chỉ tự mở quyền cho đơn trả qua Hội Mình; gói Miễn phí không có nút "đã nhận tiền" bằng tay.
+
+Phần đã kiểm về 9Pay (qua tìm kiếm, chưa đọc được trang 9pay.vn trực tiếp):
+  Có thu hộ, có thu qua tài khoản định danh (hợp tác Techcombank 6/2024).
+  Có chi hộ qua API hoặc cổng quản lý, có thông báo tự động qua API.
+  Phí tính theo từng giao dịch, tùy phương thức và sản lượng, không công bố bảng giá.
+  Thông cáo báo chí có nhắc "sàn thương mại điện tử có cơ chế chia thanh toán", nhưng chưa thấy
+  tài liệu kỹ thuật cho tính năng chia tiền.
+  Người đăng ký phải là doanh nghiệp hoặc hộ kinh doanh có kênh bán hợp pháp.
+
+Câu hỏi cần gửi 9Pay:
+  1. Có hỗ trợ mô hình nền tảng nhiều người bán không: mỗi chủ hội một tài khoản định danh hay ví con,
+     tiền người mua vào 9Pay, 9Pay tự trừ phí nền tảng rồi chi phần còn lại cho chủ hội?
+  2. Chủ hội là cá nhân (chưa có hộ kinh doanh) có nhận chi hộ được không, cần định danh gì?
+  3. Phí thu hộ theo từng phương thức (QR chuyển khoản, thẻ, ví) và phí chi hộ mỗi lệnh, theo mức sản lượng.
+  4. Thời gian tiền về và thời gian chi (T+0, T+1), có chi 24/7 không.
+  5. Hoàn tiền và tranh chấp xử lý thế nào, ai chịu.
+  6. 9Pay có hỗ trợ khấu trừ thuế thay người bán theo Nghị định 117/2025 không.
+  7. Tài liệu API thu hộ, chi hộ và IPN, có môi trường thử không.
