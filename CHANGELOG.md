@@ -1,14 +1,5 @@
 # CHANGELOG
 
-## 1.60.1 - 2026-11-27
-
-Thêm hai chỉ mục database để hạn mức dung lượng và bộ dọn ảnh, tệp tin nhắn chạy nhanh khi dữ liệu lớn, theo yêu cầu của chủ dự án ngày 27/11/2026. **Có migration** (`0023_file_community_message_media_indexes`): áp lên database thật trước khi merge.
-
-### Thay đổi
-
-- **Chỉ mục `files_community_idx`** trên `files.community_id`: cộng dung lượng tệp của một hội (hạn mức dung lượng theo gói, chạy mỗi lượt xin URL tải lên) không còn phải đọc cả bảng `files`.
-- **Chỉ mục một phần `messages_live_media_idx`** trên `messages.created_at`, chỉ gồm tin chưa thu hồi còn ảnh tải lên hoặc tệp đính kèm: bộ dọn ảnh, tệp tin nhắn quá 30 ngày tìm thẳng tin tới hạn. Gỡ ảnh, tệp xong thì tin tự ra khỏi chỉ mục, nên chỉ mục luôn nhỏ dù bảng `messages` lớn.
-
 ## 1.60.0 - 2026-11-27
 
 Ảnh và tệp trong tin nhắn riêng tự xóa sau 30 ngày, theo yêu cầu của chủ dự án ngày 27/11/2026, để tin nhắn không thành kho chứa tệp. Ảnh và tệp trong hội (bài viết, bình luận, khóa học, cửa hàng) vẫn giữ vĩnh viễn. Không có migration.
