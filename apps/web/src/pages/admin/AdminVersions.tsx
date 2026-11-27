@@ -144,7 +144,8 @@ function ReleasesCard() {
 function ReleaseItem({ r, open, onToggle }: { r: ReleaseNote; open: boolean; onToggle: () => void }) {
   const count = r.sections.reduce((n, sec) => n + sec.items.length, 0);
   return (
-    <section className="flex flex-col gap-1.5 pt-3" style={{ borderTop: `1px solid ${T.line}` }}>
+    // overflow-wrap: anywhere: chuỗi dài không có khoảng trắng (tên migration, tên chỉ mục) vẫn xuống dòng, không làm trang tràn ngang trên điện thoại.
+    <section className="flex flex-col gap-1.5 pt-3 [overflow-wrap:anywhere]" style={{ borderTop: `1px solid ${T.line}` }}>
       <div className="flex items-baseline gap-2"><b className="text-[17px]">v{r.version}</b>{r.date && <span className="muted text-[14px]">{r.date}</span>}</div>
       {r.summary && <p className="m-0 text-[15px] leading-[1.6]">{r.summary}</p>}
       {count > 0 && <button type="button" className="self-start text-[14px] font-semibold" style={{ color: T.tealText }} onClick={onToggle}>{open ? 'Ẩn chi tiết' : `Xem ${count} thay đổi`}</button>}
