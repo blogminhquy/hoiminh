@@ -645,6 +645,16 @@ button.settings-nav-item { background: none; border: 0; font: inherit; width: 10
   .course-menu.post-menu { top: 40px; right: 0; }
 }
 
+/* Nút ba chấm cạnh bình luận: máy tính chỉ hiện khi rê chuột vào bình luận (hoặc khi đang mở, đang được chọn bằng bàn phím);
+   màn cảm ứng không rê chuột được nên luôn hiện. */
+.comment-more { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink3); }
+.comment-more:hover, .comment-more.on { background: var(--bg); color: var(--ink); }
+.comment-more:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (hover: hover) {
+  .comment-row .comment-more { opacity: 0; }
+  .comment-row:hover .comment-more, .comment-row .comment-more.on, .comment-row .comment-more:focus-visible { opacity: 1; }
+}
+
 /* Luồng tin: dồn về đáy (tin mới nhất sát ô nhập), tin liền nhau của một người gom thành cụm. */
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 16px 16px 20px; }
 .chat-scroll > :first-child { margin-top: auto; }
