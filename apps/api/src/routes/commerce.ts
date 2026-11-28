@@ -3,10 +3,17 @@ import { createCheckoutSchema, createProductSchema, guestCheckoutSchema, joinRef
 import { checkout, guestCheckout, paymentsService, store } from '@hoiminh/core';
 import { z } from 'zod';
 import { body, parse, query, router } from '../lib/hono';
+import { readCookie } from '../lib/session-cookie';
 import { requireAuth } from '../middleware/auth';
 import { rateLimit } from '../middleware/rate-limit';
 
 export const commerceRoutes = router();
+
+/** Mã khách `hm_vid` của trình duyệt (cùng luật với /v1/ref-clicks), để đơn nối được về lượt bấm affiliate. */
+const visitorIdOf = (c: Parameters<typeof readCookie>[0]): string | null => {
+  const v = readCookie(c, 'hm_vid');
+  return v && /^[a-zA-Z0-9-]{8,64}$/.test(v) ? v : null;
+};
 
 commerceRoutes.get('/communities/:id/products', async (c) => {
   const q = await parse(storeQuerySchema, query(c));
@@ -24,14 +31,14 @@ commerceRoutes.get('/products/:id/downloads', requireAuth, async (c) => c.json(a
 commerceRoutes.post('/checkout', requireAuth, rateLimit('write', { scope: 'checkout' }), async (c) => {
   const input = await parse(createCheckoutSchema, await body(c));
   const cookieRef = getCookie(c.req.header('cookie'), 'hm_ref');
-  return c.json(await checkout.createCheckout(c.get('ctx'), { ...input, ref: joinRefs(input.ref, cookieRef) }), 201);
+  return c.json(await checkout.createCheckout(c.get('ctx'), { ...input, ref: joinRefs(input.ref, cookieRef) }, { visitorId: visitorIdOf(c) }), 201);
 });
 // Mua trước, tạo tài khoản sau: khách chưa đăng nhập mua bằng email. Trình duyệt nhận mã đơn (`guestToken`) và gửi lại
 // (tham số `t`, hoặc header X-Order-Token) để xem đơn và báo đã chuyển khoản. Mã này vốn đã nằm trên địa chỉ trang đơn. Đếm theo IP và email như đăng ký, vì mỗi lượt có thể tạo tài khoản chờ.
 commerceRoutes.post('/checkout/guest', rateLimit('auth'), async (c) => {
   const input = await parse(guestCheckoutSchema, await body(c));
   const cookieRef = getCookie(c.req.header('cookie'), 'hm_ref');
-  return c.json(await guestCheckout.guestCheckout(c.get('ctx'), { ...input, ref: joinRefs(input.ref, cookieRef) }), 201);
+  return c.json(await guestCheckout.guestCheckout(c.get('ctx'), { ...input, ref: joinRefs(input.ref, cookieRef) }, { visitorId: visitorIdOf(c) }), 201);
 });
 const orderToken = (c: { req: { header: (name: string) => string | undefined; query: (name: string) => string | undefined } }) => c.req.query('t') || c.req.header('x-order-token') || '';
 commerceRoutes.get('/guest-orders/:id', async (c) => c.json(await guestCheckout.guestOrderStatus(c.get('ctx'), c.req.param('id'), orderToken(c))));

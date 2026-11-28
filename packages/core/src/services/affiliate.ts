@@ -2,7 +2,7 @@
 // nhất) → ghi người giới thiệu lúc đăng ký tài khoản, hoặc lúc một tài khoản đã có vào một hội → người giới thiệu cố
 // định của thành viên trong hội đó → conversion → hoa hồng pending → available sau hold → ví (sổ cái bất biến).
 import { BUSINESS, sha256Hex, randomCode } from '@hoiminh/config';
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { affiliateAccounts, affiliateAttributions, affiliateClicks, affiliateCommissions, affiliateConversions, affiliateLinks, affiliatePrograms, affiliateWalletEntries, communities, communityMembers, courses, orderItems, orders, payments, products, users, workspaces } from '@hoiminh/db';
 import type { Ctx } from '../context';
 import { raw } from '../lib/db';
@@ -12,7 +12,7 @@ import { requireCommunityPermission, requireUser, resolveCommunityAccess } from 
 import { audit } from './audit';
 import { notify } from './notifications';
 import { communityHasFeature, requirePlanFeature } from './plans';
-import { linkTargets, platformProgram } from './affiliate-links';
+import { clickSourceFields, linkTargets, platformProgram } from './affiliate-links';
 import { activePartnerOf, effectiveDurationMonths } from './partner-terms';
 import { canonicalRefs, codeTaken, displayCode, personalCodeOf } from './referral-codes';
 
@@ -62,7 +62,7 @@ export async function trackClick(ctx: Ctx, code: string, meta: { visitorId: stri
   const program = await ctx.db.query.affiliatePrograms.findFirst({ where: eq(affiliatePrograms.id, acc.programId) });
   if (!program || program.status !== 'active') return null;
   const link = await ctx.db.query.affiliateLinks.findFirst({ where: eq(affiliateLinks.affiliateAccountId, acc.id) });
-  const [click] = await ctx.db.insert(affiliateClicks).values({ affiliateAccountId: acc.id, linkId: link?.id ?? null, visitorId: meta.visitorId, ipHash: meta.ip ? await sha256Hex(meta.ip) : null, userAgentHash: meta.userAgent ? await sha256Hex(meta.userAgent) : null, landingUrl: meta.landingUrl ?? null, referrer: meta.referrer ?? null }).returning();
+  const [click] = await ctx.db.insert(affiliateClicks).values({ affiliateAccountId: acc.id, linkId: link?.id ?? null, visitorId: meta.visitorId, ipHash: meta.ip ? await sha256Hex(meta.ip) : null, userAgentHash: meta.userAgent ? await sha256Hex(meta.userAgent) : null, ...clickSourceFields(ctx, meta) }).returning();
   await ctx.db.update(affiliateAccounts).set({ clickCount: sql`${affiliateAccounts.clickCount} + 1` }).where(eq(affiliateAccounts.id, acc.id));
   const expiresAt = new Date(ctx.now().getTime() + program.cookieDays * 86_400_000);
   await ctx.db.insert(affiliateAttributions).values({ affiliateAccountId: acc.id, programId: program.id, visitorId: meta.visitorId, sourceClickId: click!.id, expiresAt });
@@ -239,7 +239,6 @@ export async function setMyReferrer(ctx: Ctx, communityId: string, input: { code
   return myReferrer(ctx, communityId);
 }
 
-/** Sau payment.succeeded: tạo conversion + hoa hồng pending (UNIQUE payment_id + rule_version chống trùng). */
 /** Đơn có sản phẩm gắn khóa học mà khóa đó tắt affiliateEnabled thì không trả hoa hồng. */
 export async function productsAllowCommission(ctx: Ctx, orderId: string): Promise<boolean> {
   const items = await ctx.db.query.orderItems.findMany({ where: and(eq(orderItems.orderId, orderId), eq(orderItems.resourceType, 'product')) });
@@ -248,6 +247,36 @@ export async function productsAllowCommission(ctx: Ctx, orderId: string): Promis
   return rows.every((r) => r.enabled);
 }
 
+/**
+ * Lượt bấm đã dẫn tới một đơn có hoa hồng, để báo cáo theo nguồn traffic. Tìm theo thứ tự:
+ *   1. lượt bấm cuối của đúng affiliate từ cùng trình duyệt đã mua (mã khách lưu trong đơn lúc thanh toán),
+ *   2. lượt bấm cuối của đúng affiliate từ các trình duyệt đã gắn với tài khoản người mua (lúc đăng ký, lúc bấm link),
+ *   3. lượt bấm của đơn trước đó cùng affiliate, cùng người mua (gia hạn, mua tiếp: giữ nguồn ban đầu).
+ * Bước 1 và 2 chỉ xét lượt bấm trong thời hạn cookie của chương trình. Chỉ để báo cáo: không đổi người nhận hoa
+ * hồng, và lỗi ở đây không được làm hỏng việc tạo hoa hồng (trả về null).
+ */
+export async function sourceClickFor(ctx: Ctx, p: { affiliateAccountId: string; programId: string; customerUserId: string; orderId: string; cookieDays: number }): Promise<{ id: string; source: string | null; placement: string | null } | null> {
+  try {
+    const cols = { id: affiliateClicks.id, source: affiliateClicks.source, placement: affiliateClicks.placement };
+    const since = new Date(ctx.now().getTime() - p.cookieDays * 86_400_000);
+    const order = await ctx.db.query.orders.findFirst({ where: eq(orders.id, p.orderId), columns: { metadata: true } });
+    const visitorId = (order?.metadata as { visitorId?: unknown } | undefined)?.visitorId;
+    const visitors = new Set<string>(typeof visitorId === 'string' ? [visitorId] : []);
+    const linked = await ctx.db.selectDistinct({ v: affiliateAttributions.visitorId }).from(affiliateAttributions).where(and(eq(affiliateAttributions.userId, p.customerUserId), isNotNull(affiliateAttributions.visitorId)));
+    for (const r of linked) if (r.v) visitors.add(r.v);
+    if (visitors.size) {
+      const [hit] = await ctx.db.select(cols).from(affiliateClicks).where(and(eq(affiliateClicks.affiliateAccountId, p.affiliateAccountId), inArray(affiliateClicks.visitorId, [...visitors]), gte(affiliateClicks.clickedAt, since), lte(affiliateClicks.clickedAt, ctx.now()))).orderBy(desc(affiliateClicks.clickedAt)).limit(1);
+      if (hit) return hit;
+    }
+    const prev = await ctx.db.query.affiliateConversions.findFirst({ where: and(eq(affiliateConversions.affiliateAccountId, p.affiliateAccountId), eq(affiliateConversions.programId, p.programId), eq(affiliateConversions.customerUserId, p.customerUserId), isNotNull(affiliateConversions.clickId)), orderBy: desc(affiliateConversions.convertedAt), columns: { clickId: true, source: true, placement: true } });
+    return prev?.clickId ? { id: prev.clickId, source: prev.source, placement: prev.placement } : null;
+  } catch (err) {
+    ctx.log.warn('affiliate.source_click_failed', { err: String(err), orderId: p.orderId });
+    return null;
+  }
+}
+
+/** Sau payment.succeeded: tạo conversion + hoa hồng pending (UNIQUE payment_id + rule_version chống trùng). */
 export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: string; orderId: string; userId: string; communityId: string | null; workspaceId: string | null; amountMinor: number; targetType: 'tier' | 'product' | 'platform'; affiliateAccountId: string | null }): Promise<string | null> {
   let program: typeof affiliatePrograms.$inferSelect | undefined;
   let accountId = p.affiliateAccountId;
@@ -276,7 +305,8 @@ export async function createCommissionForPayment(ctx: Ctx, p: { paymentId: strin
   const rate = acc.commissionRateBps ?? program.commissionRateBps;
   if (rate <= 0) return null;
   const amount = commissionOf(p.amountMinor, rate);
-  const [conv] = await ctx.db.insert(affiliateConversions).values({ affiliateAccountId: acc.id, programId: program.id, customerUserId: p.userId, orderId: p.orderId, conversionType: p.targetType === 'platform' ? 'platform_subscription' : p.targetType === 'tier' ? 'community_purchase' : 'offer_purchase', grossMinor: p.amountMinor, status: 'confirmed' }).returning();
+  const click = await sourceClickFor(ctx, { affiliateAccountId: acc.id, programId: program.id, customerUserId: p.userId, orderId: p.orderId, cookieDays: program.cookieDays });
+  const [conv] = await ctx.db.insert(affiliateConversions).values({ affiliateAccountId: acc.id, programId: program.id, customerUserId: p.userId, orderId: p.orderId, clickId: click?.id ?? null, source: click?.source ?? null, placement: click?.placement ?? null, conversionType: p.targetType === 'platform' ? 'platform_subscription' : p.targetType === 'tier' ? 'community_purchase' : 'offer_purchase', grossMinor: p.amountMinor, status: 'confirmed' }).returning();
   const availableAt = new Date(ctx.now().getTime() + program.holdDays * 86_400_000);
   const rows = await ctx.db.insert(affiliateCommissions).values({ conversionId: conv!.id, affiliateAccountId: acc.id, programId: program.id, paymentId: p.paymentId, orderId: p.orderId, ruleVersion: 1, baseMinor: p.amountMinor, rateBps: rate, amountMinor: amount, status: 'pending', availableAt }).onConflictDoNothing().returning();
   if (!rows.length) return null;

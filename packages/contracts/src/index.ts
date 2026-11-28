@@ -10,6 +10,7 @@ export * from './events';
 export * from './commerce';
 export * from './orders';
 export * from './affiliate';
+export * from './traffic-source';
 export * from './platform';
 export * from './plans';
 export * from './automation';

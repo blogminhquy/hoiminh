@@ -176,6 +176,13 @@
       "when": 1795776421457,
       "tag": "0024_guest_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795787207201,
+      "tag": "0025_affiliate_traffic_source",
+      "breakpoints": true
     }
   ]
 }

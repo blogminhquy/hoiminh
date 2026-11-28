@@ -39,14 +39,15 @@ async function buyerFor(ctx: Ctx, email: string, name: string): Promise<{ user: 
 }
 
 /** Mua khi chưa đăng nhập. Trả thêm `guestToken`: trình duyệt giữ mã này để theo dõi đơn và tạo tài khoản sau khi trả. */
-export async function guestCheckout(ctx: Ctx, input: GuestCheckoutInput): Promise<CheckoutSession & { guestToken: string | null }> {
+/** `opts.visitorId`: mã khách của trình duyệt, chuyển tiếp cho createCheckout (xem ở đó). */
+export async function guestCheckout(ctx: Ctx, input: GuestCheckoutInput, opts: { visitorId?: string | null } = {}): Promise<CheckoutSession & { guestToken: string | null }> {
   const { email, name, ...rest } = input;
   // Đang đăng nhập thì mua như thường bằng tài khoản đó.
-  if (ctx.actor.type === 'user') return { ...(await createCheckout(ctx, rest)), guestToken: null };
+  if (ctx.actor.type === 'user') return { ...(await createCheckout(ctx, rest, { visitorId: opts.visitorId })), guestToken: null };
   if (rest.target.type === 'platform') throw invalid('Mua gói Hội Mình cho hội thì đăng nhập bằng tài khoản chủ hội nhé');
   return elevated(ctx, async () => {
     const { user, created } = await buyerFor(ctx, email, name);
-    const session = await createCheckout(asBuyer(ctx, user), rest, { returnUrl: async (orderId) => `${ctx.env.APP_URL}/thanh-toan/${orderId}?g=${await orderToken(ctx, orderId)}` });
+    const session = await createCheckout(asBuyer(ctx, user), rest, { visitorId: opts.visitorId, returnUrl: async (orderId) => `${ctx.env.APP_URL}/thanh-toan/${orderId}?g=${await orderToken(ctx, orderId)}` });
     const order = await ctx.db.query.orders.findFirst({ where: eq(orders.id, session.orderId), columns: { communityId: true } });
     if (created) {
       await ctx.db.insert(accountClaims).values({ userId: user.id, orderId: session.orderId, communityId: order?.communityId ?? null }).onConflictDoNothing();

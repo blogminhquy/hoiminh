@@ -82,7 +82,11 @@ async function resolveTarget(ctx: Ctx, userId: string, input: CreateCheckoutInpu
  * Tạo đơn + thanh toán + hướng dẫn (QR hoặc redirect). Đơn chờ hết hạn sau 30 phút (24 giờ với đơn chủ hội tự bấm xác nhận).
  * `opts.returnUrl`: trang cổng thanh toán đưa người mua về, tính theo id đơn vừa tạo (người mua chưa đăng nhập cần mã đơn trên link).
  */
-export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput, opts: { returnUrl?: (orderId: string) => Promise<string> } = {}): Promise<CheckoutSession> {
+/**
+ * `opts.visitorId` là mã khách (cookie `hm_vid`) của trình duyệt đang mua, do route đọc từ cookie chứ không nhận từ
+ * dữ liệu gửi lên. Lưu vào đơn để lúc tính hoa hồng tìm được lượt bấm affiliate đã dẫn tới đơn (nguồn traffic).
+ */
+export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput, opts: { returnUrl?: (orderId: string) => Promise<string>; visitorId?: string | null } = {}): Promise<CheckoutSession> {
   const userId = requireUser(ctx);
   const user = await ctx.db.query.users.findFirst({ where: eq(users.id, userId) });
   if (!user) throw notFound();
@@ -132,7 +136,7 @@ export async function createCheckout(ctx: Ctx, input: CreateCheckoutInput, opts:
   // Đơn chủ hội tự bấm xác nhận thì giữ 24 giờ, vì chủ hội không ngồi chờ từng đơn; các đơn khác giữ 30 phút.
   const holdMinutes = ownerAccount?.confirmMode === 'manual' ? 24 * 60 : 30;
   const order = await ctx.db.transaction(async (tx) => {
-    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider, returnUrl: input.returnUrl ?? null }, expiresAt: new Date(ctx.now().getTime() + holdMinutes * 60_000) }).returning();
+    const [o] = await tx.insert(orders).values({ workspaceId: r.workspaceId, communityId: r.communityId, customerUserId: userId, targetType: r.targetType, targetId: r.targetId, couponId: coupon?.id ?? null, subtotalMinor: r.amountMinor, discountMinor: discount, totalMinor: total, currency: r.currency, status: 'pending', reference, affiliateAccountId: affiliateId, metadata: { ...r.metadata, provider, returnUrl: input.returnUrl ?? null, ...(opts.visitorId ? { visitorId: opts.visitorId } : {}) }, expiresAt: new Date(ctx.now().getTime() + holdMinutes * 60_000) }).returning();
     await tx.insert(orderItems).values({ orderId: o!.id, resourceType: r.targetType, resourceId: r.targetId, name: r.itemName, unitMinor: r.amountMinor, totalMinor: total });
     return o!;
   });
