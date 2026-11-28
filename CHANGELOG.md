@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 1.62.0 - 2026-11-28
+
+Affiliate ghi rõ nguồn traffic: mỗi lượt bấm link được phân loại nguồn, mỗi đơn có hoa hồng nối về lượt bấm đã dẫn tới nó. Chủ dự án yêu cầu ngày 27/11/2026. Có migration (`0025_affiliate_traffic_source`, chỉ thêm cột).
+
+### Thêm
+
+- **Nguồn của lượt bấm affiliate.** Mỗi lượt bấm link (`?ref=` và `/r/<mã>`) được xếp vào một nguồn: Facebook, Zalo, YouTube, TikTok, Instagram, Google, Email, Trong Hội Mình, Truy cập trực tiếp, Nguồn khác. Đọc từ trang giới thiệu, tham số các nền tảng tự gắn vào link (`fbclid`, `zarsrc`, `ttclid`, `gclid`, `utm_*`) và dấu hiệu trình duyệt trong ứng dụng Zalo, Facebook, TikTok (các ứng dụng này thường không gửi trang giới thiệu).
+- **Mã chỗ đặt link của Hội Mình.** Link mang tham số `pl=<mã>` (ví dụ `pl=kham-pha.the-1`) được tính là nguồn "Trong Hội Mình" và lưu mã chỗ đặt, để sau này đo từng chỗ đặt link trên nền tảng.
+- **Đơn nối về lượt bấm.** Lúc thanh toán, đơn lưu mã khách của trình duyệt (cookie `hm_vid`, máy chủ tự đọc, người mua không gửi được). Lúc tạo hoa hồng, đơn được nối về lượt bấm cuối của đúng affiliate từ trình duyệt đó (hoặc từ các trình duyệt đã gắn với tài khoản người mua) trong thời hạn cookie, và chép nguồn của lượt bấm. Đơn sau của cùng người mua với cùng affiliate giữ nguồn ban đầu.
+
+### Thay đổi
+
+- Địa chỉ trang đích và trang giới thiệu của lượt bấm được lưu tới 2.000 ký tự thay vì 500, để không mất tham số trên link.
+
 ## 1.61.0 - 2026-11-27
 
 Mua trước, tạo tài khoản sau, theo yêu cầu của chủ dự án ngày 27/11/2026: ưu tiên dòng tiền, khách trả tiền trước rồi mới tạo tài khoản. Có migration `0024_guest_checkout` (bảng `account_claims`), phải áp lên database thật trước khi merge.
